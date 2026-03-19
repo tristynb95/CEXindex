@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GAIL's Bakery — NPS & Coffee Experience Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f5f0eb;--card:#fff;--accent:#8b4513;--accent2:#d2691e;--green:#2e7d32;--amber:#f57f17;--red:#c62828;--blue:#1565c0;--text:#2c1810;--muted:#7c6f64;--border:#e8e0d8;--excellent:#2e7d32;--good:#558b2f;--developing:#f57f17;--attention:#c62828}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;font-size:14px}
+.header{background:linear-gradient(135deg,#2c1810 0%,#5d3a1a 100%);color:#fff;padding:22px 28px;display:flex;align-items:center;gap:16px}
+.header h1{font-size:1.4rem;font-weight:700}.header .sub{color:#d4c5b5;font-size:0.78rem;margin-top:2px}.header .logo{font-size:1.8rem}
+.container{max-width:1440px;margin:0 auto;padding:16px}
+.filter-bar{background:var(--card);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:1px solid var(--border)}
+.filter-bar label{font-size:0.74rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px}
+.filter-bar select,.filter-bar input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;background:#fff;color:var(--text)}
+.filter-bar select{min-width:120px}.filter-bar input{width:180px}
+.period-btns{display:flex;gap:4px;flex-wrap:wrap}
+.period-btn{padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:0.72rem;cursor:pointer;background:#fff;color:var(--muted);font-weight:500;transition:all 0.15s}
+.period-btn:hover{border-color:var(--accent);color:var(--accent)}
+.period-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--card);border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid var(--border)}
+.kpi .value{font-size:1.4rem;font-weight:700;color:var(--accent)}.kpi .label{font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:1px}
+.kpi.hl{border-color:var(--green);background:#f8fdf8}
+.section{background:var(--card);border-radius:10px;padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid var(--border)}
+.section h2{font-size:0.95rem;font-weight:600;margin-bottom:10px;color:var(--accent)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+canvas{max-height:320px}
+.table-wrap{max-height:480px;overflow-y:auto;border:1px solid var(--border);border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:0.74rem}
+th{background:#f9f5f0;position:sticky;top:0;z-index:2;padding:8px 5px;text-align:left;font-weight:600;color:var(--accent);border-bottom:2px solid var(--border);white-space:nowrap;font-size:0.68rem}
+td{padding:6px 5px;border-bottom:1px solid var(--border);white-space:nowrap}
+tr:hover td{background:#fdf8f3}
+.band{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.64rem;font-weight:600;color:#fff}
+.band.Excellent{background:var(--excellent)}.band.Good{background:var(--good)}.band.Developing{background:var(--developing);color:#333}.band.Needs-Attention{background:var(--attention)}
+.conf{display:inline-block;padding:1px 5px;border-radius:3px;font-size:0.62rem;font-weight:500}
+.conf.High{background:#e8f5e9;color:#2e7d32}.conf.Medium{background:#fff8e1;color:#f57f17}.conf.Low{background:#fce4ec;color:#c62828}
+.tabs{display:flex;gap:0;margin-bottom:14px;border-bottom:2px solid var(--border);flex-wrap:wrap}
+.tab{padding:9px 15px;cursor:pointer;font-size:0.8rem;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s}
+.tab:hover{color:var(--accent)}.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tab-content{display:none}.tab-content.active{display:block}
+.explain{background:#fdf8f3;border-radius:8px;padding:14px;border-left:4px solid var(--accent);margin-bottom:10px}
+.explain h3{font-size:0.86rem;margin-bottom:5px;color:var(--accent)}.explain p{font-size:0.78rem;color:var(--muted);margin-bottom:5px}
+.formula{font-family:'Courier New',monospace;background:#f0e8df;padding:8px 12px;border-radius:5px;font-size:0.78rem;margin:8px 0}
+.benchmarks{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.benchmark{text-align:center;padding:10px 6px;border-radius:6px}
+.benchmark .bval{font-size:1.1rem;font-weight:700}.benchmark .blabel{font-size:0.68rem;margin-top:2px}
+.benchmark.exc{background:#e8f5e9;color:var(--excellent)}.benchmark.gd{background:#f1f8e9;color:var(--good)}
+.benchmark.dev{background:#fff8e1;color:var(--developing)}.benchmark.na{background:#fce4ec;color:var(--attention)}
+.hero-section{border:2px solid var(--accent);background:linear-gradient(135deg,#fdf8f3 0%,#fff 100%)}
+.callout-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
+.callout{border-radius:8px;padding:12px;text-align:center}
+.callout.red{background:#fff5f5;border:1px solid #f5c6c6}
+.callout.green{background:#e8f5e9;border:1px solid #c6e8c6}
+.callout .cval{font-size:1.8rem;font-weight:700}.callout .clbl{font-size:0.72rem;color:var(--muted)}
+/* Upload zone */
+.upload-zone{background:var(--card);border:3px dashed var(--border);border-radius:16px;padding:48px 32px;text-align:center;margin-bottom:20px;transition:all 0.2s;cursor:pointer}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:#fdf8f3}
+.upload-zone .icon{font-size:3rem;margin-bottom:12px}
+.upload-zone h3{font-size:1.1rem;color:var(--accent);margin-bottom:6px}
+.upload-zone p{font-size:0.84rem;color:var(--muted);margin-bottom:4px}
+.upload-zone .btn{display:inline-block;margin-top:14px;padding:10px 24px;background:var(--accent);color:#fff;border-radius:8px;font-weight:600;font-size:0.88rem;cursor:pointer;border:none}
+.upload-zone .btn:hover{background:var(--accent2)}
+.upload-zone .status{margin-top:12px;font-size:0.82rem;font-weight:500}
+.upload-zone .status.success{color:var(--green)}
+.upload-zone .status.error{color:var(--red)}
+#dashboardContent{display:none}
+.insight-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+@media(max-width:900px){.insight-grid{grid-template-columns:1fr}}
+.insight-card{background:#fff;border-radius:8px;padding:14px 16px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.insight-card h4{font-size:0.82rem;font-weight:600;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.insight-card p{font-size:0.76rem;color:var(--text);margin-bottom:6px;line-height:1.5}
+.insight-card .action{font-size:0.74rem;color:var(--green);font-weight:600;margin-top:6px;padding:6px 10px;background:#e8f5e9;border-radius:5px;display:inline-block}
+.insight-card .stat{font-size:1.1rem;font-weight:700;color:var(--accent)}
+.insight-card ul{font-size:0.74rem;color:var(--text);margin:4px 0 0 16px;line-height:1.7}
+.insight-card .mgr-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:0.74rem}
+.insight-card .mgr-row:last-child{border-bottom:none}
+.dir{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:0.68rem;font-weight:600}
+.dir.up{background:#e8f5e9;color:var(--green)}.dir.down{background:#fce4ec;color:var(--red)}.dir.flat{background:#f5f0eb;color:var(--muted)}
+.dir.new-entry{background:#e3f2fd;color:var(--blue)}
+.sparkline-cell{min-width:90px}
+.trend-detail{font-size:0.68rem;color:var(--muted);margin-top:2px}
+.reload-btn{padding:5px 12px;border:1px solid var(--border);border-radius:5px;font-size:0.72rem;cursor:pointer;background:#fff;color:var(--accent);font-weight:600;transition:all 0.15s}
+.reload-btn:hover{background:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+<div class="header">
+<div class="logo">&#9749;</div>
+<div><h1>GAIL's Bakery &mdash; NPS &amp; Coffee Experience Dashboard</h1>
+<div class="sub" id="headerSub">Upload your NPS &amp; Coffee Data spreadsheet to begin</div></div>
+</div>
+<div class="container">
+
+<!-- UPLOAD ZONE -->
+<div id="uploadZone" class="upload-zone">
+<div class="icon">&#128202;</div>
+<h3>Load NPS &amp; Coffee Data</h3>
+<p>Drag &amp; drop your <strong>NPS + Coffee Data.xlsx</strong> file here</p>
+<p style="font-size:0.74rem;color:var(--muted)">Each sheet should be a month (e.g. &ldquo;March 2025&rdquo;) with columns: Bakery, Rank, NPS Score, Volume, speed metrics, Overall, Friendliness, Drink, Efficiency</p>
+<button class="btn" id="browseBtn">Browse for file</button>
+<input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
+<div class="status" id="uploadStatus"></div>
+</div>
+
+<!-- DASHBOARD (hidden until data loaded) -->
+<div id="dashboardContent">
+
+<!-- GLOBAL FILTER BAR -->
+<div class="filter-bar">
+<div><label>Period</label><br>
+<div class="period-btns" id="periodBtns"></div></div>
+<div><label>Month</label><br><select id="monthSelect"><option value="">— Select —</option></select></div>
+<div><label>Region</label><br><select id="regionFilter"><option value="">All Regions</option></select></div>
+<div><label>Ops Manager</label><br><select id="opsFilter"><option value="">All Managers</option></select></div>
+<div><label>Bakery</label><br><input id="bakerySearch" type="text" placeholder="Search bakery..."></div>
+<div><label>Band</label><br><select id="bandFilter"><option value="">All</option><option>Excellent</option><option>Good</option><option>Developing</option><option>Needs Attention</option></select></div>
+<div><label>Rolling Window</label><br><select id="rollingWindow"><option value="0">All Months</option><option value="3">Last 3 Months</option><option value="5">Last 5 Months</option><option value="6" selected>Last 6 Months</option><option value="9">Last 9 Months</option><option value="12">Last 12 Months</option></select></div>
+<div><button class="reload-btn" id="reloadBtn">&#8635; Load New Data</button></div>
+</div>
+
+<div class="kpi-row" id="kpis"></div>
+
+<div class="tabs">
+<div class="tab active" data-tab="overview">Overview</div>
+<div class="tab" data-tab="trends">Trends</div>
+<div class="tab" data-tab="speed">Speed vs NPS</div>
+<div class="tab" data-tab="cei">CEI Methodology</div>
+<div class="tab" data-tab="table">League Table</div>
+<div class="tab" data-tab="target">&#127919; Target Bakeries</div>
+</div>
+
+<!-- OVERVIEW -->
+<div class="tab-content active" id="tab-overview">
+<div class="grid-2">
+<div class="section"><h2>NPS Distribution</h2><canvas id="npsHist"></canvas></div>
+<div class="section"><h2>CEI Band Split</h2><canvas id="ceiBands"></canvas></div>
+</div>
+<div class="grid-2">
+<div class="section"><h2>NPS vs CEI</h2><canvas id="npsVsCei"></canvas></div>
+<div class="section"><h2>Customer Experience by Band</h2><canvas id="cxRadar"></canvas></div>
+</div>
+<div class="grid-2">
+<div class="section"><h2 style="color:var(--green)">Top 10 Bakeries by CEI</h2><canvas id="top10Chart" style="max-height:360px"></canvas></div>
+<div class="section"><h2 style="color:var(--red)">Bottom 10 Bakeries by CEI</h2><canvas id="bot10Chart" style="max-height:360px"></canvas></div>
+</div>
+</div>
+
+<!-- TRENDS -->
+<div class="tab-content" id="tab-trends">
+<div class="grid-2">
+<div class="section"><h2>Average NPS by Month</h2><canvas id="trendNPS"></canvas></div>
+<div class="section"><h2>Average CX Scores by Month</h2><canvas id="trendCX"></canvas></div>
+</div>
+<div class="grid-2">
+<div class="section"><h2>Band Distribution by Month</h2><canvas id="trendBands"></canvas></div>
+<div class="section"><h2>Average Speed Metrics by Month</h2><canvas id="trendSpeed"></canvas></div>
+</div>
+<div class="section"><h2>Bakery Tracker</h2>
+<p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Type a bakery name above to track its performance over time.</p>
+<canvas id="bakeryTracker" style="max-height:360px"></canvas>
+</div>
+</div>
+
+<!-- SPEED vs NPS -->
+<div class="tab-content" id="tab-speed">
+<div class="section hero-section">
+<h2 style="font-size:1.1rem;text-align:center;margin-bottom:4px">Does Making Coffee Faster Improve Customer Satisfaction?</h2>
+<p style="text-align:center;font-size:0.84rem;color:var(--muted);margin-bottom:16px">We compared every bakery&rsquo;s coffee speed against their NPS. The answer is clear.</p>
+<div class="grid-2">
+<div style="text-align:center">
+<div style="display:inline-block;background:#fce4ec;color:var(--red);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:600;margin-bottom:8px">&#10007; No meaningful relationship</div>
+<canvas id="speedVsNps"></canvas>
+</div>
+<div style="text-align:center">
+<div style="display:inline-block;background:#e8f5e9;color:var(--green);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:600;margin-bottom:8px">&#10003; Strong relationship</div>
+<canvas id="effVsNps"></canvas>
+</div>
+</div>
+</div>
+<div class="section hero-section">
+<h2 style="text-align:center">NPS by Speed Quartile vs Efficiency Quartile</h2>
+<canvas id="quartileCompare" style="max-height:360px"></canvas>
+<div class="callout-grid">
+<div class="callout red"><div class="clbl">NPS gap: fastest vs slowest bakeries</div><div class="cval" id="speedGapVal" style="color:var(--red)">—</div><div class="clbl">Making coffee faster barely moves the needle</div></div>
+<div class="callout green"><div class="clbl">NPS gap: highest vs lowest efficiency-rated</div><div class="cval" id="effGapVal" style="color:var(--green)">—</div><div class="clbl">How the experience <em>feels</em> is what matters</div></div>
+</div>
+</div>
+<div class="section hero-section">
+<h2 style="text-align:center">Every Speed Metric Tells the Same Story</h2>
+<canvas id="corrCompare" style="max-height:300px"></canvas>
+</div>
+</div>
+
+<!-- CEI METHODOLOGY -->
+<div class="tab-content" id="tab-cei">
+<div class="section">
+<h2>Coffee Experience Index v3 &mdash; Methodology</h2>
+<div class="explain">
+<h3>Overview</h3>
+<p>The CEI v3 is a 0&ndash;100 composite derived from standardised regression (R&sup2;&nbsp;=&nbsp;0.576). Weights reflect standardised &beta; coefficients against NPS. Percentile ranks are computed within each month&rsquo;s cohort.</p>
+<h3>Components</h3>
+<p><strong>Efficiency (35%)</strong> &mdash; Customer-rated perception of service efficiency (&beta;&nbsp;=&nbsp;0.344).</p>
+<p><strong>Drink Quality (35%)</strong> &mdash; Customer-rated drink quality (&beta;&nbsp;=&nbsp;0.342).</p>
+<p><strong>Friendliness (20%)</strong> &mdash; Customer-rated friendliness (&beta;&nbsp;=&nbsp;0.178). Significant at p&nbsp;=&nbsp;0.013.</p>
+<p><strong>Timeliness (10%)</strong> &mdash; Inverted % of orders exceeding 5 mins. A high over-5-min rate signals staff struggling with pace, lack of urgency, or drinks not being ticked off once complete (&beta;&nbsp;=&nbsp;&minus;0.095).</p>
+<div class="formula">CEI = (Efficiency pctile &times; 0.35) + (Drink pctile &times; 0.35) + (Friendliness pctile &times; 0.20) + (Timeliness pctile &times; 0.10)</div>
+<h3>Benchmarks</h3>
+<div class="benchmarks">
+<div class="benchmark exc"><div class="bval">75&ndash;100</div><div class="blabel">Excellent</div></div>
+<div class="benchmark gd"><div class="bval">50&ndash;74</div><div class="blabel">Good</div></div>
+<div class="benchmark dev"><div class="bval">25&ndash;49</div><div class="blabel">Developing</div></div>
+<div class="benchmark na"><div class="bval">0&ndash;24</div><div class="blabel">Needs Attention</div></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- LEAGUE TABLE -->
+<div class="tab-content" id="tab-table">
+<div class="section">
+<h2>League Table</h2>
+<div style="margin-bottom:8px">
+<label style="font-size:0.74rem;color:var(--muted);font-weight:500">Sort: <select id="sortBy"><option value="cr">CEI Rank</option><option value="n">NPS</option><option value="c">CEI</option><option value="dr">Drink</option><option value="ef">Efficiency</option><option value="fr">Friendliness</option><option value="o5">Over 5 Min</option></select></label>
+</div>
+<div class="table-wrap"><table><thead><tr>
+<th>#</th><th>Bakery</th><th>Region</th><th>Ops Manager</th><th>CEI</th><th>Band</th><th>Conf</th><th>NPS</th><th>Vol</th>
+<th>Drink</th><th>Eff</th><th>Friendly</th><th>>5m</th><th>Overall</th><th>&le;2m</th>
+</tr></thead><tbody id="tableBody"></tbody></table></div>
+</div>
+</div>
+
+<!-- TARGET BAKERIES -->
+<div class="tab-content" id="tab-target">
+<div class="section">
+<h2>&#127919; Target Bakeries &mdash; Priority Support List</h2>
+<div class="explain">
+<h3>How to use this list</h3>
+<p>Bakeries are ranked from lowest CEI to highest within the <strong>Needs Attention</strong> (CEI &lt; 25) and <strong>Developing</strong> (CEI 25&ndash;49) bands &mdash; the bakeries at the top need the most urgent support.</p>
+<p>The <strong>Where to Focus</strong> column shows which single area is dragging a bakery&rsquo;s score down the most compared to other bakeries. Start coaching conversations there first before tackling anything else.</p>
+<p style="font-size:0.74rem">Individual scores shown in <span style="color:var(--red);font-weight:600">red</span> are in the bottom quarter of all bakeries.</p>
+</div>
+<div id="targetSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px"></div>
+<div id="targetInsights"></div>
+<div id="targetTable"></div>
+</div>
+<div class="section" id="targetTrendSection" style="display:none">
+<h2>Performance Trends &mdash; Target Bakeries Over Time</h2>
+<div class="explain">
+<h3>How to read this section</h3>
+<p>Each target bakery&rsquo;s CEI and component scores are tracked across every available month. The <strong>Direction</strong> column compares the most recent month to the previous month. <strong>3-Month Trend</strong> shows the overall trajectory over the last 3 months of data.</p>
+<p style="font-size:0.74rem"><span style="color:var(--green);font-weight:600">&uarr; Improving</span> = score rose by 3+ points. <span style="color:var(--red);font-weight:600">&darr; Declining</span> = score fell by 3+ points. <span style="color:var(--muted);font-weight:600">&harr; Stable</span> = within &plusmn;3 points.</p>
+</div>
+<div id="trendSummaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px"></div>
+<div class="section" style="margin-bottom:14px">
+<h2 style="font-size:0.88rem">Average CEI &mdash; Target Bakeries vs All Bakeries</h2>
+<canvas id="targetAvgTrend" style="max-height:280px"></canvas>
+</div>
+<div class="grid-2" style="margin-bottom:14px">
+<div class="section" style="margin-bottom:0"><h2 style="font-size:0.88rem">Improving vs Declining (Month-on-Month)</h2><canvas id="targetMomentumChart" style="max-height:340px"></canvas></div>
+<div class="section" style="margin-bottom:0"><h2 style="font-size:0.88rem">Band Movement Over Time</h2><canvas id="targetBandFlow" style="max-height:340px"></canvas></div>
+</div>
+<div class="section" style="margin-bottom:14px">
+<h2 style="font-size:0.88rem">Individual Bakery Trends</h2>
+<p style="font-size:0.76rem;color:var(--muted);margin-bottom:10px">Each bakery shown separately so you can see individual trajectories clearly. The dashed grey line is the overall bakery average for comparison.</p>
+<div id="sparklineGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+</div>
+<div id="targetTrendTable"></div>
+</div>
+</div>
+
+</div><!-- end dashboardContent -->
+</div><!-- end container -->
+
+<script>
+// ========== BAKERY METADATA ==========
+const BAKERY_META = {"Balham":{"r":"South Region","o":"Safa Aden"},"Barnes":{"r":"South Region","o":"Safa Aden"},"Battersea Square":{"r":"South Region","o":"Safa Aden"},"Earlsfield":{"r":"South Region","o":"Safa Aden"},"Putney":{"r":"South Region","o":"Safa Aden"},"Southfields":{"r":"South Region","o":"Safa Aden"},"Streatham Hill":{"r":"South Region","o":"Safa Aden"},"Tooting Broadway":{"r":"South Region","o":"Safa Aden"},"Wandsworth":{"r":"South Region","o":"Safa Aden"},"Wimbledon":{"r":"South Region","o":"Safa Aden"},"Wimbledon Broadway":{"r":"South Region","o":"Safa Aden"},"Cobham":{"r":"South Region","o":"New Ops Manager"},"Epsom":{"r":"South Region","o":"New Ops Manager"},"Esher":{"r":"South Region","o":"New Ops Manager"},"Kingston":{"r":"South Region","o":"New Ops Manager"},"Surbiton":{"r":"South Region","o":"New Ops Manager"},"Teddington":{"r":"South Region","o":"New Ops Manager"},"Weybridge":{"r":"South Region","o":"New Ops Manager"},"Windsor":{"r":"South Region","o":"New Ops Manager"},"Windsor Castle":{"r":"South Region","o":"New Ops Manager"},"Bracknell":{"r":"South Region","o":"Michelle Solomon"},"Farnham":{"r":"South Region","o":"Michelle Solomon"},"Fleet":{"r":"South Region","o":"Michelle Solomon"},"Godalming":{"r":"South Region","o":"Michelle Solomon"},"Guildford":{"r":"South Region","o":"Michelle Solomon"},"Petersfield":{"r":"South Region","o":"Michelle Solomon"},"Woking":{"r":"South Region","o":"Michelle Solomon"},"Wokingham":{"r":"South Region","o":"Michelle Solomon"},"Bristol College Green":{"r":"South Region","o":"Matt Church"},"Bristol Whiteladies Road":{"r":"South Region","o":"Matt Church"},"Clifton Village":{"r":"South Region","o":"Matt Church"},"Marlborough":{"r":"South Region","o":"Matt Church"},"Newbury":{"r":"South Region","o":"Matt Church"},"Salisbury":{"r":"South Region","o":"Matt Church"},"Union Street, Bath":{"r":"South Region","o":"Matt Church"},"Brighton":{"r":"South Region","o":"Holly Crawley"},"Horsham":{"r":"South Region","o":"Holly Crawley"},"Hove":{"r":"South Region","o":"Holly Crawley"},"Lewes":{"r":"South Region","o":"Holly Crawley"},"Reigate":{"r":"South Region","o":"Holly Crawley"},"Seven Dials Brighton":{"r":"South Region","o":"Holly Crawley"},"Sevenoaks":{"r":"South Region","o":"Holly Crawley"},"Tunbridge Wells":{"r":"South Region","o":"Holly Crawley"},"Worthing":{"r":"South Region","o":"Holly Crawley"},"Brentford":{"r":"South Region","o":"Elizabeta Zakolli"},"Chiswick":{"r":"South Region","o":"Elizabeta Zakolli"},"East Sheen":{"r":"South Region","o":"Elizabeta Zakolli"},"Kew":{"r":"South Region","o":"Elizabeta Zakolli"},"Richmond":{"r":"South Region","o":"Elizabeta Zakolli"},"St Margarets":{"r":"South Region","o":"Elizabeta Zakolli"},"Twickenham":{"r":"South Region","o":"Elizabeta Zakolli"},"Abbeville":{"r":"South Region","o":"Corina Medina"},"Clapham Old Town":{"r":"South Region","o":"Corina Medina"},"Gatwick":{"r":"South Region","o":"Corina Medina"},"Herne Hill":{"r":"South Region","o":"Corina Medina"},"Northcote Road":{"r":"South Region","o":"Corina Medina"},"Birmingham New Street":{"r":"North Region","o":"Kate Downes"},"Buxton":{"r":"North Region","o":"Kate Downes"},"Leamington Spa":{"r":"North Region","o":"Kate Downes"},"Macclesfield":{"r":"North Region","o":"Kate Downes"},"Solihull":{"r":"North Region","o":"Kate Downes"},"Stratford-upon-Avon":{"r":"North Region","o":"Kate Downes"},"Berkhamsted":{"r":"North Region","o":"Indre Mingailiene"},"Harpenden":{"r":"North Region","o":"Indre Mingailiene"},"Hitchin":{"r":"North Region","o":"Indre Mingailiene"},"Radlett":{"r":"North Region","o":"Indre Mingailiene"},"Ruislip":{"r":"North Region","o":"Indre Mingailiene"},"St Albans":{"r":"North Region","o":"Indre Mingailiene"},"Watford":{"r":"North Region","o":"Indre Mingailiene"},"Welwyn Garden City":{"r":"North Region","o":"Indre Mingailiene"},"Barnet":{"r":"North Region","o":"Graeme Conroy"},"Cambridge":{"r":"North Region","o":"Graeme Conroy"},"Cambridge Market Hill":{"r":"North Region","o":"Graeme Conroy"},"Cambridge Station Square":{"r":"North Region","o":"Graeme Conroy"},"Ely":{"r":"North Region","o":"Graeme Conroy"},"Golders Green":{"r":"North Region","o":"Graeme Conroy"},"Mill Hill":{"r":"North Region","o":"Graeme Conroy"},"Muswell Hill":{"r":"North Region","o":"Graeme Conroy"},"Palmers Green":{"r":"North Region","o":"Graeme Conroy"},"Temple Fortune":{"r":"North Region","o":"Graeme Conroy"},"Crouch End":{"r":"North Region","o":"Gabor Merza"},"Highgate":{"r":"North Region","o":"Gabor Merza"},"Swains Lane":{"r":"North Region","o":"Gabor Merza"},"Camden":{"r":"North Region","o":"Erika Kulikova"},"Clifton Road":{"r":"North Region","o":"Erika Kulikova"},"Ealing":{"r":"North Region","o":"Erika Kulikova"},"Kensal Rise":{"r":"North Region","o":"Erika Kulikova"},"Maida Vale":{"r":"North Region","o":"Erika Kulikova"},"Primrose Hill":{"r":"North Region","o":"Erika Kulikova"},"Queens Park":{"r":"North Region","o":"Erika Kulikova"},"St Johns Wood":{"r":"North Region","o":"Erika Kulikova"},"West Hampstead":{"r":"North Region","o":"Erika Kulikova"},"Willesden Green":{"r":"North Region","o":"Erika Kulikova"},"Archway":{"r":"North Region","o":"Connie Williamson"},"Belsize Park":{"r":"North Region","o":"Connie Williamson"},"Finsbury Park":{"r":"North Region","o":"Connie Williamson"},"Hackney Castle":{"r":"North Region","o":"Connie Williamson"},"Hampstead":{"r":"North Region","o":"Connie Williamson"},"Kentish Town":{"r":"North Region","o":"Connie Williamson"},"South End Green":{"r":"North Region","o":"Connie Williamson"},"Stoke Newington":{"r":"North Region","o":"Connie Williamson"},"Victoria Park":{"r":"North Region","o":"Connie Williamson"},"Altrincham":{"r":"North Region","o":"Chris Kral"},"Cheshire Oaks":{"r":"North Region","o":"Chris Kral"},"Chester":{"r":"North Region","o":"Chris Kral"},"Didsbury":{"r":"North Region","o":"Chris Kral"},"King Street":{"r":"North Region","o":"Chris Kral"},"Knutsford":{"r":"North Region","o":"Chris Kral"},"Manchester Sale":{"r":"North Region","o":"Chris Kral"},"Prestwich":{"r":"North Region","o":"Chris Kral"},"Wilmslow":{"r":"North Region","o":"Chris Kral"},"Beaconsfield":{"r":"North Region","o":"Bobby Holmes"},"Gerrards Cross":{"r":"North Region","o":"Bobby Holmes"},"Henley":{"r":"North Region","o":"Bobby Holmes"},"Jericho":{"r":"North Region","o":"Bobby Holmes"},"Marlow":{"r":"North Region","o":"Bobby Holmes"},"Reading":{"r":"North Region","o":"Bobby Holmes"},"Summertown":{"r":"North Region","o":"Bobby Holmes"},"Thame":{"r":"North Region","o":"Bobby Holmes"},"Witney":{"r":"North Region","o":"Bobby Holmes"},"Baker Street":{"r":"London Region","o":"Sandra Cano Cardona"},"Great Portland Street":{"r":"London Region","o":"Sandra Cano Cardona"},"Marylebone Village":{"r":"London Region","o":"Sandra Cano Cardona"},"Melcombe Street":{"r":"London Region","o":"Sandra Cano Cardona"},"Notting Hill":{"r":"London Region","o":"Sandra Cano Cardona"},"Paddington":{"r":"London Region","o":"Sandra Cano Cardona"},"Paddington Square":{"r":"London Region","o":"Sandra Cano Cardona"},"Seymour Place":{"r":"London Region","o":"Sandra Cano Cardona"},"Westbourne Grove":{"r":"London Region","o":"Sandra Cano Cardona"},"Bloomsbury":{"r":"London Region","o":"Samuel Suris Costas"},"Brunswick Centre":{"r":"London Region","o":"Samuel Suris Costas"},"Euston":{"r":"London Region","o":"Samuel Suris Costas"},"Great Russell Street":{"r":"London Region","o":"Samuel Suris Costas"},"Kings Cross":{"r":"London Region","o":"Samuel Suris Costas"},"Liverpool Street Station":{"r":"London Region","o":"Samuel Suris Costas"},"London Bridge Station":{"r":"London Region","o":"Samuel Suris Costas"},"Pentonville Road Kings Cross":{"r":"London Region","o":"Samuel Suris Costas"},"Soho":{"r":"London Region","o":"Samuel Suris Costas"},"St Pancras Station":{"r":"London Region","o":"Samuel Suris Costas"},"Askew Road":{"r":"London Region","o":"New Group Manager"},"Barons Court":{"r":"London Region","o":"New Group Manager"},"Brook Green":{"r":"London Region","o":"New Group Manager"},"Fulham Broadway":{"r":"London Region","o":"New Group Manager"},"Parsons Green":{"r":"London Region","o":"New Group Manager"},"Billericay":{"r":"London Region","o":"Magda Walczak"},"Brentwood":{"r":"London Region","o":"Magda Walczak"},"Chelmsford":{"r":"London Region","o":"Magda Walczak"},"Epping":{"r":"London Region","o":"Magda Walczak"},"Loughton":{"r":"London Region","o":"Magda Walczak"},"South Woodford":{"r":"London Region","o":"Magda Walczak"},"Walthamstow Village":{"r":"London Region","o":"Magda Walczak"},"Wanstead":{"r":"London Region","o":"Magda Walczak"},"Buckingham Palace Road":{"r":"London Region","o":"Magda Miszkiewicz"},"Chelsea":{"r":"London Region","o":"Magda Miszkiewicz"},"Cromwell Place":{"r":"London Region","o":"Magda Miszkiewicz"},"Gloucester Road":{"r":"London Region","o":"Magda Miszkiewicz"},"High Street Kensington":{"r":"London Region","o":"Magda Miszkiewicz"},"Kensington Arcade":{"r":"London Region","o":"Magda Miszkiewicz"},"Kings Road":{"r":"London Region","o":"Magda Miszkiewicz"},"Pimlico":{"r":"London Region","o":"Magda Miszkiewicz"},"Strand":{"r":"London Region","o":"Magda Miszkiewicz"},"Cowcross Street":{"r":"London Region","o":"George Austin"},"Exmouth Market":{"r":"London Region","o":"George Austin"},"Holborn":{"r":"London Region","o":"George Austin"},"Islington":{"r":"London Region","o":"George Austin"},"Long Acre":{"r":"London Region","o":"George Austin"},"Millennium Bridge":{"r":"London Region","o":"George Austin"},"Old Street":{"r":"London Region","o":"George Austin"},"Shaftesbury Avenue":{"r":"London Region","o":"George Austin"},"Spitalfields":{"r":"London Region","o":"George Austin"},"Beckenham":{"r":"London Region","o":"Elena Ilciuc"},"Blackheath":{"r":"London Region","o":"Elena Ilciuc"},"Bromley":{"r":"London Region","o":"Elena Ilciuc"},"Canary Wharf":{"r":"London Region","o":"Elena Ilciuc"},"Crystal Palace":{"r":"London Region","o":"Elena Ilciuc"},"Dulwich":{"r":"London Region","o":"Elena Ilciuc"},"East Dulwich":{"r":"London Region","o":"Elena Ilciuc"},"Woolwich Station":{"r":"London Region","o":"Elena Ilciuc"},"Bermondsey Street":{"r":"London Region","o":"Andrea D'Epifanio"},"Blackfriars":{"r":"London Region","o":"Andrea D'Epifanio"},"Elephant Park":{"r":"London Region","o":"Andrea D'Epifanio"},"Greenwich":{"r":"London Region","o":"Andrea D'Epifanio"},"Kennington":{"r":"London Region","o":"Andrea D'Epifanio"},"Neo Bankside":{"r":"London Region","o":"Andrea D'Epifanio"},"South Lambeth":{"r":"London Region","o":"Andrea D'Epifanio"},"Southbank":{"r":"London Region","o":"Andrea D'Epifanio"},"Southwark":{"r":"London Region","o":"Andrea D'Epifanio"},"The Cut":{"r":"London Region","o":"Andrea D'Epifanio"},"Camden Lock":{"r":"Other","o":"Other"},"South Kensington":{"r":"London Region","o":"Other"}};
+
+const getBakeryRegion = b => BAKERY_META[b] ? BAKERY_META[b].r : 'Unknown';
+const getBakeryOps = b => BAKERY_META[b] ? BAKERY_META[b].o : 'Unknown';
+const COL = {Excellent:'#2e7d32',Good:'#558b2f',Developing:'#f57f17','Needs Attention':'#c62828'};
+const bc = b => b.replace(/\s/g,'-');
+
+// ========== GLOBAL STATE ==========
+let ALL = [];       // all processed records
+let MONTHS = [];    // ordered month labels like "Mar 25"
+let BAKERIES = [];  // unique bakery names
+let selectedMonths = [];
+let searchBakery = '';
+let bandFilter = '';
+let regionFilter = '';
+let opsFilter = '';
+let PERIODS = {};
+
+// Rolling window: returns MONTHS filtered to the last N, or all if 0
+function getRollingMonths() {
+  const val = parseInt(document.getElementById('rollingWindow').value, 10);
+  if (!val || val <= 0 || val >= MONTHS.length) return [...MONTHS];
+  return MONTHS.slice(-val);
+}
+
+// ========== MONTH PARSING ==========
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_ORDER = {};
+
+function parseSheetMonth(name) {
+  // "March 2025" -> "Mar 25"
+  const parts = name.trim().split(/\s+/);
+  if(parts.length !== 2) return null;
+  const mi = MONTH_NAMES.indexOf(parts[0]);
+  if(mi < 0) return null;
+  const yr = parts[1].slice(-2);
+  return MONTH_SHORT[mi] + ' ' + yr;
+}
+
+function monthSortKey(label) {
+  // "Mar 25" -> 2025*12+2
+  const parts = label.split(' ');
+  const mi = MONTH_SHORT.indexOf(parts[0]);
+  const yr = 2000 + parseInt(parts[1]);
+  return yr * 12 + mi;
+}
+
+// ========== PERCENTILE RANK ==========
+function percentileRank(values, value, invert) {
+  // For invert=true (Over 5 Min), lower is better
+  const sorted = [...values].sort((a,b) => invert ? b-a : a-b);
+  const rank = sorted.indexOf(value);
+  // Handle ties: average rank
+  let first = sorted.indexOf(value);
+  let last = sorted.lastIndexOf(value);
+  const avgRank = (first + last) / 2;
+  return (avgRank / (sorted.length - 1)) * 100;
+}
+
+// ========== CEI CALCULATION ==========
+// CEI v3 weights from standardised regression betas
+const CEI_WEIGHTS = { ef: 0.35, dr: 0.35, fr: 0.20, o5: 0.10 };
+
+function computeCEI(monthRecords) {
+  // Extract arrays for percentile computation
+  const efVals = monthRecords.map(r => r.ef);
+  const drVals = monthRecords.map(r => r.dr);
+  const frVals = monthRecords.map(r => r.fr);
+  const o5Vals = monthRecords.map(r => r.o5);
+
+  monthRecords.forEach(r => {
+    r.ep = Math.round(percentileRank(efVals, r.ef, false) * 10) / 10;
+    r.dp = Math.round(percentileRank(drVals, r.dr, false) * 10) / 10;
+    r.fp = Math.round(percentileRank(frVals, r.fr, false) * 10) / 10;
+    r.ap = Math.round(percentileRank(o5Vals, r.o5, true) * 10) / 10;  // inverted
+
+    r.c = Math.round((r.ep * 0.35 + r.dp * 0.35 + r.fp * 0.20 + r.ap * 0.10) * 10) / 10;
+    r.cb = r.c >= 75 ? 'Excellent' : r.c >= 50 ? 'Good' : r.c >= 25 ? 'Developing' : 'Needs Attention';
+    r.co = r.v >= 15 ? 'High' : r.v >= 8 ? 'Medium' : 'Low';
+  });
+
+  // Sort and assign ranks
+  monthRecords.sort((a,b) => b.c - a.c);
+  monthRecords.forEach((r, i) => { r.cr = i + 1; });
+}
+
+// ========== EXCEL PARSER ==========
+function parseExcelFile(data) {
+  const wb = XLSX.read(data, { type: 'array' });
+  const allRecords = [];
+  const months = [];
+
+  wb.SheetNames.forEach(sheetName => {
+    const monthLabel = parseSheetMonth(sheetName);
+    if (!monthLabel) return; // skip non-month sheets
+
+    const ws = wb.Sheets[sheetName];
+    const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+    // Find header row (contains "Bakery")
+    let headerIdx = -1;
+    for (let i = 0; i < Math.min(json.length, 10); i++) {
+      if (json[i] && json[i][0] && String(json[i][0]).trim() === 'Bakery') {
+        headerIdx = i;
+        break;
+      }
+    }
+    if (headerIdx < 0) return;
+
+    const headers = json[headerIdx].map(h => h ? String(h).trim() : '');
+
+    // Map columns by name
+    const colMap = {};
+    headers.forEach((h, i) => {
+      const lc = h.toLowerCase();
+      if (lc === 'bakery') colMap.bakery = i;
+      else if (lc === 'rank') colMap.rank = i;
+      else if (lc.includes('nps')) colMap.nps = i;
+      else if (lc.includes('volume')) colMap.vol = i;
+      else if (lc.includes('within 2 min') && lc.includes('weekend')) colMap.s2w = i;
+      else if (lc.includes('within 2 min')) colMap.s2 = i;
+      else if (lc.includes('within 3')) colMap.s3 = i;
+      else if (lc.includes('over 5') || lc.includes('5 min')) colMap.o5 = i;
+      else if (lc === 'overall') colMap.ov = i;
+      else if (lc === 'friendliness') colMap.fr = i;
+      else if (lc === 'drink') colMap.dr = i;
+      else if (lc === 'efficiency') colMap.ef = i;
+    });
+
+    const monthRecs = [];
+    for (let i = headerIdx + 1; i < json.length; i++) {
+      const row = json[i];
+      if (!row || !row[colMap.bakery] || typeof row[colMap.bakery] !== 'string') continue;
+      const bakery = row[colMap.bakery].trim();
+      if (!bakery || bakery === 'Total' || bakery === '') continue;
+
+      const num = (idx) => {
+        const v = row[idx];
+        if (v === null || v === undefined || v === '') return 0;
+        return typeof v === 'number' ? v : parseFloat(v) || 0;
+      };
+
+      // Values from Excel are raw decimals (0-1 for percentages), NPS is already a number
+      const r = {
+        b: bakery,
+        m: monthLabel,
+        nr: num(colMap.rank),
+        n: Math.round(num(colMap.nps) * 10) / 10,
+        v: Math.round(num(colMap.vol)),
+        s2: Math.round(num(colMap.s2) * 1000) / 10,     // decimal -> %
+        s2w: Math.round(num(colMap.s2w) * 1000) / 10,
+        s3: Math.round(num(colMap.s3) * 1000) / 10,
+        o5: Math.round(num(colMap.o5) * 1000) / 10,
+        ov: Math.round(num(colMap.ov) * 1000) / 10,
+        fr: Math.round(num(colMap.fr) * 1000) / 10,
+        dr: Math.round(num(colMap.dr) * 1000) / 10,
+        ef: Math.round(num(colMap.ef) * 1000) / 10,
+      };
+      monthRecs.push(r);
+    }
+
+    if (monthRecs.length > 0) {
+      computeCEI(monthRecs);
+      months.push(monthLabel);
+      allRecords.push(...monthRecs);
+    }
+  });
+
+  // Sort months chronologically
+  months.sort((a, b) => monthSortKey(a) - monthSortKey(b));
+
+  return { records: allRecords, months };
+}
+
+// ========== PERIOD BUILDER ==========
+function buildPeriods(months) {
+  // Group months by FY quarter. FY starts 1 March, named by end year.
+  // E.g. Mar 25 -> Q1 FY26, Jun 25 -> Q2 FY26, Sep 25 -> Q3 FY26, Dec 25 -> Q4 FY26
+  const periods = { latest: [months[months.length - 1]], all: [...months] };
+  const fyQuarters = {}; // key: "q1_fy26" -> [months]
+  const fyHalves = {};
+
+  months.forEach(m => {
+    const parts = m.split(' ');
+    const mi = MONTH_SHORT.indexOf(parts[0]);
+    const yr = parseInt(parts[1]) + 2000;
+    // FY: Mar=Q1, Apr=Q1, May=Q1, Jun=Q2, Jul=Q2, Aug=Q2, Sep=Q3, Oct=Q3, Nov=Q3, Dec=Q4, Jan=Q4, Feb=Q4
+    let fyYear, quarter, half;
+    if (mi >= 2) { // Mar-Dec
+      fyYear = yr + 1;
+      if (mi <= 4) { quarter = 1; half = 1; }
+      else if (mi <= 7) { quarter = 2; half = 1; }
+      else if (mi <= 10) { quarter = 3; half = 2; }
+      else { quarter = 4; half = 2; }
+    } else { // Jan-Feb
+      fyYear = yr;
+      quarter = 4;
+      half = 2;
+    }
+    const qKey = 'q' + quarter + '_fy' + (fyYear % 100);
+    const hKey = 'h' + half + '_fy' + (fyYear % 100);
+    if (!fyQuarters[qKey]) fyQuarters[qKey] = [];
+    fyQuarters[qKey].push(m);
+    if (!fyHalves[hKey]) fyHalves[hKey] = [];
+    fyHalves[hKey].push(m);
+  });
+
+  // Add quarters and halves to periods
+  Object.assign(periods, fyQuarters, fyHalves);
+  return periods;
+}
+
+function buildPeriodButtons(periods) {
+  const container = document.getElementById('periodBtns');
+  container.innerHTML = '';
+
+  // Build ordered list of buttons
+  const btns = [{ key: 'latest', label: 'Latest Month' }];
+
+  // Collect and sort quarters/halves
+  const qKeys = Object.keys(periods).filter(k => k.startsWith('q')).sort((a, b) => {
+    // Sort by FY year desc, then quarter desc
+    const [, qa, fya] = a.match(/q(\d+)_fy(\d+)/);
+    const [, qb, fyb] = b.match(/q(\d+)_fy(\d+)/);
+    return fyb - fya || qb - qa;
+  });
+  qKeys.forEach(k => {
+    const [, q, fy] = k.match(/q(\d+)_fy(\d+)/);
+    btns.push({ key: k, label: 'Q' + q + ' FY' + fy });
+  });
+
+  const hKeys = Object.keys(periods).filter(k => k.startsWith('h')).sort((a, b) => {
+    const [, ha, fya] = a.match(/h(\d+)_fy(\d+)/);
+    const [, hb, fyb] = b.match(/h(\d+)_fy(\d+)/);
+    return fyb - fya || hb - ha;
+  });
+  hKeys.forEach(k => {
+    const [, h, fy] = k.match(/h(\d+)_fy(\d+)/);
+    btns.push({ key: k, label: 'H' + h + ' FY' + fy });
+  });
+
+  btns.push({ key: 'all', label: 'All Time' });
+
+  btns.forEach(({ key, label }) => {
+    const div = document.createElement('div');
+    const rollingActive = parseInt(document.getElementById('rollingWindow').value, 10) > 0;
+    div.className = 'period-btn' + (key === 'latest' && !rollingActive ? ' active' : '');
+    div.dataset.period = key;
+    div.textContent = label;
+    div.addEventListener('click', () => {
+      container.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+      div.classList.add('active');
+      selectedMonths = PERIODS[key];
+      document.getElementById('monthSelect').value = '';
+      // Reset rolling window — a period button was chosen
+      document.getElementById('rollingWindow').value = '0';
+      refresh();
+    });
+    container.appendChild(div);
+  });
+}
+
+// ========== INITIALISE DASHBOARD ==========
+function initDashboard(records, months) {
+  ALL = records;
+  MONTHS = months;
+  BAKERIES = [...new Set(records.map(r => r.b))].sort();
+  PERIODS = buildPeriods(months);
+
+  // Set initial selectedMonths based on rolling window default (Last 6 Months)
+  const initRolling = parseInt(document.getElementById('rollingWindow').value, 10);
+  if (initRolling > 0 && initRolling < months.length) {
+    selectedMonths = months.slice(-initRolling);
+  } else {
+    selectedMonths = [months[months.length - 1]];
+  }
+
+  // Update header
+  const first = months[0], last = months[months.length - 1];
+  document.getElementById('headerSub').textContent = first + ' \u2013 ' + last + ' \u00B7 ' + BAKERIES.length + ' bakeries \u00B7 CEI v3';
+
+  // Populate month select
+  const mSel = document.getElementById('monthSelect');
+  mSel.innerHTML = '<option value="">\u2014 Select \u2014</option>';
+  months.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; mSel.appendChild(o); });
+  // If rolling window is active on load, leave month dropdown on placeholder
+  if (initRolling > 0) {
+    mSel.value = '';
+  } else {
+    mSel.value = months[months.length - 1];
+  }
+
+  // Populate region filter
+  const regSel = document.getElementById('regionFilter');
+  regSel.innerHTML = '<option value="">All Regions</option>';
+  const regions = [...new Set(Object.values(BAKERY_META).map(v => v.r))].sort();
+  regions.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; regSel.appendChild(o); });
+
+  // Populate ops manager filter
+  populateOpsFilter('');
+
+  // Build period buttons
+  buildPeriodButtons(PERIODS);
+
+  // Show dashboard, hide upload
+  document.getElementById('uploadZone').style.display = 'none';
+  document.getElementById('dashboardContent').style.display = 'block';
+
+  refresh();
+}
+
+// ========== OPS FILTER ==========
+function populateOpsFilter(region) {
+  const opsSel = document.getElementById('opsFilter');
+  const managers = region
+    ? [...new Set(Object.entries(BAKERY_META).filter(([,v]) => v.r === region).map(([,v]) => v.o))].sort()
+    : [...new Set(Object.values(BAKERY_META).map(v => v.o))].sort();
+  const prev = opsSel.value;
+  opsSel.innerHTML = '<option value="">All Managers</option>';
+  managers.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; opsSel.appendChild(o); });
+  if (managers.includes(prev)) opsSel.value = prev; else { opsSel.value = ''; opsFilter = ''; }
+}
+
+// ========== EVENT LISTENERS ==========
+document.getElementById('monthSelect').addEventListener('change', function() {
+  if (this.value) {
+    selectedMonths = [this.value];
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    // Reset rolling window — a specific month was chosen
+    document.getElementById('rollingWindow').value = '0';
+    refresh();
+  }
+});
+document.getElementById('bakerySearch').addEventListener('input', e => { searchBakery = e.target.value.toLowerCase(); refresh(); });
+document.getElementById('bandFilter').addEventListener('change', e => { bandFilter = e.target.value; refresh(); });
+document.getElementById('regionFilter').addEventListener('change', e => { regionFilter = e.target.value; populateOpsFilter(regionFilter); refresh(); });
+document.getElementById('opsFilter').addEventListener('change', e => { opsFilter = e.target.value; refresh(); });
+document.getElementById('sortBy').addEventListener('change', refresh);
+document.getElementById('rollingWindow').addEventListener('change', function() {
+  const val = parseInt(this.value, 10);
+  if (val > 0) {
+    // Rolling window is the primary date filter — deselect Period buttons & Month dropdown
+    const rollingMonths = MONTHS.slice(-val);
+    selectedMonths = rollingMonths;
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('monthSelect').value = '';
+  }
+  refresh();
+});
+
+// Tabs
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+}));
+
+// ========== FILE UPLOAD ==========
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const uploadStatus = document.getElementById('uploadStatus');
+
+document.getElementById('browseBtn').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+document.getElementById('reloadBtn').addEventListener('click', () => {
+  document.getElementById('dashboardContent').style.display = 'none';
+  document.getElementById('uploadZone').style.display = '';
+  uploadStatus.textContent = '';
+  uploadStatus.className = 'status';
+  fileInput.value = '';
+});
+
+function handleFile(file) {
+  if (!file.name.match(/\.xlsx?$/i)) {
+    uploadStatus.textContent = 'Please select an .xlsx file';
+    uploadStatus.className = 'status error';
+    return;
+  }
+  uploadStatus.textContent = 'Processing ' + file.name + '...';
+  uploadStatus.className = 'status';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const result = parseExcelFile(data);
+      if (result.records.length === 0) {
+        uploadStatus.textContent = 'No data found. Check the spreadsheet format.';
+        uploadStatus.className = 'status error';
+        return;
+      }
+      uploadStatus.textContent = 'Loaded ' + result.records.length + ' records across ' + result.months.length + ' months';
+      uploadStatus.className = 'status success';
+      setTimeout(() => initDashboard(result.records, result.months), 400);
+    } catch (err) {
+      uploadStatus.textContent = 'Error: ' + err.message;
+      uploadStatus.className = 'status error';
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ========== GET FILTERED DATA ==========
+function getData() {
+  let recs = ALL.filter(r => selectedMonths.includes(r.m));
+  if (regionFilter) recs = recs.filter(r => getBakeryRegion(r.b) === regionFilter);
+  if (opsFilter) recs = recs.filter(r => getBakeryOps(r.b) === opsFilter);
+  if (bandFilter) recs = recs.filter(r => r.cb === bandFilter);
+  if (searchBakery) recs = recs.filter(r => r.b.toLowerCase().includes(searchBakery));
+
+  if (selectedMonths.length > 1) {
+    const grouped = {};
+    recs.forEach(r => {
+      if (!grouped[r.b]) grouped[r.b] = [];
+      grouped[r.b].push(r);
+    });
+    const agg = [];
+    Object.entries(grouped).forEach(([bakery, rows]) => {
+      const avg = (key) => rows.reduce((a, r) => a + r[key], 0) / rows.length;
+      const a = {
+        b: bakery, m: selectedMonths.join(', '),
+        n: Math.round(avg('n') * 10) / 10, v: Math.round(rows.reduce((a, r) => a + r.v, 0)),
+        s2: Math.round(avg('s2') * 10) / 10, s3: Math.round(avg('s3') * 10) / 10, o5: Math.round(avg('o5') * 10) / 10,
+        ov: Math.round(avg('ov') * 10) / 10, fr: Math.round(avg('fr') * 10) / 10,
+        dr: Math.round(avg('dr') * 10) / 10, ef: Math.round(avg('ef') * 10) / 10,
+        ep: Math.round(avg('ep') * 10) / 10, dp: Math.round(avg('dp') * 10) / 10,
+        fp: Math.round(avg('fp') * 10) / 10, ap: Math.round(avg('ap') * 10) / 10,
+        c: Math.round(avg('c') * 10) / 10, co: rows[0].co, s2w: Math.round(avg('s2w') * 10) / 10,
+      };
+      a.cb = a.c >= 75 ? 'Excellent' : a.c >= 50 ? 'Good' : a.c >= 25 ? 'Developing' : 'Needs Attention';
+      agg.push(a);
+    });
+    agg.sort((a, b) => b.c - a.c);
+    agg.forEach((a, i) => { a.cr = i + 1; a.nr = 0; });
+    return agg;
+  }
+  recs = [...recs].sort((a, b) => b.c - a.c);
+  return recs;
+}
+
+// ========== CHARTS ==========
+const charts = {};
+function makeChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  const el = document.getElementById(id);
+  if (!el) return;
+  charts[id] = new Chart(el, config);
+}
+
+function refresh() {
+  if (ALL.length === 0) return;
+  const data = getData();
+  const n = data.length;
+  if (n === 0) return;
+
+  const avg = (arr, k) => arr.reduce((a, r) => a + r[k], 0) / arr.length;
+  const periodLabel = selectedMonths.length === 1 ? selectedMonths[0] : selectedMonths.length + ' months';
+
+  // KPIs
+  document.getElementById('kpis').innerHTML = [
+    { v: n, l: 'Bakeries' },
+    { v: avg(data, 'n').toFixed(1), l: 'Avg NPS' },
+    { v: avg(data, 'c').toFixed(1), l: 'Avg CEI', h: true },
+    { v: avg(data, 'dr').toFixed(1) + '%', l: 'Avg Drink' },
+    { v: avg(data, 'ef').toFixed(1) + '%', l: 'Avg Efficiency' },
+    { v: avg(data, 'fr').toFixed(1) + '%', l: 'Avg Friendly' },
+    { v: avg(data, 'o5').toFixed(1) + '%', l: 'Avg >5min' },
+    { v: periodLabel, l: 'Period' },
+  ].map(k => `<div class="kpi${k.h ? ' hl' : ''}"><div class="value">${k.v}</div><div class="label">${k.l}</div></div>`).join('');
+
+  // NPS Histogram
+  const bins = []; for (let i = -10; i <= 100; i += 10) bins.push({ min: i, max: i + 10, count: 0 });
+  data.forEach(b => { const idx = bins.findIndex(bn => b.n >= bn.min && b.n < bn.max); if (idx >= 0) bins[idx].count++; });
+  makeChart('npsHist', { type: 'bar', data: { labels: bins.map(b => b.min + '\u2013' + b.max), datasets: [{ data: bins.map(b => b.count), backgroundColor: '#8b4513aa', borderRadius: 4 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Bakeries' } }, x: { title: { display: true, text: 'NPS' } } } } });
+
+  // CEI Bands
+  const bandNames = ['Excellent', 'Good', 'Developing', 'Needs Attention'];
+  const bandCounts = bandNames.map(bn => data.filter(d => d.cb === bn).length);
+  makeChart('ceiBands', { type: 'doughnut', data: { labels: bandNames, datasets: [{ data: bandCounts, backgroundColor: bandNames.map(bn => COL[bn]), borderWidth: 2, borderColor: '#fff' }] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } } });
+
+  // NPS vs CEI
+  makeChart('npsVsCei', { type: 'scatter', data: { datasets: [{ data: data.map(b => ({ x: b.c, y: b.n })), backgroundColor: data.map(b => COL[b.cb] + '99'), borderColor: data.map(b => COL[b.cb]), borderWidth: 1, pointRadius: 3.5 }] }, options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (_, ctx) => { const b = data[ctx.dataIndex]; return b.b + ' (CEI:' + b.c + ', NPS:' + b.n + ')'; } } } }, scales: { x: { title: { display: true, text: 'CEI' }, min: 0, max: 100 }, y: { title: { display: true, text: 'NPS' }, min: -15, max: 105 } } } });
+
+  // CX Radar
+  const exc = data.filter(b => b.cb === 'Excellent'), na = data.filter(b => b.cb === 'Needs Attention'), gd = data.filter(b => b.cb === 'Good');
+  if (exc.length && na.length && gd.length) {
+    makeChart('cxRadar', { type: 'radar', data: { labels: ['Overall', 'Friendliness', 'Drink', 'Efficiency'], datasets: [
+      { label: 'Excellent', data: [avg(exc, 'ov'), avg(exc, 'fr'), avg(exc, 'dr'), avg(exc, 'ef')], borderColor: COL.Excellent, backgroundColor: COL.Excellent + '33', borderWidth: 2 },
+      { label: 'Good', data: [avg(gd, 'ov'), avg(gd, 'fr'), avg(gd, 'dr'), avg(gd, 'ef')], borderColor: COL.Good, backgroundColor: COL.Good + '22', borderWidth: 2 },
+      { label: 'Needs Attention', data: [avg(na, 'ov'), avg(na, 'fr'), avg(na, 'dr'), avg(na, 'ef')], borderColor: COL['Needs Attention'], backgroundColor: COL['Needs Attention'] + '33', borderWidth: 2 }
+    ] }, options: { scales: { r: { min: 40, max: 100, ticks: { stepSize: 10 } } }, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } } });
+  }
+
+  // Top 10 & Bottom 10 (separate charts)
+  const top10 = data.slice(0, 10);
+  const bot10 = data.slice(-10).reverse();
+  const tbOpts = (items) => ({
+    type: 'bar',
+    data: {
+      labels: items.map(b => b.b),
+      datasets: [{
+        data: items.map(b => b.c),
+        backgroundColor: items.map(b => COL[b.cb]),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => 'CEI: ' + ctx.raw } }
+      },
+      scales: {
+        x: { min: 0, max: 100, title: { display: true, text: 'CEI' } },
+        y: { ticks: { font: { size: 11, weight: '500' }, autoSkip: false } }
+      }
+    }
+  });
+  makeChart('top10Chart', tbOpts(top10));
+  makeChart('bot10Chart', tbOpts(bot10));
+
+  // === TRENDS ===
+  const RM = getRollingMonths(); // rolling-window-filtered months
+  const trendNPS = RM.map(m => { const mr = ALL.filter(r => r.m === m); return mr.length ? mr.reduce((a, r) => a + r.n, 0) / mr.length : null; });
+  makeChart('trendNPS', { type: 'line', data: { labels: RM, datasets: [{ data: trendNPS, borderColor: COL.Excellent, backgroundColor: COL.Excellent + '22', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Avg NPS' } } } } });
+
+  const trendKeys = [{ k: 'dr', l: 'Drink', c: '#1565c0' }, { k: 'ef', l: 'Efficiency', c: '#2e7d32' }, { k: 'fr', l: 'Friendliness', c: '#f57f17' }, { k: 'ov', l: 'Overall', c: '#8b4513' }];
+  makeChart('trendCX', { type: 'line', data: { labels: RM, datasets: trendKeys.map(tk => ({ label: tk.l, data: RM.map(m => { const mr = ALL.filter(r => r.m === m); return mr.length ? mr.reduce((a, r) => a + r[tk.k], 0) / mr.length : null; }), borderColor: tk.c, tension: 0.3, pointRadius: 3, borderWidth: 2 })) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Score %' } } } } });
+
+  // Band trend
+  const bandDs = bandNames.map(bn => ({ label: bn, data: RM.map(m => { const mr = ALL.filter(r => r.m === m); return mr.length ? mr.filter(r => r.cb === bn).length / mr.length * 100 : 0; }), backgroundColor: COL[bn] + 'cc', borderColor: COL[bn], borderWidth: 1 }));
+  makeChart('trendBands', { type: 'bar', data: { labels: RM, datasets: bandDs }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: '% of Bakeries' }, max: 100 } } } });
+
+  // Speed trend
+  makeChart('trendSpeed', { type: 'line', data: { labels: RM, datasets: [
+    { label: 'Avg Within 2 Min %', data: RM.map(m => { const mr = ALL.filter(r => r.m === m); return mr.length ? avg(mr, 's2') : null; }), borderColor: '#1565c0', tension: 0.3, pointRadius: 3, borderWidth: 2 },
+    { label: 'Avg Over 5 Min %', data: RM.map(m => { const mr = ALL.filter(r => r.m === m); return mr.length ? avg(mr, 'o5') : null; }), borderColor: '#c62828', tension: 0.3, pointRadius: 3, borderWidth: 2, yAxisID: 'y2' }
+  ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Within 2 Min %' }, position: 'left' }, y2: { title: { display: true, text: 'Over 5 Min %' }, position: 'right', grid: { drawOnChartArea: false } } } } });
+
+  // Bakery tracker
+  if (searchBakery.length >= 3) {
+    const match = BAKERIES.find(b => b.toLowerCase().includes(searchBakery));
+    if (match) {
+      const br = ALL.filter(r => r.b === match);
+      makeChart('bakeryTracker', { type: 'line', data: { labels: RM, datasets: [
+        { label: match + ' NPS', data: RM.map(m => { const r = br.find(x => x.m === m); return r ? r.n : null; }), borderColor: COL.Excellent, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+        { label: match + ' CEI', data: RM.map(m => { const r = br.find(x => x.m === m); return r ? r.c : null; }), borderColor: '#1565c0', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+        { label: 'All Bakeries Avg NPS', data: trendNPS, borderColor: '#aaa', borderDash: [5, 5], tension: 0.3, pointRadius: 0, borderWidth: 1.5 }
+      ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: 'Score' }, min: 0, max: 100 } } } });
+    }
+  }
+
+  // === SPEED vs NPS ===
+  const xS = data.map(b => b.s2), yS = data.map(b => b.n);
+  const xSm = avg(data, 's2'), ySm = avg(data, 'n');
+  let sNum = 0, sDen = 0; data.forEach(b => { sNum += (b.s2 - xSm) * (b.n - ySm); sDen += (b.s2 - xSm) ** 2; });
+  const sSlope = sDen ? sNum / sDen : 0, sInt = ySm - sSlope * xSm;
+  makeChart('speedVsNps', { type: 'scatter', data: { datasets: [
+    { data: data.map(b => ({ x: b.s2, y: b.n })), backgroundColor: '#c6282855', borderColor: '#c6282833', pointRadius: 3.5, borderWidth: 1 },
+    { type: 'line', data: [{ x: 35, y: sSlope * 35 + sInt }, { x: 95, y: sSlope * 95 + sInt }], borderColor: '#c62828', borderWidth: 2.5, borderDash: [6, 4], pointRadius: 0 }
+  ] }, options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (_, ctx) => { if (ctx.datasetIndex === 1) return ''; const b = data[ctx.dataIndex]; return b.b + ': ' + b.s2 + '%, NPS ' + b.n; } } } }, scales: { x: { title: { display: true, text: 'Coffee Speed (% within 2 min)', font: { weight: 'bold' } }, min: 35, max: 95 }, y: { title: { display: true, text: 'NPS', font: { weight: 'bold' } }, min: -15, max: 105 } } } });
+
+  // Scatter: efficiency
+  const xEm = avg(data, 'ef');
+  let eNum = 0, eDen = 0; data.forEach(b => { eNum += (b.ef - xEm) * (b.n - ySm); eDen += (b.ef - xEm) ** 2; });
+  const eSlope = eDen ? eNum / eDen : 0, eInt = ySm - eSlope * xEm;
+  makeChart('effVsNps', { type: 'scatter', data: { datasets: [
+    { data: data.map(b => ({ x: b.ef, y: b.n })), backgroundColor: '#2e7d3255', borderColor: '#2e7d3233', pointRadius: 3.5, borderWidth: 1 },
+    { type: 'line', data: [{ x: 35, y: eSlope * 35 + eInt }, { x: 102, y: eSlope * 102 + eInt }], borderColor: '#2e7d32', borderWidth: 2.5, pointRadius: 0 }
+  ] }, options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (_, ctx) => { if (ctx.datasetIndex === 1) return ''; const b = data[ctx.dataIndex]; return b.b + ': ' + b.ef + '%, NPS ' + b.n; } } } }, scales: { x: { title: { display: true, text: 'Customer-Rated Efficiency %', font: { weight: 'bold' } }, min: 35, max: 102 }, y: { title: { display: true, text: 'NPS', font: { weight: 'bold' } }, min: -15, max: 105 } } } });
+
+  // Quartile compare
+  const bySpd = [...data].sort((a, b) => a.s2 - b.s2);
+  const byEff = [...data].sort((a, b) => a.ef - b.ef);
+  const q = Math.floor(n / 4);
+  const sqNPS = [bySpd.slice(0, q), bySpd.slice(q, 2 * q), bySpd.slice(2 * q, 3 * q), bySpd.slice(3 * q)].map(g => avg(g, 'n'));
+  const eqNPS = [byEff.slice(0, q), byEff.slice(q, 2 * q), byEff.slice(2 * q, 3 * q), byEff.slice(3 * q)].map(g => avg(g, 'n'));
+  makeChart('quartileCompare', { type: 'bar', data: { labels: ['Lowest 25%', 'Below Avg', 'Above Avg', 'Highest 25%'], datasets: [
+    { label: 'By Coffee Speed', data: sqNPS, backgroundColor: '#c6282844', borderColor: '#c62828', borderWidth: 2, borderRadius: 6 },
+    { label: 'By Cust. Efficiency', data: eqNPS, backgroundColor: '#2e7d3244', borderColor: '#2e7d32', borderWidth: 2, borderRadius: 6 }
+  ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11, weight: 'bold' } } } }, scales: { y: { title: { display: true, text: 'Avg NPS', font: { weight: 'bold' } }, min: 0, max: 90 }, x: { title: { display: true, text: 'Quartile (worst \u2192 best)', font: { weight: 'bold' } } } } } });
+
+  document.getElementById('speedGapVal').textContent = Math.round(Math.abs(sqNPS[3] - sqNPS[0])) + ' pts';
+  document.getElementById('effGapVal').textContent = Math.round(Math.abs(eqNPS[3] - eqNPS[0])) + ' pts';
+
+  // R² comparison
+  const corr = (k) => { const xm = avg(data, k), ym = avg(data, 'n'); let num = 0, xd = 0, yd = 0; data.forEach(b => { num += (b[k] - xm) * (b.n - ym); xd += (b[k] - xm) ** 2; yd += (b.n - ym) ** 2; }); return xd && yd ? (num * num) / (xd * yd) * 100 : 0; };
+  const metrics = [
+    { name: 'Within 2 min', r2: corr('s2'), t: 'speed' }, { name: 'Within 3 min', r2: corr('s3'), t: 'speed' },
+    { name: 'Over 5 min', r2: corr('o5'), t: 'speed' },
+    { name: 'Friendliness', r2: corr('fr'), t: 'cx' }, { name: 'Drink Quality', r2: corr('dr'), t: 'cx' },
+    { name: 'Efficiency', r2: corr('ef'), t: 'cx' }, { name: 'Overall CX', r2: corr('ov'), t: 'cx' }
+  ];
+  metrics.sort((a, b) => a.r2 - b.r2);
+  makeChart('corrCompare', { type: 'bar', data: { labels: metrics.map(m => m.name), datasets: [{ data: metrics.map(m => Math.round(m.r2 * 10) / 10), backgroundColor: metrics.map(m => m.t === 'speed' ? '#c6282866' : '#2e7d3266'), borderColor: metrics.map(m => m.t === 'speed' ? '#c62828' : '#2e7d32'), borderWidth: 2, borderRadius: 5 }] }, options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.raw + '% of NPS explained' } } }, scales: { x: { title: { display: true, text: '% of NPS Variance Explained (R\u00B2)', font: { weight: 'bold' } }, min: 0 }, y: { ticks: { font: { size: 11, weight: 'bold' } } } } } });
+
+  // === TABLE ===
+  const sortKey = document.getElementById('sortBy').value;
+  const desc = ['n', 'c', 'dr', 'ef', 'fr'].includes(sortKey);
+  const sorted = [...data].sort((a, b) => desc ? b[sortKey] - a[sortKey] : a[sortKey] - b[sortKey]);
+  document.getElementById('tableBody').innerHTML = sorted.map((b, i) => `<tr>
+    <td style="font-weight:600">${i + 1}</td>
+    <td style="font-weight:500">${b.b}</td>
+    <td style="font-size:0.68rem;color:var(--muted)">${getBakeryRegion(b.b)}</td>
+    <td style="font-size:0.68rem;color:var(--muted)">${getBakeryOps(b.b)}</td>
+    <td style="font-weight:700">${b.c}</td>
+    <td><span class="band ${bc(b.cb)}">${b.cb}</span></td>
+    <td><span class="conf ${b.co}">${b.co}</span></td>
+    <td>${b.n}</td><td>${b.v}</td>
+    <td>${b.dr}%</td><td>${b.ef}%</td><td>${b.fr}%</td>
+    <td style="color:${b.o5 > 4 ? 'var(--red)' : b.o5 > 2.5 ? 'var(--amber)' : 'inherit'}">${b.o5}%</td>
+    <td>${b.ov}%</td><td>${b.s2}%</td>
+  </tr>`).join('');
+
+  // === TARGET BAKERIES ===
+  const targets = [...data].filter(b => b.cb === 'Needs Attention' || b.cb === 'Developing').sort((a, b) => a.c - b.c);
+  const needsAttn = targets.filter(b => b.cb === 'Needs Attention');
+  const developing = targets.filter(b => b.cb === 'Developing');
+
+  document.getElementById('targetSummary').innerHTML = [
+    { v: needsAttn.length, l: 'Needs Attention', col: 'var(--red)', bg: '#fce4ec' },
+    { v: developing.length, l: 'Developing', col: 'var(--amber)', bg: '#fff8e1' },
+    { v: targets.length, l: 'Total Targeted', col: 'var(--accent)', bg: '#fdf8f3' },
+    { v: targets.length ? avg(targets, 'c').toFixed(1) : '—', l: 'Avg CEI (Targeted)', col: 'var(--accent)', bg: '#f5f0eb' },
+  ].map(k => `<div style="background:${k.bg};border-radius:8px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:1.5rem;font-weight:700;color:${k.col}">${k.v}</div><div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px">${k.l}</div></div>`).join('');
+
+  // === ACTIONABLE INSIGHTS ===
+  const insightsEl = document.getElementById('targetInsights');
+  if (targets.length === 0) {
+    insightsEl.innerHTML = '';
+  } else {
+    // 1. Count focus areas across all targets
+    const focusCounts = { Efficiency: [], 'Drink Quality': [], Friendliness: [], Timeliness: [] };
+    targets.forEach(b => {
+      const areas = [
+        { name: 'Efficiency', pct: b.ep },
+        { name: 'Drink Quality', pct: b.dp },
+        { name: 'Friendliness', pct: b.fp },
+        { name: 'Timeliness', pct: b.ap },
+      ].sort((a, x) => a.pct - x.pct);
+      focusCounts[areas[0].name].push(b.b);
+    });
+    const topWeakness = Object.entries(focusCounts).sort((a, b) => b[1].length - a[1].length)[0];
+
+    // 2. Quick wins: Developing bakeries with CEI 40-49 (close to Good)
+    const quickWins = targets.filter(b => b.cb === 'Developing' && b.c >= 40);
+
+    // 3. Ops managers with the most target bakeries
+    const mgrCounts = {};
+    targets.forEach(b => {
+      const mgr = getBakeryOps(b.b);
+      if (!mgrCounts[mgr]) mgrCounts[mgr] = { na: 0, dev: 0, bakeries: [] };
+      if (b.cb === 'Needs Attention') mgrCounts[mgr].na++;
+      else mgrCounts[mgr].dev++;
+      mgrCounts[mgr].bakeries.push(b.b);
+    });
+    const mgrSorted = Object.entries(mgrCounts).sort((a, b) => (b[1].na + b[1].dev) - (a[1].na + a[1].dev));
+
+    // 4. Coaching tips per area
+    const coachingTips = {
+      'Efficiency': 'Customers feel the service is slow or disorganised. Review front-of-house workflow: are team members positioned well? Is there a clear hand-off between till and bar? Consider mystery visits to observe the customer journey.',
+      'Drink Quality': 'Drinks are not meeting customer expectations. Check machine calibration, grind settings, and milk technique. Arrange a barista refresher session and taste-test drinks during a quiet period.',
+      'Friendliness': 'Customers are not feeling welcomed or valued. Focus on eye contact, greeting every customer, and using names where possible. Role-play exercises during team briefings can help build confidence.',
+      'Timeliness': 'Too many drinks are taking over 5 minutes. Look at ticket management \u2014 are drinks being made in order? Are completed drinks being called out promptly? Check if peak-hour staffing levels are adequate.',
+    };
+
+    // Build the 4 insight cards
+    let insightsHTML = '<h3 style="font-size:0.9rem;font-weight:600;color:var(--accent);margin:16px 0 10px">Actionable Insights</h3>';
+    insightsHTML += '<div class="insight-grid">';
+
+    // Card 1: Biggest shared weakness
+    insightsHTML += `<div class="insight-card">
+      <h4>\u26A0\uFE0F Biggest Shared Weakness</h4>
+      <p><span class="stat">${topWeakness[1].length} of ${targets.length}</span> target bakeries are being dragged down most by <strong>${topWeakness[0]}</strong>.</p>
+      <p>${coachingTips[topWeakness[0]]}</p>
+      <div class="action">\u2192 Prioritise ${topWeakness[0].toLowerCase()} coaching across these ${topWeakness[1].length} bakeries</div>
+    </div>`;
+
+    // Card 2: Quick wins
+    insightsHTML += `<div class="insight-card">
+      <h4>\u2B50 Quick Wins &mdash; Close to &ldquo;Good&rdquo; Band</h4>`;
+    if (quickWins.length > 0) {
+      insightsHTML += `<p><span class="stat">${quickWins.length}</span> baker${quickWins.length === 1 ? 'y is' : 'ies are'} in the Developing band with a CEI of 40+. A small improvement could push them into the <strong>Good</strong> band (50+).</p>
+      <ul>${quickWins.map(b => `<li><strong>${b.b}</strong> &mdash; CEI ${b.c}</li>`).join('')}</ul>
+      <div class="action">\u2192 Give these bakeries targeted attention for the fastest results</div>`;
+    } else {
+      insightsHTML += `<p style="color:var(--muted)">No bakeries are currently close enough to the Good band for a quick turnaround. Focus efforts on the highest-priority bakeries in the table below.</p>`;
+    }
+    insightsHTML += '</div>';
+
+    // Card 3: Manager workload
+    insightsHTML += `<div class="insight-card">
+      <h4>\u{1F464} Ops Manager Workload</h4>
+      <p>Managers with the most target bakeries may need additional support or resource.</p>`;
+    const topMgrs = mgrSorted.slice(0, 5);
+    insightsHTML += topMgrs.map(([mgr, info]) => {
+      const total = info.na + info.dev;
+      const naTag = info.na > 0 ? `<span style="color:var(--red);font-weight:600">${info.na} Needs Attention</span>` : '';
+      const devTag = info.dev > 0 ? `<span style="color:var(--amber);font-weight:600">${info.dev} Developing</span>` : '';
+      const sep = info.na > 0 && info.dev > 0 ? ' + ' : '';
+      return `<div class="mgr-row"><span style="font-weight:500">${mgr}</span><span>${naTag}${sep}${devTag}</span></div>`;
+    }).join('');
+    if (mgrSorted.length > 0 && mgrSorted[0][1].na >= 3) {
+      insightsHTML += `<div class="action">\u2192 Consider pairing ${mgrSorted[0][0]} with a support partner</div>`;
+    }
+    insightsHTML += '</div>';
+
+    // Card 4: Area-by-area breakdown with coaching tips for all weak areas
+    const weakAreas = Object.entries(focusCounts).filter(([, arr]) => arr.length > 0).sort((a, b) => b[1].length - a[1].length);
+    insightsHTML += `<div class="insight-card">
+      <h4>\u{1F4CB} Coaching Priorities by Area</h4>
+      <p>Across all target bakeries, here is where coaching is needed most:</p>`;
+    weakAreas.forEach(([area, bakeries]) => {
+      insightsHTML += `<p style="margin-top:8px"><strong>${area}</strong> <span style="color:var(--muted);font-size:0.7rem">(${bakeries.length} baker${bakeries.length === 1 ? 'y' : 'ies'})</span></p>
+      <p style="font-size:0.72rem;color:var(--muted)">${coachingTips[area]}</p>`;
+    });
+    insightsHTML += '</div>';
+
+    insightsHTML += '</div>'; // close insight-grid
+    insightsEl.innerHTML = insightsHTML;
+  }
+
+  const getFocus = (b) => {
+    const areas = [
+      { name: 'Efficiency', pct: b.ep },
+      { name: 'Drink Quality', pct: b.dp },
+      { name: 'Friendliness', pct: b.fp },
+      { name: 'Timeliness', pct: b.ap },
+    ];
+    return areas.sort((a, x) => a.pct - x.pct)[0];
+  };
+
+  const focusLabel = (pct) => {
+    if (pct <= 10) return 'amongst the lowest of all bakeries';
+    if (pct <= 25) return 'well below most bakeries';
+    return 'below the bakery average';
+  };
+
+  document.getElementById('targetTable').innerHTML = targets.length === 0
+    ? '<p style="text-align:center;color:var(--muted);padding:32px 0">No bakeries in Needs Attention or Developing bands for this period.</p>'
+    : `<div class="table-wrap"><table><thead><tr>
+      <th>Priority</th><th>Bakery</th><th>Region</th><th>Ops Manager</th><th>CEI</th><th>Band</th><th>NPS</th><th>Vol</th><th>Drink</th><th>Eff</th><th>Friendly</th><th>&gt;5m</th><th>Where to Focus</th>
+    </tr></thead><tbody>
+    ${targets.map((b, i) => {
+      const focus = getFocus(b);
+      const focusColor = focus.pct <= 10 ? 'var(--red)' : 'var(--amber)';
+      return `<tr>
+        <td style="font-weight:700;color:${b.cb === 'Needs Attention' ? 'var(--red)' : 'var(--amber)'}">P${i + 1}</td>
+        <td style="font-weight:500">${b.b}</td>
+        <td style="font-size:0.68rem;color:var(--muted)">${getBakeryRegion(b.b)}</td>
+        <td style="font-size:0.68rem;color:var(--muted)">${getBakeryOps(b.b)}</td>
+        <td style="font-weight:700">${b.c}</td>
+        <td><span class="band ${bc(b.cb)}">${b.cb}</span></td>
+        <td>${b.n}</td><td>${b.v}</td>
+        <td style="color:${b.dp < 25 ? 'var(--red)' : 'inherit'}">${b.dr}%</td>
+        <td style="color:${b.ep < 25 ? 'var(--red)' : 'inherit'}">${b.ef}%</td>
+        <td style="color:${b.fp < 25 ? 'var(--red)' : 'inherit'}">${b.fr}%</td>
+        <td style="color:${b.o5 > 4 ? 'var(--red)' : b.o5 > 2.5 ? 'var(--amber)' : 'inherit'}">${b.o5}%</td>
+        <td style="font-weight:600;color:${focusColor}">${focus.name} &mdash; ${focusLabel(focus.pct)}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+
+  // === DEEP TREND ANALYSIS ===
+  const trendSection = document.getElementById('targetTrendSection');
+  if (targets.length === 0 || MONTHS.length < 2) {
+    trendSection.style.display = 'none';
+  } else {
+    trendSection.style.display = '';
+    const targetNames = targets.map(b => b.b);
+
+    // Use the global rolling window (same RM computed earlier in refresh)
+    {
+      const FM = RM; // use the global rolling-window months
+      const THRESHOLD = 3;
+
+      // Build per-bakery history for filtered months
+      const histories = {};
+      targetNames.forEach(name => {
+        histories[name] = FM.map(m => {
+          const rec = ALL.find(r => r.b === name && r.m === m);
+          return rec || null;
+        });
+      });
+
+      const trendData = targetNames.map(name => {
+        const hist = histories[name];
+        const valid = hist.filter(r => r !== null);
+        const latest = valid.length > 0 ? valid[valid.length - 1] : null;
+        const prev = valid.length > 1 ? valid[valid.length - 2] : null;
+        const threePrev = valid.length > 2 ? valid[valid.length - 3] : null;
+
+        let direction = 'new', ceiChange = 0, npsChange = 0;
+        if (latest && prev) {
+          ceiChange = latest.c - prev.c;
+          npsChange = latest.n - prev.n;
+          direction = ceiChange >= THRESHOLD ? 'up' : ceiChange <= -THRESHOLD ? 'down' : 'flat';
+        }
+
+        let trend3m = 'new', cei3mChange = 0;
+        if (latest && threePrev) {
+          cei3mChange = latest.c - threePrev.c;
+          trend3m = cei3mChange >= THRESHOLD ? 'up' : cei3mChange <= -THRESHOLD ? 'down' : 'flat';
+        } else if (latest && prev) { trend3m = direction; cei3mChange = ceiChange; }
+
+        let streak = 0;
+        for (let i = valid.length - 1; i >= 1; i--) {
+          if (valid[i].c < valid[i - 1].c - 1) streak++; else break;
+        }
+
+        let best = null, worst = null;
+        valid.forEach(r => { if (!best || r.c > best.c) best = r; if (!worst || r.c < worst.c) worst = r; });
+
+        // Period start-to-end change (overall movement across the filtered window)
+        const first = valid.length > 0 ? valid[0] : null;
+        let periodChange = 0;
+        if (latest && first && latest !== first) periodChange = latest.c - first.c;
+
+        const compTrends = {};
+        if (latest && prev) {
+          compTrends.drink = latest.dr - prev.dr;
+          compTrends.efficiency = latest.ef - prev.ef;
+          compTrends.friendliness = latest.fr - prev.fr;
+          compTrends.timeliness = prev.o5 - latest.o5;
+        }
+
+        return { name, hist, valid, latest, prev, direction, ceiChange, npsChange, trend3m, cei3mChange, streak, best, worst, compTrends, monthsTracked: valid.length, periodChange };
+      });
+
+      // Summary counts
+      const improving = trendData.filter(t => t.direction === 'up');
+      const declining = trendData.filter(t => t.direction === 'down');
+      const stable = trendData.filter(t => t.direction === 'flat');
+      const chronic = trendData.filter(t => t.streak >= 3);
+
+      document.getElementById('trendSummaryCards').innerHTML = [
+        { v: improving.length, l: 'Improving', col: 'var(--green)', bg: '#e8f5e9' },
+        { v: stable.length, l: 'Stable', col: 'var(--muted)', bg: '#f5f0eb' },
+        { v: declining.length, l: 'Declining', col: 'var(--red)', bg: '#fce4ec' },
+        { v: chronic.length, l: 'Declining 3+ Months', col: '#7b1fa2', bg: '#f3e5f5' },
+      ].map(k => `<div style="background:${k.bg};border-radius:8px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:1.5rem;font-weight:700;color:${k.col}">${k.v}</div><div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px">${k.l}</div></div>`).join('');
+
+      // Averages for filtered months
+      const targetAvgByMonth = FM.map(m => {
+        const recs = ALL.filter(r => r.m === m && targetNames.includes(r.b));
+        return recs.length ? recs.reduce((a, r) => a + r.c, 0) / recs.length : null;
+      });
+      const allAvgByMonth = FM.map(m => {
+        const recs = ALL.filter(r => r.m === m);
+        return recs.length ? recs.reduce((a, r) => a + r.c, 0) / recs.length : null;
+      });
+
+      makeChart('targetAvgTrend', {
+        type: 'line',
+        data: {
+          labels: FM,
+          datasets: [
+            { label: 'Target Bakeries Avg CEI', data: targetAvgByMonth, borderColor: '#c62828', backgroundColor: '#c6282822', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+            { label: 'All Bakeries Avg CEI', data: allAvgByMonth, borderColor: '#9e9e9e', backgroundColor: '#9e9e9e11', fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2, borderDash: [6, 4] },
+          ]
+        },
+        options: {
+          plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+          scales: { y: { title: { display: true, text: 'Avg CEI' }, min: 0, max: 100 }, x: { ticks: { font: { size: 10 } } } }
+        }
+      });
+
+      // Band flow
+      const bandNames2 = ['Needs Attention', 'Developing', 'Good', 'Excellent'];
+      makeChart('targetBandFlow', {
+        type: 'bar',
+        data: { labels: FM, datasets: bandNames2.map(bn => ({
+          label: bn,
+          data: FM.map(m => { const recs = ALL.filter(r => r.m === m && targetNames.includes(r.b)); return recs.length ? recs.filter(r => r.cb === bn).length : 0; }),
+          backgroundColor: COL[bn] + 'cc', borderColor: COL[bn], borderWidth: 1
+        })) },
+        options: {
+          plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
+          scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, title: { display: true, text: 'Bakeries' } } }
+        }
+      });
+
+      // Sparkline cards
+      const sparkGrid = document.getElementById('sparklineGrid');
+      trendData.forEach(t => { if (charts['spark_' + t.name]) { charts['spark_' + t.name].destroy(); delete charts['spark_' + t.name]; } });
+      sparkGrid.innerHTML = '';
+      const sparkSorted = [...trendData].sort((a, b) => (a.latest ? a.latest.c : 999) - (b.latest ? b.latest.c : 999));
+      sparkSorted.forEach(t => {
+        const card = document.createElement('div');
+        const dirClass = t.direction === 'up' ? 'up' : t.direction === 'down' ? 'down' : t.direction === 'flat' ? 'flat' : 'new-entry';
+        const dirLabel = t.direction === 'up' ? '\u2191 Improving' : t.direction === 'down' ? '\u2193 Declining' : t.direction === 'flat' ? '\u2194 Stable' : 'New';
+        const ceiNow = t.latest ? t.latest.c : '\u2014';
+        const bandNow = t.latest ? t.latest.cb : '\u2014';
+        const changeText = t.ceiChange !== 0 ? (t.ceiChange > 0 ? '+' : '') + t.ceiChange.toFixed(1) : '';
+        const periodText = t.periodChange !== 0 ? (t.periodChange > 0 ? '+' : '') + t.periodChange.toFixed(1) + ' over period' : '';
+
+        card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 12px;';
+        if (t.streak >= 3) card.style.borderColor = '#7b1fa2';
+        else if (t.direction === 'down') card.style.borderColor = '#c62828';
+
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div>
+              <span style="font-weight:600;font-size:0.8rem">${t.name}</span>
+              <span style="font-size:0.66rem;color:var(--muted);margin-left:4px">${getBakeryOps(t.name)}</span>
+            </div>
+            <span class="dir ${dirClass}" style="font-size:0.64rem">${dirLabel}</span>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+            <div><span style="font-size:1.2rem;font-weight:700">${ceiNow}</span> <span style="font-size:0.66rem;color:var(--muted)">CEI</span></div>
+            <span class="band ${bc(bandNow)}" style="font-size:0.6rem">${bandNow}</span>
+            ${changeText ? `<span style="font-size:0.72rem;font-weight:600;color:${t.ceiChange > 0 ? 'var(--green)' : 'var(--red)'}">${changeText} m/m</span>` : ''}
+            ${periodText ? `<span style="font-size:0.64rem;color:${t.periodChange > 0 ? 'var(--green)' : 'var(--red)'}">${periodText}</span>` : ''}
+            ${t.streak >= 2 ? `<span style="font-size:0.64rem;color:#7b1fa2;font-weight:600">\u2193${t.streak} months</span>` : ''}
+          </div>
+          <canvas id="spark_${t.name.replace(/[^a-zA-Z0-9]/g, '_')}" height="50"></canvas>
+        `;
+        sparkGrid.appendChild(card);
+
+        const canvasId = 'spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_');
+        const lineColor = t.direction === 'up' ? '#2e7d32' : t.direction === 'down' ? '#c62828' : '#8b4513';
+        const sparkChart = new Chart(document.getElementById(canvasId), {
+          type: 'line',
+          data: {
+            labels: FM,
+            datasets: [
+              { data: t.hist.map(r => r ? r.c : null), borderColor: lineColor, backgroundColor: lineColor + '18', fill: true, tension: 0.3, pointRadius: 1.5, borderWidth: 2, spanGaps: true },
+              { data: allAvgByMonth, borderColor: '#ccc', borderWidth: 1, borderDash: [4, 3], pointRadius: 0, fill: false, tension: 0.3 }
+            ]
+          },
+          options: {
+            plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => items[0].label, label: (ctx) => ctx.datasetIndex === 0 ? 'CEI: ' + ctx.raw : 'Avg: ' + (ctx.raw ? ctx.raw.toFixed(1) : '') } } },
+            scales: { y: { display: false, min: 0, max: 100 }, x: { display: false } },
+            maintainAspectRatio: false,
+          }
+        });
+        charts['spark_' + t.name] = sparkChart;
+      });
+
+      // Momentum chart
+      if (FM.length >= 3) {
+        const momentumData = FM.slice(1).map((m, mi) => {
+          const prevMonth = FM[mi];
+          let up = 0, down = 0, flat = 0;
+          targetNames.forEach(name => {
+            const curr = ALL.find(r => r.b === name && r.m === m);
+            const prev = ALL.find(r => r.b === name && r.m === prevMonth);
+            if (curr && prev) { const diff = curr.c - prev.c; if (diff >= THRESHOLD) up++; else if (diff <= -THRESHOLD) down++; else flat++; }
+          });
+          return { m, up, down, flat };
+        });
+        makeChart('targetMomentumChart', {
+          type: 'bar',
+          data: {
+            labels: momentumData.map(d => d.m),
+            datasets: [
+              { label: 'Improving', data: momentumData.map(d => d.up), backgroundColor: '#2e7d32aa', borderRadius: 3 },
+              { label: 'Stable', data: momentumData.map(d => d.flat), backgroundColor: '#9e9e9eaa', borderRadius: 3 },
+              { label: 'Declining', data: momentumData.map(d => -d.down), backgroundColor: '#c62828aa', borderRadius: 3 },
+            ]
+          },
+          options: {
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
+            scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, title: { display: true, text: 'Bakeries' }, ticks: { callback: v => Math.abs(v) } } }
+          }
+        });
+      }
+
+      // Direction helpers
+      const dirIcon = (dir) => {
+        if (dir === 'up') return '<span class="dir up">&uarr; Improving</span>';
+        if (dir === 'down') return '<span class="dir down">&darr; Declining</span>';
+        if (dir === 'flat') return '<span class="dir flat">&harr; Stable</span>';
+        return '<span class="dir new-entry">New</span>';
+      };
+      const changeStr = (val) => {
+        if (val === 0) return '\u2014';
+        const sign = val > 0 ? '+' : '';
+        const col = val > 0 ? 'var(--green)' : val < 0 ? 'var(--red)' : 'var(--muted)';
+        return `<span style="color:${col};font-weight:600">${sign}${val.toFixed(1)}</span>`;
+      };
+
+      // Trend table
+      trendData.sort((a, b) => {
+        const order = { down: 0, flat: 1, up: 2, new: 3 };
+        if (order[a.direction] !== order[b.direction]) return order[a.direction] - order[b.direction];
+        return a.ceiChange - b.ceiChange;
+      });
+
+      // Build dynamic header labels based on actual month data
+      const latestMonth = FM.length > 0 ? FM[FM.length - 1] : '—';
+      const prevMonth = FM.length > 1 ? FM[FM.length - 2] : '—';
+      const threeAgoMonth = FM.length > 2 ? FM[FM.length - 3] : (FM.length > 1 ? FM[FM.length - 2] : '—');
+      const firstMonth = FM.length > 0 ? FM[0] : '—';
+
+      document.getElementById('targetTrendTable').innerHTML = `
+      <div class="table-wrap"><table><thead><tr>
+        <th>Bakery</th><th>Ops Manager</th>
+        <th>CEI (${latestMonth})</th>
+        <th>CEI Change<br><span style="font-weight:400;font-size:0.6rem">${prevMonth} &rarr; ${latestMonth}</span></th>
+        <th>Direction<br><span style="font-weight:400;font-size:0.6rem">Month-on-Month</span></th>
+        <th>NPS Change<br><span style="font-weight:400;font-size:0.6rem">${prevMonth} &rarr; ${latestMonth}</span></th>
+        <th>3-Month Trend<br><span style="font-weight:400;font-size:0.6rem">${threeAgoMonth} &rarr; ${latestMonth}</span></th>
+        <th>3m CEI Change<br><span style="font-weight:400;font-size:0.6rem">${threeAgoMonth} &rarr; ${latestMonth}</span></th>
+        <th>Period Change<br><span style="font-weight:400;font-size:0.6rem">${firstMonth} &rarr; ${latestMonth}</span></th>
+        <th>Declining Streak</th><th>Best Month</th><th>Worst Month</th>
+        <th>Drink &Delta;<br><span style="font-weight:400;font-size:0.6rem">${prevMonth} &rarr; ${latestMonth}</span></th>
+        <th>Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">${prevMonth} &rarr; ${latestMonth}</span></th>
+        <th>Friendliness &Delta;<br><span style="font-weight:400;font-size:0.6rem">${prevMonth} &rarr; ${latestMonth}</span></th>
+        <th>Timeliness &Delta;<br><span style="font-weight:400;font-size:0.6rem">${prevMonth} &rarr; ${latestMonth}</span></th>
+      </tr></thead><tbody>
+      ${trendData.map(t => {
+        const streakWarn = t.streak >= 3 ? 'color:#7b1fa2;font-weight:700' : t.streak >= 2 ? 'color:var(--red);font-weight:600' : '';
+        return `<tr>
+          <td style="font-weight:500">${t.name}</td>
+          <td style="font-size:0.68rem;color:var(--muted)">${getBakeryOps(t.name)}</td>
+          <td style="font-weight:700">${t.latest ? t.latest.c : '\u2014'}</td>
+          <td>${changeStr(t.ceiChange)}</td>
+          <td>${dirIcon(t.direction)}</td>
+          <td>${changeStr(t.npsChange)}</td>
+          <td>${dirIcon(t.trend3m)}</td>
+          <td>${changeStr(t.cei3mChange)}</td>
+          <td>${changeStr(t.periodChange)}</td>
+          <td style="${streakWarn}">${t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014'}</td>
+          <td style="font-size:0.68rem">${t.best ? t.best.m + ' (' + t.best.c + ')' : '\u2014'}</td>
+          <td style="font-size:0.68rem">${t.worst ? t.worst.m + ' (' + t.worst.c + ')' : '\u2014'}</td>
+          <td>${t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014'}</td>
+          <td>${t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014'}</td>
+          <td>${t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014'}</td>
+          <td>${t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014'}</td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>`;
+    } // end target trend block
+  }
+}
+</script>
+</body>
+</html>
