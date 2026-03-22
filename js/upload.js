@@ -3,6 +3,7 @@ window.GAILS = window.GAILS || {};
 
 window.GAILS.initUpload = function(initDashboard) {
   var G = GAILS;
+  window.GAILS_initDashboard = initDashboard; // EXPOSED for Firebase loading
   var uploadZone = document.getElementById('uploadZone');
   var fileInput = document.getElementById('fileInput');
   var uploadStatus = document.getElementById('uploadStatus');
@@ -74,6 +75,10 @@ window.GAILS.initUpload = function(initDashboard) {
           for (var i = 0; i < data.length; i++) bin += String.fromCharCode(data[i]);
           localStorage.setItem('gails_excel_data', btoa(bin));
           localStorage.setItem('gails_excel_name', file.name);
+          
+          if (window.GAILS_Firebase) {
+             window.GAILS_Firebase.saveData(result.records, result.months);
+          }
         } catch (storageErr) {
           console.warn('Could not save to localStorage:', storageErr);
         }

@@ -1,0 +1,21 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { getDatabase } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-analytics.js";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBlE8ubmctz8k5o8qPB8K56ZxE4y8Hr4Yc",
+  authDomain: "cexindex.firebaseapp.com",
+  databaseURL: "https://cexindex-default-rtdb.firebaseio.com",
+  projectId: "cexindex",
+  storageBucket: "cexindex.firebasestorage.app",
+  messagingSenderId: "514119021168",
+  appId: "1:514119021168:web:512e985f9905f429983ab5",
+  measurementId: "G-89MW36PHWN"
+};
+
+const app = initializeApp(firebaseConfig);
+export const analytics = getAnalytics(app);
+export const auth = getAuth(app);
+export const db = getDatabase(app);
