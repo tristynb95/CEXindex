@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Admin Account</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body style="display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f5f5;">
+    <div
+        style="background:#fff;padding:40px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.1);max-width:450px;width:100%;text-align:center;">
+        <h1 style="font-size:1.5rem;margin-bottom:16px;">Firebase Admin Setup</h1>
+        <p style="font-size:0.9rem;color:var(--muted);margin-bottom:24px;">Please ensure you have pasted your valid
+            Firebase Config into <code>js/firebase-config.js</code> before clicking the button below.</p>
+
+        <button id="setupBtn" class="btn" style="width:100%;padding:12px;font-size:1rem;">Create "Tristenb" Admin
+            Account</button>
+
+        <div id="status" style="margin-top:20px;font-size:0.9rem;color:var(--muted);"></div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './js/firebase-config.js';
+        import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+        import { ref, set } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+
+        document.getElementById('setupBtn').addEventListener('click', async () => {
+            const status = document.getElementById('status');
+            const btn = document.getElementById('setupBtn');
+            btn.disabled = true;
+            status.style.color = "var(--text)";
+            status.textContent = '1. Creating user in Firebase Auth...';
+
+            try {
+                // Creates user Tristenb (must be an email to satisfy Firebase Auth provider)
+                const cred = await createUserWithEmailAndPassword(auth, 'tristenb@example.com', 'T3st3r');
+                const uid = cred.user.uid;
+
+                status.textContent = '2. User created! Now setting admin privileges in Realtime Database...';
+
+                // Set the admin flag in Realtime Database at /admins/$uid
+                await set(ref(db, `admins/${uid}`), true);
+
+                status.style.color = "var(--green)";
+                status.innerHTML = '<strong>Success!</strong> Admin account successfully created.<br><br>You can now open <a href="index.html">index.html</a> and login with:<br><strong>Username:</strong> tristenb@example.com<br><strong>Password:</strong> T3st3r';
+            } catch (error) {
+                status.style.color = "var(--red)";
+                status.textContent = 'Error: ' + error.message;
+                console.error(error);
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>
