@@ -1,89 +1,422 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
+<html lang="en">
 
-    <!-- update the version number as needed -->
-    <script defer src="/__/firebase/12.11.0/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/12.11.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GAIL's Bakery — NPS & Coffee Experience Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
 
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
+<body>
+  <!-- LOGIN OVERLAY -->
+  <div id="loginScreen" style="position:fixed;inset:0;background:#f5f5f5;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;">
+    <div style="background:#fff;padding:40px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.1);max-width:400px;width:100%;text-align:center;">
+      <div class="logo" style="font-size:3rem;margin-bottom:16px;">&#9749;</div>
+      <h2 style="font-size:1.5rem;margin-bottom:20px;">GAIL's Dashboard Access</h2>
+      <input type="email" id="emailInput" placeholder="Email Address (e.g. tristenb@example.com)" style="width:100%;padding:12px;margin-bottom:12px;border:1px solid #ddd;border-radius:6px;font-size:1rem;box-sizing:border-box;">
+      <input type="password" id="passwordInput" placeholder="Password" style="width:100%;padding:12px;margin-bottom:24px;border:1px solid #ddd;border-radius:6px;font-size:1rem;box-sizing:border-box;">
+      <button id="loginBtn" class="btn" style="width:100%;padding:12px;font-size:1rem;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;">Login</button>
+      <div id="loginError" style="color:#d32f2f;margin-top:16px;font-size:0.9rem;display:none;padding:10px;background:#fce4ec;border-radius:6px;"></div>
+      <p style="margin-top:24px;font-size:0.8rem;color:#666;">Don't have an account? Ask your administrator.</p>
     </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
+  </div>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+  <div class="header" style="display:none;">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div class="logo">&#9749;</div>
+      <div>
+        <h1>GAIL's Bakery &mdash; NPS &amp; Coffee Experience Dashboard</h1>
+        <div class="sub" id="headerSub">Upload your NPS &amp; Coffee Data spreadsheet to begin</div>
+      </div>
+    </div>
+    <div style="margin-left:auto; display:flex; gap:10px;">
+      <button class="reload-btn" id="reloadBtn" style="padding:8px 16px; font-size:0.8rem; border:none; border-radius:6px; box-shadow:0 2px 5px rgba(0,0,0,0.2); cursor:pointer;">&#8635; Load New Data</button>
+      <button id="logoutBtn" style="padding:8px 16px; font-size:0.8rem; border:1px solid #ddd; background:#fff; color:#333; border-radius:6px; cursor:pointer;">Logout</button>
+    </div>
+  </div>
+  <div class="container" style="display:none;">
 
-        try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
-        }
-      });
-    </script>
-  </body>
+    <!-- UPLOAD ZONE -->
+    <div id="uploadZone" class="upload-zone">
+      <div class="icon">&#128202;</div>
+      <h3>Load NPS &amp; Coffee Data</h3>
+      <p>Drag &amp; drop your <strong>NPS + Coffee Data.xlsx</strong> file here</p>
+      <p style="font-size:0.74rem;color:var(--muted)">Each sheet should be a month (e.g. &ldquo;March 2025&rdquo;) with
+        columns: Bakery, Rank, NPS Score, Volume, speed metrics, Overall, Friendliness, Drink (or Quality), Efficiency (or Overall Efficiency)</p>
+      <button class="btn" id="browseBtn">Browse for file</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
+      <div class="status" id="uploadStatus"></div>
+    </div>
+
+    <!-- DASHBOARD (hidden until data loaded) -->
+    <div id="dashboardContent">
+
+      <!-- GLOBAL FILTER BAR -->
+      <div class="filter-bar">
+        <div><label>Period</label><br>
+          <div class="period-btns" id="periodBtns"></div>
+        </div>
+        <div><label>Month</label><br><select id="monthSelect">
+            <option value="">— Select —</option>
+          </select></div>
+        <div><label>Region</label><br><select id="regionFilter">
+            <option value="">All Regions</option>
+          </select></div>
+        <div><label>Ops Manager</label><br><select id="opsFilter">
+            <option value="">All Managers</option>
+          </select></div>
+        <div><label>Bakery</label><br><input id="bakerySearch" type="text" placeholder="Search bakery..."></div>
+        <div><label>Band</label><br><select id="bandFilter">
+            <option value="">All</option>
+            <option>Excellent</option>
+            <option>Good</option>
+            <option>Developing</option>
+            <option>Needs Attention</option>
+          </select></div>
+        <div><label>Rolling Window</label><br><select id="rollingWindow">
+            <option value="0">All Months</option>
+            <option value="3">Last 3 Months</option>
+            <option value="5">Last 5 Months</option>
+            <option value="6" selected>Last 6 Months</option>
+            <option value="9">Last 9 Months</option>
+            <option value="12">Last 12 Months</option>
+          </select></div>
+      </div>
+
+      <div class="kpi-row" id="kpis"></div>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="overview">Overview</div>
+        <div class="tab" data-tab="trends">Trends</div>
+        <div class="tab" data-tab="speed">Speed vs NPS</div>
+        <div class="tab" data-tab="cei">CEI Methodology</div>
+        <div class="tab" data-tab="table">League Table</div>
+        <div class="tab" data-tab="target">&#127919; Target Bakeries</div>
+      </div>
+
+      <!-- OVERVIEW -->
+      <div class="tab-content active" id="tab-overview">
+        <div class="grid-2">
+          <div class="section">
+            <h2>NPS Distribution</h2><canvas id="npsHist"></canvas>
+          </div>
+          <div class="section">
+            <h2>CEI Band Split (Relative)</h2><canvas id="ceiBands"></canvas>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="section">
+            <h2>NPS vs CEI</h2><canvas id="npsVsCei"></canvas>
+          </div>
+          <div class="section">
+            <h2>Customer Experience by Band</h2><canvas id="cxRadar"></canvas>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="section">
+            <h2>Absolute CEI Band Split</h2><canvas id="absCeiBands"></canvas>
+          </div>
+          <div class="section">
+            <h2>Biggest Drags on Absolute CEI</h2>
+            <p style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Average absolute component score across all bakeries — shows which area is pulling the network down most vs the 90% benchmark.</p>
+            <canvas id="absComponentDrag"></canvas>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="section">
+            <h2 style="color:var(--green)">Top 10 Bakeries by CEI</h2><canvas id="top10Chart"
+              style="max-height:360px"></canvas>
+          </div>
+          <div class="section">
+            <h2 style="color:var(--red)">Bottom 10 Bakeries by CEI</h2><canvas id="bot10Chart"
+              style="max-height:360px"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRENDS -->
+      <div class="tab-content" id="tab-trends">
+        <div class="grid-2">
+          <div class="section">
+            <h2>Average NPS by Month</h2><canvas id="trendNPS"></canvas>
+          </div>
+          <div class="section">
+            <h2>Average CX Scores by Month</h2><canvas id="trendCX"></canvas>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="section">
+            <h2>Absolute CEI Bands by Month</h2>
+            <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Network progress against company benchmarks over time &mdash; unlike the relative bands, this will shift as bakeries genuinely improve.</p>
+            <canvas id="trendAbsBands"></canvas>
+          </div>
+          <div class="section">
+            <h2>Average Barista Speed by Month</h2><canvas id="trendTimeliness"></canvas>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="section">
+            <h2>Band Distribution by Month</h2><canvas id="trendBands"></canvas>
+          </div>
+          <div class="section">
+            <h2>Average Speed Metrics by Month</h2><canvas id="trendSpeed"></canvas>
+          </div>
+        </div>
+        <div class="section">
+          <h2>Bakery Tracker</h2>
+          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Type a bakery name above to track its
+            performance over time.</p>
+          <canvas id="bakeryTracker" style="max-height:360px"></canvas>
+        </div>
+      </div>
+
+      <!-- SPEED vs NPS -->
+      <div class="tab-content" id="tab-speed">
+        <div class="section hero-section">
+          <h2 style="font-size:1.1rem;text-align:center;margin-bottom:4px">Does Making Coffee Faster Improve Customer
+            Satisfaction?</h2>
+          <p style="text-align:center;font-size:0.84rem;color:var(--muted);margin-bottom:16px">We compared every
+            bakery&rsquo;s coffee speed against their NPS. The answer is clear.</p>
+          <div class="grid-2">
+            <div style="text-align:center">
+              <div
+                style="display:inline-block;background:#fce4ec;color:var(--red);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:600;margin-bottom:8px">
+                &#10007; No meaningful relationship</div>
+              <canvas id="speedVsNps"></canvas>
+            </div>
+            <div style="text-align:center">
+              <div
+                style="display:inline-block;background:#e8f5e9;color:var(--green);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:600;margin-bottom:8px">
+                &#10003; Strong relationship</div>
+              <canvas id="effVsNps"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="section hero-section">
+          <h2 style="text-align:center">NPS by Efficiency Quartile vs Overall Efficiency Quartile</h2>
+          <canvas id="quartileCompare" style="max-height:360px"></canvas>
+          <div class="callout-grid">
+            <div class="callout red">
+              <div class="clbl">NPS gap: fastest vs slowest bakeries</div>
+              <div class="cval" id="speedGapVal" style="color:var(--red)">—</div>
+              <div class="clbl">Making coffee faster barely moves the needle</div>
+            </div>
+            <div class="callout green">
+              <div class="clbl">NPS gap: highest vs lowest efficiency-rated</div>
+              <div class="cval" id="effGapVal" style="color:var(--green)">—</div>
+              <div class="clbl">How the experience <em>feels</em> is what matters</div>
+            </div>
+          </div>
+        </div>
+        <div class="section hero-section">
+          <h2 style="text-align:center">Every Speed Metric Tells the Same Story</h2>
+          <canvas id="corrCompare" style="max-height:300px"></canvas>
+        </div>
+      </div>
+
+      <!-- CEI METHODOLOGY -->
+      <div class="tab-content" id="tab-cei">
+        <div class="section">
+          <h2>Coffee Experience Index v4 &mdash; Methodology</h2>
+          <div class="explain">
+            <h3>Overview</h3>
+            <p>The CEI v4.1 is a 0&ndash;100 composite that combines <strong>two complementary scores</strong>: a <em>Relative CEI</em> (percentile-ranked against peers within each month&rsquo;s cohort) and an <em>Absolute CEI</em> (scored against company benchmark targets). The Relative CEI is the primary ranking tool; the Absolute CEI tracks progress against standards regardless of how other bakeries perform.</p>
+
+            <h3>Relative CEI &mdash; Components &amp; Weights</h3>
+            <p><strong>Overall Efficiency (35%)</strong> &mdash; Customer-rated perception of service speed.</p>
+            <p><strong>Drink Quality (35%)</strong> &mdash; Customer-rated drink quality.</p>
+            <p><strong>Friendliness (25%)</strong> &mdash; Customer-rated friendliness.</p>
+            <p><strong>Barista Speed (5%)</strong> &mdash; Tiered speed score using both % within 3 min and % over 5 min. Heavily downweighted because completion times are self-reported via KVLink and routinely gamed (orders marked complete before collection). Retained at minimal weight as a directional signal rather than removed entirely.</p>
+            <div class="formula">Barista Speed = (% within 3 min) &minus; (% between 3&ndash;5 min &times; 0.3) &minus; (% over 5 min &times; 1.0)</div>
+            <div class="formula">Relative CEI = (Efficiency pctile &times; 0.35) + (Quality pctile &times; 0.35) + (Friendliness pctile &times; 0.25) + (Barista Speed pctile &times; 0.05)</div>
+
+            <h3>Confidence Weighting</h3>
+            <p>Low-volume bakeries produce noisier scores. CEI v4.1 applies <strong>regression to the mean</strong> based on response volume:</p>
+            <p><strong>High (15+ responses):</strong> 100% own score. <strong>Medium (8&ndash;14):</strong> 85% own + 15% cohort average. <strong>Low (&lt;8):</strong> 65% own + 35% cohort average.</p>
+            <p style="font-size:0.74rem;color:var(--muted)">This prevents bakeries with 3 responses from leaping to the top (or bottom) on thin data.</p>
+
+            <h3>Absolute CEI &mdash; Benchmark Scoring</h3>
+            <p>Each component is scored against the company target with <strong>escalating penalties</strong> for falling below the 90% benchmark. Meeting or exceeding 90% earns full marks. Dropping below triggers progressively harsher deductions:</p>
+            <div class="formula" style="font-size:0.72rem;line-height:1.8">
+              90%+ &rarr; Score 100 (full marks)<br>
+              85&ndash;89% &rarr; &minus;4 pts per % below 90 (e.g. 85% &rarr; score 80)<br>
+              80&ndash;84% &rarr; &minus;6 pts per % below 85 (e.g. 80% &rarr; score 50)<br>
+              75&ndash;79% &rarr; &minus;6 pts per % below 80 (e.g. 75% &rarr; score 20)<br>
+              &lt;75% &rarr; &minus;4 pts per % below 75 (e.g. 70% &rarr; score 0)
+            </div>
+            <p style="font-size:0.74rem;color:var(--muted)">This means 90% is genuinely non-negotiable &mdash; a bakery at 80% on any metric will lose <strong>half</strong> its absolute score for that component, and one at 75% will be near zero. The penalty tiers ensure there&rsquo;s no &ldquo;close enough&rdquo; to target.</p>
+            <div class="formula">Abs CEI = (Efficiency abs score &times; 0.35) + (Quality abs score &times; 0.35) + (Friendly abs score &times; 0.25) + (Coffee Efficiency abs score &times; 0.05)</div>
+            <div class="benchmarks" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+              <div class="benchmark exc"><div class="bval">90+</div><div class="blabel">Exceeding</div></div>
+              <div class="benchmark gd"><div class="bval">75&ndash;89</div><div class="blabel">Meeting</div></div>
+              <div class="benchmark dev"><div class="bval">60&ndash;74</div><div class="blabel">Approaching</div></div>
+              <div class="benchmark na"><div class="bval">&lt;60</div><div class="blabel">Below Standard</div></div>
+            </div>
+
+            <h3>Relative CEI Bands (unchanged)</h3>
+            <div class="benchmarks">
+              <div class="benchmark exc"><div class="bval">75&ndash;100</div><div class="blabel">Excellent</div></div>
+              <div class="benchmark gd"><div class="bval">50&ndash;74</div><div class="blabel">Good</div></div>
+              <div class="benchmark dev"><div class="bval">25&ndash;49</div><div class="blabel">Developing</div></div>
+              <div class="benchmark na"><div class="bval">0&ndash;24</div><div class="blabel">Needs Attention</div></div>
+            </div>
+
+            <h3 style="margin-top:14px">What changed from v3?</h3>
+            <p><strong>1. Barista Speed downweighted (20% &rarr; 5%):</strong> KVLink completion times are self-reported and routinely gamed &mdash; baristas mark orders complete before collection to hit the KPI. With no way to regulate this, the data is unreliable. Barista Speed is retained at 5% as a directional signal but no longer drives the score. The freed weight is redistributed to customer-reported NPS survey metrics which cannot be gamed.</p>
+            <p><strong>2. Confidence Weighting:</strong> Low-volume bakeries are now pulled toward the cohort average, preventing noisy data from distorting rankings.</p>
+            <p><strong>3. Absolute CEI:</strong> A new parallel score benchmarked against company targets (90% across all components, including beverage delivery time which is already penalty-adjusted via the tiered speed score), so network-wide improvement is visible even when peer rankings stay flat.</p>
+            <p><strong>4. Rebalanced Weights:</strong> Overall Efficiency and Drink Quality now carry 35% each, Friendliness 25% &mdash; the index is 95% driven by what customers actually report in NPS surveys.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEAGUE TABLE -->
+      <div class="tab-content" id="tab-table">
+        <div class="section">
+          <h2>League Table</h2>
+          <div style="margin-bottom:8px">
+            <label style="font-size:0.74rem;color:var(--muted);font-weight:500">Sort: <select id="sortBy">
+                <option value="cr">CEI Rank</option>
+                <option value="n">NPS</option>
+                <option value="c">CEI (Relative)</option>
+                <option value="ac">CEI (Absolute)</option>
+                <option value="dr">Quality</option>
+                <option value="ef">Overall Efficiency</option>
+                <option value="fr">Friendliness</option>
+                <option value="ts">Barista Speed</option>
+                <option value="o5">Over 5 Min</option>
+              </select></label>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Bakery</th>
+                  <th>Region</th>
+                  <th>Ops Manager</th>
+                  <th>CEI</th>
+                  <th>Band</th>
+                  <th>Abs CEI</th>
+                  <th>Abs Band</th>
+                  <th>Conf</th>
+                  <th>NPS</th>
+                  <th>Vol</th>
+                  <th>Quality</th>
+                  <th>Efficiency</th>
+                  <th>Friendliness</th>
+                  <th>Barista Speed</th>
+                  <th>>5m</th>
+                  <th>Overall</th>
+                  <th>&le;2m</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TARGET BAKERIES -->
+      <div class="tab-content" id="tab-target">
+        <div class="section">
+          <h2>&#127919; Target Bakeries &mdash; Priority Support List</h2>
+          <div class="explain">
+            <h3>How to use this list</h3>
+            <p>Bakeries are ranked from lowest CEI to highest within the <strong>Needs Attention</strong> (CEI &lt; 25)
+              and <strong>Developing</strong> (CEI 25&ndash;49) bands &mdash; the bakeries at the top need the most
+              urgent support.</p>
+            <p>The <strong>Where to Focus</strong> column shows which single area is dragging a bakery&rsquo;s score
+              down the most compared to other bakeries. Start coaching conversations there first before tackling
+              anything else.</p>
+            <p style="font-size:0.74rem">Individual scores shown in <span
+                style="color:var(--red);font-weight:600">red</span> are in the bottom quarter of all bakeries.</p>
+          </div>
+          <div id="targetSummary"
+            style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px">
+          </div>
+          <div id="targetInsights"></div>
+          <div id="targetTable"></div>
+        </div>
+        <div class="section" id="targetTrendSection" style="display:none">
+          <h2>Performance Trends &mdash; Target Bakeries Over Time</h2>
+          <div class="explain">
+            <h3>How to read this section</h3>
+            <p>Each target bakery&rsquo;s CEI and component scores are tracked across every available month. The
+              <strong>Direction</strong> column compares the most recent month to the previous month. <strong>3-Month
+                Trend</strong> shows the overall trajectory over the last 3 months of data.
+            </p>
+            <p style="font-size:0.74rem"><span style="color:var(--green);font-weight:600">&uarr; Improving</span> =
+              score rose by 3+ points. <span style="color:var(--red);font-weight:600">&darr; Declining</span> = score
+              fell by 3+ points. <span style="color:var(--muted);font-weight:600">&harr; Stable</span> = within
+              &plusmn;3 points.</p>
+          </div>
+          <div id="trendSummaryCards"
+            style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px">
+          </div>
+          <div class="section" style="margin-bottom:14px">
+            <h2 style="font-size:0.88rem">Average CEI &mdash; Target Bakeries vs All Bakeries</h2>
+            <canvas id="targetAvgTrend" style="max-height:280px"></canvas>
+          </div>
+          <div class="grid-2" style="margin-bottom:14px">
+            <div class="section" style="margin-bottom:0">
+              <h2 style="font-size:0.88rem">Improving vs Declining (Month-on-Month)</h2><canvas id="targetMomentumChart"
+                style="max-height:340px"></canvas>
+            </div>
+            <div class="section" style="margin-bottom:0">
+              <h2 style="font-size:0.88rem">Band Movement Over Time</h2><canvas id="targetBandFlow"
+                style="max-height:340px"></canvas>
+            </div>
+          </div>
+          <div class="section" style="margin-bottom:14px">
+            <h2 style="font-size:0.88rem">Individual Bakery Trends</h2>
+            <p style="font-size:0.76rem;color:var(--muted);margin-bottom:10px">Each bakery shown separately so you can
+              see individual trajectories clearly. The dashed grey line is the overall bakery average for comparison.
+            </p>
+            <div id="sparklineGrid"
+              style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+          </div>
+          <div id="targetTrendTable"></div>
+        </div>
+      </div>
+
+    </div><!-- end dashboardContent -->
+
+    <!-- DRILL-DOWN MODAL -->
+    <div id="drillModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.5);backdrop-filter:blur(2px);overflow-y:auto" onclick="if(event.target===this)this.style.display='none'">
+      <div class="drillInner" style="background:#fff;max-width:900px;margin:40px auto;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);overflow:hidden">
+        <div id="drillHeader" style="padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h3 id="drillTitle" style="font-size:1rem;font-weight:700;margin:0"></h3>
+            <p id="drillSubtitle" style="font-size:0.76rem;color:var(--muted);margin:2px 0 0"></p>
+          </div>
+          <button onclick="document.getElementById('drillModal').style.display='none'" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:0.8rem;color:var(--muted)">✕ Close</button>
+        </div>
+        <div id="drillBody" style="padding:0 20px 20px;max-height:65vh;overflow-y:auto"></div>
+      </div>
+    </div>
+
+  </div><!-- end container -->
+
+  <!-- Load modules in dependency order -->
+  <script src="js/state.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/cei.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/periods.js"></script>
+  <script src="js/filters.js"></script>
+  <script src="js/tables.js"></script>
+  <script src="js/drilldown.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/targets.js"></script>
+  <script src="js/upload.js"></script>
+  <script src="js/app.js"></script>
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/auth.js"></script>
+</body>
+
 </html>
