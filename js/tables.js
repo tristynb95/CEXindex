@@ -191,6 +191,8 @@ window.GAILS.makeSortable = function(container) {
     if (!candidate) return null;
     if (candidate.matches(HOST_SELECTOR) || candidate.matches(SHELL_SELECTOR)) return null;
     if (candidate.querySelector('table')) return null;
+    if (candidate.matches && candidate.matches('[data-table-fullscreen-anchor="true"]')) return candidate;
+    if (candidate.classList && candidate.classList.contains('drill-controls')) return candidate;
     if (!candidate.querySelector('select, input, button, label')) return null;
     return candidate;
   }

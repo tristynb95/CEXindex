@@ -40,17 +40,24 @@ window.GAILS = window.GAILS || {};
     }).join('');
   }
 
-  function renderTable(G, columns, rows) {
-    return '<div class="drill-controls">' +
+  function renderTableControls(isAnchor) {
+    return '<div class="drill-controls"' + (isAnchor ? ' data-table-fullscreen-anchor="true"' : '') + '>' +
       '<div class="drill-sort-hint"><strong>&#8597;</strong> Click any column to sort, then click again to reverse</div>' +
-      '</div>' +
-      '<div class="drill-table-wrap">' +
+      '</div>';
+  }
+
+  function renderTableWrap(G, columns, rows) {
+    return '<div class="drill-table-wrap">' +
       '<table class="drill-table"><thead><tr>' +
       columns.map(function(column) { return '<th scope="col">' + escapeHtml(column.label) + '</th>'; }).join('') +
       '</tr></thead><tbody>' +
       renderRows(G, rows, columns) +
       '</tbody></table>' +
       '</div>';
+  }
+
+  function renderTable(G, columns, rows) {
+    return renderTableControls(true) + renderTableWrap(G, columns, rows);
   }
 
   function colorWithAlpha(hex, alpha) {
@@ -190,13 +197,7 @@ window.GAILS = window.GAILS || {};
       var npsAvg = npsSorted.length ? Math.round(npsSorted.reduce(function(sum, bakery) { return sum + bakery.n; }, 0) / npsSorted.length) : 0;
       var ceiAvg = npsSorted.length ? Math.round(npsSorted.reduce(function(sum, bakery) { return sum + bakery.c; }, 0) / npsSorted.length) : 0;
 
-      content += '<div class="drill-summary">' +
-        renderSummaryCard('Avg NPS', npsAvg) +
-        renderSummaryCard('Avg CEI', ceiAvg) +
-        renderSummaryCard('Bakeries', npsSorted.length) +
-        '</div>';
-
-      content += renderTable(G, baseColumns.concat([
+      var npsColumns = baseColumns.concat([
         {
           label: 'NPS',
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.n) + '</span>'; }
@@ -229,7 +230,18 @@ window.GAILS = window.GAILS || {};
           label: 'Conf',
           render: function(row) { return renderConfidence(row.co); }
         }
-      ]), npsSorted);
+      ]);
+
+      content += '<div class="drill-topbar" data-table-fullscreen-anchor="true">' +
+        '<div class="drill-summary">' +
+        renderSummaryCard('Avg NPS', npsAvg) +
+        renderSummaryCard('Avg CEI', ceiAvg) +
+        renderSummaryCard('Bakeries', npsSorted.length) +
+        '</div>' +
+        renderTableControls(false) +
+        '</div>';
+
+      content += renderTableWrap(G, npsColumns, npsSorted);
     } else if (type === 'relative') {
       var relSorted = [].concat(bakeries).sort(function(a, b) { return b.c - a.c; });
       content += renderTable(G, baseColumns.concat([
