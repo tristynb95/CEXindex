@@ -19,7 +19,7 @@ window.GAILS.initUpload = function(initDashboard) {
     if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
   });
 
-  document.getElementById('reloadBtn').addEventListener('click', function() {
+  window.GAILS.resetToUpload = function() {
     document.getElementById('dashboardContent').style.display = 'none';
     document.getElementById('uploadZone').style.display = '';
     uploadStatus.textContent = '';
@@ -27,7 +27,7 @@ window.GAILS.initUpload = function(initDashboard) {
     fileInput.value = '';
     localStorage.removeItem('gails_excel_data');
     localStorage.removeItem('gails_excel_name');
-  });
+  };
 
   // Auto-load from localStorage
   var saved = localStorage.getItem('gails_excel_data');
@@ -77,7 +77,7 @@ window.GAILS.initUpload = function(initDashboard) {
           localStorage.setItem('gails_excel_name', file.name);
           
           if (window.GAILS_Firebase) {
-             window.GAILS_Firebase.saveData(result.records, result.months);
+             window.GAILS_Firebase.saveData(result.records, result.months, file.name);
           }
         } catch (storageErr) {
           console.warn('Could not save to localStorage:', storageErr);

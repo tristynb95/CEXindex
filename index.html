@@ -4,39 +4,139 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GAIL's Bakery — NPS & Coffee Experience Dashboard</title>
+  <title>GAIL's Coffee Experience Dashboard</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" href="favicon.ico">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="css/styles.css">
 </head>
 
 <body>
-  <!-- LOGIN OVERLAY -->
-  <div id="loginScreen" style="position:fixed;inset:0;background:#f5f5f5;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;">
-    <div style="background:#fff;padding:40px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.1);max-width:400px;width:100%;text-align:center;">
-      <div class="logo" style="font-size:3rem;margin-bottom:16px;">&#9749;</div>
-      <h2 style="font-size:1.5rem;margin-bottom:20px;">GAIL's Dashboard Access</h2>
-      <input type="email" id="emailInput" placeholder="Email Address (e.g. tristenb@example.com)" style="width:100%;padding:12px;margin-bottom:12px;border:1px solid #ddd;border-radius:6px;font-size:1rem;box-sizing:border-box;">
-      <input type="password" id="passwordInput" placeholder="Password" style="width:100%;padding:12px;margin-bottom:24px;border:1px solid #ddd;border-radius:6px;font-size:1rem;box-sizing:border-box;">
-      <button id="loginBtn" class="btn" style="width:100%;padding:12px;font-size:1rem;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;">Login</button>
-      <div id="loginError" style="color:#d32f2f;margin-top:16px;font-size:0.9rem;display:none;padding:10px;background:#fce4ec;border-radius:6px;"></div>
-      <p style="margin-top:24px;font-size:0.8rem;color:#666;">Don't have an account? Ask your administrator.</p>
+  <!-- ANIMATED BACKGROUND -->
+  <div class="glass-bg">
+    <div class="glass-bg-blob blob1"></div>
+    <div class="glass-bg-blob blob2"></div>
+    <div class="glass-bg-blob blob3"></div>
+    <div class="glass-noise"></div>
+  </div>
+
+  <!-- AUTH LOADING SCREEN -->
+  <div id="loadingScreen" class="overlay-screen">
+    <div class="auth-loading">
+      <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+      <div class="auth-loading__spinner"></div>
+      <p class="auth-loading__text">Verifying access&hellip;</p>
     </div>
   </div>
 
+  <!-- LOGIN OVERLAY -->
+  <div id="loginScreen" class="overlay-screen" style="display:none;">
+    <div class="login-stage">
+      <section class="login-hero" aria-label="Dashboard overview">
+        <div class="login-hero__top">
+          <div class="login-card__logo-wrap">
+            <img class="login-card__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery logo">
+          </div>
+          <div class="login-hero__pill">Internal reporting workspace</div>
+        </div>
+
+        <div class="login-card__masthead-copy">
+          <p class="login-card__eyebrow">Coffee Experience Dashboard</p>
+          <h1 class="login-card__title">One clear view of every bakery.</h1>
+          <p class="login-card__intro">Track sentiment, coffee quality, and priority actions from one secure reporting workspace.</p>
+        </div>
+
+        <div class="login-hero__scoreboard">
+          <div class="login-hero__score">
+            <span class="login-hero__score-label">Track</span>
+            <strong>NPS movement</strong>
+            <p>Follow month-by-month shifts before they become wider performance issues.</p>
+          </div>
+          <div class="login-hero__score">
+            <span class="login-hero__score-label">Prioritise</span>
+            <strong>Target bakeries</strong>
+            <p>Surface where coaching and operational support will make the biggest difference.</p>
+          </div>
+          <div class="login-hero__score">
+            <span class="login-hero__score-label">Review</span>
+            <strong>Coffee experience</strong>
+            <p>Balance speed, friendliness, quality, and overall efficiency in one index.</p>
+          </div>
+        </div>
+
+        <div class="login-card__highlights">
+          <div class="login-card__highlight">
+            <span class="login-card__highlight-label">Live Sync</span>
+            <strong>Shared Firebase dataset for secure internal reporting.</strong>
+          </div>
+          <div class="login-card__highlight">
+            <span class="login-card__highlight-label">Built For</span>
+            <strong>Ops leaders, bakery managers, and customer experience teams.</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="login-panel" aria-label="Sign in form">
+        <div class="login-card__form-panel">
+          <div class="login-card__form-head">
+            <p class="login-card__form-eyebrow">Secure Sign In</p>
+            <h2 class="login-panel__title">Welcome back</h2>
+            <p class="login-card__form-copy">Use your work email and password to access the live dashboard.</p>
+          </div>
+
+          <form id="loginForm" class="login-form">
+            <label class="login-field" for="emailInput">
+              <span>Work email</span>
+              <input type="email" id="emailInput" class="login-input" placeholder="name@gails.com" autocomplete="username">
+            </label>
+
+            <label class="login-field" for="passwordInput">
+              <span>Password</span>
+              <input type="password" id="passwordInput" class="login-input" placeholder="Enter password" autocomplete="current-password">
+            </label>
+
+            <button id="loginBtn" class="btn login-submit" type="submit">Sign In</button>
+          </form>
+
+          <div id="loginError" class="login-error" role="alert"></div>
+
+          <div class="login-panel__footer">
+            <div class="login-panel__notice">
+              Access is limited to approved internal users.
+            </div>
+            <p class="login-help">Need an account? Contact an administrator.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- HEADER -->
   <div class="header" style="display:none;">
-    <div style="display: flex; align-items: center; gap: 16px;">
-      <div class="logo">&#9749;</div>
-      <div>
-        <h1>GAIL's Bakery &mdash; NPS &amp; Coffee Experience Dashboard</h1>
+    <div class="header-brand">
+      <div class="header-brand__logo">
+        <img src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery logo">
+      </div>
+      <div class="header-brand__copy">
+        <div class="header-brand__eyebrow">Coffee Experience Dashboard</div>
         <div class="sub" id="headerSub">Upload your NPS &amp; Coffee Data spreadsheet to begin</div>
       </div>
     </div>
-    <div style="margin-left:auto; display:flex; gap:10px;">
-      <button class="reload-btn" id="reloadBtn" style="padding:8px 16px; font-size:0.8rem; border:none; border-radius:6px; box-shadow:0 2px 5px rgba(0,0,0,0.2); cursor:pointer;">&#8635; Load New Data</button>
-      <button id="logoutBtn" style="padding:8px 16px; font-size:0.8rem; border:1px solid #ddd; background:#fff; color:#333; border-radius:6px; cursor:pointer;">Logout</button>
+    <div class="header-actions">
+      <button id="adminBtn" style="display:none;">&#128274; Admin Portal</button>
+      <button id="logoutBtn">Sign Out</button>
     </div>
   </div>
+
   <div class="container" style="display:none;">
 
     <!-- UPLOAD ZONE -->
@@ -56,27 +156,11 @@
 
       <!-- GLOBAL FILTER BAR -->
       <div class="filter-bar">
-        <div><label>Period</label><br>
-          <div class="period-btns" id="periodBtns"></div>
-        </div>
-        <div><label>Month</label><br><select id="monthSelect">
-            <option value="">— Select —</option>
+        <div class="filter-controls">
+          <div class="filter-control"><label>Month</label><br><select id="monthSelect">
+            <option value="">&mdash; Select &mdash;</option>
           </select></div>
-        <div><label>Region</label><br><select id="regionFilter">
-            <option value="">All Regions</option>
-          </select></div>
-        <div><label>Ops Manager</label><br><select id="opsFilter">
-            <option value="">All Managers</option>
-          </select></div>
-        <div><label>Bakery</label><br><input id="bakerySearch" type="text" placeholder="Search bakery..."></div>
-        <div><label>Band</label><br><select id="bandFilter">
-            <option value="">All</option>
-            <option>Excellent</option>
-            <option>Good</option>
-            <option>Developing</option>
-            <option>Needs Attention</option>
-          </select></div>
-        <div><label>Rolling Window</label><br><select id="rollingWindow">
+          <div class="filter-control"><label>Rolling Window</label><br><select id="rollingWindow">
             <option value="0">All Months</option>
             <option value="3">Last 3 Months</option>
             <option value="5">Last 5 Months</option>
@@ -84,324 +168,538 @@
             <option value="9">Last 9 Months</option>
             <option value="12">Last 12 Months</option>
           </select></div>
-      </div>
-
-      <div class="kpi-row" id="kpis"></div>
-
-      <div class="tabs">
-        <div class="tab active" data-tab="overview">Overview</div>
-        <div class="tab" data-tab="trends">Trends</div>
-        <div class="tab" data-tab="speed">Speed vs NPS</div>
-        <div class="tab" data-tab="cei">CEI Methodology</div>
-        <div class="tab" data-tab="table">League Table</div>
-        <div class="tab" data-tab="target">&#127919; Target Bakeries</div>
-      </div>
-
-      <!-- OVERVIEW -->
-      <div class="tab-content active" id="tab-overview">
-        <div class="grid-2">
-          <div class="section">
-            <h2>NPS Distribution</h2><canvas id="npsHist"></canvas>
-          </div>
-          <div class="section">
-            <h2>CEI Band Split (Relative)</h2><canvas id="ceiBands"></canvas>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="section">
-            <h2>NPS vs CEI</h2><canvas id="npsVsCei"></canvas>
-          </div>
-          <div class="section">
-            <h2>Customer Experience by Band</h2><canvas id="cxRadar"></canvas>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="section">
-            <h2>Absolute CEI Band Split</h2><canvas id="absCeiBands"></canvas>
-          </div>
-          <div class="section">
-            <h2>Biggest Drags on Absolute CEI</h2>
-            <p style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Average absolute component score across all bakeries — shows which area is pulling the network down most vs the 90% benchmark.</p>
-            <canvas id="absComponentDrag"></canvas>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="section">
-            <h2 style="color:var(--green)">Top 10 Bakeries by CEI</h2><canvas id="top10Chart"
-              style="max-height:360px"></canvas>
-          </div>
-          <div class="section">
-            <h2 style="color:var(--red)">Bottom 10 Bakeries by CEI</h2><canvas id="bot10Chart"
-              style="max-height:360px"></canvas>
-          </div>
+          <div class="filter-control"><label>Region</label><br><select id="regionFilter">
+            <option value="">All Regions</option>
+          </select></div>
+          <div class="filter-control"><label>Ops Manager</label><br><select id="opsFilter">
+            <option value="">All Managers</option>
+          </select></div>
+          <div class="filter-control"><label>Bakery</label><br><input id="bakerySearch" type="text" placeholder="Search bakery..."></div>
+          <div class="filter-control"><label>Band</label><br><select id="bandFilter">
+            <option value="">All</option>
+            <option>Excellent</option>
+            <option>Good</option>
+            <option>Developing</option>
+            <option>Needs Attention</option>
+          </select></div>
         </div>
       </div>
 
-      <!-- TRENDS -->
-      <div class="tab-content" id="tab-trends">
-        <div class="grid-2">
-          <div class="section">
-            <h2>Average NPS by Month</h2><canvas id="trendNPS"></canvas>
+      <div id="dashboardWorkspaceShell" class="dashboard-workspace" data-sidebar-collapsed="false" data-sidebar-open="false">
+        <aside class="dashboard-sidebar" aria-label="Main dashboard menu">
+          <div class="dashboard-sidebar__head">
+            <div>
+              <p class="dashboard-sidebar__label">Main Menu</p>
+              <h2 class="dashboard-sidebar__title">Dashboard views</h2>
+              <p class="dashboard-sidebar__copy">Collapse the side menu when you want more room for charts, tables, and maps.</p>
+            </div>
+            <button
+              type="button"
+              id="dashboardSidebarToggle"
+              class="dashboard-sidebar__toggle"
+              aria-controls="dashboardNav"
+              aria-expanded="true"
+              aria-label="Collapse menu"
+            >
+              <span class="dashboard-sidebar__toggle-icon" aria-hidden="true"></span>
+              <span class="dashboard-sidebar__toggle-label" data-dashboard-sidebar-toggle-label>Collapse</span>
+            </button>
           </div>
-          <div class="section">
-            <h2>Average CX Scores by Month</h2><canvas id="trendCX"></canvas>
+
+          <nav class="dashboard-nav" id="dashboardNav">
+            <button type="button" class="tab dashboard-nav__btn active" data-tab="overview" aria-label="Overview">
+              <span class="dashboard-nav__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <rect x="4" y="4" width="6" height="6" rx="1.5"></rect>
+                  <rect x="14" y="4" width="6" height="6" rx="1.5"></rect>
+                  <rect x="4" y="14" width="6" height="6" rx="1.5"></rect>
+                  <rect x="14" y="14" width="6" height="6" rx="1.5"></rect>
+                </svg>
+              </span>
+              <span class="dashboard-nav__content">
+                <span class="dashboard-nav__eyebrow">Summary</span>
+                <strong>Overview</strong>
+              </span>
+            </button>
+            <button type="button" class="tab dashboard-nav__btn" data-tab="trends" aria-label="Trends">
+              <span class="dashboard-nav__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M5 17L10 12L13.5 15.5L19 8.5"></path>
+                  <path d="M15.5 8.5H19V12"></path>
+                </svg>
+              </span>
+              <span class="dashboard-nav__content">
+                <span class="dashboard-nav__eyebrow">History</span>
+                <strong>Trends</strong>
+              </span>
+            </button>
+            <button type="button" class="tab dashboard-nav__btn" data-tab="table" aria-label="League Table">
+              <span class="dashboard-nav__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M7 5H17V7C17 9.76142 14.7614 12 12 12C9.23858 12 7 9.76142 7 7V5Z"></path>
+                  <path d="M7 6H5C5 8.20914 6.79086 10 9 10"></path>
+                  <path d="M17 6H19C19 8.20914 17.2091 10 15 10"></path>
+                  <path d="M12 12V16"></path>
+                  <path d="M9 19H15"></path>
+                </svg>
+              </span>
+              <span class="dashboard-nav__content">
+                <span class="dashboard-nav__eyebrow">Rankings</span>
+                <strong>League Table</strong>
+              </span>
+            </button>
+            <button type="button" class="tab dashboard-nav__btn" data-tab="map" aria-label="Map">
+              <span class="dashboard-nav__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M12 20C12 20 18 14.4 18 9.5C18 6.46243 15.3137 4 12 4C8.68629 4 6 6.46243 6 9.5C6 14.4 12 20 12 20Z"></path>
+                  <circle cx="12" cy="9.5" r="2"></circle>
+                </svg>
+              </span>
+              <span class="dashboard-nav__content">
+                <span class="dashboard-nav__eyebrow">Locations</span>
+                <strong>Map</strong>
+              </span>
+            </button>
+            <button type="button" class="tab dashboard-nav__btn" data-tab="target" aria-label="Target Bakeries">
+              <span class="dashboard-nav__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <circle cx="12" cy="12" r="7"></circle>
+                  <circle cx="12" cy="12" r="3.5"></circle>
+                  <path d="M17 7L20 4"></path>
+                  <path d="M16.5 4H20V7.5"></path>
+                </svg>
+              </span>
+              <span class="dashboard-nav__content">
+                <span class="dashboard-nav__eyebrow">Priority</span>
+                <strong>Target Bakeries</strong>
+              </span>
+            </button>
+            <button type="button" class="tab dashboard-nav__btn" data-tab="feedback" aria-label="Customer Feedback">
+              <span class="dashboard-nav__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M4 5C4 4.45 4.45 4 5 4H19C19.55 4 20 4.45 20 5V15C20 15.55 19.55 16 19 16H8.5L5 19.5V5Z"></path>
+                  <path d="M8 9H16M8 12H13"></path>
+                </svg>
+              </span>
+              <span class="dashboard-nav__content">
+                <span class="dashboard-nav__eyebrow">Sentiment</span>
+                <strong>Feedback</strong>
+              </span>
+            </button>
+          </nav>
+        </aside>
+
+        <div class="dashboard-workspace__main">
+          <div class="dashboard-workspace__toolbar">
+            <button
+              type="button"
+              id="dashboardSidebarOpen"
+              class="dashboard-workspace__menu-btn"
+              aria-controls="dashboardNav"
+              aria-expanded="false"
+              aria-label="Open menu"
+            >
+              <span class="dashboard-workspace__menu-icon" aria-hidden="true"></span>
+              <span>Menu</span>
+            </button>
+            <div class="dashboard-workspace__status">
+              <p class="dashboard-workspace__status-label">Active view</p>
+              <strong id="dashboardActiveViewLabel">Overview</strong>
+            </div>
           </div>
-        </div>
-        <div class="grid-2">
-          <div class="section">
-            <h2>Absolute CEI Bands by Month</h2>
-            <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Network progress against company benchmarks over time &mdash; unlike the relative bands, this will shift as bakeries genuinely improve.</p>
-            <canvas id="trendAbsBands"></canvas>
+
+          <div class="kpi-row" id="kpis"></div>
+
+          <!-- OVERVIEW -->
+          <div class="tab-content active" id="tab-overview">
+            <div class="grid-2">
+              <div class="section">
+                <h2>NPS Distribution</h2><canvas id="npsHist"></canvas>
+              </div>
+              <div class="section">
+                <h2>CEI Band Split (Relative)</h2><canvas id="ceiBands"></canvas>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="section">
+                <h2>NPS vs CEI</h2><canvas id="npsVsCei"></canvas>
+              </div>
+              <div class="section">
+                <h2>Customer Experience by Band</h2><canvas id="cxRadar"></canvas>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="section">
+                <h2>Absolute CEI Band Split</h2><canvas id="absCeiBands"></canvas>
+              </div>
+              <div class="section">
+                <h2>Biggest Drags on Absolute CEI</h2>
+                <p style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Average absolute component score across all bakeries &mdash; shows which area is pulling the network down most vs the 90% benchmark.</p>
+                <canvas id="absComponentDrag"></canvas>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="section">
+                <h2 style="color:var(--green)">Top 10 Bakeries by CEI</h2><canvas id="top10Chart" style="max-height:360px"></canvas>
+              </div>
+              <div class="section">
+                <h2 style="color:var(--red)">Bottom 10 Bakeries by CEI</h2><canvas id="bot10Chart" style="max-height:360px"></canvas>
+              </div>
+            </div>
           </div>
-          <div class="section">
-            <h2>Average Barista Speed by Month</h2><canvas id="trendTimeliness"></canvas>
+
+          <!-- TRENDS -->
+          <div class="tab-content" id="tab-trends">
+            <div class="grid-2">
+              <div class="section">
+                <h2>Average NPS by Month</h2><canvas id="trendNPS"></canvas>
+              </div>
+              <div class="section">
+                <h2>Average CX Scores by Month</h2><canvas id="trendCX"></canvas>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="section">
+                <h2>Absolute CEI Bands by Month</h2>
+                <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Network progress against company benchmarks over time &mdash; unlike the relative bands, this will shift as bakeries genuinely improve.</p>
+                <canvas id="trendAbsBands"></canvas>
+              </div>
+              <div class="section">
+                <h2>Average Barista Speed by Month</h2><canvas id="trendTimeliness"></canvas>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="section">
+                <h2>Band Distribution by Month</h2><canvas id="trendBands"></canvas>
+              </div>
+              <div class="section">
+                <h2>Average Speed Metrics by Month</h2><canvas id="trendSpeed"></canvas>
+              </div>
+            </div>
+            <div class="section">
+              <h2>Bakery Tracker</h2>
+              <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Type a bakery name above to track its performance over time.</p>
+              <canvas id="bakeryTracker" style="max-height:360px"></canvas>
+            </div>
           </div>
-        </div>
-        <div class="grid-2">
-          <div class="section">
-            <h2>Band Distribution by Month</h2><canvas id="trendBands"></canvas>
+
+          <!-- SPEED vs NPS -->
+          <div class="tab-content" id="tab-speed">
+            <div class="section hero-section">
+              <h2 style="font-size:1.05rem;text-align:center;margin-bottom:4px">Does Making Coffee Faster Improve Customer Satisfaction?</h2>
+              <p style="text-align:center;font-size:0.84rem;color:var(--muted);margin-bottom:16px">We compared every bakery&rsquo;s coffee speed against their NPS. The answer is clear.</p>
+              <div class="grid-2">
+                <div style="text-align:center">
+                  <div style="display:inline-block;background:rgba(255,59,92,0.15);color:var(--red);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:700;margin-bottom:8px;border:1px solid rgba(255,59,92,0.3)">&#10007; No meaningful relationship</div>
+                  <canvas id="speedVsNps"></canvas>
+                </div>
+                <div style="text-align:center">
+                  <div style="display:inline-block;background:rgba(0,200,117,0.13);color:var(--green);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:700;margin-bottom:8px;border:1px solid rgba(0,200,117,0.28)">&#10003; Strong relationship</div>
+                  <canvas id="effVsNps"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="section hero-section">
+              <h2 style="text-align:center">NPS by Efficiency Quartile vs Overall Efficiency Quartile</h2>
+              <canvas id="quartileCompare" style="max-height:360px"></canvas>
+              <div class="callout-grid">
+                <div class="callout red">
+                  <div class="clbl">NPS gap: fastest vs slowest bakeries</div>
+                  <div class="cval" id="speedGapVal" style="color:var(--red)">&mdash;</div>
+                  <div class="clbl">Making coffee faster barely moves the needle</div>
+                </div>
+                <div class="callout green">
+                  <div class="clbl">NPS gap: highest vs lowest efficiency-rated</div>
+                  <div class="cval" id="effGapVal" style="color:var(--green)">&mdash;</div>
+                  <div class="clbl">How the experience <em>feels</em> is what matters</div>
+                </div>
+              </div>
+            </div>
+            <div class="section hero-section">
+              <h2 style="text-align:center">Every Speed Metric Tells the Same Story</h2>
+              <canvas id="corrCompare" style="max-height:300px"></canvas>
+            </div>
           </div>
-          <div class="section">
-            <h2>Average Speed Metrics by Month</h2><canvas id="trendSpeed"></canvas>
+
+          <!-- CEI METHODOLOGY -->
+          <div class="tab-content" id="tab-cei">
+            <div class="section">
+              <h2>Coffee Experience Index v4 &mdash; Methodology</h2>
+              <div class="explain">
+                <h3>How Do We Measure Success?</h3>
+                <p>The <strong>Coffee Experience Index (CEI)</strong> uses a 0 to 100 score to tell us how well we're doing. We look at this in two ways: <strong>Relative CEI</strong> (how you compare to other bakeries this month) and <strong>Absolute CEI</strong> (how you compare to GAIL's overall strict standards, regardless of everyone else).</p>
+
+                <h3>The Recipe: What Makes Up the Score?</h3>
+                <p>We believe what the customer tells us matters most. That's why 95% of your score comes directly from customer feedback:</p>
+                <ul style="margin-left: 20px; margin-bottom: 20px;">
+                  <li style="margin-bottom: 6px;"><strong>Efficiency (35%)</strong> &mdash; Did the customer feel they were served quickly?</li>
+                  <li style="margin-bottom: 6px;"><strong>Drink Quality (35%)</strong> &mdash; Did the customer love their coffee?</li>
+                  <li style="margin-bottom: 6px;"><strong>Friendliness (25%)</strong> &mdash; Did the customer feel welcome?</li>
+                  <li style="margin-bottom: 6px;"><strong>Till Speed (5%)</strong> &mdash; How fast the order was completed on the till. We give this a small weight because it doesn't always reflect the true time it takes to prepare the order.</li>
+                </ul>
+
+                <h3>Keeping It Fair</h3>
+                <p>If a bakery only gets 2 or 3 reviews in a month, one bad review could unfairly ruin their score, or one perfect review could push them to the very top. To be fair, if you don't have many reviews, we gently blend your score with the average to keep things balanced and fair for everyone.</p>
+
+                <h3>Our Standards</h3>
+                <p>Our standard is simple: we aim for <strong>90% or higher</strong> on everything. If a bakery hits 90%, they get full marks. However, if a score drops below 90%, we apply strict point deductions. For example, an 80% score loses <em>half</em> its points, and anything under 75% gets almost zero.</p>
+                <p style="font-size:0.74rem;color:var(--muted);margin-bottom:12px;">This strict scoring means 'close enough' isn't good enough. 90% is our benchmark.</p>
+                <div class="benchmarks" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+                  <div class="benchmark exc"><div class="bval">90+</div><div class="blabel">Exceeding</div></div>
+                  <div class="benchmark gd"><div class="bval">75&ndash;89</div><div class="blabel">Meeting</div></div>
+                  <div class="benchmark dev"><div class="bval">60&ndash;74</div><div class="blabel">Approaching</div></div>
+                  <div class="benchmark na"><div class="bval">&lt;60</div><div class="blabel">Below Standard</div></div>
+                </div>
+
+                <h3>How We Group Bakeries (Bands)</h3>
+                <div class="benchmarks">
+                  <div class="benchmark exc"><div class="bval">75&ndash;100</div><div class="blabel">Excellent</div></div>
+                  <div class="benchmark gd"><div class="bval">50&ndash;74</div><div class="blabel">Good</div></div>
+                  <div class="benchmark dev"><div class="bval">25&ndash;49</div><div class="blabel">Developing</div></div>
+                  <div class="benchmark na"><div class="bval">0&ndash;24</div><div class="blabel">Needs Attention</div></div>
+                </div>
+
+                <h3 style="margin-top:20px">What's New in v4?</h3>
+                <p><strong>1. Listening to the customer:</strong> We reduced the score for till speed from 20% down to 5%, and instead put that focus strictly on how the customer rated their speed and quality.</p>
+                <p><strong>2. Fairer rankings for everyone:</strong> We added the fairness adjustment for bakeries with very few reviews, so rankings aren't thrown off by just a few responses.</p>
+                <p><strong>3. A true standard to aim for:</strong> We added the <strong>Absolute Score</strong> to make sure we are not just trying to beat each other week-over-week, but genuinely improving our service and meeting our company targets.</p>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="section">
-          <h2>Bakery Tracker</h2>
-          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Type a bakery name above to track its
-            performance over time.</p>
-          <canvas id="bakeryTracker" style="max-height:360px"></canvas>
+
+          <!-- LEAGUE TABLE -->
+          <div class="tab-content" id="tab-table">
+            <div class="section">
+              <h2>League Table</h2>
+              <div style="margin-bottom:10px">
+                <label style="font-size:0.74rem;color:var(--muted);font-weight:600">Sort by: <select id="sortBy" style="margin-left:6px;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:0.82rem;color:var(--text)">
+                    <option value="cr">CEI Rank</option>
+                    <option value="n">NPS</option>
+                    <option value="c">CEI (Relative)</option>
+                    <option value="ac">CEI (Absolute)</option>
+                    <option value="dr">Quality</option>
+                    <option value="ef">Overall Efficiency</option>
+                    <option value="fr">Friendliness</option>
+                    <option value="ts">Barista Speed</option>
+                    <option value="o5">Over 5 Min</option>
+                  </select></label>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Bakery</th>
+                      <th>Region</th>
+                      <th>Ops Manager</th>
+                      <th>CEI</th>
+                      <th>Band</th>
+                      <th>Abs CEI</th>
+                      <th>Abs Band</th>
+                      <th>Conf</th>
+                      <th>NPS</th>
+                      <th>Vol</th>
+                      <th>Quality</th>
+                      <th>Efficiency</th>
+                      <th>Friendliness</th>
+                      <th>Barista Speed</th>
+                      <th>&gt;5m</th>
+                      <th>Overall</th>
+                      <th>&le;2m</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- MAP -->
+          <div class="tab-content" id="tab-map">
+            <div class="section">
+              <h2>Bakery Map</h2>
+              <p class="target-hint"><span style="color:var(--green);font-weight:600">&#9679; Excellent</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Good</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Developing</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Needs Attention</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.</p>
+              <div id="networkMap"></div>
+              <div id="networkMapStatus" class="target-map-status"></div>
+            </div>
+          </div>
+
+          <!-- TARGET BAKERIES -->
+          <div class="tab-content" id="tab-target">
+            <div class="target-subtabs" id="targetTabWorkspace">
+              <div class="target-subtabs__nav" role="tablist" aria-label="Target bakery views">
+                <button class="target-subtab active" type="button" data-target-subtab="summary">Summary</button>
+                <button class="target-subtab" type="button" data-target-subtab="priority">Priority List</button>
+                <button class="target-subtab" type="button" data-target-subtab="table">Performance Trends</button>
+                <button class="target-subtab" type="button" data-target-subtab="graphs">Trend Analysis</button>
+                <button class="target-subtab" type="button" data-target-subtab="map">&#128205; Target Bakery Locations</button>
+                <button class="target-subtab" type="button" data-target-subtab="feedback">&#128172; Customer Feedback</button>
+              </div>
+
+              <div class="target-subtab-panel active" data-target-subtab-panel="summary">
+                <div class="section">
+                  <h2>&#127919; Target Bakery Summary</h2>
+                  <div id="targetSummary" class="target-stat-grid"></div>
+                  <div id="targetInsights"></div>
+                </div>
+              </div>
+
+              <div class="target-subtab-panel" data-target-subtab-panel="priority">
+                <div class="section">
+                  <h2>&#127919; Priority Support List</h2>
+                  <p class="target-hint">Ranked lowest CEI first. <strong>Where to Focus</strong> = the single area dragging each bakery down most. <span style="color:var(--red)">Red</span> scores = bottom quarter of all bakeries.</p>
+                  <div id="targetTable"></div>
+                </div>
+              </div>
+
+              <div class="target-subtab-panel" data-target-subtab-panel="table">
+                <div class="section">
+                  <h2>Performance Trends &mdash; Table</h2>
+                  <p class="target-hint"><span style="color:var(--green);font-weight:600">&uarr; Improving</span> = +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&darr; Declining</span> = &minus;3pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">&harr; Stable</span> = &plusmn;3pts &nbsp;&middot;&nbsp; Direction = month-on-month. 3-Month Trend = last 3 months.</p>
+                  <div id="targetTrendTableEmpty" class="target-tab-empty" style="display:none"></div>
+                  <div id="targetTrendTableContent">
+                    <div id="targetTrendTable"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="target-subtab-panel" data-target-subtab-panel="graphs">
+                <div class="section">
+                  <h2>Performance Trends &mdash; Graphs</h2>
+                  <p class="target-hint"><span style="color:var(--green);font-weight:600">&uarr; Improving</span> = +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&darr; Declining</span> = &minus;3pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">&harr; Stable</span> = &plusmn;3pts</p>
+                  <div id="targetTrendGraphsEmpty" class="target-tab-empty" style="display:none"></div>
+                  <div id="targetTrendGraphsContent">
+                    <div id="trendSummaryCards" class="target-stat-grid"></div>
+                    <div class="section" style="margin-bottom:10px">
+                      <h2 style="font-size:0.88rem">Average CEI &mdash; Target vs All Bakeries</h2>
+                      <canvas id="targetAvgTrend" style="max-height:260px"></canvas>
+                    </div>
+                    <div class="grid-2" style="margin-bottom:10px">
+                      <div class="section" style="margin-bottom:0">
+                        <h2 style="font-size:0.88rem">Improving vs Declining</h2><canvas id="targetMomentumChart" style="max-height:300px"></canvas>
+                      </div>
+                      <div class="section" style="margin-bottom:0">
+                        <h2 style="font-size:0.88rem">Band Movement Over Time</h2><canvas id="targetBandFlow" style="max-height:300px"></canvas>
+                      </div>
+                    </div>
+                    <div class="section" style="margin-bottom:10px">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                        <h2 style="font-size:0.88rem;margin-bottom:0">Individual Bakery Trends</h2>
+                        <label class="spark-scale-toggle" title="Fix all charts to the same 0-100 scale">
+                          <input type="checkbox" id="sparkAbsoluteToggle" onchange="GAILS.toggleSparkScale()">
+                          <span class="spark-toggle-track"><span class="spark-toggle-thumb"></span></span>
+                          <span class="spark-toggle-label">0-100 scale</span>
+                        </label>
+                      </div>
+                      <div id="sparklineGrid" class="spark-grid"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="target-subtab-panel" data-target-subtab-panel="map">
+                <div class="section">
+                  <h2>&#128205; Target Bakeries Map</h2>
+                  <p class="target-hint"><span style="color:var(--red);font-weight:600">&#9679; Needs Attention</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Developing</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL's bakery before plotting.</p>
+                  <div id="targetMap"></div>
+                  <div id="targetMapStatus" class="target-map-status"></div>
+                </div>
+              </div>
+
+              <div class="target-subtab-panel" data-target-subtab-panel="feedback">
+                <div class="section">
+                  <h2>&#128172; Customer Feedback</h2>
+                  <p class="target-hint">Words drawn from customer reviews for <strong>Needs Attention</strong> &amp; <strong>Developing</strong> bakeries only. Date range follows the dashboard period filter.</p>
+                  <div id="wcTargetStatus" class="status" style="margin-bottom:10px"></div>
+                  <div class="wc-canvas-wrap">
+                    <canvas id="wcTargetCanvas"></canvas>
+                    <div id="wcTargetEmpty" style="display:none" class="wc-empty">
+                      <div class="wc-empty__icon">&#128172;</div>
+                      <p>No feedback data found for these bakeries.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CUSTOMER FEEDBACK WORD CLOUD -->
+          <div class="tab-content" id="tab-feedback">
+            <div class="section">
+              <h2>Customer Feedback</h2>
+              <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0">Words drawn from customer reviews. Larger words appear more frequently. Date range follows the dashboard period filter.</p>
+
+              <div id="wcStatus" class="status" style="margin-bottom:10px"></div>
+
+              <div class="wc-canvas-wrap">
+                <canvas id="wcCanvas"></canvas>
+                <div id="wcEmpty" style="display:none" class="wc-empty">
+                  <div class="wc-empty__icon">&#128172;</div>
+                  <p>No feedback data found for this selection.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <footer class="dashboard-footer" aria-label="Dashboard footer">
+            <div class="dashboard-footer__inner">
+              <p class="dashboard-footer__label">Reference pages</p>
+              <div class="dashboard-footer__links">
+                <button type="button" class="dashboard-footer__link" data-footer-tab="speed">Speed vs NPS</button>
+                <button type="button" class="dashboard-footer__link" data-footer-tab="cei">CEI Methodology</button>
+              </div>
+            </div>
+          </footer>
         </div>
       </div>
-
-      <!-- SPEED vs NPS -->
-      <div class="tab-content" id="tab-speed">
-        <div class="section hero-section">
-          <h2 style="font-size:1.1rem;text-align:center;margin-bottom:4px">Does Making Coffee Faster Improve Customer
-            Satisfaction?</h2>
-          <p style="text-align:center;font-size:0.84rem;color:var(--muted);margin-bottom:16px">We compared every
-            bakery&rsquo;s coffee speed against their NPS. The answer is clear.</p>
-          <div class="grid-2">
-            <div style="text-align:center">
-              <div
-                style="display:inline-block;background:#fce4ec;color:var(--red);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:600;margin-bottom:8px">
-                &#10007; No meaningful relationship</div>
-              <canvas id="speedVsNps"></canvas>
-            </div>
-            <div style="text-align:center">
-              <div
-                style="display:inline-block;background:#e8f5e9;color:var(--green);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:600;margin-bottom:8px">
-                &#10003; Strong relationship</div>
-              <canvas id="effVsNps"></canvas>
-            </div>
-          </div>
-        </div>
-        <div class="section hero-section">
-          <h2 style="text-align:center">NPS by Efficiency Quartile vs Overall Efficiency Quartile</h2>
-          <canvas id="quartileCompare" style="max-height:360px"></canvas>
-          <div class="callout-grid">
-            <div class="callout red">
-              <div class="clbl">NPS gap: fastest vs slowest bakeries</div>
-              <div class="cval" id="speedGapVal" style="color:var(--red)">—</div>
-              <div class="clbl">Making coffee faster barely moves the needle</div>
-            </div>
-            <div class="callout green">
-              <div class="clbl">NPS gap: highest vs lowest efficiency-rated</div>
-              <div class="cval" id="effGapVal" style="color:var(--green)">—</div>
-              <div class="clbl">How the experience <em>feels</em> is what matters</div>
-            </div>
-          </div>
-        </div>
-        <div class="section hero-section">
-          <h2 style="text-align:center">Every Speed Metric Tells the Same Story</h2>
-          <canvas id="corrCompare" style="max-height:300px"></canvas>
-        </div>
-      </div>
-
-      <!-- CEI METHODOLOGY -->
-      <div class="tab-content" id="tab-cei">
-        <div class="section">
-          <h2>Coffee Experience Index v4 &mdash; Methodology</h2>
-          <div class="explain">
-            <h3>Overview</h3>
-            <p>The CEI v4.1 is a 0&ndash;100 composite that combines <strong>two complementary scores</strong>: a <em>Relative CEI</em> (percentile-ranked against peers within each month&rsquo;s cohort) and an <em>Absolute CEI</em> (scored against company benchmark targets). The Relative CEI is the primary ranking tool; the Absolute CEI tracks progress against standards regardless of how other bakeries perform.</p>
-
-            <h3>Relative CEI &mdash; Components &amp; Weights</h3>
-            <p><strong>Overall Efficiency (35%)</strong> &mdash; Customer-rated perception of service speed.</p>
-            <p><strong>Drink Quality (35%)</strong> &mdash; Customer-rated drink quality.</p>
-            <p><strong>Friendliness (25%)</strong> &mdash; Customer-rated friendliness.</p>
-            <p><strong>Barista Speed (5%)</strong> &mdash; Tiered speed score using both % within 3 min and % over 5 min. Heavily downweighted because completion times are self-reported via KVLink and routinely gamed (orders marked complete before collection). Retained at minimal weight as a directional signal rather than removed entirely.</p>
-            <div class="formula">Barista Speed = (% within 3 min) &minus; (% between 3&ndash;5 min &times; 0.3) &minus; (% over 5 min &times; 1.0)</div>
-            <div class="formula">Relative CEI = (Efficiency pctile &times; 0.35) + (Quality pctile &times; 0.35) + (Friendliness pctile &times; 0.25) + (Barista Speed pctile &times; 0.05)</div>
-
-            <h3>Confidence Weighting</h3>
-            <p>Low-volume bakeries produce noisier scores. CEI v4.1 applies <strong>regression to the mean</strong> based on response volume:</p>
-            <p><strong>High (15+ responses):</strong> 100% own score. <strong>Medium (8&ndash;14):</strong> 85% own + 15% cohort average. <strong>Low (&lt;8):</strong> 65% own + 35% cohort average.</p>
-            <p style="font-size:0.74rem;color:var(--muted)">This prevents bakeries with 3 responses from leaping to the top (or bottom) on thin data.</p>
-
-            <h3>Absolute CEI &mdash; Benchmark Scoring</h3>
-            <p>Each component is scored against the company target with <strong>escalating penalties</strong> for falling below the 90% benchmark. Meeting or exceeding 90% earns full marks. Dropping below triggers progressively harsher deductions:</p>
-            <div class="formula" style="font-size:0.72rem;line-height:1.8">
-              90%+ &rarr; Score 100 (full marks)<br>
-              85&ndash;89% &rarr; &minus;4 pts per % below 90 (e.g. 85% &rarr; score 80)<br>
-              80&ndash;84% &rarr; &minus;6 pts per % below 85 (e.g. 80% &rarr; score 50)<br>
-              75&ndash;79% &rarr; &minus;6 pts per % below 80 (e.g. 75% &rarr; score 20)<br>
-              &lt;75% &rarr; &minus;4 pts per % below 75 (e.g. 70% &rarr; score 0)
-            </div>
-            <p style="font-size:0.74rem;color:var(--muted)">This means 90% is genuinely non-negotiable &mdash; a bakery at 80% on any metric will lose <strong>half</strong> its absolute score for that component, and one at 75% will be near zero. The penalty tiers ensure there&rsquo;s no &ldquo;close enough&rdquo; to target.</p>
-            <div class="formula">Abs CEI = (Efficiency abs score &times; 0.35) + (Quality abs score &times; 0.35) + (Friendly abs score &times; 0.25) + (Coffee Efficiency abs score &times; 0.05)</div>
-            <div class="benchmarks" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
-              <div class="benchmark exc"><div class="bval">90+</div><div class="blabel">Exceeding</div></div>
-              <div class="benchmark gd"><div class="bval">75&ndash;89</div><div class="blabel">Meeting</div></div>
-              <div class="benchmark dev"><div class="bval">60&ndash;74</div><div class="blabel">Approaching</div></div>
-              <div class="benchmark na"><div class="bval">&lt;60</div><div class="blabel">Below Standard</div></div>
-            </div>
-
-            <h3>Relative CEI Bands (unchanged)</h3>
-            <div class="benchmarks">
-              <div class="benchmark exc"><div class="bval">75&ndash;100</div><div class="blabel">Excellent</div></div>
-              <div class="benchmark gd"><div class="bval">50&ndash;74</div><div class="blabel">Good</div></div>
-              <div class="benchmark dev"><div class="bval">25&ndash;49</div><div class="blabel">Developing</div></div>
-              <div class="benchmark na"><div class="bval">0&ndash;24</div><div class="blabel">Needs Attention</div></div>
-            </div>
-
-            <h3 style="margin-top:14px">What changed from v3?</h3>
-            <p><strong>1. Barista Speed downweighted (20% &rarr; 5%):</strong> KVLink completion times are self-reported and routinely gamed &mdash; baristas mark orders complete before collection to hit the KPI. With no way to regulate this, the data is unreliable. Barista Speed is retained at 5% as a directional signal but no longer drives the score. The freed weight is redistributed to customer-reported NPS survey metrics which cannot be gamed.</p>
-            <p><strong>2. Confidence Weighting:</strong> Low-volume bakeries are now pulled toward the cohort average, preventing noisy data from distorting rankings.</p>
-            <p><strong>3. Absolute CEI:</strong> A new parallel score benchmarked against company targets (90% across all components, including beverage delivery time which is already penalty-adjusted via the tiered speed score), so network-wide improvement is visible even when peer rankings stay flat.</p>
-            <p><strong>4. Rebalanced Weights:</strong> Overall Efficiency and Drink Quality now carry 35% each, Friendliness 25% &mdash; the index is 95% driven by what customers actually report in NPS surveys.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- LEAGUE TABLE -->
-      <div class="tab-content" id="tab-table">
-        <div class="section">
-          <h2>League Table</h2>
-          <div style="margin-bottom:8px">
-            <label style="font-size:0.74rem;color:var(--muted);font-weight:500">Sort: <select id="sortBy">
-                <option value="cr">CEI Rank</option>
-                <option value="n">NPS</option>
-                <option value="c">CEI (Relative)</option>
-                <option value="ac">CEI (Absolute)</option>
-                <option value="dr">Quality</option>
-                <option value="ef">Overall Efficiency</option>
-                <option value="fr">Friendliness</option>
-                <option value="ts">Barista Speed</option>
-                <option value="o5">Over 5 Min</option>
-              </select></label>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Bakery</th>
-                  <th>Region</th>
-                  <th>Ops Manager</th>
-                  <th>CEI</th>
-                  <th>Band</th>
-                  <th>Abs CEI</th>
-                  <th>Abs Band</th>
-                  <th>Conf</th>
-                  <th>NPS</th>
-                  <th>Vol</th>
-                  <th>Quality</th>
-                  <th>Efficiency</th>
-                  <th>Friendliness</th>
-                  <th>Barista Speed</th>
-                  <th>>5m</th>
-                  <th>Overall</th>
-                  <th>&le;2m</th>
-                </tr>
-              </thead>
-              <tbody id="tableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- TARGET BAKERIES -->
-      <div class="tab-content" id="tab-target">
-        <div class="section">
-          <h2>&#127919; Target Bakeries &mdash; Priority Support List</h2>
-          <div class="explain">
-            <h3>How to use this list</h3>
-            <p>Bakeries are ranked from lowest CEI to highest within the <strong>Needs Attention</strong> (CEI &lt; 25)
-              and <strong>Developing</strong> (CEI 25&ndash;49) bands &mdash; the bakeries at the top need the most
-              urgent support.</p>
-            <p>The <strong>Where to Focus</strong> column shows which single area is dragging a bakery&rsquo;s score
-              down the most compared to other bakeries. Start coaching conversations there first before tackling
-              anything else.</p>
-            <p style="font-size:0.74rem">Individual scores shown in <span
-                style="color:var(--red);font-weight:600">red</span> are in the bottom quarter of all bakeries.</p>
-          </div>
-          <div id="targetSummary"
-            style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px">
-          </div>
-          <div id="targetInsights"></div>
-          <div id="targetTable"></div>
-        </div>
-        <div class="section" id="targetTrendSection" style="display:none">
-          <h2>Performance Trends &mdash; Target Bakeries Over Time</h2>
-          <div class="explain">
-            <h3>How to read this section</h3>
-            <p>Each target bakery&rsquo;s CEI and component scores are tracked across every available month. The
-              <strong>Direction</strong> column compares the most recent month to the previous month. <strong>3-Month
-                Trend</strong> shows the overall trajectory over the last 3 months of data.
-            </p>
-            <p style="font-size:0.74rem"><span style="color:var(--green);font-weight:600">&uarr; Improving</span> =
-              score rose by 3+ points. <span style="color:var(--red);font-weight:600">&darr; Declining</span> = score
-              fell by 3+ points. <span style="color:var(--muted);font-weight:600">&harr; Stable</span> = within
-              &plusmn;3 points.</p>
-          </div>
-          <div id="trendSummaryCards"
-            style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px">
-          </div>
-          <div class="section" style="margin-bottom:14px">
-            <h2 style="font-size:0.88rem">Average CEI &mdash; Target Bakeries vs All Bakeries</h2>
-            <canvas id="targetAvgTrend" style="max-height:280px"></canvas>
-          </div>
-          <div class="grid-2" style="margin-bottom:14px">
-            <div class="section" style="margin-bottom:0">
-              <h2 style="font-size:0.88rem">Improving vs Declining (Month-on-Month)</h2><canvas id="targetMomentumChart"
-                style="max-height:340px"></canvas>
-            </div>
-            <div class="section" style="margin-bottom:0">
-              <h2 style="font-size:0.88rem">Band Movement Over Time</h2><canvas id="targetBandFlow"
-                style="max-height:340px"></canvas>
-            </div>
-          </div>
-          <div class="section" style="margin-bottom:14px">
-            <h2 style="font-size:0.88rem">Individual Bakery Trends</h2>
-            <p style="font-size:0.76rem;color:var(--muted);margin-bottom:10px">Each bakery shown separately so you can
-              see individual trajectories clearly. The dashed grey line is the overall bakery average for comparison.
-            </p>
-            <div id="sparklineGrid"
-              style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
-          </div>
-          <div id="targetTrendTable"></div>
-        </div>
-      </div>
-
+      <div id="dashboardSidebarBackdrop" class="dashboard-sidebar-backdrop" hidden></div>
     </div><!-- end dashboardContent -->
 
     <!-- DRILL-DOWN MODAL -->
-    <div id="drillModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.5);backdrop-filter:blur(2px);overflow-y:auto" onclick="if(event.target===this)this.style.display='none'">
-      <div class="drillInner" style="background:#fff;max-width:900px;margin:40px auto;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);overflow:hidden">
-        <div id="drillHeader" style="padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+    <div id="drillModal" class="drill-modal" style="display:none;" onclick="if(event.target===this)GAILS.closeDrillDown()">
+      <div class="drillInner">
+        <div id="drillHeader">
           <div>
-            <h3 id="drillTitle" style="font-size:1rem;font-weight:700;margin:0"></h3>
-            <p id="drillSubtitle" style="font-size:0.76rem;color:var(--muted);margin:2px 0 0"></p>
+            <h3 id="drillTitle"></h3>
+            <p id="drillSubtitle"></p>
           </div>
-          <button onclick="document.getElementById('drillModal').style.display='none'" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:0.8rem;color:var(--muted)">✕ Close</button>
+          <button class="drill-close-btn" onclick="GAILS.closeDrillDown()">&#10005; Close</button>
         </div>
-        <div id="drillBody" style="padding:0 20px 20px;max-height:65vh;overflow-y:auto"></div>
+        <div id="drillBody"></div>
+      </div>
+    </div>
+
+    <div id="unmappedSitesModal" class="modal-overlay map-unmapped-modal" style="display:none;" onclick="if(event.target===this)GAILS.closeUnmappedSitesModal()">
+      <div class="map-unmapped-panel glass-panel">
+        <div class="map-unmapped-panel__head">
+          <div>
+            <p class="map-unmapped-panel__eyebrow">Map Coverage</p>
+            <h3 id="unmappedSitesTitle">Sites Not Mapped</h3>
+            <p id="unmappedSitesSubtitle">These bakeries do not currently have map coordinates.</p>
+          </div>
+          <button type="button" class="map-unmapped-panel__close" onclick="GAILS.closeUnmappedSitesModal()">&#10005;</button>
+        </div>
+        <div class="map-unmapped-panel__body">
+          <div id="unmappedSitesSummary" class="target-stat-grid"></div>
+          <div class="table-wrap table-wrap--panel">
+            <table class="map-unmapped-table">
+              <thead>
+                <tr>
+                  <th>Bakery</th>
+                  <th>Region</th>
+                  <th>Ops Manager</th>
+                </tr>
+              </thead>
+              <tbody id="unmappedSitesTableBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
   </div><!-- end container -->
 
   <!-- Load modules in dependency order -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/state.js"></script>
   <script src="js/config.js"></script>
   <script src="js/utils.js"></script>
@@ -414,6 +712,8 @@
   <script src="js/charts.js"></script>
   <script src="js/targets.js"></script>
   <script src="js/upload.js"></script>
+  <script src="js/custom-selects.js"></script>
+  <script src="js/wordcloud.js"></script>
   <script src="js/app.js"></script>
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/auth.js"></script>

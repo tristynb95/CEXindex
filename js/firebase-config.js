@@ -4,7 +4,7 @@ import { getDatabase } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-analytics.js";
 
 // Your web app's Firebase configuration
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyBlE8ubmctz8k5o8qPB8K56ZxE4y8Hr4Yc",
   authDomain: "cexindex.firebaseapp.com",
   databaseURL: "https://cexindex-default-rtdb.firebaseio.com",

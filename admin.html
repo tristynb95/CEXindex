@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal &#8212; GAIL's Coffee Experience Dashboard</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" href="favicon.ico">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+  <div class="glass-bg">
+    <div class="glass-bg-blob blob1"></div>
+    <div class="glass-bg-blob blob2"></div>
+    <div class="glass-bg-blob blob3"></div>
+    <div class="glass-noise"></div>
+  </div>
+
+  <div id="authGuard" class="admin-page-guard">
+    <div class="admin-page-guard__inner login-card__form-panel">
+      <div class="admin-page-guard__spinner"></div>
+      <p class="login-card__form-eyebrow">Secure Workspace</p>
+      <h1 class="admin-page-guard__title">Verifying admin access</h1>
+      <p>Verifying access&hellip;</p>
+    </div>
+  </div>
+
+  <div id="adminPage" class="admin-page" style="display:none;">
+    <div class="admin-stage">
+      <main class="admin-workspace login-hero login-card__form-panel" aria-label="Admin workspace overview">
+        <div class="admin-workspace__hero">
+          <div class="admin-workspace__head">
+            <div class="login-hero__top admin-workspace__brandbar">
+              <div class="login-card__logo-wrap">
+                <img class="login-card__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+              </div>
+              <div class="login-hero__pill">Admin workspace</div>
+            </div>
+            <div class="admin-workspace__actions">
+              <a href="index.html" class="admin-secondary-btn">&#8592; Dashboard</a>
+              <button type="button" id="adminPageSignOut" class="admin-secondary-btn">Sign Out</button>
+            </div>
+          </div>
+
+
+        </div>
+
+        <div class="admin-portal__hero-card">
+          <div class="admin-portal__hero-label">Live Summary</div>
+          <div id="adminHeroSummary" class="admin-portal__hero-value">Loading&hellip;</div>
+          <div id="adminHeroMeta" class="admin-portal__hero-meta">Checking Firebase workspace status</div>
+        </div>
+
+        <div class="admin-portal__summary" id="adminSummaryCards"></div>
+
+        <div class="login-card__highlights admin-stage__highlights">
+          <div class="login-card__highlight">
+            <span class="login-card__highlight-label">Focus</span>
+            <strong>Choose a panel, make updates, and publish changes back to the shared portal.</strong>
+          </div>
+          <div class="login-card__highlight">
+            <span class="login-card__highlight-label">Guardrails</span>
+            <strong>Role changes, site mappings, and dataset actions stay grouped inside one secure admin flow.</strong>
+          </div>
+        </div>
+
+        <div id="adminWorkspaceShell" class="admin-workspace__shell" data-sidebar-collapsed="false">
+            <aside class="admin-workspace__sidebar" aria-label="Admin panel menu">
+              <div class="admin-workspace__sidebar-head">
+                <div class="admin-workspace__sidebar-top">
+                  <div>
+                    <p class="admin-workspace__sidebar-label">Menu</p>
+                    <h3 class="admin-workspace__sidebar-title">Admin panels</h3>
+                    <p class="admin-workspace__sidebar-copy">Collapse the side menu when you want more room for tables, forms, and dataset controls.</p>
+                  </div>
+                  <button
+                    type="button"
+                    id="adminSidebarToggle"
+                    class="admin-workspace__toggle"
+                    aria-controls="adminPortalNav"
+                    aria-expanded="true"
+                    aria-label="Collapse menu"
+                  >
+                    <span class="admin-workspace__toggle-icon" aria-hidden="true"></span>
+                    <span class="admin-workspace__toggle-label" data-admin-sidebar-toggle-label>Collapse</span>
+                  </button>
+                </div>
+              </div>
+
+              <nav class="admin-pg-nav admin-workspace__nav" id="adminPortalNav">
+                <button type="button" class="admin-pg-nav__btn active" data-admin-panel="overview" aria-label="Overview">
+                  <span class="admin-pg-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M6 18V11"></path>
+                      <path d="M12 18V6"></path>
+                      <path d="M18 18V9"></path>
+                    </svg>
+                  </span>
+                  <span class="admin-pg-nav__content">
+                    <span class="admin-pg-nav__eyebrow">Monitor</span>
+                    <strong>Overview</strong>
+                    <span class="admin-pg-nav__meta">Workspace health, activity, and fast actions.</span>
+                  </span>
+                </button>
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="users" aria-label="Users">
+                  <span class="admin-pg-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <circle cx="9" cy="9" r="2.5"></circle>
+                      <path d="M4.5 17c.5-2.3 2.3-3.8 4.5-3.8s4 1.5 4.5 3.8"></path>
+                      <circle cx="16.5" cy="10" r="2"></circle>
+                      <path d="M14.5 17c.4-1.7 1.8-2.8 3.8-2.8"></path>
+                    </svg>
+                  </span>
+                  <span class="admin-pg-nav__content">
+                    <span class="admin-pg-nav__eyebrow">Access</span>
+                    <strong>Users</strong>
+                    <span class="admin-pg-nav__meta">Create accounts, change roles, or remove access.</span>
+                  </span>
+                </button>
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="sites" aria-label="Site data">
+                  <span class="admin-pg-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M12 20s-4.5-4-4.5-8.3a4.5 4.5 0 1 1 9 0C16.5 16 12 20 12 20Z"></path>
+                      <circle cx="12" cy="11.5" r="1.7"></circle>
+                    </svg>
+                  </span>
+                  <span class="admin-pg-nav__content">
+                    <span class="admin-pg-nav__eyebrow">Directory</span>
+                    <strong>Site Data</strong>
+                    <span class="admin-pg-nav__meta">Maintain bakery regions and ops manager ownership.</span>
+                  </span>
+                </button>
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="data" aria-label="Dataset">
+                  <span class="admin-pg-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <ellipse cx="12" cy="6" rx="5.5" ry="2.5"></ellipse>
+                      <path d="M6.5 6v8c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V6"></path>
+                      <path d="M6.5 10c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5"></path>
+                    </svg>
+                  </span>
+                  <span class="admin-pg-nav__content">
+                    <span class="admin-pg-nav__eyebrow">Sync</span>
+                    <strong>Dataset</strong>
+                    <span class="admin-pg-nav__meta">Inspect or reset the shared workbook and metadata.</span>
+                  </span>
+                </button>
+              </nav>
+
+              <div class="admin-workspace__sidebar-note">
+                <p class="admin-workspace__sidebar-note-label">Quick view</p>
+                <strong>Everything from the old split layout now lives inside this single admin workspace.</strong>
+              </div>
+            </aside>
+
+            <div class="admin-workspace__main">
+              <div class="admin-workspace__banner">
+                <div>
+                  <p class="admin-workspace__banner-label">Control Centre</p>
+                  <h3>Use the collapsible side menu to move between admin tasks.</h3>
+                  <p>Jump between access, site ownership, and dataset panels without leaving the workspace card.</p>
+                </div>
+              </div>
+
+              <div class="admin-workspace__panels">
+                <section class="admin-portal__panel active" data-admin-panel-content="overview">
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
+                    <h3>Workspace Overview</h3>
+                    <p>Quick health check of the shared dashboard setup.</p>
+                  </div>
+                </div>
+                <div class="admin-overview-grid" id="adminOverviewGrid"></div>
+              </div>
+
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
+                    <h3>Fast Actions</h3>
+                    <p>Common admin tasks for keeping the dashboard current.</p>
+                  </div>
+                </div>
+                <div class="admin-action-grid">
+                  <button type="button" class="admin-action-card" data-admin-panel-target="users">
+                    <span class="admin-action-card__label">Access Control</span>
+                    <strong>Manage who can view or administer the dashboard</strong>
+                    <span>Invite users, change roles, or revoke access.</span>
+                  </button>
+                  <button type="button" class="admin-action-card" data-admin-panel-target="sites">
+                    <span class="admin-action-card__label">Site Ownership</span>
+                    <strong>Update bakery region and ops manager assignments</strong>
+                    <span>Keep filters and operational reporting accurate.</span>
+                  </button>
+                  <button type="button" class="admin-action-card" data-admin-panel-target="data">
+                    <span class="admin-action-card__label">Shared Dataset</span>
+                    <strong>Refresh, inspect, or clear the synced workbook</strong>
+                    <span>Control the live data every user sees.</span>
+                  </button>
+                </div>
+              </div>
+                </section>
+
+                <section class="admin-portal__panel" data-admin-panel-content="users">
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
+                    <h3>Create User</h3>
+                    <p>Create a dashboard login and assign the right access level.</p>
+                  </div>
+                </div>
+                <form id="createUserForm" class="admin-form admin-form--inline">
+                  <label class="admin-form-field" for="newEmailInput">
+                    <span>Work email</span>
+                    <input type="email" id="newEmailInput" placeholder="Email address" required>
+                  </label>
+                  <label class="admin-form-field" for="newPassInput">
+                    <span>Temporary password</span>
+                    <input type="text" id="newPassInput" placeholder="Temporary password" required>
+                  </label>
+                  <label class="admin-form-field" for="newRoleSelect">
+                    <span>Access level</span>
+                    <select id="newRoleSelect">
+                      <option value="viewer">Viewer</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </label>
+                  <button type="submit" class="btn">Create User</button>
+                </form>
+                <div id="createMsg" class="admin-message" style="display:none;"></div>
+              </div>
+
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
+                    <h3>Active Users</h3>
+                    <p>Update roles in place or remove access for users who no longer need the dashboard.</p>
+                  </div>
+                </div>
+                <div class="admin-table-wrap">
+                  <table class="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminUserList"></tbody>
+                  </table>
+                </div>
+              </div>
+                </section>
+
+                <section class="admin-portal__panel" data-admin-panel-content="sites">
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
+                    <h3>Bakery and Ops Mapping</h3>
+                    <p>Edit the site directory that powers the Region and Ops Manager filters across the dashboard.</p>
+                  </div>
+                  <div class="admin-section__actions">
+                    <button type="button" id="resetSitesBtn" class="admin-secondary-btn">Reset Unsaved Changes</button>
+                    <button type="button" id="saveSitesBtn" class="btn">Save Site Data</button>
+                  </div>
+                </div>
+
+                <div class="admin-site-import">
+                  <div id="siteImportZone" class="upload-zone upload-zone--compact admin-site-import__zone" tabindex="0" role="button" aria-describedby="siteImportHelp">
+                    <div id="siteImportEmptyState" class="admin-import-card__content">
+                      <div class="icon">&#128228;</div>
+                      <h3>Upload New Site Directory Data</h3>
+                      <p>Drag in the latest site directory workbook to replace the current draft mapping in one step.</p>
+                      <p id="siteImportHelp" class="admin-site-import__hint">Expected columns: <strong>Region/Ops Area/Bakery</strong>, <strong>OpsGroup</strong>, and <strong>LocationName</strong>. Summary rows such as <strong>Total</strong> are ignored.</p>
+                    </div>
+                    <div id="siteImportLoadedState" class="admin-import-card__content admin-import-card__content--loaded" hidden>
+                      <div class="admin-import-card__eyebrow">Current draft workbook</div>
+                      <h3 id="siteImportLoadedTitle">Site directory dataset ready</h3>
+                      <div id="siteImportLoadedStats" class="admin-import-card__stats"></div>
+                      <p id="siteImportLoadedHint" class="admin-site-import__hint admin-import-card__hint"></p>
+                    </div>
+                    <div class="admin-import-card__actions">
+                      <button type="button" id="siteImportBrowseBtn" class="btn">Choose Excel File</button>
+                    </div>
+                    <input type="file" id="siteImportInput" accept=".xlsx,.xls" hidden>
+                  </div>
+                </div>
+
+                <div id="siteMsg" class="admin-message" style="display:none;"></div>
+
+                <div class="admin-toolbar">
+                  <label class="admin-form-field admin-form-field--search" for="siteSearchInput">
+                    <span>Search directory</span>
+                    <input type="text" id="siteSearchInput" placeholder="Search bakery, region, or ops manager">
+                  </label>
+                  <div class="admin-toolbar__meta" id="siteTableMeta">Loading site directory&hellip;</div>
+                </div>
+
+                <form id="siteForm" class="admin-form">
+                  <label class="admin-form-field" for="siteNameInput">
+                    <span>Bakery name</span>
+                    <input type="text" id="siteNameInput" placeholder="New bakery name" required>
+                  </label>
+                  <label class="admin-form-field" for="siteRegionInput">
+                    <span>Region</span>
+                    <input type="text" id="siteRegionInput" placeholder="Region" list="adminRegionList" required>
+                  </label>
+                  <label class="admin-form-field" for="siteOpsInput">
+                    <span>Ops manager</span>
+                    <input type="text" id="siteOpsInput" placeholder="Ops manager" list="adminManagerList" required>
+                  </label>
+                  <button type="submit" class="admin-secondary-btn">Add Site</button>
+                </form>
+
+                <datalist id="adminRegionList"></datalist>
+                <datalist id="adminManagerList"></datalist>
+
+                <div class="admin-table-wrap admin-table-wrap--tall">
+                  <table class="admin-table admin-table--sites">
+                    <thead>
+                      <tr>
+                        <th>Bakery</th>
+                        <th>Region</th>
+                        <th>Ops Manager</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="siteMetaList"></tbody>
+                  </table>
+                </div>
+              </div>
+                </section>
+
+                <section class="admin-portal__panel" data-admin-panel-content="data">
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
+                    <h3>Shared Dataset Controls</h3>
+                    <p>See what is currently synced to Firebase and control how the shared workbook is refreshed.</p>
+                  </div>
+                </div>
+                <div class="admin-dataset-upload">
+                  <div id="datasetImportZone" class="upload-zone upload-zone--compact admin-dataset-upload__zone" tabindex="0" role="button" aria-describedby="datasetImportHelp">
+                    <div id="datasetImportEmptyState" class="admin-import-card__content">
+                      <div class="icon">&#128202;</div>
+                      <h3>Upload New Customer Experience Data</h3>
+                      <p>Drag in the latest customer experience workbook to replace the shared dataset for everyone.</p>
+                      <p id="datasetImportHelp" class="admin-dataset-upload__hint">Use the same workbook structure as <strong>NPS + Coffee Data.xlsx</strong>. Each month should be on its own sheet, for example <strong>March 2025</strong>, with the standard bakery, NPS, volume, speed, and experience columns.</p>
+                    </div>
+                    <div id="datasetImportLoadedState" class="admin-import-card__content admin-import-card__content--loaded" hidden>
+                      <div class="admin-import-card__eyebrow">Current shared workbook</div>
+                      <h3 id="datasetImportLoadedTitle">Customer experience dataset ready</h3>
+                      <div id="datasetImportLoadedStats" class="admin-import-card__stats"></div>
+                      <p id="datasetImportLoadedHint" class="admin-dataset-upload__hint admin-import-card__hint"></p>
+                    </div>
+                    <div class="admin-import-card__actions">
+                      <button type="button" id="datasetImportBrowseBtn" class="btn">Choose Excel File</button>
+                    </div>
+                    <input type="file" id="datasetImportInput" accept=".xlsx,.xls" hidden>
+                  </div>
+                </div>
+                <div class="admin-data-grid" id="adminDataGrid"></div>
+                <div class="admin-action-row">
+                  <button type="button" id="portalUploadBtn" class="admin-secondary-btn">&#8592; Go to Dashboard</button>
+                  <button type="button" id="clearDatasetBtn" class="admin-danger-btn">Clear Shared Dataset</button>
+                  <button type="button" id="restoreMetadataBtn" class="admin-secondary-btn">Restore Default Site Map</button>
+                </div>
+                <div id="dataMsg" class="admin-message" style="display:none;"></div>
+              </div>
+                </section>
+              </div>
+            </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/cei.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/tables.js"></script>
+  <script type="module" src="js/admin-page.js"></script>
+</body>
+
+</html>

@@ -23,6 +23,7 @@ window.GAILS.monthSortKey = function(label) {
 // ========== PERCENTILE RANK ==========
 window.GAILS.percentileRank = function(values, value, invert) {
   var sorted = [...values].sort((a, b) => invert ? b - a : a - b);
+  if (sorted.length <= 1) return 50;
   var first = sorted.indexOf(value);
   var last = sorted.lastIndexOf(value);
   var avgRank = (first + last) / 2;

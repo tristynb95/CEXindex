@@ -77,6 +77,8 @@ window.GAILS.buildPeriodButtons = function(periods, refresh) {
       state.selectedMonths = state.PERIODS[btn.key];
       document.getElementById('monthSelect').value = '';
       document.getElementById('rollingWindow').value = '0';
+      G.syncCustomSelect('monthSelect');
+      G.syncCustomSelect('rollingWindow');
       refresh();
     });
     container.appendChild(div);

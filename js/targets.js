@@ -1,6 +1,468 @@
 // ========== TARGETS MODULE ==========
 window.GAILS = window.GAILS || {};
 
+var _sparkState = null; // cached data for toggle re-render
+
+function _drawSparklines(absolute) {
+  if (!_sparkState) return;
+  var G = GAILS;
+  var sparkSorted = _sparkState.sparkSorted;
+  var allAvgByMonth = _sparkState.allAvgByMonth;
+  var FM = _sparkState.FM;
+
+  sparkSorted.forEach(function(t) {
+    var canvasId = 'spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_');
+    var lineColor = t.direction === 'up' ? '#00C875' : t.direction === 'down' ? '#FF3B5C' : '#FFB800';
+    var yOpts = absolute
+      ? { display: true, min: 0, max: 100, ticks: { stepSize: 50, font: { size: 7 }, color: 'rgba(150,150,200,0.45)', maxTicksLimit: 3 }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
+      : { display: false };
+    G.makeChart(canvasId, {
+      type: 'line',
+      data: { labels: FM, datasets: [
+        { data: t.hist.map(function(r) { return r ? r.c : null; }), borderColor: lineColor, backgroundColor: lineColor + '18', fill: true, tension: 0.3, pointRadius: 1.5, borderWidth: 2, spanGaps: true },
+        { data: allAvgByMonth, borderColor: 'rgba(150,150,200,0.4)', borderWidth: 1, borderDash: [4, 3], pointRadius: 0, fill: false, tension: 0.3 }
+      ] },
+      options: {
+        plugins: { legend: { display: false }, tooltip: { callbacks: { title: function(items) { return items[0].label; }, label: function(ctx) { return ctx.datasetIndex === 0 ? 'CEI: ' + ctx.raw : 'Avg: ' + (ctx.raw ? ctx.raw.toFixed(1) : ''); } } } },
+        scales: { y: yOpts, x: { display: false } },
+        maintainAspectRatio: false
+      }
+    });
+  });
+}
+
+window.GAILS.toggleSparkScale = function() {
+  var absolute = !!(document.getElementById('sparkAbsoluteToggle') || {}).checked;
+  _drawSparklines(absolute);
+};
+
+function _clearTargetTrendCharts() {
+  var G = GAILS;
+  ['targetAvgTrend', 'targetBandFlow', 'targetMomentumChart'].forEach(function(id) { G.destroyChart(id); });
+  if (_sparkState && _sparkState.sparkSorted) {
+    _sparkState.sparkSorted.forEach(function(t) {
+      G.destroyChart('spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_'));
+    });
+  }
+  _sparkState = null;
+}
+
+function _setTargetTrendState(hasData, message) {
+  var graphsEmpty = document.getElementById('targetTrendGraphsEmpty');
+  var tableEmpty = document.getElementById('targetTrendTableEmpty');
+  var graphsContent = document.getElementById('targetTrendGraphsContent');
+  var tableContent = document.getElementById('targetTrendTableContent');
+
+  if (graphsEmpty) {
+    graphsEmpty.textContent = hasData ? '' : message;
+    graphsEmpty.style.display = hasData ? 'none' : '';
+  }
+  if (tableEmpty) {
+    tableEmpty.textContent = hasData ? '' : message;
+    tableEmpty.style.display = hasData ? 'none' : '';
+  }
+  if (graphsContent) graphsContent.style.display = hasData ? '' : 'none';
+  if (tableContent) tableContent.style.display = hasData ? '' : 'none';
+}
+
+// ========== MAP MODULE ==========
+(function() {
+  var _mapInstance = null;
+  var _mapMarkerLayer = null;
+  var _mapTargets = [];
+  window.GAILS.storeMapTargets = function(targets) {
+    _mapTargets = [].concat(targets);
+    // Re-render immediately if the map panel is already open
+    var panel = document.querySelector('[data-target-subtab-panel="map"]');
+    if (panel && panel.classList.contains('active') && _mapInstance) {
+      _placeMarkers(document.getElementById('targetMapStatus'));
+    }
+  };
+
+  window.GAILS.initTargetMap = function() {
+    var el = document.getElementById('targetMap');
+    if (!el || typeof L === 'undefined') return;
+    var statusEl = document.getElementById('targetMapStatus');
+
+    if (_mapInstance) {
+      _mapInstance.invalidateSize();
+      _placeMarkers(statusEl);
+      return;
+    }
+
+    _mapInstance = L.map('targetMap', { zoomControl: true }).setView([52.5, -1.8], 6);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    }).addTo(_mapInstance);
+
+    var legend = L.control({ position: 'bottomright' });
+    legend.onAdd = function() {
+      var div = L.DomUtil.create('div', 'map-legend');
+      div.innerHTML =
+        '<div><span class="map-legend__dot" style="background:#FF3B5C"></span>Needs Attention</div>' +
+        '<div><span class="map-legend__dot" style="background:#FFB800"></span>Developing</div>';
+      return div;
+    };
+    legend.addTo(_mapInstance);
+
+    _mapMarkerLayer = L.layerGroup().addTo(_mapInstance);
+    _placeMarkers(statusEl);
+  };
+
+  function _placeMarkers(statusEl) {
+    if (!_mapInstance || !_mapMarkerLayer) return;
+    _mapMarkerLayer.clearLayers();
+
+    if (_mapTargets.length === 0) {
+      if (statusEl) statusEl.textContent = 'No target bakeries for the current selection.';
+      return;
+    }
+
+    var bounds = [];
+    var placed = 0;
+    var missing = [];
+
+    _mapTargets.forEach(function(b) {
+      var meta = GAILS.getBakeryMeta ? GAILS.getBakeryMeta(b.b) : GAILS.BAKERY_META[b.b];
+      var ll = meta && meta.ll;
+      if (!ll) { missing.push(b.b); return; }
+
+      var color = b.cb === 'Needs Attention' ? '#FF3B5C' : '#FFB800';
+      var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(b.b) : b.b;
+      var marker = L.circleMarker(ll, {
+        radius: 9,
+        fillColor: color,
+        color: '#fff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.88
+      });
+      marker.bindPopup(
+        '<div class="map-popup">' +
+          '<div class="map-popup__name">' + siteLabel + '</div>' +
+          '<span class="map-popup__band" style="background:' + color + '">' + b.cb + '</span>' +
+          '<div class="map-popup__stats">CEI <strong>' + b.c + '</strong> &nbsp;·&nbsp; NPS ' + b.n + ' &nbsp;·&nbsp; Vol ' + b.v + '</div>' +
+          '<div class="map-popup__mgr">' + GAILS.getBakeryOps(b.b) + '</div>' +
+        '</div>'
+      );
+      _mapMarkerLayer.addLayer(marker);
+      bounds.push(ll);
+      placed++;
+    });
+
+    if (bounds.length > 1) {
+      _mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+    } else if (bounds.length === 1) {
+      _mapInstance.setView(bounds[0], 14);
+    }
+
+    var msg = placed + ' baker' + (placed === 1 ? 'y' : 'ies') + ' mapped.';
+    if (missing.length) msg += ' ' + missing.length + ' without coordinates.';
+    if (statusEl) statusEl.textContent = msg;
+  }
+})();
+
+// Shared map controller for the dashboard-wide map tab and the target map sub-tab.
+(function() {
+  var DEFAULT_CENTER = [52.5, -1.8];
+  var DEFAULT_ZOOM = 6;
+  var lockedScrollY = 0;
+  var MAPS = {
+    network: {
+      key: 'network',
+      elId: 'networkMap',
+      statusId: 'networkMapStatus',
+      activeSelector: '#tab-map',
+      modalTitle: 'Filtered Bakeries Not Mapped',
+      emptyMessage: 'No bakeries match the current filters.',
+      legendItems: [
+        { label: 'Excellent', color: '#00C875' },
+        { label: 'Good', color: '#4895FF' },
+        { label: 'Developing', color: '#FFB800' },
+        { label: 'Needs Attention', color: '#FF3B5C' }
+      ],
+      items: [],
+      missingItems: [],
+      instance: null,
+      markerLayer: null,
+      legendControl: null
+    },
+    target: {
+      key: 'target',
+      elId: 'targetMap',
+      statusId: 'targetMapStatus',
+      activeSelector: '[data-target-subtab-panel="map"]',
+      modalTitle: 'Target Bakeries Not Mapped',
+      emptyMessage: 'No target bakeries for the current selection.',
+      legendItems: [
+        { label: 'Needs Attention', color: '#FF3B5C' },
+        { label: 'Developing', color: '#FFB800' }
+      ],
+      items: [],
+      missingItems: [],
+      instance: null,
+      markerLayer: null,
+      legendControl: null
+    }
+  };
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function isMapActive(selector) {
+    var panel = document.querySelector(selector);
+    return !!(panel && panel.classList.contains('active'));
+  }
+
+  function renderLegend(cfg) {
+    if (!cfg.instance) return;
+    if (cfg.legendControl) cfg.instance.removeControl(cfg.legendControl);
+
+    cfg.legendControl = L.control({ position: 'bottomright' });
+    cfg.legendControl.onAdd = function() {
+      var div = L.DomUtil.create('div', 'map-legend');
+      div.innerHTML = cfg.legendItems.map(function(item) {
+        return '<div><span class="map-legend__dot" style="background:' + item.color + '"></span>' + escapeHtml(item.label) + '</div>';
+      }).join('');
+      return div;
+    };
+    cfg.legendControl.addTo(cfg.instance);
+  }
+
+  function ensureMap(mapKey) {
+    var cfg = MAPS[mapKey];
+    var el = document.getElementById(cfg.elId);
+    if (!el || typeof L === 'undefined') return;
+
+    if (cfg.instance) {
+      cfg.instance.invalidateSize();
+      renderLegend(cfg);
+      placeMarkers(cfg);
+      return;
+    }
+
+    cfg.instance = L.map(cfg.elId, { zoomControl: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    }).addTo(cfg.instance);
+
+    cfg.markerLayer = L.layerGroup().addTo(cfg.instance);
+    renderLegend(cfg);
+    placeMarkers(cfg);
+  }
+
+  function getBandPriority(item) {
+    if (!item || !item.cb) return 0;
+    return {
+      Excellent: 0,
+      Good: 1,
+      Developing: 2,
+      'Needs Attention': 3
+    }[item.cb] || 0;
+  }
+
+  function getMarkerColor(item) {
+    return (item && item.cb && GAILS.COL && GAILS.COL[item.cb]) || '#FF3B5C';
+  }
+
+  function getPopupHtml(item, color) {
+    var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b;
+    var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
+    var region = GAILS.getBakeryRegion ? GAILS.getBakeryRegion(item.b) : 'Unknown';
+    var cei = item.c != null ? item.c : '\u2014';
+    var nps = item.n != null ? item.n : '\u2014';
+    var volume = item.v != null ? item.v : '\u2014';
+
+    return '<div class="map-popup">' +
+      '<div class="map-popup__name">' + escapeHtml(siteLabel) + '</div>' +
+      '<span class="map-popup__band" style="background:' + color + '">' + escapeHtml(item.cb || 'Unknown') + '</span>' +
+      '<div class="map-popup__stats">CEI <strong>' + escapeHtml(cei) + '</strong> &nbsp;&middot;&nbsp; NPS ' + escapeHtml(nps) + ' &nbsp;&middot;&nbsp; Vol ' + escapeHtml(volume) + '</div>' +
+      '<div class="map-popup__mgr">' + escapeHtml(ops) + '</div>' +
+      '<div class="map-popup__meta">' + escapeHtml(region) + '</div>' +
+    '</div>';
+  }
+
+  function placeMarkers(cfg) {
+    var statusEl = document.getElementById(cfg.statusId);
+    if (!cfg.instance || !cfg.markerLayer) return;
+    cfg.markerLayer.clearLayers();
+
+    if (!cfg.items.length) {
+      cfg.missingItems = [];
+      cfg.instance.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+      if (statusEl) statusEl.textContent = cfg.emptyMessage;
+      return;
+    }
+
+    var bounds = [];
+    var placed = 0;
+    var missing = [];
+    var items = [].concat(cfg.items).sort(function(a, b) {
+      var bandDelta = getBandPriority(a) - getBandPriority(b);
+      if (bandDelta !== 0) return bandDelta;
+      return (a.c || 0) - (b.c || 0);
+    });
+
+    items.forEach(function(item) {
+      var meta = GAILS.getBakeryMeta ? GAILS.getBakeryMeta(item.b) : GAILS.BAKERY_META[item.b];
+      var ll = meta && meta.ll;
+      if (!ll) {
+        missing.push(item.b);
+        return;
+      }
+
+      var color = getMarkerColor(item);
+      var marker = L.circleMarker(ll, {
+        radius: 9,
+        fillColor: color,
+        color: '#fff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.88
+      });
+      marker.bindPopup(getPopupHtml(item, color));
+      cfg.markerLayer.addLayer(marker);
+      bounds.push(ll);
+      placed++;
+    });
+
+    if (bounds.length > 1) {
+      cfg.instance.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+    } else if (bounds.length === 1) {
+      cfg.instance.setView(bounds[0], 14);
+    } else {
+      cfg.instance.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    }
+
+    cfg.missingItems = missing.slice().sort(function(a, b) {
+      return a.localeCompare(b);
+    }).map(function(name) {
+      return {
+        bakery: GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(name) : name,
+        region: GAILS.getBakeryRegion ? GAILS.getBakeryRegion(name) : 'Unknown',
+        ops: GAILS.getBakeryOps ? GAILS.getBakeryOps(name) : 'Unknown'
+      };
+    });
+
+    var total = cfg.items.length;
+    var msg = placed + ' of ' + total + ' baker' + (total === 1 ? 'y' : 'ies') + ' mapped.';
+    if (statusEl) {
+      if (missing.length) {
+        statusEl.innerHTML = msg + ' <button type="button" class="target-map-status__link" data-unmapped-trigger="' + cfg.key + '">' + missing.length + ' site' + (missing.length === 1 ? '' : 's') + ' not mapped</button>.';
+      } else {
+        statusEl.textContent = msg;
+      }
+    }
+  }
+
+  function storeMapItems(mapKey, items) {
+    var cfg = MAPS[mapKey];
+    cfg.items = [].concat(items);
+    if (cfg.instance && isMapActive(cfg.activeSelector)) {
+      placeMarkers(cfg);
+    }
+  }
+
+  window.GAILS.storeDashboardMapData = function(items) {
+    storeMapItems('network', items);
+  };
+
+  window.GAILS.initDashboardMap = function() {
+    ensureMap('network');
+  };
+
+  window.GAILS.storeMapTargets = function(targets) {
+    storeMapItems('target', targets);
+  };
+
+  window.GAILS.initTargetMap = function() {
+    ensureMap('target');
+  };
+
+  function lockBackgroundScroll() {
+    lockedScrollY = window.scrollY || window.pageYOffset || 0;
+    document.documentElement.classList.add('drill-modal-open');
+    document.body.classList.add('drill-modal-open');
+    document.body.style.position = 'fixed';
+    document.body.style.top = '-' + lockedScrollY + 'px';
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+  }
+
+  function unlockBackgroundScroll() {
+    document.documentElement.classList.remove('drill-modal-open');
+    document.body.classList.remove('drill-modal-open');
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    window.scrollTo(0, lockedScrollY);
+  }
+
+  window.GAILS.openUnmappedSitesModal = function(mapKey) {
+    var cfg = MAPS[mapKey];
+    var modal = document.getElementById('unmappedSitesModal');
+    var titleEl = document.getElementById('unmappedSitesTitle');
+    var subtitleEl = document.getElementById('unmappedSitesSubtitle');
+    var summaryEl = document.getElementById('unmappedSitesSummary');
+    var tableBody = document.getElementById('unmappedSitesTableBody');
+    if (!cfg || !modal || !titleEl || !subtitleEl || !summaryEl || !tableBody) return;
+
+    var items = cfg.missingItems || [];
+    titleEl.textContent = cfg.modalTitle;
+    subtitleEl.textContent = items.length
+      ? 'These bakeries are included in the current map view but do not yet have saved coordinates.'
+      : 'All visible bakeries currently have saved map coordinates.';
+
+    summaryEl.innerHTML = [
+      { v: items.length, l: 'Unmapped Sites', col: 'var(--red)' },
+      { v: cfg.items.length, l: 'Visible Sites', col: 'var(--accent)' }
+    ].map(function(k) {
+      return '<div class="target-stat-card"><div class="target-stat-card__value" style="color:' + k.col + '">' + escapeHtml(k.v) + '</div><div class="target-stat-card__label">' + escapeHtml(k.l) + '</div></div>';
+    }).join('');
+
+    tableBody.innerHTML = items.length
+      ? items.map(function(item) {
+          return '<tr>' +
+            '<td>' + escapeHtml(item.bakery) + '</td>' +
+            '<td>' + escapeHtml(item.region) + '</td>' +
+            '<td>' + escapeHtml(item.ops) + '</td>' +
+          '</tr>';
+        }).join('')
+      : '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:26px 12px">No unmapped bakeries for this view.</td></tr>';
+
+    modal.style.display = 'flex';
+    lockBackgroundScroll();
+  };
+
+  window.GAILS.closeUnmappedSitesModal = function() {
+    var modal = document.getElementById('unmappedSitesModal');
+    if (!modal || modal.style.display === 'none') return;
+    modal.style.display = 'none';
+    unlockBackgroundScroll();
+  };
+
+  document.addEventListener('click', function(event) {
+    var trigger = event.target && event.target.closest ? event.target.closest('[data-unmapped-trigger]') : null;
+    if (!trigger) return;
+    window.GAILS.openUnmappedSitesModal(trigger.getAttribute('data-unmapped-trigger'));
+  });
+
+  document.addEventListener('keydown', function(event) {
+    if (event.key !== 'Escape') return;
+    window.GAILS.closeUnmappedSitesModal();
+  });
+})();
+
 window.GAILS.renderTargets = function(data) {
   var G = GAILS;
   var avg = G.avg;
@@ -8,13 +470,14 @@ window.GAILS.renderTargets = function(data) {
   var targets = [].concat(data).filter(function(b) { return b.cb === 'Needs Attention' || b.cb === 'Developing'; }).sort(function(a, b) { return a.c - b.c; });
   var needsAttn = targets.filter(function(b) { return b.cb === 'Needs Attention'; });
   var developing = targets.filter(function(b) { return b.cb === 'Developing'; });
+  G.storeMapTargets(targets);
 
   document.getElementById('targetSummary').innerHTML = [
-    { v: needsAttn.length, l: 'Needs Attention', col: 'var(--red)', bg: '#fce4ec' },
-    { v: developing.length, l: 'Developing', col: 'var(--amber)', bg: '#fff8e1' },
-    { v: targets.length, l: 'Total Targeted', col: 'var(--accent)', bg: '#fdf8f3' },
-    { v: targets.length ? avg(targets, 'c').toFixed(1) : '—', l: 'Avg CEI (Targeted)', col: 'var(--accent)', bg: '#f5f0eb' },
-  ].map(function(k) { return '<div style="background:' + k.bg + ';border-radius:8px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:1.5rem;font-weight:700;color:' + k.col + '">' + k.v + '</div><div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px">' + k.l + '</div></div>'; }).join('');
+    { v: needsAttn.length, l: 'Needs Attention', col: 'var(--red)' },
+    { v: developing.length, l: 'Developing', col: 'var(--amber)' },
+    { v: targets.length, l: 'Total Targeted', col: 'var(--accent)' },
+    { v: targets.length ? avg(targets, 'c').toFixed(1) : '\u2014', l: 'Avg CEI (Targeted)', col: 'var(--accent)' },
+  ].map(function(k) { return '<div class="target-stat-card"><div class="target-stat-card__value" style="color:' + k.col + '">' + k.v + '</div><div class="target-stat-card__label">' + k.l + '</div></div>'; }).join('');
 
   _renderInsights(targets);
   _renderTargetTable(targets);
@@ -35,56 +498,50 @@ function _renderInsights(targets) {
     focusCounts[areas[0].name].push(b.b);
   });
   var topWeakness = Object.entries(focusCounts).sort(function(a, b) { return b[1].length - a[1].length; })[0];
-
   var quickWins = targets.filter(function(b) { return b.cb === 'Developing' && b.c >= 40; });
 
   var mgrCounts = {};
   targets.forEach(function(b) {
     var mgr = G.getBakeryOps(b.b);
-    if (!mgrCounts[mgr]) mgrCounts[mgr] = { na: 0, dev: 0, bakeries: [] };
+    if (!mgrCounts[mgr]) mgrCounts[mgr] = { na: 0, dev: 0 };
     if (b.cb === 'Needs Attention') mgrCounts[mgr].na++; else mgrCounts[mgr].dev++;
-    mgrCounts[mgr].bakeries.push(b.b);
   });
   var mgrSorted = Object.entries(mgrCounts).sort(function(a, b) { return (b[1].na + b[1].dev) - (a[1].na + a[1].dev); });
+  var weakAreas = Object.entries(focusCounts).filter(function(e) { return e[1].length > 0; }).sort(function(a, b) { return b[1].length - a[1].length; });
 
-  var coachingTips = {
-    'Overall Efficiency': 'Customers feel the service is slow or disorganised. Review front-of-house workflow: are team members positioned well? Is there a clear hand-off between till and bar? Consider mystery visits to observe the customer journey.',
-    'Drink Quality': 'Drinks are not meeting customer expectations. Check machine calibration, grind settings, and milk technique. Arrange a barista refresher session and taste-test drinks during a quiet period.',
-    'Friendliness': 'Customers are not feeling welcomed or valued. Focus on eye contact, greeting every customer, and using names where possible. Role-play exercises during team briefings can help build confidence.',
-    'Barista Speed': 'Too many drinks are taking over 5 minutes. Look at ticket management \u2014 are drinks being made in order? Are completed drinks being called out promptly? Check if peak-hour staffing levels are adequate.',
-  };
+  var h = '<div class="insight-grid">';
 
-  var h = '<h3 style="font-size:0.9rem;font-weight:600;color:var(--accent);margin:16px 0 10px">Actionable Insights</h3><div class="insight-grid">';
+  h += '<div class="insight-card"><h4>\u26A0\uFE0F Biggest Weakness</h4><p><span class="stat">' + topWeakness[1].length + '</span> of ' + targets.length + ' bakeries \u2014 <strong>' + topWeakness[0] + '</strong></p><div class="action">\u2192 Prioritise ' + topWeakness[0].toLowerCase() + ' coaching</div></div>';
 
-  h += '<div class="insight-card"><h4>\u26A0\uFE0F Biggest Shared Weakness</h4><p><span class="stat">' + topWeakness[1].length + ' of ' + targets.length + '</span> target bakeries are being dragged down most by <strong>' + topWeakness[0] + '</strong>.</p><p>' + coachingTips[topWeakness[0]] + '</p><div class="action">\u2192 Prioritise ' + topWeakness[0].toLowerCase() + ' coaching across these ' + topWeakness[1].length + ' bakeries</div></div>';
-
-  h += '<div class="insight-card"><h4>\u2B50 Quick Wins &mdash; Close to &ldquo;Good&rdquo; Band</h4>';
+  h += '<div class="insight-card"><h4>\u2B50 Quick Wins</h4>';
   if (quickWins.length > 0) {
-    h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y is' : 'ies are') + ' in the Developing band with a CEI of 40+. A small improvement could push them into the <strong>Good</strong> band (50+).</p><ul>' + quickWins.map(function(b) { return '<li><strong>' + b.b + '</strong> &mdash; CEI ' + b.c + '</li>'; }).join('') + '</ul><div class="action">\u2192 Give these bakeries targeted attention for the fastest results</div>';
+    h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' at 40+ CEI &mdash; close to Good</p><ul>' + quickWins.map(function(b) { return '<li><strong>' + b.b + '</strong> \u2014 ' + b.c + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
   } else {
-    h += '<p style="color:var(--muted)">No bakeries are currently close enough to the Good band for a quick turnaround. Focus efforts on the highest-priority bakeries in the table below.</p>';
+    h += '<p style="color:var(--muted)">No bakeries close enough to Good band yet.</p>';
   }
   h += '</div>';
 
-  h += '<div class="insight-card"><h4>\u{1F464} Ops Manager Workload</h4><p>Managers with the most target bakeries may need additional support or resource.</p>';
+  h += '<div class="insight-card"><h4>\uD83D\uDC64 Ops Manager Workload</h4>';
   mgrSorted.slice(0, 5).forEach(function(entry) {
     var mgr = entry[0], info = entry[1];
-    var naTag = info.na > 0 ? '<span style="color:var(--red);font-weight:600">' + info.na + ' Needs Attention</span>' : '';
-    var devTag = info.dev > 0 ? '<span style="color:var(--amber);font-weight:600">' + info.dev + ' Developing</span>' : '';
-    var sep = info.na > 0 && info.dev > 0 ? ' + ' : '';
-    h += '<div class="mgr-row"><span style="font-weight:500">' + mgr + '</span><span>' + naTag + sep + devTag + '</span></div>';
+    var naTag = info.na > 0 ? '<span style="color:var(--red);font-weight:600">' + info.na + ' NA</span>' : '';
+    var devTag = info.dev > 0 ? '<span style="color:var(--amber);font-weight:600">' + info.dev + ' Dev</span>' : '';
+    var sep = info.na > 0 && info.dev > 0 ? ' \u00B7 ' : '';
+    h += '<div class="mgr-row"><span>' + mgr + '</span><span>' + naTag + sep + devTag + '</span></div>';
   });
   if (mgrSorted.length > 0 && mgrSorted[0][1].na >= 3) {
-    h += '<div class="action">\u2192 Consider pairing ' + mgrSorted[0][0] + ' with a support partner</div>';
+    h += '<div class="action">\u2192 Support ' + mgrSorted[0][0] + '</div>';
   }
   h += '</div>';
 
-  var weakAreas = Object.entries(focusCounts).filter(function(e) { return e[1].length > 0; }).sort(function(a, b) { return b[1].length - a[1].length; });
-  h += '<div class="insight-card"><h4>\u{1F4CB} Coaching Priorities by Area</h4><p>Across all target bakeries, here is where coaching is needed most:</p>';
+  h += '<div class="insight-card"><h4>\uD83D\uDCCB Coaching Priorities</h4>';
   weakAreas.forEach(function(entry) {
-    h += '<p style="margin-top:8px"><strong>' + entry[0] + '</strong> <span style="color:var(--muted);font-size:0.7rem">(' + entry[1].length + ' baker' + (entry[1].length === 1 ? 'y' : 'ies') + ')</span></p><p style="font-size:0.72rem;color:var(--muted)">' + coachingTips[entry[0]] + '</p>';
+    var pct = Math.round((entry[1].length / targets.length) * 100);
+    h += '<div class="coaching-area"><span class="coaching-area__name">' + entry[0] + '</span><span class="coaching-area__count">' + entry[1].length + ' baker' + (entry[1].length === 1 ? 'y' : 'ies') + '</span></div><div class="coaching-area__bar"><div class="coaching-area__fill" style="width:' + pct + '%"></div></div>';
   });
-  h += '</div></div>';
+  h += '</div>';
+
+  h += '</div>';
   insightsEl.innerHTML = h;
 }
 
@@ -133,13 +590,29 @@ function _renderTargetTrends(targets, data) {
   var G = GAILS;
   var avg = G.avg;
   var state = G.state;
-  var trendSection = document.getElementById('targetTrendSection');
-  if (targets.length === 0 || state.MONTHS.length < 2) { trendSection.style.display = 'none'; return; }
-
-  trendSection.style.display = '';
-  var targetNames = targets.map(function(b) { return b.b; });
   var FM = G.getRollingMonths();
+  var targetNames = targets.map(function(b) { return b.b; });
   var THRESHOLD = 3;
+
+  if (targets.length === 0) {
+    _clearTargetTrendCharts();
+    document.getElementById('trendSummaryCards').innerHTML = '';
+    document.getElementById('sparklineGrid').innerHTML = '';
+    document.getElementById('targetTrendTable').innerHTML = '';
+    _setTargetTrendState(false, 'No target bakeries are in the Needs Attention or Developing bands for the current selection.');
+    return;
+  }
+
+  if (FM.length < 2) {
+    _clearTargetTrendCharts();
+    document.getElementById('trendSummaryCards').innerHTML = '';
+    document.getElementById('sparklineGrid').innerHTML = '';
+    document.getElementById('targetTrendTable').innerHTML = '';
+    _setTargetTrendState(false, 'Select at least two months to view target bakery trend graphs and tables.');
+    return;
+  }
+
+  _setTargetTrendState(true, '');
 
   var histories = {};
   targetNames.forEach(function(name) {
@@ -186,18 +659,18 @@ function _renderTargetTrends(targets, data) {
   var chronic = trendData.filter(function(t) { return t.streak >= 3; });
 
   document.getElementById('trendSummaryCards').innerHTML = [
-    { v: improving.length, l: 'Improving', col: 'var(--green)', bg: '#e8f5e9' },
-    { v: stable.length, l: 'Stable', col: 'var(--muted)', bg: '#f5f0eb' },
-    { v: declining.length, l: 'Declining', col: 'var(--red)', bg: '#fce4ec' },
-    { v: chronic.length, l: 'Declining 3+ Months', col: '#7b1fa2', bg: '#f3e5f5' },
-  ].map(function(k) { return '<div style="background:' + k.bg + ';border-radius:8px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:1.5rem;font-weight:700;color:' + k.col + '">' + k.v + '</div><div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px">' + k.l + '</div></div>'; }).join('');
+    { v: improving.length, l: 'Improving', col: 'var(--green)' },
+    { v: stable.length, l: 'Stable', col: 'var(--muted-l)' },
+    { v: declining.length, l: 'Declining', col: 'var(--red)' },
+    { v: chronic.length, l: 'Declining 3+ Mo', col: '#9B5DFF' },
+  ].map(function(k) { return '<div class="target-stat-card"><div class="target-stat-card__value" style="color:' + k.col + '">' + k.v + '</div><div class="target-stat-card__label">' + k.l + '</div></div>'; }).join('');
 
   var targetAvgByMonth = FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m && targetNames.includes(r.b); }); return recs.length ? recs.reduce(function(a, r) { return a + r.c; }, 0) / recs.length : null; });
   var allAvgByMonth = FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m; }); return recs.length ? recs.reduce(function(a, r) { return a + r.c; }, 0) / recs.length : null; });
 
   G.makeChart('targetAvgTrend', { type: 'line', data: { labels: FM, datasets: [
-    { label: 'Target Bakeries Avg CEI', data: targetAvgByMonth, borderColor: '#c62828', backgroundColor: '#c6282822', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-    { label: 'All Bakeries Avg CEI', data: allAvgByMonth, borderColor: '#9e9e9e', backgroundColor: '#9e9e9e11', fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2, borderDash: [6, 4] },
+    { label: 'Target Bakeries Avg CEI', data: targetAvgByMonth, borderColor: '#FF3B5C', backgroundColor: 'rgba(255,59,92,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+    { label: 'All Bakeries Avg CEI', data: allAvgByMonth, borderColor: 'rgba(150,150,200,0.5)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2, borderDash: [6, 4] },
   ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: 'Avg CEI' }, min: 0, max: 100 }, x: { ticks: { font: { size: 10 } } } } } });
 
   var bandNames2 = ['Needs Attention', 'Developing', 'Good', 'Excellent'];
@@ -205,9 +678,11 @@ function _renderTargetTrends(targets, data) {
 
   // Sparkline cards
   var sparkGrid = document.getElementById('sparklineGrid');
-  trendData.forEach(function(t) { G.destroyChart('spark_' + t.name); });
-  sparkGrid.innerHTML = '';
   var sparkSorted = [].concat(trendData).sort(function(a, b) { return (a.latest ? a.latest.c : 999) - (b.latest ? b.latest.c : 999); });
+  // Destroy any existing sparkline charts
+  sparkSorted.forEach(function(t) { G.destroyChart('spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_')); });
+  sparkGrid.innerHTML = '';
+  // Build card DOM (canvas elements only — charts drawn by _drawSparklines)
   sparkSorted.forEach(function(t) {
     var card = document.createElement('div');
     var dirClass = t.direction === 'up' ? 'up' : t.direction === 'down' ? 'down' : t.direction === 'flat' ? 'flat' : 'new-entry';
@@ -215,24 +690,29 @@ function _renderTargetTrends(targets, data) {
     var ceiNow = t.latest ? t.latest.c : '\u2014';
     var bandNow = t.latest ? t.latest.cb : '\u2014';
     var changeText = t.ceiChange !== 0 ? (t.ceiChange > 0 ? '+' : '') + t.ceiChange.toFixed(1) : '';
-    var periodText = t.periodChange !== 0 ? (t.periodChange > 0 ? '+' : '') + t.periodChange.toFixed(1) + ' over period' : '';
+    var changeColor = t.ceiChange > 0 ? 'var(--green)' : 'var(--red)';
 
-    card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 12px;';
-    if (t.streak >= 3) card.style.borderColor = '#7b1fa2';
-    else if (t.direction === 'down') card.style.borderColor = '#c62828';
+    var modClass = t.streak >= 3 ? ' spark-card--chronic' : t.direction === 'down' ? ' spark-card--declining' : '';
+    card.className = 'spark-card' + modClass;
 
-    card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div><span style="font-weight:600;font-size:0.8rem">' + t.name + '</span><span style="font-size:0.66rem;color:var(--muted);margin-left:4px">' + G.getBakeryOps(t.name) + '</span></div><span class="dir ' + dirClass + '" style="font-size:0.64rem">' + dirLabel + '</span></div><div style="display:flex;gap:12px;align-items:center;margin-bottom:6px;flex-wrap:wrap"><div><span style="font-size:1.2rem;font-weight:700">' + ceiNow + '</span> <span style="font-size:0.66rem;color:var(--muted)">CEI</span></div><span class="band ' + G.bc(bandNow) + '" style="font-size:0.6rem">' + bandNow + '</span>' + (changeText ? '<span style="font-size:0.72rem;font-weight:600;color:' + (t.ceiChange > 0 ? 'var(--green)' : 'var(--red)') + '">' + changeText + ' m/m</span>' : '') + (periodText ? '<span style="font-size:0.64rem;color:' + (t.periodChange > 0 ? 'var(--green)' : 'var(--red)') + '">' + periodText + '</span>' : '') + (t.streak >= 2 ? '<span style="font-size:0.64rem;color:#7b1fa2;font-weight:600">\u2193' + t.streak + ' months</span>' : '') + '</div><canvas id="spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_') + '" height="50"></canvas>';
+    card.innerHTML =
+      '<div class="spark-card__head">' +
+        '<div><div class="spark-card__name">' + t.name + '</div><div class="spark-card__mgr">' + G.getBakeryOps(t.name) + '</div></div>' +
+        '<span class="dir ' + dirClass + '" style="font-size:0.62rem">' + dirLabel + '</span>' +
+      '</div>' +
+      '<div class="spark-card__metrics">' +
+        '<div><span class="spark-card__cei">' + ceiNow + '</span><span class="spark-card__cei-label">CEI</span></div>' +
+        '<span class="band ' + G.bc(bandNow) + '" style="font-size:0.58rem">' + bandNow + '</span>' +
+        (changeText ? '<span class="spark-card__change" style="color:' + changeColor + '">' + changeText + '</span>' : '') +
+        (t.streak >= 2 ? '<span class="spark-card__streak">\u2193' + t.streak + 'm</span>' : '') +
+      '</div>' +
+      '<canvas id="spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_') + '" height="44"></canvas>';
     sparkGrid.appendChild(card);
-
-    var canvasId = 'spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_');
-    var lineColor = t.direction === 'up' ? '#2e7d32' : t.direction === 'down' ? '#c62828' : '#8b4513';
-    new Chart(document.getElementById(canvasId), {
-      type: 'line', data: { labels: FM, datasets: [
-        { data: t.hist.map(function(r) { return r ? r.c : null; }), borderColor: lineColor, backgroundColor: lineColor + '18', fill: true, tension: 0.3, pointRadius: 1.5, borderWidth: 2, spanGaps: true },
-        { data: allAvgByMonth, borderColor: '#ccc', borderWidth: 1, borderDash: [4, 3], pointRadius: 0, fill: false, tension: 0.3 }
-      ] }, options: { plugins: { legend: { display: false }, tooltip: { callbacks: { title: function(items) { return items[0].label; }, label: function(ctx) { return ctx.datasetIndex === 0 ? 'CEI: ' + ctx.raw : 'Avg: ' + (ctx.raw ? ctx.raw.toFixed(1) : ''); } } } }, scales: { y: { display: false, min: 0, max: 100 }, x: { display: false } }, maintainAspectRatio: false }
-    });
   });
+  // Cache data and draw with current toggle state
+  _sparkState = { sparkSorted: sparkSorted, allAvgByMonth: allAvgByMonth, FM: FM };
+  var toggleEl = document.getElementById('sparkAbsoluteToggle');
+  _drawSparklines(toggleEl && toggleEl.checked);
 
   // Momentum chart
   if (FM.length >= 3) {
@@ -246,10 +726,12 @@ function _renderTargetTrends(targets, data) {
       return { m: m, up: up, down: down, flat: flat };
     });
     G.makeChart('targetMomentumChart', { type: 'bar', data: { labels: momentumData.map(function(d) { return d.m; }), datasets: [
-      { label: 'Improving', data: momentumData.map(function(d) { return d.up; }), backgroundColor: '#2e7d32aa', borderRadius: 3 },
-      { label: 'Stable', data: momentumData.map(function(d) { return d.flat; }), backgroundColor: '#9e9e9eaa', borderRadius: 3 },
-      { label: 'Declining', data: momentumData.map(function(d) { return -d.down; }), backgroundColor: '#c62828aa', borderRadius: 3 },
+      { label: 'Improving', data: momentumData.map(function(d) { return d.up; }), backgroundColor: 'rgba(0,200,117,0.65)', borderRadius: 3 },
+      { label: 'Stable', data: momentumData.map(function(d) { return d.flat; }), backgroundColor: 'rgba(150,150,200,0.45)', borderRadius: 3 },
+      { label: 'Declining', data: momentumData.map(function(d) { return -d.down; }), backgroundColor: 'rgba(255,59,92,0.65)', borderRadius: 3 },
     ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, title: { display: true, text: 'Bakeries' }, ticks: { callback: function(v) { return Math.abs(v); } } } } } });
+  } else {
+    G.destroyChart('targetMomentumChart');
   }
 
   // Helpers
@@ -275,7 +757,7 @@ function _renderTargetTrends(targets, data) {
 
   document.getElementById('targetTrendTable').innerHTML = '<div class="table-wrap"><table><thead><tr><th>Bakery</th><th>Ops Manager</th><th>CEI (' + latestMonth + ')</th><th>CEI Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Direction<br><span style="font-weight:400;font-size:0.6rem">Month-on-Month</span></th><th>NPS Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>3-Month Trend<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>3m CEI Change<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>Period Change<br><span style="font-weight:400;font-size:0.6rem">' + firstMonth + ' &rarr; ' + latestMonth + '</span></th><th>Declining Streak</th><th>Best Month</th><th>Worst Month</th><th>Quality &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Friendliness &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Barista Speed &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th></tr></thead><tbody>' +
   trendData.map(function(t) {
-    var streakWarn = t.streak >= 3 ? 'color:#7b1fa2;font-weight:700' : t.streak >= 2 ? 'color:var(--red);font-weight:600' : '';
+    var streakWarn = t.streak >= 3 ? 'color:#9B5DFF;font-weight:700' : t.streak >= 2 ? 'color:var(--red);font-weight:600' : '';
     return '<tr><td style="font-weight:500">' + t.name + '</td><td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(t.name) + '</td><td style="font-weight:700">' + (t.latest ? t.latest.c : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best.c + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst.c + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';
   }).join('') + '</tbody></table></div>';
   G.makeSortable(document.getElementById('targetTrendTable'));

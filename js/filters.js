@@ -63,4 +63,5 @@ window.GAILS.populateOpsFilter = function(region) {
   opsSel.innerHTML = '<option value="">All Managers</option>';
   managers.forEach(function(m) { var o = document.createElement('option'); o.value = m; o.textContent = m; opsSel.appendChild(o); });
   if (managers.includes(prev)) opsSel.value = prev; else { opsSel.value = ''; state.opsFilter = ''; }
+  G.syncCustomSelect(opsSel);
 };
