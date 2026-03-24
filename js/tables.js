@@ -8,6 +8,7 @@ window.GAILS.makeSortable = function(container) {
   targets.forEach(function(table) {
     var headers = table.querySelectorAll('thead th');
     headers.forEach(function(th, colIdx) {
+      if (th.classList.contains('sortable')) return;
       th.classList.add('sortable');
       th.addEventListener('click', function() {
         var tbody = table.querySelector('tbody');
