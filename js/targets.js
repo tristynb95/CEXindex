@@ -567,7 +567,7 @@ function _renderTargetTable(targets) {
       var focusColor = focus.pct <= 10 ? 'var(--red)' : 'var(--amber)';
       var confTag = b.co === 'Low' ? ' <span style="font-size:0.58rem;color:var(--red);font-weight:600">LOW VOL</span>' : '';
       return '<tr>' +
-        '<td style="font-weight:700;color:' + (b.cb === 'Needs Attention' ? 'var(--red)' : 'var(--amber)') + '">P' + (i + 1) + '</td>' +
+        '<td style="font-weight:700;color:' + (b.cb === 'Needs Attention' ? 'var(--red)' : 'var(--amber)') + '">' + (i + 1) + '</td>' +
         '<td style="font-weight:500">' + b.b + confTag + '</td>' +
         '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryRegion(b.b) + '</td>' +
         '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(b.b) + '</td>' +
