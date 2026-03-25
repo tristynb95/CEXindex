@@ -1749,53 +1749,68 @@ body.table-fullscreen-lock {
 }
 @media (max-width: 860px) {
   .overlay-screen {
-    padding: 18px 14px;
+    align-items: flex-start;
+    padding: 14px 12px 20px;
   }
   .login-stage {
+    width: min(560px, 100%);
+    margin: 0 auto;
     grid-template-columns: 1fr;
     min-height: auto;
-    gap: 10px;
-  }
-  .login-hero {
-    gap: 16px;
-    padding: 18px;
+    max-height: none;
+    gap: 12px;
   }
   .login-panel {
+    order: 1;
     align-items: stretch;
   }
-  .login-card__form-panel {
-    max-width: none;
-  }
-  .login-hero__scoreboard,
-  .login-card__highlights {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 520px) {
   .login-hero {
+    order: 2;
+    gap: 12px;
     padding: 16px;
     border-radius: 20px;
   }
-  .login-hero__top {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .login-card__title {
-    font-size: clamp(2rem, 12vw, 2.8rem);
+  .login-card__form-panel {
     max-width: none;
-  }
-  .login-card__intro {
-    max-width: none;
-  }
-  .login-card__logo {
-    width: 104px;
+    margin-left: 0;
   }
   .login-card__masthead-copy {
     padding-right: 0;
   }
+  .login-card__title {
+    max-width: none;
+  }
+  .login-hero__scoreboard,
+  .login-card__highlights {
+    display: none;
+  }
+}
+@media (max-width: 520px) {
+  .login-hero {
+    padding: 14px;
+  }
+  .login-hero__top {
+    justify-content: space-between;
+  }
+  .login-card__logo {
+    width: 96px;
+  }
+  .login-hero__pill,
+  .login-card__eyebrow {
+    display: none;
+  }
+  .login-card__title {
+    font-size: clamp(1.7rem, 9.8vw, 2.3rem);
+    line-height: 1.05;
+  }
+  .login-card__intro {
+    max-width: none;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
   .login-card__form-panel {
-    padding: 18px;
-    border-radius: 20px;
+    padding: 16px;
+    border-radius: 18px;
   }
 }
 .modal-overlay {
