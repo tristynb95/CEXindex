@@ -436,28 +436,28 @@
               </div>
             </div>
             <div class="grid-2 overview-secondary-charts">
-              <div class="section">
+              <div class="section overview-card overview-card--scatter">
                 <h2 id="npsScatterTitle">NPS vs Relative CEI</h2><canvas id="npsVsCei"></canvas>
               </div>
-              <div class="section">
+              <div class="section overview-card overview-card--pie">
                 <h2 id="overviewBandSplitTitle">CEI Band Split (Relative)</h2><canvas id="overviewBandSplit"></canvas>
               </div>
             </div>
             <div class="grid-2 overview-cei-pies">
-              <div class="section">
+              <div class="section overview-card overview-card--experience">
                 <h2 id="overviewRadarTitle">Customer Experience by Relative CEI Band</h2><canvas id="cxRadar" style="max-height:340px"></canvas>
               </div>
-              <div class="section">
+              <div class="section overview-card overview-card--drags">
                 <h2 id="overviewDragTitle">Biggest Drags on Relative CEI</h2>
                 <p id="overviewDragText" style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Average peer-relative component score across all bakeries &mdash; shows which area is pulling the network down most versus the rest of the cohort.</p>
                 <canvas id="absComponentDrag"></canvas>
               </div>
             </div>
             <div class="grid-2 overview-rankings-grid">
-              <div class="section">
+              <div class="section overview-card overview-card--top">
                 <h2 id="top10Title" style="color:var(--green)">Top 10 Bakeries by Relative CEI</h2><canvas id="top10Chart" style="max-height:360px"></canvas>
               </div>
-              <div class="section">
+              <div class="section overview-card overview-card--bottom">
                 <h2 id="bot10Title" style="color:var(--red)">Bottom 10 Bakeries by Relative CEI</h2><canvas id="bot10Chart" style="max-height:360px"></canvas>
               </div>
             </div>
@@ -545,6 +545,11 @@
               <div class="explain">
                 <h3>How Do We Measure Success?</h3>
                 <p>The <strong>Coffee Experience Index (CEI)</strong> uses a 0 to 100 score to tell us how well we're doing. We look at this in two ways: <strong>Relative CEI</strong> (how you compare to other bakeries this month) and <strong>Absolute CEI</strong> (how you compare to GAIL's overall strict standards, regardless of everyone else).</p>
+
+                <h3>Relative vs Absolute Explainer</h3>
+                <p><strong>Relative CEI</strong> is like a race. Every month, all bakeries line up and we rank them against each other. If you finish 1st out of 20 bakeries, your score is near 100. If you finish last, it's near 0. It doesn't matter what the actual numbers are &mdash; only where you finished in the group that month.</p>
+                <p><strong>Absolute CEI</strong> is like a test with a pass mark. The pass mark is 90%. Whether every other bakery is above or below 90% doesn't change your result &mdash; you either hit the standard or you didn't.</p>
+                <p style="font-size:0.8rem;color:var(--muted);margin-bottom:4px;">Use <strong>Relative</strong> to see who's leading the pack. Use <strong>Absolute</strong> to see if the whole network is genuinely hitting the standard.</p>
 
                 <h3>The Recipe: What Makes Up the Score?</h3>
                 <p>We believe what the customer tells us matters most. That's why 95% of your score comes directly from customer feedback:</p>
@@ -645,12 +650,59 @@
           <div class="tab-content" id="tab-target">
             <div class="target-subtabs" id="targetTabWorkspace">
               <div class="target-subtabs__nav" role="tablist" aria-label="Target bakery views">
-                <button class="target-subtab active" type="button" data-target-subtab="summary">Summary</button>
-                <button class="target-subtab" type="button" data-target-subtab="priority">Priority List</button>
-                <button class="target-subtab" type="button" data-target-subtab="table">Performance Trends</button>
-                <button class="target-subtab" type="button" data-target-subtab="graphs">Trend Analysis</button>
-                <button class="target-subtab" type="button" data-target-subtab="map">&#128205; Target Bakery Locations</button>
-                <button class="target-subtab" type="button" data-target-subtab="feedback">&#128172; Customer Feedback</button>
+                <button class="target-subtab active" type="button" data-target-subtab="summary">
+                  <span class="target-subtab__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M5 12h14"></path>
+                      <path d="M12 5v14"></path>
+                    </svg>
+                  </span>
+                  <span>Summary</span>
+                </button>
+                <button class="target-subtab" type="button" data-target-subtab="priority">
+                  <span class="target-subtab__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M7 12.5 10 15.5 17 8.5"></path>
+                    </svg>
+                  </span>
+                  <span>Priority List</span>
+                </button>
+                <button class="target-subtab" type="button" data-target-subtab="table">
+                  <span class="target-subtab__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M5 7h14"></path>
+                      <path d="M5 12h14"></path>
+                      <path d="M5 17h14"></path>
+                    </svg>
+                  </span>
+                  <span>Performance Trends</span>
+                </button>
+                <button class="target-subtab" type="button" data-target-subtab="graphs">
+                  <span class="target-subtab__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M5 16 10 11 13 14 19 8"></path>
+                      <path d="M19 8h-4"></path>
+                    </svg>
+                  </span>
+                  <span>Trend Analysis</span>
+                </button>
+                <button class="target-subtab" type="button" data-target-subtab="map">
+                  <span class="target-subtab__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M12 20s-4.5-4-4.5-8.3a4.5 4.5 0 1 1 9 0C16.5 16 12 20 12 20Z"></path>
+                      <circle cx="12" cy="11.5" r="1.7"></circle>
+                    </svg>
+                  </span>
+                  <span>Bakery Locations</span>
+                </button>
+                <button class="target-subtab" type="button" data-target-subtab="feedback">
+                  <span class="target-subtab__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M6.5 7.5h11a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H11l-3.5 3v-3H6.5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2Z"></path>
+                    </svg>
+                  </span>
+                  <span>Comment Cloud</span>
+                </button>
               </div>
 
               <div class="target-subtab-panel active" data-target-subtab-panel="summary">

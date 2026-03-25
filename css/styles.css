@@ -1202,12 +1202,36 @@ h4 {
     gap: 12px;
   }
 
-  .overview-cei-pies {
+  .overview-secondary-charts {
     order: 2;
   }
 
-  .overview-secondary-charts {
+  .overview-cei-pies {
     order: 3;
+  }
+
+  .overview-card--pie {
+    order: 1;
+  }
+
+  .overview-card--scatter {
+    order: 2;
+  }
+
+  .overview-card--experience {
+    order: 1;
+  }
+
+  .overview-card--drags {
+    order: 2;
+  }
+
+  .overview-card--top {
+    order: 1;
+  }
+
+  .overview-card--bottom {
+    order: 2;
   }
 }
 
@@ -1795,28 +1819,62 @@ canvas {
 
 .target-subtabs__nav {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 4px;
+  flex-wrap: nowrap;
+  align-items: center;
   padding: 6px;
   border-radius: var(--r-lg);
   border: 1px solid var(--card-border);
   background: var(--card);
   box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.target-subtabs__nav::-webkit-scrollbar {
+  display: none;
 }
 
 .target-subtab {
   appearance: none;
   border: none;
-  padding: 9px 16px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 9px 14px;
   border-radius: var(--r);
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+  white-space: nowrap;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.target-subtab__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.target-subtab__icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .target-subtab:hover {
@@ -2242,6 +2300,30 @@ body.table-fullscreen-lock {
 }
 
 .band.Needs-Attention {
+  background: var(--red-d);
+  color: var(--red);
+  border-color: rgba(255, 59, 92, 0.28);
+}
+
+.band.Exceeding {
+  background: var(--green-d);
+  color: var(--green);
+  border-color: rgba(0, 200, 117, 0.28);
+}
+
+.band.Meeting {
+  background: rgba(72, 149, 255, 0.13);
+  color: var(--blue);
+  border-color: rgba(72, 149, 255, 0.28);
+}
+
+.band.Approaching {
+  background: var(--gold-d);
+  color: var(--gold);
+  border-color: rgba(255, 184, 0, 0.28);
+}
+
+.band.Below-Standard {
   background: var(--red-d);
   color: var(--red);
   border-color: rgba(255, 59, 92, 0.28);

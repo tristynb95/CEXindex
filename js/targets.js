@@ -101,8 +101,8 @@ function _setTargetTrendState(hasData, message) {
     legend.onAdd = function() {
       var div = L.DomUtil.create('div', 'map-legend');
       div.innerHTML =
-        '<div><span class="map-legend__dot" style="background:#FF3B5C"></span>Needs Attention</div>' +
-        '<div><span class="map-legend__dot" style="background:#FFB800"></span>Developing</div>';
+        '<div><span class="map-legend__dot" style="background:#FF3B5C"></span>Below Standard</div>' +
+        '<div><span class="map-legend__dot" style="background:#FFB800"></span>Approaching</div>';
       return div;
     };
     legend.addTo(_mapInstance);
@@ -129,7 +129,7 @@ function _setTargetTrendState(hasData, message) {
       var ll = meta && meta.ll;
       if (!ll) { missing.push(b.b); return; }
 
-      var color = b.cb === 'Needs Attention' ? '#FF3B5C' : '#FFB800';
+      var color = b.acb === 'Below Standard' ? '#FF3B5C' : '#FFB800';
       var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(b.b) : b.b;
       var marker = L.circleMarker(ll, {
         radius: 9,
@@ -142,7 +142,7 @@ function _setTargetTrendState(hasData, message) {
       marker.bindPopup(
         '<div class="map-popup">' +
           '<div class="map-popup__name">' + siteLabel + '</div>' +
-          '<span class="map-popup__band" style="background:' + color + '">' + b.cb + '</span>' +
+          '<span class="map-popup__band" style="background:' + color + '">' + b.acb + '</span>' +
           '<div class="map-popup__stats">CEI <strong>' + b.c + '</strong> &nbsp;·&nbsp; NPS ' + b.n + ' &nbsp;·&nbsp; Vol ' + b.v + '</div>' +
           '<div class="map-popup__mgr">' + GAILS.getBakeryOps(b.b) + '</div>' +
         '</div>'
@@ -177,11 +177,12 @@ function _setTargetTrendState(hasData, message) {
       activeSelector: '#tab-map',
       modalTitle: 'Filtered Bakeries Not Mapped',
       emptyMessage: 'No bakeries match the current filters.',
+      bandField: 'cb',
       legendItems: [
         { label: 'Excellent', color: '#00C875' },
         { label: 'Good', color: '#4895FF' },
-        { label: 'Developing', color: '#FFB800' },
-        { label: 'Needs Attention', color: '#FF3B5C' }
+        { label: 'Approaching', color: '#FFB800' },
+        { label: 'Below Standard', color: '#FF3B5C' }
       ],
       items: [],
       missingItems: [],
@@ -196,9 +197,10 @@ function _setTargetTrendState(hasData, message) {
       activeSelector: '[data-target-subtab-panel="map"]',
       modalTitle: 'Target Bakeries Not Mapped',
       emptyMessage: 'No target bakeries for the current selection.',
+      bandField: 'acb',
       legendItems: [
-        { label: 'Needs Attention', color: '#FF3B5C' },
-        { label: 'Developing', color: '#FFB800' }
+        { label: 'Below Standard', color: '#FF3B5C' },
+        { label: 'Approaching', color: '#FFB800' }
       ],
       items: [],
       missingItems: [],
@@ -260,21 +262,25 @@ function _setTargetTrendState(hasData, message) {
     placeMarkers(cfg);
   }
 
-  function getBandPriority(item) {
-    if (!item || !item.cb) return 0;
+  function getBandPriority(item, bandField) {
+    var band = item && item[bandField || 'cb'];
+    if (!band) return 0;
     return {
-      Excellent: 0,
-      Good: 1,
-      Developing: 2,
-      'Needs Attention': 3
-    }[item.cb] || 0;
+      Excellent: 0, Outstanding: 0,
+      Good: 1, Exceeding: 1,
+      Developing: 2, Approaching: 2,
+      'Needs Attention': 3, 'Below Standard': 3
+    }[band] || 0;
   }
 
-  function getMarkerColor(item) {
-    return (item && item.cb && GAILS.COL && GAILS.COL[item.cb]) || '#FF3B5C';
+  function getMarkerColor(item, bandField) {
+    var band = item && item[bandField || 'cb'];
+    var palette = (bandField === 'acb') ? GAILS.ABSCOL : GAILS.COL;
+    return (band && palette && palette[band]) || '#FF3B5C';
   }
 
-  function getPopupHtml(item, color) {
+  function getPopupHtml(item, color, bandField) {
+    var band = item[(bandField || 'cb')];
     var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b;
     var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
     var region = GAILS.getBakeryRegion ? GAILS.getBakeryRegion(item.b) : 'Unknown';
@@ -284,7 +290,7 @@ function _setTargetTrendState(hasData, message) {
 
     return '<div class="map-popup">' +
       '<div class="map-popup__name">' + escapeHtml(siteLabel) + '</div>' +
-      '<span class="map-popup__band" style="background:' + color + '">' + escapeHtml(item.cb || 'Unknown') + '</span>' +
+      '<span class="map-popup__band" style="background:' + color + '">' + escapeHtml(band || 'Unknown') + '</span>' +
       '<div class="map-popup__stats">CEI <strong>' + escapeHtml(cei) + '</strong> &nbsp;&middot;&nbsp; NPS ' + escapeHtml(nps) + ' &nbsp;&middot;&nbsp; Vol ' + escapeHtml(volume) + '</div>' +
       '<div class="map-popup__mgr">' + escapeHtml(ops) + '</div>' +
       '<div class="map-popup__meta">' + escapeHtml(region) + '</div>' +
@@ -306,8 +312,9 @@ function _setTargetTrendState(hasData, message) {
     var bounds = [];
     var placed = 0;
     var missing = [];
+    var bf = cfg.bandField || 'cb';
     var items = [].concat(cfg.items).sort(function(a, b) {
-      var bandDelta = getBandPriority(a) - getBandPriority(b);
+      var bandDelta = getBandPriority(a, bf) - getBandPriority(b, bf);
       if (bandDelta !== 0) return bandDelta;
       return (a.c || 0) - (b.c || 0);
     });
@@ -320,7 +327,7 @@ function _setTargetTrendState(hasData, message) {
         return;
       }
 
-      var color = getMarkerColor(item);
+      var color = getMarkerColor(item, bf);
       var marker = L.circleMarker(ll, {
         radius: 9,
         fillColor: color,
@@ -329,7 +336,7 @@ function _setTargetTrendState(hasData, message) {
         opacity: 1,
         fillOpacity: 0.88
       });
-      marker.bindPopup(getPopupHtml(item, color));
+      marker.bindPopup(getPopupHtml(item, color, bf));
       cfg.markerLayer.addLayer(marker);
       bounds.push(ll);
       placed++;
@@ -467,16 +474,16 @@ window.GAILS.renderTargets = function(data) {
   var G = GAILS;
   var avg = G.avg;
   var state = G.state;
-  var targets = [].concat(data).filter(function(b) { return b.cb === 'Needs Attention' || b.cb === 'Developing'; }).sort(function(a, b) { return a.c - b.c; });
-  var needsAttn = targets.filter(function(b) { return b.cb === 'Needs Attention'; });
-  var developing = targets.filter(function(b) { return b.cb === 'Developing'; });
+  var targets = [].concat(data).filter(function(b) { return b.acb === 'Below Standard' || b.acb === 'Approaching'; }).sort(function(a, b) { return a.ac - b.ac; });
+  var needsAttn = targets.filter(function(b) { return b.acb === 'Below Standard'; });
+  var developing = targets.filter(function(b) { return b.acb === 'Approaching'; });
   G.storeMapTargets(targets);
 
   document.getElementById('targetSummary').innerHTML = [
-    { v: needsAttn.length, l: 'Needs Attention', col: 'var(--red)' },
-    { v: developing.length, l: 'Developing', col: 'var(--amber)' },
+    { v: needsAttn.length, l: 'Below Standard', col: 'var(--red)' },
+    { v: developing.length, l: 'Approaching', col: 'var(--amber)' },
     { v: targets.length, l: 'Total Targeted', col: 'var(--accent)' },
-    { v: targets.length ? avg(targets, 'c').toFixed(1) : '\u2014', l: 'Avg CEI (Targeted)', col: 'var(--accent)' },
+    { v: targets.length ? avg(targets, 'ac').toFixed(1) : '\u2014', l: 'Avg Abs CEI (Targeted)', col: 'var(--accent)' },
   ].map(function(k) { return '<div class="target-stat-card"><div class="target-stat-card__value" style="color:' + k.col + '">' + k.v + '</div><div class="target-stat-card__label">' + k.l + '</div></div>'; }).join('');
 
   _renderInsights(targets);
@@ -498,13 +505,13 @@ function _renderInsights(targets) {
     focusCounts[areas[0].name].push(b.b);
   });
   var topWeakness = Object.entries(focusCounts).sort(function(a, b) { return b[1].length - a[1].length; })[0];
-  var quickWins = targets.filter(function(b) { return b.cb === 'Developing' && b.c >= 40; });
+  var quickWins = targets.filter(function(b) { return b.acb === 'Approaching' && b.ac >= 70; });
 
   var mgrCounts = {};
   targets.forEach(function(b) {
     var mgr = G.getBakeryOps(b.b);
     if (!mgrCounts[mgr]) mgrCounts[mgr] = { na: 0, dev: 0 };
-    if (b.cb === 'Needs Attention') mgrCounts[mgr].na++; else mgrCounts[mgr].dev++;
+    if (b.acb === 'Below Standard') mgrCounts[mgr].na++; else mgrCounts[mgr].dev++;
   });
   var mgrSorted = Object.entries(mgrCounts).sort(function(a, b) { return (b[1].na + b[1].dev) - (a[1].na + a[1].dev); });
   var weakAreas = Object.entries(focusCounts).filter(function(e) { return e[1].length > 0; }).sort(function(a, b) { return b[1].length - a[1].length; });
@@ -515,9 +522,9 @@ function _renderInsights(targets) {
 
   h += '<div class="insight-card"><h4>\u2B50 Quick Wins</h4>';
   if (quickWins.length > 0) {
-    h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' at 40+ CEI &mdash; close to Good</p><ul>' + quickWins.map(function(b) { return '<li><strong>' + b.b + '</strong> \u2014 ' + b.c + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
+    h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' at 70+ Abs CEI &mdash; close to Meeting</p><ul>' + quickWins.map(function(b) { return '<li><strong>' + b.b + '</strong> \u2014 ' + b.ac + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
   } else {
-    h += '<p style="color:var(--muted)">No bakeries close enough to Good band yet.</p>';
+    h += '<p style="color:var(--muted)">No bakeries close enough to Meeting standard yet.</p>';
   }
   h += '</div>';
 
@@ -560,20 +567,20 @@ function _renderTargetTable(targets) {
   };
 
   document.getElementById('targetTable').innerHTML = targets.length === 0
-    ? '<p style="text-align:center;color:var(--muted);padding:32px 0">No bakeries in Needs Attention or Developing bands for this period.</p>'
+    ? '<p style="text-align:center;color:var(--muted);padding:32px 0">No bakeries in Below Standard or Approaching bands for this period.</p>'
     : '<div class="table-wrap"><table><thead><tr><th>Priority</th><th>Bakery</th><th>Region</th><th>Ops Manager</th><th>CEI</th><th>Abs CEI</th><th>Band</th><th>NPS</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>Barista Speed</th><th>&gt;5m</th><th>Where to Focus</th></tr></thead><tbody>' +
     targets.map(function(b, i) {
       var focus = getFocus(b);
       var focusColor = focus.pct <= 10 ? 'var(--red)' : 'var(--amber)';
       var confTag = b.co === 'Low' ? ' <span style="font-size:0.58rem;color:var(--red);font-weight:600">LOW VOL</span>' : '';
       return '<tr>' +
-        '<td style="font-weight:700;color:' + (b.cb === 'Needs Attention' ? 'var(--red)' : 'var(--amber)') + '">' + (i + 1) + '</td>' +
+        '<td style="font-weight:700;color:' + (b.acb === 'Below Standard' ? 'var(--red)' : 'var(--amber)') + '">' + (i + 1) + '</td>' +
         '<td style="font-weight:500">' + b.b + confTag + '</td>' +
         '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryRegion(b.b) + '</td>' +
         '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(b.b) + '</td>' +
         '<td style="font-weight:700">' + b.c + '</td>' +
         '<td style="font-weight:600">' + b.ac + '</td>' +
-        '<td><span class="band ' + G.bc(b.cb) + '">' + b.cb + '</span></td>' +
+        '<td><span class="band ' + G.bc(b.acb) + '">' + b.acb + '</span></td>' +
         '<td>' + b.n + '</td><td>' + b.v + '</td>' +
         '<td><span class="conf ' + b.co + '">' + b.co + '</span></td>' +
         '<td style="color:' + (b.dp < 25 ? 'var(--red)' : 'inherit') + '">' + b.dr + '%</td>' +
@@ -599,7 +606,7 @@ function _renderTargetTrends(targets, data) {
     document.getElementById('trendSummaryCards').innerHTML = '';
     document.getElementById('sparklineGrid').innerHTML = '';
     document.getElementById('targetTrendTable').innerHTML = '';
-    _setTargetTrendState(false, 'No target bakeries are in the Needs Attention or Developing bands for the current selection.');
+    _setTargetTrendState(false, 'No target bakeries are in the Below Standard or Approaching bands for the current selection.');
     return;
   }
 
@@ -673,8 +680,8 @@ function _renderTargetTrends(targets, data) {
     { label: 'All Bakeries Avg CEI', data: allAvgByMonth, borderColor: 'rgba(150,150,200,0.5)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2, borderDash: [6, 4] },
   ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: 'Avg CEI' }, min: 0, max: 100 }, x: { ticks: { font: { size: 10 } } } } } });
 
-  var bandNames2 = ['Needs Attention', 'Developing', 'Good', 'Excellent'];
-  G.makeChart('targetBandFlow', { type: 'bar', data: { labels: FM, datasets: bandNames2.map(function(bn) { return { label: bn, data: FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m && targetNames.includes(r.b); }); return recs.length ? recs.filter(function(r) { return r.cb === bn; }).length : 0; }), backgroundColor: G.COL[bn] + 'cc', borderColor: G.COL[bn], borderWidth: 1 }; }) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, title: { display: true, text: 'Bakeries' } } } } });
+  var bandNames2 = ['Below Standard', 'Approaching', 'Meeting', 'Exceeding'];
+  G.makeChart('targetBandFlow', { type: 'bar', data: { labels: FM, datasets: bandNames2.map(function(bn) { return { label: bn, data: FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m && targetNames.includes(r.b); }); return recs.length ? recs.filter(function(r) { return r.acb === bn; }).length : 0; }), backgroundColor: G.ABSCOL[bn] + 'cc', borderColor: G.ABSCOL[bn], borderWidth: 1 }; }) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, title: { display: true, text: 'Bakeries' } } } } });
 
   // Sparkline cards
   var sparkGrid = document.getElementById('sparklineGrid');
@@ -688,7 +695,7 @@ function _renderTargetTrends(targets, data) {
     var dirClass = t.direction === 'up' ? 'up' : t.direction === 'down' ? 'down' : t.direction === 'flat' ? 'flat' : 'new-entry';
     var dirLabel = t.direction === 'up' ? '\u2191 Improving' : t.direction === 'down' ? '\u2193 Declining' : t.direction === 'flat' ? '\u2194 Stable' : 'New';
     var ceiNow = t.latest ? t.latest.c : '\u2014';
-    var bandNow = t.latest ? t.latest.cb : '\u2014';
+    var bandNow = t.latest ? t.latest.acb : '\u2014';
     var changeText = t.ceiChange !== 0 ? (t.ceiChange > 0 ? '+' : '') + t.ceiChange.toFixed(1) : '';
     var changeColor = t.ceiChange > 0 ? 'var(--green)' : 'var(--red)';
 
