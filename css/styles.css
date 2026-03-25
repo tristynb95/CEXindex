@@ -4036,11 +4036,11 @@ button, a, [role="button"],
   display: none;
 }
 
-/* ── Floating filter tab (fixed to right edge, mobile only) ── */
+/* ── Floating filter tab (fixed to left edge, mobile only) ── */
 .filter-side-tab {
   display: none;
   position: fixed;
-  right: 0;
+  left: 0;
   top: 40%;
   transform: translateY(-50%);
   z-index: 45;
@@ -4050,22 +4050,22 @@ button, a, [role="button"],
   gap: 5px;
   width: 36px;
   padding: 12px 0;
-  border-radius: 12px 0 0 12px;
+  border-radius: 0 12px 12px 0;
   border: 1px solid rgba(255,255,255,0.12);
-  border-right: none;
+  border-left: none;
   background: linear-gradient(180deg, rgba(24,24,40,0.8) 0%, rgba(16,16,28,0.84) 100%);
   color: rgba(232,234,242,0.88);
   cursor: pointer;
-  box-shadow: -2px 0 14px rgba(0,0,0,0.3);
+  box-shadow: 2px 0 14px rgba(0,0,0,0.3);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  transition: border-color 0.24s ease, box-shadow 0.24s ease, background 0.24s ease, opacity 0.2s ease;
+  transition: border-color 0.28s ease, box-shadow 0.28s ease, background 0.28s ease, opacity 0.24s ease;
   touch-action: none;
 }
 .filter-side-tab:hover {
   border-color: rgba(255,255,255,0.2);
   background: linear-gradient(180deg, rgba(26,26,42,0.9) 0%, rgba(18,18,30,0.9) 100%);
-  box-shadow: -4px 0 16px rgba(0,0,0,0.38);
+  box-shadow: 4px 0 16px rgba(0,0,0,0.38);
 }
 .filter-side-tab:active {
   transform: translateY(-50%) scale(0.96);
@@ -4156,7 +4156,7 @@ button, a, [role="button"],
   .filter-controls {
     position: fixed !important;
     top: 0;
-    right: 0;
+    left: 0;
     bottom: 0;
     width: min(300px, 86vw);
     height: 100%;
@@ -4164,15 +4164,16 @@ button, a, [role="button"],
     display: flex !important;
     flex-direction: column;
     background: var(--card);
-    border-left: 1px solid var(--card-border-h);
-    border-radius: 20px 0 0 20px;
+    border-right: 1px solid var(--card-border-h);
+    border-radius: 0 20px 20px 0;
     z-index: 46;
     overflow: hidden;
-    transform: translateX(110%);
-    transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: -10px 0 50px rgba(0,0,0,0.6), -2px 0 16px rgba(0,0,0,0.35);
+    transform: translateX(-110%);
+    transition: transform 0.46s cubic-bezier(0.2, 0.9, 0.25, 1);
+    box-shadow: 10px 0 50px rgba(0,0,0,0.6), 2px 0 16px rgba(0,0,0,0.35);
     gap: 0;
     touch-action: pan-y;
+    will-change: transform;
   }
 
   .filter-controls.is-open {

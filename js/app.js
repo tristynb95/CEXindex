@@ -426,7 +426,7 @@
     var clamped = Math.max(0, Math.min(width, offsetPx || 0));
     var progress = 1 - (clamped / width);
     filterControlsPanel.classList.add('is-dragging');
-    filterControlsPanel.style.transform = 'translateX(' + clamped + 'px)';
+    filterControlsPanel.style.transform = 'translateX(' + (-clamped) + 'px)';
     if (filterSideBackdrop) {
       filterSideBackdrop.style.opacity = String(Math.max(0, Math.min(1, progress)));
     }
@@ -515,7 +515,7 @@
       var width = getFilterPanelWidth();
       if (!width) return;
       var deltaX = event.clientX - filterDragState.startX;
-      var openedDistance = Math.max(0, Math.min(width, -deltaX));
+      var openedDistance = Math.max(0, Math.min(width, deltaX));
       filterDragState.distance = openedDistance;
       filterDragState.lastX = event.clientX;
       setFilterPanelDragOffset(width - openedDistance);
@@ -561,7 +561,7 @@
       var width = getFilterPanelWidth();
       if (!width) return;
       var deltaX = event.clientX - filterDragState.startX;
-      var closeDistance = Math.max(0, Math.min(width, deltaX));
+      var closeDistance = Math.max(0, Math.min(width, -deltaX));
       filterDragState.distance = closeDistance;
       filterDragState.lastX = event.clientX;
       setFilterPanelDragOffset(closeDistance);
