@@ -1799,6 +1799,7 @@ body.table-fullscreen-lock {
     display: block;
     opacity: 0.95;
     margin-top: 0;
+    margin-bottom: 18px;
   }
   .login-mobile-brief__title {
     grid-area: title;
@@ -1853,6 +1854,7 @@ body.table-fullscreen-lock {
   }
   .login-mobile-brief__logo {
     width: 84px;
+    margin-bottom: 14px;
   }
   .login-mobile-brief__title {
     font-size: clamp(1.16rem, 6.6vw, 1.5rem);
