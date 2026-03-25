@@ -1753,16 +1753,17 @@ body.table-fullscreen-lock {
 }
 @media (max-width: 860px) {
   .overlay-screen {
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: stretch;
     min-height: 100dvh;
-    padding: 20px 14px;
+    padding: 0;
   }
   .login-stage {
-    width: min(560px, 100%);
-    margin: 0 auto;
+    width: 100%;
+    min-height: 100dvh;
+    margin: 0;
     grid-template-columns: 1fr;
-    min-height: auto;
+    grid-template-rows: 1fr;
     max-height: none;
     gap: 0;
   }
@@ -1776,8 +1777,12 @@ body.table-fullscreen-lock {
   .login-card__form-panel {
     max-width: none;
     margin-left: 0;
-    padding: 24px 22px 20px;
-    border-radius: 22px;
+    min-height: 100dvh;
+    padding: clamp(28px, 6vh, 52px) clamp(20px, 5vw, 38px) clamp(28px, 7vh, 48px);
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   .login-mobile-brief {
     display: grid;
@@ -1788,9 +1793,9 @@ body.table-fullscreen-lock {
       "copy";
     justify-items: start;
     align-items: start;
-    row-gap: 10px;
-    margin: 0 0 18px;
-    padding: 0 0 16px;
+    row-gap: 12px;
+    margin: 0 0 24px;
+    padding: 0 0 20px;
     border-bottom: 1px solid var(--card-border);
   }
   .login-mobile-brief__logo {
@@ -1805,28 +1810,37 @@ body.table-fullscreen-lock {
     grid-area: title;
     margin: 0;
     font-size: clamp(1.22rem, 4.8vw, 1.58rem);
-    line-height: 1.2;
+    line-height: 1.25;
     letter-spacing: -0.03em;
   }
   .login-mobile-brief__copy {
     grid-area: copy;
     margin: 0;
     font-size: 0.88rem;
-    line-height: 1.5;
+    line-height: 1.65;
     color: var(--text-2);
   }
   .login-card__form-head {
-    margin-bottom: 18px;
+    margin-bottom: 24px;
   }
   .login-card__form-copy {
     max-width: 28ch;
   }
   .login-form {
-    gap: 14px;
+    gap: 18px;
+  }
+  .login-field span {
+    margin-bottom: 10px;
+    font-size: 0.74rem;
+  }
+  .login-input,
+  .login-submit {
+    min-height: 56px;
+    font-size: 1rem;
   }
   .login-panel__footer {
-    margin-top: 18px;
-    padding-top: 14px;
+    margin-top: 24px;
+    padding-top: 18px;
   }
   .login-card__masthead-copy {
     padding-right: 0;
@@ -1840,17 +1854,13 @@ body.table-fullscreen-lock {
   }
 }
 @media (max-width: 520px) {
-  .overlay-screen {
-    padding: 16px 12px;
-  }
   .login-card__form-panel {
-    padding: 20px 16px 18px;
-    border-radius: 18px;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(22px, env(safe-area-inset-bottom));
   }
   .login-mobile-brief {
-    row-gap: 7px;
-    margin-bottom: 14px;
-    padding: 0 0 12px;
+    row-gap: 10px;
+    margin-bottom: 18px;
+    padding: 0 0 14px;
   }
   .login-mobile-brief__logo {
     width: 84px;
