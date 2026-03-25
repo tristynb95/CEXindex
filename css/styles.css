@@ -1752,7 +1752,7 @@ body.table-fullscreen-lock {
   color: var(--muted);
 }
 @media (max-width: 860px) {
-  .overlay-screen {
+  #loginScreen.overlay-screen {
     align-items: stretch;
     justify-content: stretch;
     min-height: 100dvh;
@@ -1822,6 +1822,9 @@ body.table-fullscreen-lock {
   }
   .login-card__form-head {
     margin-bottom: 24px;
+  }
+  .login-panel__title {
+    font-size: clamp(1.3rem, 5.4vw, 1.6rem);
   }
   .login-card__form-copy {
     max-width: 28ch;
