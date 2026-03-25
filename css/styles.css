@@ -1753,22 +1753,23 @@ body.table-fullscreen-lock {
 }
 @media (max-width: 860px) {
   .overlay-screen {
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: stretch;
     min-height: 100dvh;
-    padding: 20px 14px;
+    padding: 0;
   }
   .login-stage {
-    width: min(560px, 100%);
+    width: 100%;
     margin: 0 auto;
     grid-template-columns: 1fr;
-    min-height: auto;
+    min-height: 100dvh;
     max-height: none;
     gap: 0;
   }
   .login-panel {
     order: 0;
     align-items: stretch;
+    min-height: 100dvh;
   }
   .login-hero {
     display: none;
@@ -1776,8 +1777,11 @@ body.table-fullscreen-lock {
   .login-card__form-panel {
     max-width: none;
     margin-left: 0;
-    padding: 24px 22px 20px;
-    border-radius: 22px;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: max(28px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+    border-radius: 0;
   }
   .login-mobile-brief {
     display: grid;
@@ -1789,8 +1793,8 @@ body.table-fullscreen-lock {
     justify-items: start;
     align-items: start;
     row-gap: 10px;
-    margin: 0 0 18px;
-    padding: 0 0 16px;
+    margin: 0 0 28px;
+    padding: 0 0 22px;
     border-bottom: 1px solid var(--card-border);
   }
   .login-mobile-brief__logo {
@@ -1799,6 +1803,7 @@ body.table-fullscreen-lock {
     display: block;
     opacity: 0.95;
     margin-top: 0;
+    margin-bottom: 18px;
   }
   .login-mobile-brief__title {
     grid-area: title;
@@ -1815,17 +1820,24 @@ body.table-fullscreen-lock {
     color: var(--text-2);
   }
   .login-card__form-head {
-    margin-bottom: 18px;
+    margin-bottom: 24px;
   }
   .login-card__form-copy {
     max-width: 28ch;
   }
   .login-form {
-    gap: 14px;
+    gap: 18px;
+  }
+  .login-input {
+    min-height: 58px;
+  }
+  .login-submit {
+    min-height: 60px;
+    margin-top: 10px;
   }
   .login-panel__footer {
-    margin-top: 18px;
-    padding-top: 14px;
+    margin-top: auto;
+    padding-top: 22px;
   }
   .login-card__masthead-copy {
     padding-right: 0;
@@ -1840,19 +1852,20 @@ body.table-fullscreen-lock {
 }
 @media (max-width: 520px) {
   .overlay-screen {
-    padding: 16px 12px;
+    padding: 0;
   }
   .login-card__form-panel {
-    padding: 20px 16px 18px;
-    border-radius: 18px;
+    padding: max(24px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom));
+    border-radius: 0;
   }
   .login-mobile-brief {
-    row-gap: 7px;
-    margin-bottom: 14px;
-    padding: 0 0 12px;
+    row-gap: 10px;
+    margin-bottom: 22px;
+    padding: 0 0 18px;
   }
   .login-mobile-brief__logo {
     width: 84px;
+    margin-bottom: 18px;
   }
   .login-mobile-brief__title {
     font-size: clamp(1.16rem, 6.6vw, 1.5rem);
@@ -4578,15 +4591,15 @@ button, a, [role="button"],
 /* ── Login screen on very small screens ── */
 @media (max-width: 400px) {
   .overlay-screen {
-    padding: 12px 10px;
+    padding: 0;
   }
   .login-hero {
     padding: 14px;
     border-radius: 18px;
   }
   .login-card__form-panel {
-    padding: 16px;
-    border-radius: 18px;
+    padding: max(22px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom));
+    border-radius: 0;
   }
   .login-hero__scoreboard {
     grid-template-columns: 1fr;
