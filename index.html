@@ -169,42 +169,66 @@
 
       <!-- GLOBAL FILTER BAR -->
       <div class="filter-bar">
-        <button type="button" class="filter-bar__toggle" id="filterBarToggle" aria-expanded="false" aria-controls="filterControlsPanel">
-          <svg class="filter-bar__toggle-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M3 7h18M7 12h10M11 17h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-          </svg>
-          <span>Filters</span>
-          <span class="filter-bar__toggle-badge" id="filterActiveBadge" hidden></span>
-          <span class="filter-bar__toggle-chevron" aria-hidden="true"></span>
-        </button>
         <div class="filter-controls" id="filterControlsPanel">
-          <div class="filter-control"><label>Month</label><br><select id="monthSelect">
-            <option value="">&mdash; Select &mdash;</option>
-          </select></div>
-          <div class="filter-control"><label>Rolling Window</label><br><select id="rollingWindow">
-            <option value="0">All Months</option>
-            <option value="3">Last 3 Months</option>
-            <option value="5">Last 5 Months</option>
-            <option value="6" selected>Last 6 Months</option>
-            <option value="9">Last 9 Months</option>
-            <option value="12">Last 12 Months</option>
-          </select></div>
-          <div class="filter-control"><label>Region</label><br><select id="regionFilter">
-            <option value="">All Regions</option>
-          </select></div>
-          <div class="filter-control"><label>Ops Manager</label><br><select id="opsFilter">
-            <option value="">All Managers</option>
-          </select></div>
-          <div class="filter-control"><label>Bakery</label><br><input id="bakerySearch" type="text" placeholder="Search bakery..."></div>
-          <div class="filter-control"><label>Band</label><br><select id="bandFilter">
-            <option value="">All</option>
-            <option>Excellent</option>
-            <option>Good</option>
-            <option>Developing</option>
-            <option>Needs Attention</option>
-          </select></div>
+
+          <!-- Mobile panel header (hidden on desktop) -->
+          <div class="filter-panel-header">
+            <div class="filter-panel-header__title">
+              <svg class="filter-panel-header__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M3 7h18M7 12h10M11 17h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+              </svg>
+              <span class="filter-panel-header__text">Filters</span>
+              <span class="filter-panel-header__badge" id="filterActiveBadge" hidden></span>
+            </div>
+            <button type="button" class="filter-panel-header__close" id="filterPanelClose" aria-label="Close filters">
+              <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M1 1l12 12M13 1L1 13"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="filter-controls-body">
+            <div class="filter-control"><label>Month</label><br><select id="monthSelect">
+              <option value="">&mdash; Select &mdash;</option>
+            </select></div>
+            <div class="filter-control"><label>Rolling Window</label><br><select id="rollingWindow">
+              <option value="0">All Months</option>
+              <option value="3">Last 3 Months</option>
+              <option value="5">Last 5 Months</option>
+              <option value="6" selected>Last 6 Months</option>
+              <option value="9">Last 9 Months</option>
+              <option value="12">Last 12 Months</option>
+            </select></div>
+            <div class="filter-control"><label>Region</label><br><select id="regionFilter">
+              <option value="">All Regions</option>
+            </select></div>
+            <div class="filter-control"><label>Ops Manager</label><br><select id="opsFilter">
+              <option value="">All Managers</option>
+            </select></div>
+            <div class="filter-control"><label>Bakery</label><br><input id="bakerySearch" type="text" placeholder="Search bakery..."></div>
+            <div class="filter-control"><label>Band</label><br><select id="bandFilter">
+              <option value="">All</option>
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Developing</option>
+              <option>Needs Attention</option>
+            </select></div>
+          </div>
+
         </div>
       </div>
+
+      <!-- Mobile filter backdrop -->
+      <div class="filter-side-backdrop" id="filterSideBackdrop" aria-hidden="true"></div>
+
+      <!-- Mobile floating filter tab -->
+      <button type="button" class="filter-side-tab" id="filterSideTab" aria-label="Open filters" aria-expanded="false">
+        <svg class="filter-side-tab__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M3 7h18M7 12h10M11 17h2"/>
+        </svg>
+        <span class="filter-side-tab__label">Filters</span>
+        <span class="filter-side-tab__badge" id="filterSideTabBadge" hidden></span>
+      </button>
 
       <div id="dashboardWorkspaceShell" class="dashboard-workspace" data-sidebar-collapsed="false" data-sidebar-open="false">
         <aside class="dashboard-sidebar" aria-label="Main dashboard menu">

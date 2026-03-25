@@ -4022,88 +4022,258 @@ button, a, [role="button"],
   touch-action: manipulation;
 }
 
-/* ── Filter bar toggle button (visible on mobile) ── */
-.filter-bar__toggle {
+/* ══════════════════════════════════════════════════════
+   MOBILE FILTER SIDE PANEL
+   ══════════════════════════════════════════════════════ */
+
+/* ── Filter controls body (wraps the 6 controls) ── */
+.filter-controls-body {
+  display: contents; /* transparent passthrough on desktop — children act as direct grid items */
+}
+
+/* ── Filter panel header (mobile only, hidden on desktop) ── */
+.filter-panel-header {
   display: none;
-  width: 100%;
+}
+
+/* ── Floating filter tab (fixed to right edge, mobile only) ── */
+.filter-side-tab {
+  display: none;
+  position: fixed;
+  right: 0;
+  top: 40%;
+  transform: translateY(-50%);
+  z-index: 45;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 12px 16px;
-  border: 1px solid var(--card-border-h);
-  border-radius: 14px;
-  background: rgba(255,255,255,0.03);
+  justify-content: center;
+  gap: 6px;
+  width: 42px;
+  padding: 14px 0;
+  border-radius: 14px 0 0 14px;
+  border: 1px solid rgba(255,59,92,0.28);
+  border-right: none;
+  background: linear-gradient(180deg, rgba(24,24,40,0.97) 0%, rgba(16,16,28,0.97) 100%);
   color: var(--text);
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
-  margin-bottom: 0;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.45), -1px 0 10px rgba(255,59,92,0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  touch-action: manipulation;
 }
-.filter-bar__toggle:hover {
-  border-color: rgba(255,59,92,0.4);
-  background: rgba(255,59,92,0.05);
+.filter-side-tab:hover {
+  border-color: rgba(255,59,92,0.55);
+  background: linear-gradient(180deg, rgba(30,18,40,0.98) 0%, rgba(20,12,30,0.98) 100%);
+  box-shadow: -6px 0 28px rgba(0,0,0,0.55), -2px 0 14px rgba(255,59,92,0.22);
 }
-.filter-bar__toggle:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-d);
+.filter-side-tab:active {
+  transform: translateY(-50%) scale(0.96);
 }
-.filter-bar__toggle-icon {
-  width: 18px;
-  height: 18px;
+.filter-side-tab.has-active-filters {
+  border-color: rgba(255,59,92,0.5);
+  background: linear-gradient(180deg, rgba(255,59,92,0.14) 0%, rgba(180,30,55,0.1) 100%);
+}
+.filter-side-tab__icon {
+  width: 17px;
+  height: 17px;
+  stroke: var(--accent);
   flex: 0 0 auto;
-  color: var(--muted-l);
 }
-.filter-bar__toggle-badge {
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
+.filter-side-tab__label {
+  font-size: 0.48rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-l);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  line-height: 1;
+}
+.filter-side-tab__badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
   border-radius: 999px;
   background: var(--accent);
   color: #fff;
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   font-weight: 800;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
 }
-.filter-bar__toggle-badge[hidden] { display: none; }
-.filter-bar__toggle-chevron {
-  margin-left: auto;
-  width: 9px;
-  height: 9px;
-  flex: 0 0 auto;
-  border-right: 2px solid var(--muted-l);
-  border-bottom: 2px solid var(--muted-l);
-  transform: rotate(45deg) translateY(-2px);
-  transition: transform 0.22s ease, border-color 0.2s ease;
-}
-.filter-bar__toggle[aria-expanded="true"] .filter-bar__toggle-chevron {
-  transform: rotate(-135deg) translateY(2px);
-  border-color: var(--accent);
-}
-.filter-bar__toggle[aria-expanded="true"] {
-  border-color: rgba(255,59,92,0.35);
-  background: rgba(255,59,92,0.06);
-  margin-bottom: 14px;
-}
-.filter-bar__toggle.has-active-filters .filter-bar__toggle-icon {
-  color: var(--accent);
+.filter-side-tab__badge[hidden] { display: none; }
+
+/* Tab disappears when panel is open (close button takes over) */
+.filter-side-tab.is-open {
+  opacity: 0;
+  pointer-events: none;
 }
 
 @media (max-width: 720px) {
-  .filter-bar__toggle {
+  .filter-side-tab {
+    display: flex;
+  }
+}
+
+/* ── Mobile filter side backdrop ── */
+.filter-side-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.62);
+  z-index: 44;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.filter-side-backdrop.is-open {
+  display: block;
+  animation: filterBackdropIn 0.22s ease forwards;
+}
+@keyframes filterBackdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Mobile: collapse filter-bar and turn filter-controls into a side panel ── */
+@media (max-width: 720px) {
+  /* Strip the filter-bar card visually; keep it as a valid block container so
+     the position:fixed child still renders */
+  .filter-bar {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 0;
+    overflow: visible;
+  }
+
+  /* filter-controls becomes the fixed side drawer */
+  .filter-controls {
+    position: fixed !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(300px, 86vw);
+    height: 100%;
+    max-height: 100%;
+    display: flex !important;
+    flex-direction: column;
+    background: var(--card);
+    border-left: 1px solid var(--card-border-h);
+    border-radius: 20px 0 0 20px;
+    z-index: 46;
+    overflow: hidden;
+    transform: translateX(110%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -10px 0 50px rgba(0,0,0,0.6), -2px 0 16px rgba(0,0,0,0.35);
+    gap: 0;
+  }
+
+  .filter-controls.is-open {
+    transform: translateX(0);
+  }
+
+  /* Panel header — shown on mobile */
+  .filter-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid var(--card-border);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background: var(--card);
+    z-index: 2;
+  }
+  .filter-panel-header__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+  }
+  .filter-panel-header__icon {
+    width: 18px;
+    height: 18px;
+    stroke: var(--accent);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    flex: 0 0 auto;
+  }
+  .filter-panel-header__text {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .filter-panel-header__badge {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
   }
-  /* Hide filter controls by default on mobile; toggled open via JS */
-  .filter-bar .filter-controls {
-    display: none;
+  .filter-panel-header__badge[hidden] { display: none; }
+  .filter-panel-header__close {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid var(--card-border-h);
+    background: rgba(255,255,255,0.04);
+    color: var(--muted-l);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font: inherit;
+    touch-action: manipulation;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   }
-  .filter-bar .filter-controls.is-open {
-    display: grid;
+  .filter-panel-header__close:hover {
+    background: rgba(255,59,92,0.1);
+    border-color: rgba(255,59,92,0.4);
+    color: var(--accent);
+  }
+  .filter-panel-header__close svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* Scrollable body area */
+  .filter-controls-body {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 0 calc(80px + env(safe-area-inset-bottom, 0px));
+    gap: 0;
+  }
+
+  /* Each filter control row */
+  .filter-controls-body .filter-control {
+    padding: 10px 18px;
+  }
+
+  /* Ensure custom-select menus render above panel content */
+  .filter-controls .filter-select__menu {
+    z-index: 260;
   }
 }
 
