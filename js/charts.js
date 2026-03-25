@@ -43,63 +43,93 @@ window.GAILS.renderOverviewCharts = function(data) {
   var G = GAILS;
   var avg = G.avg;
   var n = data.length;
+  var rankingsMetric = G.state.rankingsMetric === 'absolute' ? 'absolute' : 'relative';
+  var isAbsolute = rankingsMetric === 'absolute';
+  var valueKey = isAbsolute ? 'ac' : 'c';
+  var altValueKey = isAbsolute ? 'c' : 'ac';
+  var bandKey = isAbsolute ? 'acb' : 'cb';
+  var colorMap = isAbsolute ? G.ABSCOL : G.COL;
+  var bandNames = isAbsolute ? G.ABS_BAND_NAMES : G.BAND_NAMES;
+  var metricLabel = isAbsolute ? 'Absolute CEI' : 'Relative CEI';
+  var altMetricLabel = isAbsolute ? 'Relative CEI' : 'Absolute CEI';
 
   // NPS Histogram
   var bins = []; for (var i = -10; i <= 100; i += 10) bins.push({ min: i, max: i + 10, count: 0 });
   data.forEach(function(b) { var idx = bins.findIndex(function(bn) { return b.n >= bn.min && b.n < bn.max; }); if (idx >= 0) bins[idx].count++; });
   G.makeChart('npsHist', { type: 'bar', data: { labels: bins.map(function(b) { return b.min + '\u2013' + b.max; }), datasets: [{ data: bins.map(function(b) { return b.count; }), backgroundColor: 'rgba(255,59,92,0.5)', hoverBackgroundColor: '#FF3B5C', borderRadius: 6 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Bakeries' } }, x: { title: { display: true, text: 'NPS' } } }, onHover: function(evt, elements) { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; }, onClick: function(evt, elements) { if (elements.length > 0) { var idx = elements[0].index; var bin = bins[idx]; var bakeries = data.filter(function(b) { return b.n >= bin.min && b.n < bin.max; }); if (bakeries.length > 0) { G.showDrillDown('NPS ' + bin.min + '\u2013' + bin.max, bakeries.length + ' bakeries in this segment', bakeries, 'nps'); } } } } });
 
-  // CEI Bands
-  var bandCounts = G.BAND_NAMES.map(function(bn) { return data.filter(function(d) { return d.cb === bn; }).length; });
-  G.makeChart('ceiBands', { type: 'doughnut', data: { labels: G.BAND_NAMES, datasets: [{ data: bandCounts, backgroundColor: G.BAND_NAMES.map(function(bn) { return G.COL[bn]; }), borderWidth: 2, borderColor: 'rgba(24,24,40,0.6)' }] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, onClick: function(evt, elements) { if (elements.length > 0) { var idx = elements[0].index; var band = G.BAND_NAMES[idx]; var bakeries = data.filter(function(d) { return d.cb === band; }); G.showDrillDown(band, bakeries.length + ' bakeries in this band', bakeries, 'relative'); } } } });
+  // CEI band split by selected lens
+  var bandSplitTitle = document.getElementById('overviewBandSplitTitle');
+  if (bandSplitTitle) bandSplitTitle.textContent = 'CEI Band Split (' + metricLabel + ')';
+  var bandCounts = bandNames.map(function(bn) { return data.filter(function(d) { return d[bandKey] === bn; }).length; });
+  G.makeChart('overviewBandSplit', { type: 'doughnut', data: { labels: bandNames, datasets: [{ data: bandCounts, backgroundColor: bandNames.map(function(bn) { return colorMap[bn]; }), borderWidth: 2, borderColor: 'rgba(24,24,40,0.6)' }] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, onClick: function(evt, elements) { if (elements.length > 0) { var idx = elements[0].index; var band = bandNames[idx]; var bakeries = data.filter(function(d) { return d[bandKey] === band; }); G.showDrillDown(band, bakeries.length + ' bakeries in this band', bakeries, rankingsMetric); } } } });
 
   // NPS vs CEI
-  G.makeChart('npsVsCei', { type: 'scatter', data: { datasets: [{ data: data.map(function(b) { return { x: b.c, y: b.n }; }), backgroundColor: data.map(function(b) { return G.COL[b.cb] + '99'; }), borderColor: data.map(function(b) { return G.COL[b.cb]; }), borderWidth: 1, pointRadius: 4.5, pointHitRadius: 12, pointHoverRadius: 7 }] }, options: { interaction: { mode: 'nearest', intersect: true }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function(items) { return data[items[0].dataIndex].b; }, label: function(ctx) { var b = data[ctx.dataIndex]; return ['CEI: ' + b.c + ' (' + b.cb + ')', 'NPS: ' + b.n, 'Abs CEI: ' + b.ac, 'Vol: ' + b.v + ' (' + b.co + ' confidence)']; } } } }, scales: { x: { title: { display: true, text: 'CEI' }, min: 0, max: 100 }, y: { title: { display: true, text: 'NPS' }, min: -15, max: 105 } } } });
+  var npsScatterTitle = document.getElementById('npsScatterTitle');
+  if (npsScatterTitle) npsScatterTitle.textContent = 'NPS vs ' + metricLabel;
+  G.makeChart('npsVsCei', { type: 'scatter', data: { datasets: [{ data: data.map(function(b) { return { x: b[valueKey], y: b.n }; }), backgroundColor: data.map(function(b) { return colorMap[b[bandKey]] + '99'; }), borderColor: data.map(function(b) { return colorMap[b[bandKey]]; }), borderWidth: 1, pointRadius: 4.5, pointHitRadius: 12, pointHoverRadius: 7 }] }, options: { interaction: { mode: 'nearest', intersect: true }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function(items) { return data[items[0].dataIndex].b; }, label: function(ctx) { var b = data[ctx.dataIndex]; return [metricLabel + ': ' + b[valueKey] + ' (' + b[bandKey] + ')', 'NPS: ' + b.n, altMetricLabel + ': ' + b[altValueKey], 'Vol: ' + b.v + ' (' + b.co + ' confidence)']; } } } }, scales: { x: { title: { display: true, text: metricLabel }, min: 0, max: 100 }, y: { title: { display: true, text: 'NPS' }, min: -15, max: 105 } } } });
 
-  // CX Radar
-  var exc = data.filter(function(b) { return b.cb === 'Excellent'; });
-  var na = data.filter(function(b) { return b.cb === 'Needs Attention'; });
-  var gd = data.filter(function(b) { return b.cb === 'Good'; });
-  if (exc.length && na.length && gd.length) {
+  // Radar by selected CEI band
+  var radarTitle = document.getElementById('overviewRadarTitle');
+  if (radarTitle) radarTitle.textContent = 'Customer Experience by ' + metricLabel + ' Band';
+  var cxBandSeries = bandNames.map(function(band) {
+    var rows = data.filter(function(b) { return b[bandKey] === band; });
+    if (!rows.length) return null;
+    return {
+      label: band,
+      data: [avg(rows, 'ov'), avg(rows, 'fr'), avg(rows, 'dr'), avg(rows, 'ef')],
+      borderColor: colorMap[band],
+      backgroundColor: colorMap[band] + '33',
+      borderWidth: 2
+    };
+  }).filter(Boolean);
+  if (cxBandSeries.length) {
     G.makeChart('cxRadar', {
       type: 'radar', data: {
-        labels: ['Overall', 'Friendliness', 'Quality', 'Overall Efficiency'], datasets: [
-          { label: 'Excellent', data: [avg(exc, 'ov'), avg(exc, 'fr'), avg(exc, 'dr'), avg(exc, 'ef')], borderColor: G.COL.Excellent, backgroundColor: G.COL.Excellent + '33', borderWidth: 2 },
-          { label: 'Good', data: [avg(gd, 'ov'), avg(gd, 'fr'), avg(gd, 'dr'), avg(gd, 'ef')], borderColor: G.COL.Good, backgroundColor: G.COL.Good + '22', borderWidth: 2 },
-          { label: 'Needs Attention', data: [avg(na, 'ov'), avg(na, 'fr'), avg(na, 'dr'), avg(na, 'ef')], borderColor: G.COL['Needs Attention'], backgroundColor: G.COL['Needs Attention'] + '33', borderWidth: 2 }
-        ]
-      }, options: { scales: { r: { min: 40, max: 100, ticks: { stepSize: 10 } } }, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
+        labels: ['Overall', 'Friendliness', 'Quality', 'Overall Efficiency'], datasets: cxBandSeries
+      }, options: { scales: { r: { min: 60, max: 100, ticks: { stepSize: 10 } } }, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
     });
   }
 
-  // Absolute CEI Bands
-  var absBandCounts = G.ABS_BAND_NAMES.map(function(bn) { return data.filter(function(d) { return d.acb === bn; }).length; });
-  G.makeChart('absCeiBands', { type: 'doughnut', data: { labels: G.ABS_BAND_NAMES, datasets: [{ data: absBandCounts, backgroundColor: G.ABS_BAND_NAMES.map(function(bn) { return G.ABSCOL[bn]; }), borderWidth: 2, borderColor: 'rgba(24,24,40,0.6)' }] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, onClick: function(evt, elements) { if (elements.length > 0) { var idx = elements[0].index; var band = G.ABS_BAND_NAMES[idx]; var bakeries = data.filter(function(d) { return d.acb === band; }); G.showDrillDown(band, bakeries.length + ' bakeries in this band', bakeries, 'absolute'); } } } });
-
-  // Absolute CEI component drag
-  var absCompScores = {
-    ef: data.map(function(b) { return G.computeAbsoluteComponent(b.ef, G.BENCHMARKS.ef); }),
-    dr: data.map(function(b) { return G.computeAbsoluteComponent(b.dr, G.BENCHMARKS.dr); }),
-    fr: data.map(function(b) { return G.computeAbsoluteComponent(b.fr, G.BENCHMARKS.fr); }),
-    ts: data.map(function(b) { return G.computeAbsoluteComponent(b.ts, G.BENCHMARKS.time); }),
-  };
-  var absCompAvgs = [
-    { name: 'Overall Efficiency', avg: absCompScores.ef.reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ef'), col: '#00C875' },
-    { name: 'Drink Quality', avg: absCompScores.dr.reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'dr'), col: '#4895FF' },
-    { name: 'Friendliness', avg: absCompScores.fr.reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'fr'), col: '#FFB800' },
-    { name: 'Barista Speed', avg: absCompScores.ts.reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ts'), col: '#9B5DFF' },
-  ].sort(function(a, b) { return a.avg - b.avg; });
+  // Component drag by selected CEI lens
+  var dragTitle = document.getElementById('overviewDragTitle');
+  var dragText = document.getElementById('overviewDragText');
+  if (dragTitle) dragTitle.textContent = 'Biggest Drags on ' + metricLabel;
+  if (dragText) {
+    dragText.innerHTML = isAbsolute
+      ? 'Average absolute component score across all bakeries &mdash; shows which area is pulling the network down most versus the 90% benchmark.'
+      : 'Average peer-relative component score across all bakeries &mdash; shows which area is pulling the network down most versus the rest of the cohort.';
+  }
+  var componentAvgs = isAbsolute
+    ? [
+      { name: 'Overall Efficiency', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.ef, G.BENCHMARKS.ef); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ef') },
+      { name: 'Drink Quality', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.dr, G.BENCHMARKS.dr); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'dr') },
+      { name: 'Friendliness', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.fr, G.BENCHMARKS.fr); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'fr') },
+      { name: 'Barista Speed', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.ts, G.BENCHMARKS.time); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ts') }
+    ]
+    : [
+      { name: 'Overall Efficiency', avg: avg(data, 'ep'), raw: avg(data, 'ef') },
+      { name: 'Drink Quality', avg: avg(data, 'dp'), raw: avg(data, 'dr') },
+      { name: 'Friendliness', avg: avg(data, 'fp'), raw: avg(data, 'fr') },
+      { name: 'Barista Speed', avg: avg(data, 'ap'), raw: avg(data, 'ts') }
+    ];
+  componentAvgs.sort(function(a, b) { return a.avg - b.avg; });
   G.makeChart('absComponentDrag', {
     type: 'bar',
-    data: { labels: absCompAvgs.map(function(c) { return c.name; }), datasets: [{ label: 'Avg Absolute Score', data: absCompAvgs.map(function(c) { return Math.round(c.avg * 10) / 10; }), backgroundColor: absCompAvgs.map(function(c) { return c.avg >= 90 ? 'rgba(0,200,117,0.55)' : c.avg >= 60 ? 'rgba(255,184,0,0.55)' : 'rgba(255,59,92,0.55)'; }), borderColor: absCompAvgs.map(function(c) { return c.avg >= 90 ? '#00C875' : c.avg >= 60 ? '#FFB800' : '#FF3B5C'; }), borderWidth: 2, borderRadius: 6 }] },
-    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { var c = absCompAvgs[ctx.dataIndex]; return 'Abs score: ' + ctx.raw + ' (raw avg: ' + c.raw.toFixed(1) + '% vs 90% target)'; } } } }, scales: { x: { min: 0, max: 100, title: { display: true, text: 'Absolute Component Score (100 = at target)' }, grid: { color: function(ctx) { return ctx.tick.value === 100 ? 'rgba(0,200,117,0.3)' : 'rgba(255,255,255,0.06)'; } } }, y: { ticks: { font: { size: 12, weight: 'bold' } } } } }
+    data: { labels: componentAvgs.map(function(c) { return c.name; }), datasets: [{ label: isAbsolute ? 'Avg Absolute Score' : 'Avg Relative Score', data: componentAvgs.map(function(c) { return Math.round(c.avg * 10) / 10; }), backgroundColor: componentAvgs.map(function(c) { return c.avg >= (isAbsolute ? 90 : 75) ? 'rgba(0,200,117,0.55)' : c.avg >= (isAbsolute ? 60 : 50) ? 'rgba(255,184,0,0.55)' : 'rgba(255,59,92,0.55)'; }), borderColor: componentAvgs.map(function(c) { return c.avg >= (isAbsolute ? 90 : 75) ? '#00C875' : c.avg >= (isAbsolute ? 60 : 50) ? '#FFB800' : '#FF3B5C'; }), borderWidth: 2, borderRadius: 6 }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { var c = componentAvgs[ctx.dataIndex]; return (isAbsolute ? 'Abs score: ' : 'Relative score: ') + ctx.raw + ' (raw avg: ' + c.raw.toFixed(1) + ')'; } } } }, scales: { x: { min: 0, max: 100, title: { display: true, text: isAbsolute ? 'Absolute Component Score (100 = at target)' : 'Relative Component Score (100 = top of cohort)' }, grid: { color: function(ctx) { return isAbsolute && ctx.tick.value === 100 ? 'rgba(0,200,117,0.3)' : 'rgba(255,255,255,0.06)'; } } }, y: { ticks: { font: { size: 12, weight: 'bold' } } } } }
   });
 
   // Top 10 & Bottom 10
-  var top10 = data.slice(0, 10);
-  var bot10 = data.slice(-10).reverse();
+  var rankingData = [].concat(data).sort(function(a, b) { return b[valueKey] - a[valueKey]; });
+  var top10 = rankingData.slice(0, 10);
+  var bot10 = rankingData.slice(-10).reverse();
+  var topTitle = document.getElementById('top10Title');
+  var botTitle = document.getElementById('bot10Title');
+  if (topTitle) topTitle.textContent = 'Top 10 Bakeries by ' + metricLabel;
+  if (botTitle) botTitle.textContent = 'Bottom 10 Bakeries by ' + metricLabel;
   var tbOpts = function(items) {
-    return { type: 'bar', data: { labels: items.map(function(b) { return b.b; }), datasets: [{ data: items.map(function(b) { return b.c; }), backgroundColor: items.map(function(b) { return G.COL[b.cb]; }), borderRadius: 4 }] }, options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return 'CEI: ' + ctx.raw; } } } }, scales: { x: { min: 0, max: 100, title: { display: true, text: 'CEI' } }, y: { ticks: { font: { size: 11, weight: '500' }, autoSkip: false } } } } };
+    return { type: 'bar', data: { labels: items.map(function(b) { return b.b; }), datasets: [{ data: items.map(function(b) { return b[valueKey]; }), backgroundColor: items.map(function(b) { return colorMap[b[bandKey]]; }), borderRadius: 4 }] }, options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return metricLabel + ': ' + ctx.raw; } } } }, scales: { x: { min: 0, max: 100, title: { display: true, text: metricLabel } }, y: { ticks: { font: { size: 11, weight: '500' }, autoSkip: false } } } } };
   };
   G.makeChart('top10Chart', tbOpts(top10));
   G.makeChart('bot10Chart', tbOpts(bot10));
@@ -147,15 +177,15 @@ window.GAILS.renderTrendCharts = function(data) {
     var trackerTableEl = document.getElementById('bakeryTrackerTable');
     var selectedBakeries = Array.isArray(state.searchBakery) ? state.searchBakery.slice() : [];
     var scopedRows = state.ALL.filter(function(r) {
-      if (state.regionFilter && G.getBakeryRegion(r.b) !== state.regionFilter) return false;
-      if (state.opsFilter && G.getBakeryOps(r.b) !== state.opsFilter) return false;
+      if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(r.b))) return false;
+      if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(r.b))) return false;
       if (state.bandFilter && r.cb !== state.bandFilter) return false;
       if (selectedBakeries.length && selectedBakeries.indexOf(r.b) === -1) return false;
       return true;
     });
     var benchmarkRows = state.ALL.filter(function(r) {
-      if (state.regionFilter && G.getBakeryRegion(r.b) !== state.regionFilter) return false;
-      if (state.opsFilter && G.getBakeryOps(r.b) !== state.opsFilter) return false;
+      if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(r.b))) return false;
+      if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(r.b))) return false;
       if (state.bandFilter && r.cb !== state.bandFilter) return false;
       return true;
     });

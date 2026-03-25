@@ -9,7 +9,8 @@ window.GAILS.state = {
   selectedMonths: [],
   searchBakery: [],
   bandFilter: '',
-  regionFilter: '',
-  opsFilter: '',
+  regionFilter: [],
+  opsFilter: [],
+  rankingsMetric: 'relative',
   PERIODS: {},
 };

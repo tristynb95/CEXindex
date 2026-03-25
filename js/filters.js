@@ -12,8 +12,8 @@ window.GAILS.getData = function() {
   var G = GAILS;
   var state = G.state;
   var recs = state.ALL.filter(function(r) { return state.selectedMonths.includes(r.m); });
-  if (state.regionFilter) recs = recs.filter(function(r) { return G.getBakeryRegion(r.b) === state.regionFilter; });
-  if (state.opsFilter) recs = recs.filter(function(r) { return G.getBakeryOps(r.b) === state.opsFilter; });
+  if (state.regionFilter.length) recs = recs.filter(function(r) { return state.regionFilter.includes(G.getBakeryRegion(r.b)); });
+  if (state.opsFilter.length) recs = recs.filter(function(r) { return state.opsFilter.includes(G.getBakeryOps(r.b)); });
   if (state.bandFilter) recs = recs.filter(function(r) { return r.cb === state.bandFilter; });
   if (state.searchBakery && state.searchBakery.length) recs = recs.filter(function(r) { return state.searchBakery.some(function(s) { return r.b.toLowerCase().includes(s.toLowerCase()); }); });
 
@@ -52,16 +52,3 @@ window.GAILS.getData = function() {
   return recs;
 };
 
-window.GAILS.populateOpsFilter = function(region) {
-  var G = GAILS;
-  var state = G.state;
-  var opsSel = document.getElementById('opsFilter');
-  var managers = region
-    ? [...new Set(Object.entries(G.BAKERY_META).filter(function(e) { return e[1].r === region; }).map(function(e) { return e[1].o; }))].sort()
-    : [...new Set(Object.values(G.BAKERY_META).map(function(v) { return v.o; }))].sort();
-  var prev = opsSel.value;
-  opsSel.innerHTML = '<option value="">All Managers</option>';
-  managers.forEach(function(m) { var o = document.createElement('option'); o.value = m; o.textContent = m; opsSel.appendChild(o); });
-  if (managers.includes(prev)) opsSel.value = prev; else { opsSel.value = ''; state.opsFilter = ''; }
-  G.syncCustomSelect(opsSel);
-};

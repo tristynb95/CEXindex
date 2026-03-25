@@ -39,24 +39,8 @@
   }
 
   function rebuildRegionFilter() {
-    var regSel = document.getElementById('regionFilter');
-    var previous = state.regionFilter;
-    regSel.innerHTML = '<option value="">All Regions</option>';
-    var regions = [...new Set(Object.values(G.BAKERY_META).map(function(v) { return v.r; }))].filter(Boolean).sort();
-    regions.forEach(function(r) {
-      var option = document.createElement('option');
-      option.value = r;
-      option.textContent = r;
-      regSel.appendChild(option);
-    });
-    if (previous && regions.includes(previous)) {
-      regSel.value = previous;
-    } else {
-      regSel.value = '';
-      state.regionFilter = '';
-    }
-    G.syncCustomSelect(regSel);
-    G.populateOpsFilter(state.regionFilter);
+    if (G.rebuildRegionMultiselect) G.rebuildRegionMultiselect();
+    if (G.rebuildOpsMultiselect) G.rebuildOpsMultiselect();
   }
 
   function resizeChartsSoon(container) {
@@ -432,6 +416,18 @@
     }
   });
 
+  Array.from(document.querySelectorAll('[data-rankings-metric]')).forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var nextMetric = btn.dataset.rankingsMetric === 'absolute' ? 'absolute' : 'relative';
+      if (state.rankingsMetric === nextMetric) return;
+      state.rankingsMetric = nextMetric;
+      Array.from(document.querySelectorAll('[data-rankings-metric]')).forEach(function(toggleBtn) {
+        toggleBtn.classList.toggle('active', toggleBtn.dataset.rankingsMetric === nextMetric);
+      });
+      refresh();
+    });
+  });
+
   // ========== BAKERY MULTI-SELECT ==========
   (function() {
     var selected = state.searchBakery;
@@ -487,7 +483,9 @@
 
     function renderList(query) {
       var all = (state.BAKERIES || []).filter(function(b) {
-        return !state.opsFilter || G.getBakeryOps(b) === state.opsFilter;
+        if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(b))) return false;
+        if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(b))) return false;
+        return true;
       });
       var q = (query || '').toLowerCase().trim();
       var visible = q ? all.filter(function(b) { return b.toLowerCase().includes(q); }) : all;
@@ -562,13 +560,299 @@
     };
   })();
   document.getElementById('bandFilter').addEventListener('change', function(e) { state.bandFilter = e.target.value; refresh(); });
-  document.getElementById('regionFilter').addEventListener('change', function(e) { state.regionFilter = e.target.value; G.populateOpsFilter(state.regionFilter); refresh(); });
-  document.getElementById('opsFilter').addEventListener('change', function(e) {
-    state.opsFilter = e.target.value;
-    state.searchBakery.splice(0, state.searchBakery.length);
-    if (G.resetBakeryMultiselect) G.resetBakeryMultiselect();
-    refresh();
-  });
+
+  // ========== REGION MULTI-SELECT ==========
+  (function() {
+    var selected = state.regionFilter;
+    var msTrigger = document.getElementById('regionMsTrigger');
+    var msLabel = document.getElementById('regionMsLabel');
+    var msDropdown = document.getElementById('regionDropdown');
+    var msList = document.getElementById('regionMsList');
+    var msClearBtn = document.getElementById('regionClearBtn');
+    var msContainer = document.getElementById('regionMultiselect');
+    var msSelectedSection = document.getElementById('regionMsSelectedSection');
+    var msSelectedChips = document.getElementById('regionMsChips');
+    var msSelectedCount = document.getElementById('regionMsCount');
+    var isOpen = false;
+    var availableOptions = [];
+
+    function updateLabel() {
+      if (!selected.length) { msLabel.textContent = 'All Regions'; }
+      else if (selected.length === 1) { msLabel.textContent = selected[0]; }
+      else { msLabel.textContent = selected.length + ' regions'; }
+      msTrigger.classList.toggle('bakery-ms__trigger--active', selected.length > 0);
+      msClearBtn.style.display = selected.length ? '' : 'none';
+    }
+
+    function renderSelected() {
+      var sorted = selected.slice().sort();
+      msSelectedSection.style.display = sorted.length ? '' : 'none';
+      msSelectedCount.textContent = sorted.length;
+      msSelectedChips.innerHTML = '';
+      sorted.forEach(function(name) {
+        var chip = document.createElement('span');
+        chip.className = 'bakery-ms__sel-chip';
+        var lbl = document.createElement('span');
+        lbl.textContent = name;
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'bakery-ms__sel-chip-remove';
+        x.setAttribute('aria-label', 'Remove ' + name);
+        x.innerHTML = '&#x2715;';
+        x.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var idx = selected.indexOf(name);
+          if (idx !== -1) selected.splice(idx, 1);
+          renderSelected();
+          renderList();
+          updateLabel();
+          onRegionChange();
+        });
+        chip.appendChild(lbl);
+        chip.appendChild(x);
+        msSelectedChips.appendChild(chip);
+      });
+    }
+
+    function renderList() {
+      msList.innerHTML = '';
+      availableOptions.forEach(function(name) {
+        var isSel = selected.includes(name);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'bakery-ms__option' + (isSel ? ' is-checked' : '');
+        btn.setAttribute('role', 'option');
+        btn.setAttribute('aria-selected', isSel ? 'true' : 'false');
+        var box = document.createElement('span');
+        box.className = 'bakery-ms__checkbox';
+        box.setAttribute('aria-hidden', 'true');
+        var txt = document.createElement('span');
+        txt.textContent = name;
+        btn.appendChild(box);
+        btn.appendChild(txt);
+        btn.addEventListener('click', function() { toggleRegion(name); });
+        msList.appendChild(btn);
+      });
+    }
+
+    function toggleRegion(name) {
+      var idx = selected.indexOf(name);
+      if (idx === -1) { selected.push(name); } else { selected.splice(idx, 1); }
+      renderList();
+      renderSelected();
+      updateLabel();
+      onRegionChange();
+    }
+
+    function onRegionChange() {
+      if (G.rebuildOpsMultiselect) G.rebuildOpsMultiselect();
+      // Remove selected bakeries that don't belong to the now-selected regions
+      if (selected.length) {
+        var removed = false;
+        for (var i = state.searchBakery.length - 1; i >= 0; i--) {
+          if (!selected.includes(G.getBakeryRegion(state.searchBakery[i]))) {
+            state.searchBakery.splice(i, 1);
+            removed = true;
+          }
+        }
+        if (removed && G.resetBakeryMultiselect) G.resetBakeryMultiselect();
+      }
+      refresh();
+    }
+
+    function openDropdown() {
+      isOpen = true;
+      msDropdown.style.display = 'block';
+      msTrigger.setAttribute('aria-expanded', 'true');
+      msTrigger.classList.add('is-open');
+      renderList();
+      renderSelected();
+    }
+
+    function closeDropdown() {
+      isOpen = false;
+      msDropdown.style.display = 'none';
+      msTrigger.setAttribute('aria-expanded', 'false');
+      msTrigger.classList.remove('is-open');
+    }
+
+    msTrigger.addEventListener('click', function() { isOpen ? closeDropdown() : openDropdown(); });
+    msClearBtn.addEventListener('click', function() {
+      selected.splice(0, selected.length);
+      updateLabel();
+      if (isOpen) { renderList(); renderSelected(); }
+      onRegionChange();
+    });
+    document.addEventListener('click', function(e) {
+      if (isOpen && !e.composedPath().some(function(el) { return el === msContainer; })) closeDropdown();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (isOpen && e.key === 'Escape') { closeDropdown(); msTrigger.focus(); }
+    });
+
+    updateLabel();
+
+    G.rebuildRegionMultiselect = function() {
+      availableOptions = [...new Set(Object.values(G.BAKERY_META).map(function(v) { return v.r; }))].filter(Boolean).sort();
+      for (var i = selected.length - 1; i >= 0; i--) {
+        if (!availableOptions.includes(selected[i])) selected.splice(i, 1);
+      }
+      if (isOpen) renderList();
+      updateLabel();
+      renderSelected();
+    };
+  })();
+
+  // ========== OPS MANAGER MULTI-SELECT ==========
+  (function() {
+    var selected = state.opsFilter;
+    var msTrigger = document.getElementById('opsMsTrigger');
+    var msLabel = document.getElementById('opsMsLabel');
+    var msDropdown = document.getElementById('opsDropdown');
+    var msList = document.getElementById('opsMsList');
+    var msSearch = document.getElementById('opsSearch');
+    var msClearBtn = document.getElementById('opsClearBtn');
+    var msContainer = document.getElementById('opsMultiselect');
+    var msSelectedSection = document.getElementById('opsMsSelectedSection');
+    var msSelectedChips = document.getElementById('opsMsChips');
+    var msSelectedCount = document.getElementById('opsMsCount');
+    var isOpen = false;
+
+    function getAvailableOps() {
+      var regions = state.regionFilter;
+      return [...new Set(Object.entries(G.BAKERY_META)
+        .filter(function(e) { return !regions.length || regions.includes(e[1].r); })
+        .map(function(e) { return e[1].o; })
+      )].filter(Boolean).sort();
+    }
+
+    function updateLabel() {
+      if (!selected.length) { msLabel.textContent = 'All Managers'; }
+      else if (selected.length === 1) { msLabel.textContent = selected[0]; }
+      else { msLabel.textContent = selected.length + ' managers'; }
+      msTrigger.classList.toggle('bakery-ms__trigger--active', selected.length > 0);
+      msClearBtn.style.display = selected.length ? '' : 'none';
+    }
+
+    function renderSelected() {
+      var sorted = selected.slice().sort();
+      msSelectedSection.style.display = sorted.length ? '' : 'none';
+      msSelectedCount.textContent = sorted.length;
+      msSelectedChips.innerHTML = '';
+      sorted.forEach(function(name) {
+        var chip = document.createElement('span');
+        chip.className = 'bakery-ms__sel-chip';
+        var lbl = document.createElement('span');
+        lbl.textContent = name;
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'bakery-ms__sel-chip-remove';
+        x.setAttribute('aria-label', 'Remove ' + name);
+        x.innerHTML = '&#x2715;';
+        x.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var idx = selected.indexOf(name);
+          if (idx !== -1) selected.splice(idx, 1);
+          renderSelected();
+          renderList(msSearch.value);
+          updateLabel();
+          onOpsChange();
+        });
+        chip.appendChild(lbl);
+        chip.appendChild(x);
+        msSelectedChips.appendChild(chip);
+      });
+    }
+
+    function renderList(query) {
+      var available = getAvailableOps();
+      var q = (query || '').toLowerCase().trim();
+      var visible = q ? available.filter(function(o) { return o.toLowerCase().includes(q); }) : available;
+      msList.innerHTML = '';
+      visible.forEach(function(name) {
+        var isSel = selected.includes(name);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'bakery-ms__option' + (isSel ? ' is-checked' : '');
+        btn.setAttribute('role', 'option');
+        btn.setAttribute('aria-selected', isSel ? 'true' : 'false');
+        var box = document.createElement('span');
+        box.className = 'bakery-ms__checkbox';
+        box.setAttribute('aria-hidden', 'true');
+        var txt = document.createElement('span');
+        txt.textContent = name;
+        btn.appendChild(box);
+        btn.appendChild(txt);
+        btn.addEventListener('click', function() { toggleOps(name); });
+        msList.appendChild(btn);
+      });
+    }
+
+    function toggleOps(name) {
+      var idx = selected.indexOf(name);
+      if (idx === -1) { selected.push(name); } else { selected.splice(idx, 1); }
+      renderList(msSearch.value);
+      renderSelected();
+      updateLabel();
+      onOpsChange();
+    }
+
+    function onOpsChange() {
+      state.searchBakery.splice(0, state.searchBakery.length);
+      if (G.resetBakeryMultiselect) G.resetBakeryMultiselect();
+      refresh();
+    }
+
+    function openDropdown() {
+      isOpen = true;
+      msDropdown.style.display = 'block';
+      msTrigger.setAttribute('aria-expanded', 'true');
+      msTrigger.classList.add('is-open');
+      msSearch.value = '';
+      renderList('');
+      renderSelected();
+      msSearch.focus();
+    }
+
+    function closeDropdown() {
+      isOpen = false;
+      msDropdown.style.display = 'none';
+      msTrigger.setAttribute('aria-expanded', 'false');
+      msTrigger.classList.remove('is-open');
+    }
+
+    msTrigger.addEventListener('click', function() { isOpen ? closeDropdown() : openDropdown(); });
+    msSearch.addEventListener('input', function() { renderList(this.value); });
+    msClearBtn.addEventListener('click', function() {
+      selected.splice(0, selected.length);
+      updateLabel();
+      if (isOpen) { renderList(msSearch.value); renderSelected(); }
+      onOpsChange();
+    });
+    document.addEventListener('click', function(e) {
+      if (isOpen && !e.composedPath().some(function(el) { return el === msContainer; })) closeDropdown();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (isOpen && e.key === 'Escape') { closeDropdown(); msTrigger.focus(); }
+    });
+
+    updateLabel();
+
+    G.rebuildOpsMultiselect = function() {
+      var available = getAvailableOps();
+      var prevLen = selected.length;
+      for (var i = selected.length - 1; i >= 0; i--) {
+        if (!available.includes(selected[i])) selected.splice(i, 1);
+      }
+      if (selected.length !== prevLen) {
+        state.searchBakery.splice(0, state.searchBakery.length);
+        if (G.resetBakeryMultiselect) G.resetBakeryMultiselect();
+      }
+      if (isOpen) renderList(msSearch.value);
+      updateLabel();
+      renderSelected();
+    };
+  })();
   document.getElementById('sortBy').addEventListener('change', refresh);
 
   document.getElementById('rollingWindow').addEventListener('change', function() {
@@ -693,8 +977,8 @@
 
   function countActiveFilters() {
     var count = 0;
-    if (state.regionFilter) count++;
-    if (state.opsFilter) count++;
+    if (state.regionFilter && state.regionFilter.length) count++;
+    if (state.opsFilter && state.opsFilter.length) count++;
     if (state.searchBakery && state.searchBakery.length) count++;
     if (state.bandFilter) count++;
     return count;

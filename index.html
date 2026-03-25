@@ -203,12 +203,51 @@
               <option value="9">Last 9 Months</option>
               <option value="12">Last 12 Months</option>
             </select></div>
-            <div class="filter-control"><label>Region</label><br><select id="regionFilter">
-              <option value="">All Regions</option>
-            </select></div>
-            <div class="filter-control"><label>Ops Manager</label><br><select id="opsFilter">
-              <option value="">All Managers</option>
-            </select></div>
+            <div class="filter-control">
+              <label>Region</label><br>
+              <div class="bakery-ms" id="regionMultiselect">
+                <button class="bakery-ms__trigger" id="regionMsTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="bakery-ms__trigger-label" id="regionMsLabel">All Regions</span>
+                  <span class="bakery-ms__trigger-icon" aria-hidden="true"></span>
+                </button>
+                <div class="bakery-ms__dropdown" id="regionDropdown">
+                  <div class="bakery-ms__search-row">
+                    <button class="bakery-ms__clear" id="regionClearBtn" type="button" aria-label="Clear selection">Clear</button>
+                  </div>
+                  <div class="bakery-ms__list" id="regionMsList"></div>
+                  <div class="bakery-ms__selected-section" id="regionMsSelectedSection" style="display:none">
+                    <div class="bakery-ms__selected-header">
+                      <span class="bakery-ms__selected-title">Selected</span>
+                      <span class="bakery-ms__selected-count" id="regionMsCount"></span>
+                    </div>
+                    <div class="bakery-ms__selected-chips" id="regionMsChips"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="filter-control">
+              <label>Ops Manager</label><br>
+              <div class="bakery-ms" id="opsMultiselect">
+                <button class="bakery-ms__trigger" id="opsMsTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="bakery-ms__trigger-label" id="opsMsLabel">All Managers</span>
+                  <span class="bakery-ms__trigger-icon" aria-hidden="true"></span>
+                </button>
+                <div class="bakery-ms__dropdown" id="opsDropdown">
+                  <div class="bakery-ms__search-row">
+                    <input class="bakery-ms__search" id="opsSearch" type="text" placeholder="Search&hellip;" autocomplete="off" spellcheck="false">
+                    <button class="bakery-ms__clear" id="opsClearBtn" type="button" aria-label="Clear selection">Clear</button>
+                  </div>
+                  <div class="bakery-ms__list" id="opsMsList"></div>
+                  <div class="bakery-ms__selected-section" id="opsMsSelectedSection" style="display:none">
+                    <div class="bakery-ms__selected-header">
+                      <span class="bakery-ms__selected-title">Selected</span>
+                      <span class="bakery-ms__selected-count" id="opsMsCount"></span>
+                    </div>
+                    <div class="bakery-ms__selected-chips" id="opsMsChips"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="filter-control">
               <label>Bakery</label><br>
               <div class="bakery-ms" id="bakeryMultiselect">
@@ -383,38 +422,43 @@
 
           <!-- OVERVIEW -->
           <div class="tab-content active" id="tab-overview">
-            <div class="grid-2">
-              <div class="section">
-                <h2>NPS Distribution</h2><canvas id="npsHist"></canvas>
+            <div class="section">
+              <h2>NPS Distribution</h2><canvas id="npsHist"></canvas>
+            </div>
+            <div class="overview-rankings-toolbar">
+              <div class="overview-rankings-toolbar__copy">
+                <h2 class="overview-rankings-toolbar__title">Relative vs Absolute View</h2>
+                <p class="overview-rankings-toolbar__text">Switch between peer-relative CEI and benchmark-based absolute CEI for the band split, NPS scatter, radar, drag analysis, and top/bottom bakery rankings.</p>
               </div>
-              <div class="section">
-                <h2>CEI Band Split (Relative)</h2><canvas id="ceiBands"></canvas>
+              <div class="overview-rankings-toggle" role="group" aria-label="Toggle overview metric">
+                <button type="button" class="overview-rankings-toggle__btn active" data-rankings-metric="relative">Relative CEI</button>
+                <button type="button" class="overview-rankings-toggle__btn" data-rankings-metric="absolute">Absolute CEI</button>
               </div>
             </div>
             <div class="grid-2 overview-secondary-charts">
               <div class="section">
-                <h2>NPS vs CEI</h2><canvas id="npsVsCei"></canvas>
+                <h2 id="npsScatterTitle">NPS vs Relative CEI</h2><canvas id="npsVsCei"></canvas>
               </div>
               <div class="section">
-                <h2>Customer Experience by Band</h2><canvas id="cxRadar"></canvas>
+                <h2 id="overviewBandSplitTitle">CEI Band Split (Relative)</h2><canvas id="overviewBandSplit"></canvas>
               </div>
             </div>
             <div class="grid-2 overview-cei-pies">
               <div class="section">
-                <h2>Absolute CEI Band Split</h2><canvas id="absCeiBands"></canvas>
+                <h2 id="overviewRadarTitle">Customer Experience by Relative CEI Band</h2><canvas id="cxRadar" style="max-height:340px"></canvas>
               </div>
               <div class="section">
-                <h2>Biggest Drags on Absolute CEI</h2>
-                <p style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Average absolute component score across all bakeries &mdash; shows which area is pulling the network down most vs the 90% benchmark.</p>
+                <h2 id="overviewDragTitle">Biggest Drags on Relative CEI</h2>
+                <p id="overviewDragText" style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Average peer-relative component score across all bakeries &mdash; shows which area is pulling the network down most versus the rest of the cohort.</p>
                 <canvas id="absComponentDrag"></canvas>
               </div>
             </div>
-            <div class="grid-2">
+            <div class="grid-2 overview-rankings-grid">
               <div class="section">
-                <h2 style="color:var(--green)">Top 10 Bakeries by CEI</h2><canvas id="top10Chart" style="max-height:360px"></canvas>
+                <h2 id="top10Title" style="color:var(--green)">Top 10 Bakeries by Relative CEI</h2><canvas id="top10Chart" style="max-height:360px"></canvas>
               </div>
               <div class="section">
-                <h2 style="color:var(--red)">Bottom 10 Bakeries by CEI</h2><canvas id="bot10Chart" style="max-height:360px"></canvas>
+                <h2 id="bot10Title" style="color:var(--red)">Bottom 10 Bakeries by Relative CEI</h2><canvas id="bot10Chart" style="max-height:360px"></canvas>
               </div>
             </div>
           </div>
