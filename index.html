@@ -100,7 +100,7 @@
           <form id="loginForm" class="login-form">
             <label class="login-field" for="emailInput">
               <span>Work email</span>
-              <input type="email" id="emailInput" class="login-input" placeholder="name@gails.com" autocomplete="username">
+              <input type="email" id="emailInput" class="login-input" placeholder="name@gails.com" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
             </label>
 
             <label class="login-field" for="passwordInput">
@@ -449,9 +449,10 @@
             </div>
             <div class="section">
               <h2>Bakery Tracker</h2>
-              <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Averages update from the bakery filter above. Select bakeries to compare their combined trend, or leave it empty to view the all-bakeries average.</p>
+              <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Use the bakery filter above to compare monthly trends. One bakery shows its actual monthly datapoints; multiple bakeries show a combined monthly average; no bakery selected shows the all-bakeries average.</p>
               <div id="bakeryTrackerStatus" class="status" style="margin:0 0 10px">Showing all-bakeries averages.</div>
               <canvas id="bakeryTracker" style="max-height:360px"></canvas>
+              <div id="bakeryTrackerTable" style="margin-top:24px"></div>
             </div>
           </div>
 

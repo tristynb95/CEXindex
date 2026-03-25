@@ -144,6 +144,7 @@ window.GAILS.renderTrendCharts = function(data) {
   (function renderBakeryTracker() {
     var trackerStatusEl = document.getElementById('bakeryTrackerStatus');
     var trackerCanvas = document.getElementById('bakeryTracker');
+    var trackerTableEl = document.getElementById('bakeryTrackerTable');
     var selectedBakeries = Array.isArray(state.searchBakery) ? state.searchBakery.slice() : [];
     var scopedRows = state.ALL.filter(function(r) {
       if (state.regionFilter && G.getBakeryRegion(r.b) !== state.regionFilter) return false;
@@ -158,6 +159,7 @@ window.GAILS.renderTrendCharts = function(data) {
       if (state.bandFilter && r.cb !== state.bandFilter) return false;
       return true;
     });
+    var isSingleBakery = selectedBakeries.length === 1;
 
     function clearTracker(statusText) {
       G.destroyChart('bakeryTracker');
@@ -165,10 +167,19 @@ window.GAILS.renderTrendCharts = function(data) {
         var ctx = trackerCanvas.getContext('2d');
         if (ctx) ctx.clearRect(0, 0, trackerCanvas.width || 0, trackerCanvas.height || 0);
       }
+      if (trackerTableEl) trackerTableEl.innerHTML = '';
       if (trackerStatusEl) {
         trackerStatusEl.textContent = statusText;
         trackerStatusEl.className = 'status';
       }
+    }
+
+    function round1(value) {
+      return Math.round(value * 10) / 10;
+    }
+
+    function formatValue(value, suffix) {
+      return value === null || value === undefined ? '\u2014' : value.toFixed(1) + (suffix || '');
     }
 
     if (!scopedRows.length) {
@@ -179,30 +190,96 @@ window.GAILS.renderTrendCharts = function(data) {
     var scopeLabel = selectedBakeries.length
       ? (selectedBakeries.length === 1 ? selectedBakeries[0] : selectedBakeries.length + ' selected bakeries')
       : 'All bakeries';
-    var avgSeries = function(rows, key) {
-      return RM.map(function(m) {
-        var mr = rows.filter(function(r) { return r.m === m; });
-        return mr.length ? avg(mr, key) : null;
-      });
-    };
-    var trackerNps = avgSeries(scopedRows, 'n');
-    var trackerCei = avgSeries(scopedRows, 'c');
-    var trackerAbsCei = avgSeries(scopedRows, 'ac');
-    var benchmarkNps = selectedBakeries.length ? avgSeries(benchmarkRows, 'n') : null;
+    var trackerRows = RM.map(function(m) {
+      var scopedMonthRows = scopedRows.filter(function(r) { return r.m === m; });
+      var benchmarkMonthRows = benchmarkRows.filter(function(r) { return r.m === m; });
+      if (!scopedMonthRows.length) {
+        return {
+          month: m,
+          n: null,
+          c: null,
+          ac: null,
+          v: null,
+          benchmarkNps: benchmarkMonthRows.length ? round1(avg(benchmarkMonthRows, 'n')) : null
+        };
+      }
+
+      if (isSingleBakery) {
+        return {
+          month: m,
+          n: scopedMonthRows[0].n,
+          c: scopedMonthRows[0].c,
+          ac: scopedMonthRows[0].ac,
+          v: scopedMonthRows[0].v,
+          benchmarkNps: benchmarkMonthRows.length ? round1(avg(benchmarkMonthRows, 'n')) : null
+        };
+      }
+
+      return {
+        month: m,
+        n: round1(avg(scopedMonthRows, 'n')),
+        c: round1(avg(scopedMonthRows, 'c')),
+        ac: round1(avg(scopedMonthRows, 'ac')),
+        v: Math.round(scopedMonthRows.reduce(function(total, row) { return total + row.v; }, 0)),
+        benchmarkNps: benchmarkMonthRows.length ? round1(avg(benchmarkMonthRows, 'n')) : null
+      };
+    });
+    var trackerNps = trackerRows.map(function(row) { return row.n; });
+    var trackerCei = trackerRows.map(function(row) { return row.c; });
+    var trackerAbsCei = trackerRows.map(function(row) { return row.ac; });
+    var benchmarkNps = selectedBakeries.length
+      ? trackerRows.map(function(row) { return row.benchmarkNps; })
+      : null;
+    var trackerTableRows = trackerRows.filter(function(row) {
+      return row.n !== null || row.c !== null || row.ac !== null || row.v !== null;
+    });
 
     if (trackerStatusEl) {
-      trackerStatusEl.textContent = selectedBakeries.length
-        ? 'Showing averages for ' + scopeLabel + '.'
-        : 'Showing all-bakeries averages.';
+      trackerStatusEl.textContent = isSingleBakery
+        ? 'Showing monthly datapoints for ' + scopeLabel + '.'
+        : selectedBakeries.length
+          ? 'Showing combined monthly averages for ' + scopeLabel + '.'
+          : 'Showing all-bakeries monthly averages.';
       trackerStatusEl.className = 'status success';
+    }
+
+    if (trackerTableEl) {
+      var tableTitle = isSingleBakery
+        ? scopeLabel + ' Monthly Performance'
+        : selectedBakeries.length
+          ? 'Combined Monthly Performance for ' + scopeLabel
+          : 'All Bakeries Monthly Average Performance';
+      var tableDescription = isSingleBakery
+        ? 'Actual monthly datapoints for ' + scopeLabel + ', with all-bakeries average NPS shown for context.'
+        : selectedBakeries.length
+          ? 'Monthly average scores across the selected bakeries, with all-bakeries average NPS shown for context.'
+          : 'Monthly average scores across every bakery in the current filter scope.';
+      trackerTableEl.innerHTML = trackerTableRows.length
+        ? '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">'
+          + tableTitle
+          + '</h3><p class="tracker-table-header__copy">'
+          + tableDescription
+          + '</p></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th>NPS</th><th>Relative CEI</th><th>Absolute CEI</th><th>Responses</th>' + (selectedBakeries.length ? '<th>All Bakeries Avg NPS</th>' : '') + '</tr></thead><tbody>' +
+          trackerTableRows.map(function(row) {
+            return '<tr>'
+              + '<td>' + row.month + '</td>'
+              + '<td>' + formatValue(row.n) + '</td>'
+              + '<td>' + formatValue(row.c) + '</td>'
+              + '<td>' + formatValue(row.ac) + '</td>'
+              + '<td>' + (row.v === null || row.v === undefined ? '\u2014' : row.v) + '</td>'
+              + (selectedBakeries.length ? '<td>' + formatValue(row.benchmarkNps) + '</td>' : '')
+              + '</tr>';
+          }).join('') + '</tbody></table></div>'
+        : '';
+      G.makeSortable(trackerTableEl);
     }
 
     G.makeChart('bakeryTracker', {
       type: 'line', data: {
         labels: RM, datasets: [
-          { label: scopeLabel + ' Avg NPS', data: trackerNps, borderColor: G.COL.Excellent, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-          { label: scopeLabel + ' Avg Relative CEI', data: trackerCei, borderColor: '#4895FF', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-          { label: scopeLabel + ' Avg Absolute CEI', data: trackerAbsCei, borderColor: '#9B5DFF', tension: 0.3, pointRadius: 4, borderWidth: 2, borderDash: [6, 3] }
+          { label: scopeLabel + (isSingleBakery ? ' NPS' : ' Avg NPS'), data: trackerNps, borderColor: G.COL.Excellent, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+          { label: scopeLabel + (isSingleBakery ? ' Relative CEI' : ' Avg Relative CEI'), data: trackerCei, borderColor: '#4895FF', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+          { label: scopeLabel + (isSingleBakery ? ' Absolute CEI' : ' Avg Absolute CEI'), data: trackerAbsCei, borderColor: '#9B5DFF', tension: 0.3, pointRadius: 4, borderWidth: 2, borderDash: [6, 3] }
         ].concat(selectedBakeries.length ? [
           { label: 'All Bakeries Avg NPS', data: benchmarkNps, borderColor: 'rgba(150,150,200,0.5)', borderDash: [5, 5], tension: 0.3, pointRadius: 0, borderWidth: 1.5 }
         ] : [])

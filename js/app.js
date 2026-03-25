@@ -22,9 +22,7 @@
     feedback: 'Customer Feedback'
   };
   var dashboardTabsWithKpis = {
-    overview: true,
-    trends: true,
-    table: true
+    overview: true
   };
 
   function formatSelectedPeriod() {
@@ -84,9 +82,7 @@
       activeTabName = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
     }
     var shouldShow = !!dashboardTabsWithKpis[activeTabName];
-    if (compactDashboardSidebarMedia.matches && (activeTabName === 'trends' || activeTabName === 'table')) {
-      shouldShow = false;
-    }
+
     dashboardKpiRow.hidden = !shouldShow;
     dashboardKpiRow.setAttribute('aria-hidden', String(!shouldShow));
     dashboardKpiRow.style.display = shouldShow ? '' : 'none';

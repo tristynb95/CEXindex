@@ -1881,6 +1881,31 @@ canvas {
   margin-left: auto;
 }
 
+.tracker-table-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 8px;
+}
+
+.tracker-table-header__content {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+
+.tracker-table-header__title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.tracker-table-header__copy {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
 .table-fullscreen-btn {
   width: 32px;
   height: 32px;
@@ -6341,6 +6366,14 @@ a,
   .league-table-toolbar__select {
     width: min(180px, 52vw);
     min-width: 0;
+  }
+
+  .tracker-table-header {
+    align-items: stretch;
+  }
+
+  .tracker-table-header__content {
+    flex-basis: 100%;
   }
 
   .table-wrap--league {

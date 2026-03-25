@@ -16,6 +16,16 @@ export const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const analytics = getAnalytics(app);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
+
+// Analytics is best-effort — it throws in private browsing, in-app browsers
+// (WKWebView on iOS), and environments where Safari's ITP blocks indexedDB.
+// Wrapping it prevents a module-level crash that would silently break auth.
+let analytics = null;
+try {
+  analytics = getAnalytics(app);
+} catch (e) {
+  console.warn('Firebase Analytics unavailable:', e.message);
+}
+export { analytics };
