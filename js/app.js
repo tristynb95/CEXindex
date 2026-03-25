@@ -503,6 +503,206 @@
   });
 
   // ========== INITIALISE FILE UPLOAD ==========
+  // ── Mobile filter side panel ──
+  var filterControlsPanel = document.getElementById('filterControlsPanel');
+  var filterActiveBadge   = document.getElementById('filterActiveBadge');
+  var filterSideTab       = document.getElementById('filterSideTab');
+  var filterSideTabBadge  = document.getElementById('filterSideTabBadge');
+  var filterSideBackdrop  = document.getElementById('filterSideBackdrop');
+  var filterPanelClose    = document.getElementById('filterPanelClose');
+  var filterSidePanelOpen = false;
+  var mobileFilterMedia   = window.matchMedia('(max-width: 720px)');
+  var filterDragState = null;
+  var suppressFilterTabClick = false;
+
+  function getFilterPanelWidth() {
+    if (!filterControlsPanel) return 0;
+    return filterControlsPanel.getBoundingClientRect().width || 0;
+  }
+
+  function setFilterPanelDragOffset(offsetPx) {
+    if (!filterControlsPanel) return;
+    var width = getFilterPanelWidth();
+    if (!width) return;
+    var clamped = Math.max(0, Math.min(width, offsetPx || 0));
+    var progress = 1 - (clamped / width);
+    filterControlsPanel.classList.add('is-dragging');
+    filterControlsPanel.style.transform = 'translateX(' + (-clamped) + 'px)';
+    if (filterSideBackdrop) {
+      filterSideBackdrop.style.opacity = String(Math.max(0, Math.min(1, progress)));
+    }
+    if (filterSideTab) {
+      filterSideTab.style.opacity = String(Math.max(0, Math.min(1, 1 - (progress * 1.15))));
+    }
+  }
+
+  function clearFilterDragStyles() {
+    if (filterControlsPanel) {
+      filterControlsPanel.classList.remove('is-dragging');
+      filterControlsPanel.style.transform = '';
+    }
+    if (filterSideBackdrop) filterSideBackdrop.style.opacity = '';
+    if (filterSideTab) filterSideTab.style.opacity = '';
+  }
+
+  function countActiveFilters() {
+    var count = 0;
+    if (state.regionFilter) count++;
+    if (state.opsFilter) count++;
+    if (state.searchBakery) count++;
+    if (state.bandFilter) count++;
+    return count;
+  }
+
+  function openFilterSidePanel() {
+    if (!filterControlsPanel) return;
+    filterSidePanelOpen = true;
+    clearFilterDragStyles();
+    filterControlsPanel.classList.add('is-open');
+    if (filterSideBackdrop) { filterSideBackdrop.classList.add('is-open'); filterSideBackdrop.removeAttribute('aria-hidden'); }
+    if (filterSideTab) { filterSideTab.classList.add('is-open'); filterSideTab.setAttribute('aria-expanded', 'true'); }
+    if (mobileFilterMedia.matches) { document.body.style.overflow = 'hidden'; }
+  }
+
+  function closeFilterSidePanel() {
+    if (!filterControlsPanel) return;
+    filterSidePanelOpen = false;
+    clearFilterDragStyles();
+    filterControlsPanel.classList.remove('is-open');
+    if (filterSideBackdrop) { filterSideBackdrop.classList.remove('is-open'); filterSideBackdrop.setAttribute('aria-hidden', 'true'); }
+    if (filterSideTab) { filterSideTab.classList.remove('is-open'); filterSideTab.setAttribute('aria-expanded', 'false'); }
+    document.body.style.overflow = '';
+  }
+
+  function syncFilterBadge() {
+    var n = countActiveFilters();
+    if (filterActiveBadge) {
+      filterActiveBadge.hidden = n === 0;
+      if (n > 0) filterActiveBadge.textContent = n;
+    }
+    if (filterSideTabBadge) {
+      filterSideTabBadge.hidden = n === 0;
+      if (n > 0) filterSideTabBadge.textContent = n;
+    }
+    if (filterSideTab) { filterSideTab.classList.toggle('has-active-filters', n > 0); }
+  }
+
+  if (filterSideTab) {
+    filterSideTab.addEventListener('pointerdown', function(event) {
+      if (!mobileFilterMedia.matches || filterSidePanelOpen) return;
+      if (event.pointerType === 'mouse') return;
+      var width = getFilterPanelWidth();
+      if (!width) return;
+      filterDragState = {
+        mode: 'opening',
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startTime: performance.now(),
+        lastX: event.clientX,
+        distance: 0
+      };
+      filterControlsPanel.classList.add('is-open');
+      if (filterSideBackdrop) {
+        filterSideBackdrop.classList.add('is-open');
+        filterSideBackdrop.removeAttribute('aria-hidden');
+      }
+      if (filterSideTab) filterSideTab.classList.add('is-open');
+      setFilterPanelDragOffset(width);
+      filterSideTab.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    filterSideTab.addEventListener('pointermove', function(event) {
+      if (!filterDragState || filterDragState.mode !== 'opening' || filterDragState.pointerId !== event.pointerId) return;
+      var width = getFilterPanelWidth();
+      if (!width) return;
+      var deltaX = event.clientX - filterDragState.startX;
+      var openedDistance = Math.max(0, Math.min(width, deltaX));
+      filterDragState.distance = openedDistance;
+      filterDragState.lastX = event.clientX;
+      setFilterPanelDragOffset(width - openedDistance);
+    });
+    filterSideTab.addEventListener('pointerup', function(event) {
+      if (!filterDragState || filterDragState.mode !== 'opening' || filterDragState.pointerId !== event.pointerId) return;
+      var width = getFilterPanelWidth();
+      var elapsed = Math.max(1, performance.now() - filterDragState.startTime);
+      var velocity = filterDragState.distance / elapsed;
+      var shouldOpen = filterDragState.distance > (width * 0.34) || velocity > 0.55;
+      suppressFilterTabClick = filterDragState.distance > 8;
+      filterDragState = null;
+      shouldOpen ? openFilterSidePanel() : closeFilterSidePanel();
+      window.setTimeout(function() { suppressFilterTabClick = false; }, 180);
+    });
+    filterSideTab.addEventListener('pointercancel', function(event) {
+      if (!filterDragState || filterDragState.pointerId !== event.pointerId) return;
+      filterDragState = null;
+      closeFilterSidePanel();
+    });
+    filterSideTab.addEventListener('click', function() {
+      if (suppressFilterTabClick) return;
+      filterSidePanelOpen ? closeFilterSidePanel() : openFilterSidePanel();
+    });
+  }
+  if (filterControlsPanel) {
+    filterControlsPanel.addEventListener('pointerdown', function(event) {
+      if (!mobileFilterMedia.matches || !filterSidePanelOpen) return;
+      if (event.pointerType === 'mouse') return;
+      if (!event.target.closest('.filter-panel-header')) return;
+      filterDragState = {
+        mode: 'closing',
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startTime: performance.now(),
+        lastX: event.clientX,
+        distance: 0
+      };
+      filterControlsPanel.setPointerCapture(event.pointerId);
+    });
+    filterControlsPanel.addEventListener('pointermove', function(event) {
+      if (!filterDragState || filterDragState.mode !== 'closing' || filterDragState.pointerId !== event.pointerId) return;
+      var width = getFilterPanelWidth();
+      if (!width) return;
+      var deltaX = event.clientX - filterDragState.startX;
+      var closeDistance = Math.max(0, Math.min(width, -deltaX));
+      filterDragState.distance = closeDistance;
+      filterDragState.lastX = event.clientX;
+      setFilterPanelDragOffset(closeDistance);
+    });
+    filterControlsPanel.addEventListener('pointerup', function(event) {
+      if (!filterDragState || filterDragState.mode !== 'closing' || filterDragState.pointerId !== event.pointerId) return;
+      var width = getFilterPanelWidth();
+      var elapsed = Math.max(1, performance.now() - filterDragState.startTime);
+      var velocity = filterDragState.distance / elapsed;
+      var shouldClose = filterDragState.distance > (width * 0.24) || velocity > 0.45;
+      filterDragState = null;
+      shouldClose ? closeFilterSidePanel() : openFilterSidePanel();
+    });
+    filterControlsPanel.addEventListener('pointercancel', function(event) {
+      if (!filterDragState || filterDragState.pointerId !== event.pointerId) return;
+      filterDragState = null;
+      openFilterSidePanel();
+    });
+  }
+  if (filterPanelClose) { filterPanelClose.addEventListener('click', closeFilterSidePanel); }
+  if (filterSideBackdrop) { filterSideBackdrop.addEventListener('click', closeFilterSidePanel); }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && filterSidePanelOpen) { closeFilterSidePanel(); }
+  });
+
+  // Close side panel when viewport grows past mobile breakpoint
+  if (mobileFilterMedia.addEventListener) {
+    mobileFilterMedia.addEventListener('change', function(e) {
+      if (!e.matches && filterSidePanelOpen) { closeFilterSidePanel(); }
+    });
+  }
+
+  // Patch refresh to also sync the filter badge
+  var originalRefresh = refresh;
+  refresh = function() {
+    originalRefresh();
+    syncFilterBadge();
+  };
+
   G.refreshDashboard = refresh;
   G.rebuildDashboardFilters = function() {
     rebuildRegionFilter();
