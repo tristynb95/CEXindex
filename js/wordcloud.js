@@ -18,6 +18,95 @@ window.GAILS = window.GAILS || {};
   var lastTargetWcParamsKey = null;
   var resizeTimer = null;
 
+  function ensureWordCloudTooltip(canvas) {
+    if (!canvas) return null;
+    var wrap = canvas.parentElement;
+    if (!wrap) return null;
+
+    if (!wrap.__wcTooltip) {
+      var tooltip = document.createElement('div');
+      tooltip.className = 'wc-tooltip';
+      tooltip.hidden = true;
+      wrap.appendChild(tooltip);
+      wrap.__wcTooltip = tooltip;
+    }
+
+    if (!canvas.__wcTooltipBound) {
+      canvas.addEventListener('mousemove', function (evt) {
+        var tooltip = wrap.__wcTooltip;
+        var hitRegions = canvas.__wcHitRegions || [];
+        if (!tooltip || !hitRegions.length) {
+          hideWordCloudTooltip(canvas);
+          return;
+        }
+
+        var rect = canvas.getBoundingClientRect();
+        var x = evt.clientX - rect.left;
+        var y = evt.clientY - rect.top;
+        var match = null;
+
+        for (var i = 0; i < hitRegions.length; i++) {
+          var region = hitRegions[i];
+          if (x >= region.x && x <= region.x + region.w &&
+              y >= region.y && y <= region.y + region.h) {
+            match = region;
+            break;
+          }
+        }
+
+        if (!match) {
+          canvas.style.cursor = 'default';
+          hideWordCloudTooltip(canvas);
+          return;
+        }
+
+        canvas.style.cursor = 'pointer';
+        tooltip.textContent = match.word + ': ' + match.value;
+        tooltip.hidden = false;
+
+        var wrapRect = wrap.getBoundingClientRect();
+        var left = evt.clientX - wrapRect.left + 14;
+        var top = evt.clientY - wrapRect.top - 14;
+        var maxLeft = Math.max(8, wrap.clientWidth - tooltip.offsetWidth - 8);
+        var maxTop = Math.max(8, wrap.clientHeight - tooltip.offsetHeight - 8);
+
+        if (left > maxLeft) left = maxLeft;
+        if (top > maxTop) top = maxTop;
+        if (top < 8) top = evt.clientY - wrapRect.top + 18;
+        if (top > maxTop) top = maxTop;
+
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+      });
+
+      canvas.addEventListener('mouseleave', function () {
+        canvas.style.cursor = 'default';
+        hideWordCloudTooltip(canvas);
+      });
+
+      canvas.__wcTooltipBound = true;
+    }
+
+    return wrap.__wcTooltip;
+  }
+
+  function hideWordCloudTooltip(canvas) {
+    if (!canvas || !canvas.parentElement || !canvas.parentElement.__wcTooltip) return;
+    canvas.parentElement.__wcTooltip.hidden = true;
+  }
+
+  function measureWord(ctx, text, size) {
+    var metrics = ctx.measureText(text);
+    var ascent = metrics.actualBoundingBoxAscent || size * 0.76;
+    var descent = metrics.actualBoundingBoxDescent || size * 0.2;
+    return {
+      width: metrics.width,
+      ascent: ascent,
+      descent: descent,
+      height: ascent + descent
+    };
+  }
+
   // Stable string key for a word cloud request body — used to detect filter changes
   function buildWcParamsKey(body) {
     var bakeries = (body.bakery_locations || []).slice().sort().join(',');
@@ -42,6 +131,10 @@ window.GAILS = window.GAILS || {};
   // ── Renderer ───────────────────────────────────────────────────────────────
 
   function renderWordCloud(words, canvas) {
+    ensureWordCloudTooltip(canvas);
+    hideWordCloudTooltip(canvas);
+    canvas.__wcHitRegions = [];
+
     var dpr    = window.devicePixelRatio || 1;
     var cssW   = (canvas.parentElement.clientWidth || 760);
     var cssH   = 480;
@@ -79,6 +172,7 @@ window.GAILS = window.GAILS || {};
     var total  = sorted.length;
 
     var MIN_SIZE = 12, MAX_SIZE = 60;
+    var EDGE_PAD = 3;
     var placed = [];
 
     // Draw legend in bottom-right corner before placing words
@@ -113,8 +207,9 @@ window.GAILS = window.GAILS || {};
       var weight = size > 28 ? '700' : size > 16 ? '600' : '400';
       ctx.font   = weight + ' ' + size + 'px "Space Grotesk", Inter, system-ui, sans-serif';
 
-      var tw = ctx.measureText(item.word).width;
-      var th = size;
+      var metrics = measureWord(ctx, item.word, size);
+      var tw = metrics.width;
+      var th = metrics.height;
 
       // Colour from sentiment field
       var sentiment = (item.sentiment || '').toLowerCase();
@@ -130,21 +225,29 @@ window.GAILS = window.GAILS || {};
 
       // Archimedean spiral — golden-angle start per word keeps layout varied
       var startAngle = idx * 2.39996;
+      var boxPadX = size > 34 ? 2 : 1;
+      var boxPadY = size > 34 ? 3 : 2;
 
-      for (var i = 0; i < 1500; i++) {
-        var theta = i * 0.13;
-        var r     = 3.2 * theta;
+      for (var i = 0; i < 2200; i++) {
+        var theta = i * 0.115;
+        var r     = 2.65 * theta;
         var angle = startAngle + theta;
         var cx    = cssW / 2 + r * Math.cos(angle);
         var cy    = cssH / 2 + r * Math.sin(angle) * xyRatio;
         var x     = cx - tw / 2;
-        var y     = cy + th * 0.35;
+        var y     = cy + metrics.ascent - th / 2;
 
         // Reject positions outside canvas
-        if (x < 6 || x + tw > cssW - 6 || y - th < 6 || y > cssH - 6) continue;
+        if (x < EDGE_PAD || x + tw > cssW - EDGE_PAD ||
+            y - metrics.ascent < EDGE_PAD || y + metrics.descent > cssH - EDGE_PAD) continue;
 
         // AABB collision check
-        var box = { x: x - 2, y: y - th - 2, w: tw + 4, h: th + 6 };
+        var box = {
+          x: x - boxPadX,
+          y: y - metrics.ascent - boxPadY,
+          w: tw + boxPadX * 2,
+          h: th + boxPadY * 2
+        };
         var overlaps = false;
         for (var p = 0; p < placed.length; p++) {
           var q = placed[p];
@@ -159,6 +262,14 @@ window.GAILS = window.GAILS || {};
           ctx.fillStyle = color;
           ctx.fillText(item.word, x, y);
           placed.push(box);
+          canvas.__wcHitRegions.push({
+            x: box.x,
+            y: box.y,
+            w: box.w,
+            h: box.h,
+            word: item.word,
+            value: item.value
+          });
           break;
         }
       }
@@ -202,6 +313,8 @@ window.GAILS = window.GAILS || {};
 
     if (statusEl) { statusEl.textContent = 'Loading\u2026'; statusEl.className = 'status'; }
     if (emptyEl)  emptyEl.style.display = 'none';
+    hideWordCloudTooltip(canvas);
+    canvas.__wcHitRegions = [];
 
     fetch(ENDPOINT, {
       method: 'POST',
@@ -214,19 +327,25 @@ window.GAILS = window.GAILS || {};
     })
     .then(function (data) {
       lastWcParamsKey = paramsKey;
-      if (!Array.isArray(data) || data.length === 0) {
+      var words = data.word_cloud || data.word_cloud_data || data;
+      var totalSurveys = data.total_surveys_sampled != null ? data.total_surveys_sampled : null;
+      if (!Array.isArray(words) || words.length === 0) {
         if (statusEl) { statusEl.textContent = 'No feedback data found for this selection.'; statusEl.className = 'status'; }
         if (emptyEl)  emptyEl.style.display = '';
         lastWordData = [];
+        hideWordCloudTooltip(canvas);
         return;
       }
-      lastWordData = data;
-      if (statusEl) { statusEl.textContent = data.length + ' words'; statusEl.className = 'status success'; }
-      renderWordCloud(data, canvas);
+      lastWordData = words;
+      var statusText = words.length + ' words';
+      if (totalSurveys !== null) statusText += ' \u00b7 ' + totalSurveys.toLocaleString() + ' surveys';
+      if (statusEl) { statusEl.textContent = statusText; statusEl.className = 'status success'; }
+      renderWordCloud(words, canvas);
     })
     .catch(function (err) {
       console.error('Word cloud error:', err);
       if (statusEl) { statusEl.textContent = 'Failed to load: ' + err.message; statusEl.className = 'status error'; }
+      hideWordCloudTooltip(canvas);
     });
   };
 
@@ -257,6 +376,8 @@ window.GAILS = window.GAILS || {};
         if (emptyEl)  emptyEl.style.display = '';
         lastTargetWordData = [];
         lastTargetWcParamsKey = emptyKey;
+        hideWordCloudTooltip(canvas);
+        canvas.__wcHitRegions = [];
         return;
       }
       body.bakery_locations = bakeries;
@@ -276,6 +397,8 @@ window.GAILS = window.GAILS || {};
 
     if (statusEl) { statusEl.textContent = 'Loading\u2026'; statusEl.className = 'status'; }
     if (emptyEl)  emptyEl.style.display = 'none';
+    hideWordCloudTooltip(canvas);
+    canvas.__wcHitRegions = [];
 
     fetch(ENDPOINT, {
       method: 'POST',
@@ -288,19 +411,25 @@ window.GAILS = window.GAILS || {};
     })
     .then(function (data) {
       lastTargetWcParamsKey = paramsKey;
-      if (!Array.isArray(data) || data.length === 0) {
+      var words = data.word_cloud || data.word_cloud_data || data;
+      var totalSurveys = data.total_surveys_sampled != null ? data.total_surveys_sampled : null;
+      if (!Array.isArray(words) || words.length === 0) {
         if (statusEl) { statusEl.textContent = 'No feedback data found for these bakeries.'; statusEl.className = 'status'; }
         if (emptyEl)  emptyEl.style.display = '';
         lastTargetWordData = [];
+        hideWordCloudTooltip(canvas);
         return;
       }
-      lastTargetWordData = data;
-      if (statusEl) { statusEl.textContent = data.length + ' words'; statusEl.className = 'status success'; }
-      renderWordCloud(data, canvas);
+      lastTargetWordData = words;
+      var statusText = words.length + ' words';
+      if (totalSurveys !== null) statusText += ' \u00b7 ' + totalSurveys.toLocaleString() + ' surveys';
+      if (statusEl) { statusEl.textContent = statusText; statusEl.className = 'status success'; }
+      renderWordCloud(words, canvas);
     })
     .catch(function (err) {
       console.error('Target word cloud error:', err);
       if (statusEl) { statusEl.textContent = 'Failed to load: ' + err.message; statusEl.className = 'status error'; }
+      hideWordCloudTooltip(canvas);
     });
   };
 

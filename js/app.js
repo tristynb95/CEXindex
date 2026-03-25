@@ -247,10 +247,25 @@
       return;
     }
 
-    // KPIs — stripe colour is a data-driven traffic light
-    var sc = function(val, good, warn, invert) {
-      if (invert) return val <= good ? 'kpi-green' : val <= warn ? 'kpi-amber' : 'kpi-red';
-      return val >= good ? 'kpi-green' : val >= warn ? 'kpi-amber' : 'kpi-red';
+    // KPI cards pair each metric with a compact status so the row scans quickly.
+    var metricState = function(val, good, warn, invert, labels) {
+      var tone = invert
+        ? (val <= good ? 'kpi-green' : val <= warn ? 'kpi-amber' : 'kpi-red')
+        : (val >= good ? 'kpi-green' : val >= warn ? 'kpi-amber' : 'kpi-red');
+      var status = tone === 'kpi-green' ? labels.good : tone === 'kpi-amber' ? labels.warn : labels.bad;
+      return { tone: tone, status: status };
+    };
+    var buildMetricCard = function(config) {
+      var status = metricState(config.value, config.good, config.warn, config.invert, config.labels);
+      return {
+        value: config.display,
+        eyebrow: config.eyebrow,
+        title: config.title,
+        meta: config.meta,
+        tone: status.tone,
+        status: status.status,
+        primary: !!config.primary
+      };
     };
     var nps  = G.avg(data, 'n');
     var cei  = G.avg(data, 'c');
@@ -260,16 +275,102 @@
     var fr   = G.avg(data, 'fr');
     var ts   = G.avg(data, 'ts');
     var o5   = G.avg(data, 'o5');
-    document.getElementById('kpis').innerHTML = [
-      { v: nps.toFixed(1),   l: 'Avg NPS',               c: sc(nps,  55, 35) },
-      { v: cei.toFixed(1),   l: 'Avg CEI (Relative)',    c: sc(cei,  62.5, 37.5), h: true },
-      { v: acei.toFixed(1),  l: 'Avg CEI (Absolute)',    c: sc(acei, 75, 60),     h: true },
-      { v: dr.toFixed(1)+'%',l: 'Avg Quality',           c: sc(dr,   90, 80) },
-      { v: ef.toFixed(1)+'%',l: 'Avg Overall Efficiency',c: sc(ef,   90, 80) },
-      { v: fr.toFixed(1)+'%',l: 'Avg Friendly',          c: sc(fr,   90, 80) },
-      { v: ts.toFixed(1),    l: 'Avg Barista Speed',     c: sc(ts,   75, 50) },
-      { v: o5.toFixed(1)+'%',l: 'Avg >5min',             c: sc(o5,   2, 4, true) },
-    ].map(function(k) { return '<div class="kpi ' + k.c + (k.h ? ' hl' : '') + '"><div class="value">' + k.v + '</div><div class="label">' + k.l + '</div></div>'; }).join('');
+    dashboardKpiRow.innerHTML = [
+      buildMetricCard({
+        value: nps,
+        display: nps.toFixed(1),
+        eyebrow: 'Customer',
+        title: 'Net Promoter Score',
+        meta: 'Customer advocacy score.',
+        good: 55,
+        warn: 35,
+        labels: { good: 'Strong', warn: 'At Risk', bad: 'Low' },
+        primary: true
+      }),
+      buildMetricCard({
+        value: cei,
+        display: cei.toFixed(1),
+        eyebrow: 'Index',
+        title: 'Relative CEI',
+        meta: 'Vs bakery peer set.',
+        good: 62.5,
+        warn: 37.5,
+        labels: { good: 'Leading', warn: 'Mid-Pack', bad: 'Lagging' },
+        primary: true
+      }),
+      buildMetricCard({
+        value: acei,
+        display: acei.toFixed(1),
+        eyebrow: 'Index',
+        title: 'Absolute CEI',
+        meta: 'Vs company benchmark.',
+        good: 75,
+        warn: 60,
+        labels: { good: 'On Target', warn: 'Near', bad: 'Below' },
+        primary: true
+      }),
+      buildMetricCard({
+        value: dr,
+        display: dr.toFixed(1) + '%',
+        eyebrow: 'Experience',
+        title: 'Drink Quality',
+        meta: 'Target: 90% positive.',
+        good: 90,
+        warn: 80,
+        labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
+      }),
+      buildMetricCard({
+        value: ef,
+        display: ef.toFixed(1) + '%',
+        eyebrow: 'Experience',
+        title: 'Efficiency',
+        meta: 'Target: 90% positive.',
+        good: 90,
+        warn: 80,
+        labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
+      }),
+      buildMetricCard({
+        value: fr,
+        display: fr.toFixed(1) + '%',
+        eyebrow: 'Service',
+        title: 'Friendliness',
+        meta: 'Target: 90% positive.',
+        good: 90,
+        warn: 80,
+        labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
+      }),
+      buildMetricCard({
+        value: ts,
+        display: ts.toFixed(1),
+        eyebrow: 'Operations',
+        title: 'Barista Speed',
+        meta: 'Target: 75 or better.',
+        good: 75,
+        warn: 50,
+        labels: { good: 'On Target', warn: 'Watch', bad: 'Slow' }
+      }),
+      buildMetricCard({
+        value: o5,
+        display: o5.toFixed(1) + '%',
+        eyebrow: 'Operations',
+        title: 'Orders >5 Min',
+        meta: 'Goal: below 2%.',
+        good: 2,
+        warn: 4,
+        invert: true,
+        labels: { good: 'On Target', warn: 'Watch', bad: 'Slow' }
+      })
+    ].map(function(metric) {
+      return '<article class="kpi ' + metric.tone + (metric.primary ? ' kpi--primary' : '') + '">'
+        + '<div class="kpi__top">'
+        + '<span class="kpi__eyebrow">' + metric.eyebrow + '</span>'
+        + '<span class="kpi__status">' + metric.status + '</span>'
+        + '</div>'
+        + '<div class="kpi__value">' + metric.value + '</div>'
+        + '<div class="kpi__title">' + metric.title + '</div>'
+        + '<div class="kpi__meta">' + metric.meta + '</div>'
+        + '</article>';
+    }).join('');
 
     G.renderOverviewCharts(data);
     G.renderTrendCharts(data);
