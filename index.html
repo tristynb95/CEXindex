@@ -209,7 +209,29 @@
             <div class="filter-control"><label>Ops Manager</label><br><select id="opsFilter">
               <option value="">All Managers</option>
             </select></div>
-            <div class="filter-control"><label>Bakery</label><br><input id="bakerySearch" type="text" placeholder="Search bakery..."></div>
+            <div class="filter-control">
+              <label>Bakery</label><br>
+              <div class="bakery-ms" id="bakeryMultiselect">
+                <button class="bakery-ms__trigger" id="bakeryMsTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="bakery-ms__trigger-label" id="bakeryMsLabel">All Bakeries</span>
+                  <span class="bakery-ms__trigger-icon" aria-hidden="true"></span>
+                </button>
+                <div class="bakery-ms__dropdown" id="bakeryDropdown">
+                  <div class="bakery-ms__search-row">
+                    <input class="bakery-ms__search" id="bakerySearch" type="text" placeholder="Search&hellip;" autocomplete="off" spellcheck="false">
+                    <button class="bakery-ms__clear" id="bakeryClearBtn" type="button" aria-label="Clear selection">Clear</button>
+                  </div>
+                  <div class="bakery-ms__list" id="bakeryMsList"></div>
+                  <div class="bakery-ms__selected-section" id="bakeryMsSelectedSection" style="display:none">
+                    <div class="bakery-ms__selected-header">
+                      <span class="bakery-ms__selected-title">Selected</span>
+                      <span class="bakery-ms__selected-count" id="bakeryMsCount"></span>
+                    </div>
+                    <div class="bakery-ms__selected-chips" id="bakeryMsChips"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="filter-control"><label>Band</label><br><select id="bandFilter">
               <option value="">All</option>
               <option>Excellent</option>
@@ -369,7 +391,7 @@
                 <h2>CEI Band Split (Relative)</h2><canvas id="ceiBands"></canvas>
               </div>
             </div>
-            <div class="grid-2">
+            <div class="grid-2 overview-secondary-charts">
               <div class="section">
                 <h2>NPS vs CEI</h2><canvas id="npsVsCei"></canvas>
               </div>
@@ -377,7 +399,7 @@
                 <h2>Customer Experience by Band</h2><canvas id="cxRadar"></canvas>
               </div>
             </div>
-            <div class="grid-2">
+            <div class="grid-2 overview-cei-pies">
               <div class="section">
                 <h2>Absolute CEI Band Split</h2><canvas id="absCeiBands"></canvas>
               </div>
@@ -427,7 +449,8 @@
             </div>
             <div class="section">
               <h2>Bakery Tracker</h2>
-              <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Type a bakery name above to track its performance over time.</p>
+              <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Averages update from the bakery filter above. Select bakeries to compare their combined trend, or leave it empty to view the all-bakeries average.</p>
+              <div id="bakeryTrackerStatus" class="status" style="margin:0 0 10px">Showing all-bakeries averages.</div>
               <canvas id="bakeryTracker" style="max-height:360px"></canvas>
             </div>
           </div>

@@ -141,22 +141,74 @@ window.GAILS.renderTrendCharts = function(data) {
   });
 
   // Bakery tracker
-  if (state.searchBakery.length >= 3) {
-    var match = state.BAKERIES.find(function(b) { return b.toLowerCase().includes(state.searchBakery); });
-    if (match) {
-      var br = state.ALL.filter(function(r) { return r.b === match; });
-      G.makeChart('bakeryTracker', {
-        type: 'line', data: {
-          labels: RM, datasets: [
-            { label: match + ' NPS', data: RM.map(function(m) { var r = br.find(function(x) { return x.m === m; }); return r ? r.n : null; }), borderColor: G.COL.Excellent, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-            { label: match + ' Relative CEI', data: RM.map(function(m) { var r = br.find(function(x) { return x.m === m; }); return r ? r.c : null; }), borderColor: '#4895FF', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-            { label: match + ' Absolute CEI', data: RM.map(function(m) { var r = br.find(function(x) { return x.m === m; }); return r ? r.ac : null; }), borderColor: '#9B5DFF', tension: 0.3, pointRadius: 4, borderWidth: 2, borderDash: [6, 3] },
-            { label: 'All Bakeries Avg NPS', data: trendNPS, borderColor: 'rgba(150,150,200,0.5)', borderDash: [5, 5], tension: 0.3, pointRadius: 0, borderWidth: 1.5 }
-          ]
-        }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: 'Score' }, min: 0, max: 110 } } }
-      });
+  (function renderBakeryTracker() {
+    var trackerStatusEl = document.getElementById('bakeryTrackerStatus');
+    var trackerCanvas = document.getElementById('bakeryTracker');
+    var selectedBakeries = Array.isArray(state.searchBakery) ? state.searchBakery.slice() : [];
+    var scopedRows = state.ALL.filter(function(r) {
+      if (state.regionFilter && G.getBakeryRegion(r.b) !== state.regionFilter) return false;
+      if (state.opsFilter && G.getBakeryOps(r.b) !== state.opsFilter) return false;
+      if (state.bandFilter && r.cb !== state.bandFilter) return false;
+      if (selectedBakeries.length && selectedBakeries.indexOf(r.b) === -1) return false;
+      return true;
+    });
+    var benchmarkRows = state.ALL.filter(function(r) {
+      if (state.regionFilter && G.getBakeryRegion(r.b) !== state.regionFilter) return false;
+      if (state.opsFilter && G.getBakeryOps(r.b) !== state.opsFilter) return false;
+      if (state.bandFilter && r.cb !== state.bandFilter) return false;
+      return true;
+    });
+
+    function clearTracker(statusText) {
+      G.destroyChart('bakeryTracker');
+      if (trackerCanvas) {
+        var ctx = trackerCanvas.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, trackerCanvas.width || 0, trackerCanvas.height || 0);
+      }
+      if (trackerStatusEl) {
+        trackerStatusEl.textContent = statusText;
+        trackerStatusEl.className = 'status';
+      }
     }
-  }
+
+    if (!scopedRows.length) {
+      clearTracker('No tracker data is available for the current filters.');
+      return;
+    }
+
+    var scopeLabel = selectedBakeries.length
+      ? (selectedBakeries.length === 1 ? selectedBakeries[0] : selectedBakeries.length + ' selected bakeries')
+      : 'All bakeries';
+    var avgSeries = function(rows, key) {
+      return RM.map(function(m) {
+        var mr = rows.filter(function(r) { return r.m === m; });
+        return mr.length ? avg(mr, key) : null;
+      });
+    };
+    var trackerNps = avgSeries(scopedRows, 'n');
+    var trackerCei = avgSeries(scopedRows, 'c');
+    var trackerAbsCei = avgSeries(scopedRows, 'ac');
+    var benchmarkNps = selectedBakeries.length ? avgSeries(benchmarkRows, 'n') : null;
+
+    if (trackerStatusEl) {
+      trackerStatusEl.textContent = selectedBakeries.length
+        ? 'Showing averages for ' + scopeLabel + '.'
+        : 'Showing all-bakeries averages.';
+      trackerStatusEl.className = 'status success';
+    }
+
+    G.makeChart('bakeryTracker', {
+      type: 'line', data: {
+        labels: RM, datasets: [
+          { label: scopeLabel + ' Avg NPS', data: trackerNps, borderColor: G.COL.Excellent, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+          { label: scopeLabel + ' Avg Relative CEI', data: trackerCei, borderColor: '#4895FF', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+          { label: scopeLabel + ' Avg Absolute CEI', data: trackerAbsCei, borderColor: '#9B5DFF', tension: 0.3, pointRadius: 4, borderWidth: 2, borderDash: [6, 3] }
+        ].concat(selectedBakeries.length ? [
+          { label: 'All Bakeries Avg NPS', data: benchmarkNps, borderColor: 'rgba(150,150,200,0.5)', borderDash: [5, 5], tension: 0.3, pointRadius: 0, borderWidth: 1.5 }
+        ] : [])
+      }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: 'Score' }, min: 0, max: 110 } } }
+    });
+  }());
 
   return { RM: RM, trendNPS: trendNPS };
 };

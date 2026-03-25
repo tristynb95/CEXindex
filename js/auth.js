@@ -247,7 +247,7 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function showApp(isAdmin) {
-  if (isAdmin !== false && isAdmin !== undefined) {
+  if (isAdmin !== undefined) {
     // Keep the loading screen visible — loadSharedDashboardData will dismiss it
     // once Firebase data has finished loading.
     loginScreen.style.display = 'none';

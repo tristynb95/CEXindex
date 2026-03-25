@@ -7,7 +7,7 @@ window.GAILS.state = {
   MONTHS: [],        // ordered month labels like "Mar 25"
   BAKERIES: [],      // unique bakery names
   selectedMonths: [],
-  searchBakery: '',
+  searchBakery: [],
   bandFilter: '',
   regionFilter: '',
   opsFilter: '',

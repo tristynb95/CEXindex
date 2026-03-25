@@ -15,7 +15,7 @@ window.GAILS.getData = function() {
   if (state.regionFilter) recs = recs.filter(function(r) { return G.getBakeryRegion(r.b) === state.regionFilter; });
   if (state.opsFilter) recs = recs.filter(function(r) { return G.getBakeryOps(r.b) === state.opsFilter; });
   if (state.bandFilter) recs = recs.filter(function(r) { return r.cb === state.bandFilter; });
-  if (state.searchBakery) recs = recs.filter(function(r) { return r.b.toLowerCase().includes(state.searchBakery); });
+  if (state.searchBakery && state.searchBakery.length) recs = recs.filter(function(r) { return state.searchBakery.some(function(s) { return r.b.toLowerCase().includes(s.toLowerCase()); }); });
 
   if (state.selectedMonths.length > 1) {
     var grouped = {};

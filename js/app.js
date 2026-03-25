@@ -436,10 +436,143 @@
     }
   });
 
-  document.getElementById('bakerySearch').addEventListener('input', function(e) { state.searchBakery = e.target.value.toLowerCase(); refresh(); });
+  // ========== BAKERY MULTI-SELECT ==========
+  (function() {
+    var selected = state.searchBakery;
+    var msTrigger = document.getElementById('bakeryMsTrigger');
+    var msLabel = document.getElementById('bakeryMsLabel');
+    var msDropdown = document.getElementById('bakeryDropdown');
+    var msList = document.getElementById('bakeryMsList');
+    var msSearch = document.getElementById('bakerySearch');
+    var msClearBtn = document.getElementById('bakeryClearBtn');
+    var msContainer = document.getElementById('bakeryMultiselect');
+    var msSelectedSection = document.getElementById('bakeryMsSelectedSection');
+    var msSelectedChips = document.getElementById('bakeryMsChips');
+    var msSelectedCount = document.getElementById('bakeryMsCount');
+    var isOpen = false;
+
+    function updateLabel() {
+      if (!selected.length) { msLabel.textContent = 'All Bakeries'; }
+      else if (selected.length === 1) { msLabel.textContent = selected[0]; }
+      else { msLabel.textContent = selected.length + ' bakeries'; }
+      msTrigger.classList.toggle('bakery-ms__trigger--active', selected.length > 0);
+      msClearBtn.style.display = selected.length ? '' : 'none';
+    }
+
+    function renderSelected() {
+      var sorted = selected.slice().sort();
+      msSelectedSection.style.display = sorted.length ? '' : 'none';
+      msSelectedCount.textContent = sorted.length;
+      msSelectedChips.innerHTML = '';
+      sorted.forEach(function(name) {
+        var chip = document.createElement('span');
+        chip.className = 'bakery-ms__sel-chip';
+        var lbl = document.createElement('span');
+        lbl.textContent = name;
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'bakery-ms__sel-chip-remove';
+        x.setAttribute('aria-label', 'Remove ' + name);
+        x.innerHTML = '&#x2715;';
+        x.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var idx = selected.indexOf(name);
+          if (idx !== -1) selected.splice(idx, 1);
+          renderSelected();
+          renderList(msSearch.value);
+          updateLabel();
+          refresh();
+        });
+        chip.appendChild(lbl);
+        chip.appendChild(x);
+        msSelectedChips.appendChild(chip);
+      });
+    }
+
+    function renderList(query) {
+      var all = (state.BAKERIES || []).filter(function(b) {
+        return !state.opsFilter || G.getBakeryOps(b) === state.opsFilter;
+      });
+      var q = (query || '').toLowerCase().trim();
+      var visible = q ? all.filter(function(b) { return b.toLowerCase().includes(q); }) : all;
+      msList.innerHTML = '';
+      visible.forEach(function(name) {
+        var isSel = selected.includes(name);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'bakery-ms__option' + (isSel ? ' is-checked' : '');
+        btn.setAttribute('role', 'option');
+        btn.setAttribute('aria-selected', isSel ? 'true' : 'false');
+        var box = document.createElement('span');
+        box.className = 'bakery-ms__checkbox';
+        box.setAttribute('aria-hidden', 'true');
+        var txt = document.createElement('span');
+        txt.textContent = name;
+        btn.appendChild(box);
+        btn.appendChild(txt);
+        btn.addEventListener('click', function() { toggleBakery(name); });
+        msList.appendChild(btn);
+      });
+    }
+
+    function toggleBakery(name) {
+      var idx = selected.indexOf(name);
+      if (idx === -1) { selected.push(name); } else { selected.splice(idx, 1); }
+      renderList(msSearch.value);
+      renderSelected();
+      updateLabel();
+      refresh();
+    }
+
+    function openDropdown() {
+      isOpen = true;
+      msDropdown.style.display = 'block';
+      msTrigger.setAttribute('aria-expanded', 'true');
+      msTrigger.classList.add('is-open');
+      msSearch.value = '';
+      renderList('');
+      renderSelected();
+      msSearch.focus();
+    }
+
+    function closeDropdown() {
+      isOpen = false;
+      msDropdown.style.display = 'none';
+      msTrigger.setAttribute('aria-expanded', 'false');
+      msTrigger.classList.remove('is-open');
+    }
+
+    msTrigger.addEventListener('click', function() { isOpen ? closeDropdown() : openDropdown(); });
+    msSearch.addEventListener('input', function() { renderList(this.value); });
+    msClearBtn.addEventListener('click', function() {
+      selected.splice(0, selected.length);
+      updateLabel();
+      if (isOpen) { renderList(msSearch.value); renderSelected(); }
+      refresh();
+    });
+    document.addEventListener('click', function(e) {
+      if (isOpen && !e.composedPath().some(function(el) { return el === msContainer; })) closeDropdown();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (isOpen && e.key === 'Escape') { closeDropdown(); msTrigger.focus(); }
+    });
+
+    updateLabel();
+
+    G.resetBakeryMultiselect = function() {
+      updateLabel();
+      renderSelected();
+      if (isOpen) renderList(msSearch.value);
+    };
+  })();
   document.getElementById('bandFilter').addEventListener('change', function(e) { state.bandFilter = e.target.value; refresh(); });
   document.getElementById('regionFilter').addEventListener('change', function(e) { state.regionFilter = e.target.value; G.populateOpsFilter(state.regionFilter); refresh(); });
-  document.getElementById('opsFilter').addEventListener('change', function(e) { state.opsFilter = e.target.value; refresh(); });
+  document.getElementById('opsFilter').addEventListener('change', function(e) {
+    state.opsFilter = e.target.value;
+    state.searchBakery.splice(0, state.searchBakery.length);
+    if (G.resetBakeryMultiselect) G.resetBakeryMultiselect();
+    refresh();
+  });
   document.getElementById('sortBy').addEventListener('change', refresh);
 
   document.getElementById('rollingWindow').addEventListener('change', function() {
@@ -566,7 +699,7 @@
     var count = 0;
     if (state.regionFilter) count++;
     if (state.opsFilter) count++;
-    if (state.searchBakery) count++;
+    if (state.searchBakery && state.searchBakery.length) count++;
     if (state.bandFilter) count++;
     return count;
   }
