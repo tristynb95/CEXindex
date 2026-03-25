@@ -184,11 +184,14 @@
               <span class="filter-panel-header__text">Filters</span>
               <span class="filter-panel-header__badge" id="filterActiveBadge" hidden></span>
             </div>
-            <button type="button" class="filter-panel-header__close" id="filterPanelClose" aria-label="Close filters">
-              <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M1 1l12 12M13 1L1 13"/>
-              </svg>
-            </button>
+            <div class="filter-panel-header__actions">
+              <button type="button" class="filter-panel-header__reset" id="filterPanelReset">Reset</button>
+              <button type="button" class="filter-panel-header__close" id="filterPanelClose" aria-label="Close filters">
+                <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M1 1l12 12M13 1L1 13"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div class="filter-controls-body">
@@ -285,6 +288,19 @@
 
       <!-- Mobile filter backdrop -->
       <div class="filter-side-backdrop" id="filterSideBackdrop" aria-hidden="true"></div>
+
+      <!-- Mobile filter sub-panel (slides in right of main filter panel) -->
+      <div class="filter-sub-panel" id="filterSubPanel" aria-hidden="true">
+        <div class="filter-sub-panel__header">
+          <button type="button" class="filter-sub-panel__back" id="filterSubPanelBack" aria-label="Back to filters">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7 1L3 5l4 4"/>
+            </svg>
+          </button>
+          <span class="filter-sub-panel__title" id="filterSubPanelTitle"></span>
+        </div>
+        <div class="filter-sub-panel__body" id="filterSubPanelBody"></div>
+      </div>
 
       <!-- Mobile floating filter tab -->
       <button type="button" class="filter-side-tab" id="filterSideTab" aria-label="Open filters" aria-expanded="false">
@@ -768,7 +784,7 @@
               <div class="target-subtab-panel" data-target-subtab-panel="map">
                 <div class="section">
                   <h2>&#128205; Target Bakeries Map</h2>
-                  <p class="target-hint"><span style="color:var(--red);font-weight:600">&#9679; Needs Attention</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Developing</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL's bakery before plotting.</p>
+                  <p class="target-hint"><span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL's bakery before plotting.</p>
                   <div id="targetMap"></div>
                   <div id="targetMapStatus" class="target-map-status"></div>
                 </div>

@@ -531,10 +531,9 @@ function _renderInsights(targets) {
   h += '<div class="insight-card"><h4>\uD83D\uDC64 Ops Manager Workload</h4>';
   mgrSorted.slice(0, 5).forEach(function(entry) {
     var mgr = entry[0], info = entry[1];
-    var naTag = info.na > 0 ? '<span style="color:var(--red);font-weight:600">' + info.na + ' NA</span>' : '';
-    var devTag = info.dev > 0 ? '<span style="color:var(--amber);font-weight:600">' + info.dev + ' Dev</span>' : '';
-    var sep = info.na > 0 && info.dev > 0 ? ' \u00B7 ' : '';
-    h += '<div class="mgr-row"><span>' + mgr + '</span><span>' + naTag + sep + devTag + '</span></div>';
+    var belowStandardTag = info.na > 0 ? '<span class="mgr-row__tag mgr-row__tag--below-standard">' + info.na + ' Below Standard</span>' : '';
+    var approachingTag = info.dev > 0 ? '<span class="mgr-row__tag mgr-row__tag--approaching">' + info.dev + ' Approaching</span>' : '';
+    h += '<div class="mgr-row"><span class="mgr-row__name">' + mgr + '</span><span class="mgr-row__bands">' + belowStandardTag + approachingTag + '</span></div>';
   });
   if (mgrSorted.length > 0 && mgrSorted[0][1].na >= 3) {
     h += '<div class="action">\u2192 Support ' + mgrSorted[0][0] + '</div>';

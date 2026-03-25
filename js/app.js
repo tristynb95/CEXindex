@@ -940,6 +940,7 @@
   var filterSideTabBadge  = document.getElementById('filterSideTabBadge');
   var filterSideBackdrop  = document.getElementById('filterSideBackdrop');
   var filterPanelClose    = document.getElementById('filterPanelClose');
+  var filterPanelReset    = document.getElementById('filterPanelReset');
   var filterSidePanelOpen = false;
   var mobileFilterMedia   = window.matchMedia('(max-width: 720px)');
   var filterDragState = null;
@@ -975,6 +976,61 @@
     if (filterSideTab) filterSideTab.style.opacity = '';
   }
 
+  function closeExpandedMobileFilters() {
+    if (!filterControlsPanel) return;
+    filterControlsPanel.querySelectorAll('.filter-select.is-open').forEach(function(wrapper) {
+      wrapper.classList.remove('is-open');
+      var trigger = wrapper.querySelector('.filter-select__trigger');
+      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    });
+    filterControlsPanel.querySelectorAll('.bakery-ms__trigger.is-open').forEach(function(trigger) {
+      trigger.click();
+    });
+  }
+
+  function resetAllFilters() {
+    var monthSelect = document.getElementById('monthSelect');
+    var rollingWindow = document.getElementById('rollingWindow');
+    var bandFilter = document.getElementById('bandFilter');
+    var rollingValue = 6;
+
+    state.regionFilter.splice(0, state.regionFilter.length);
+    state.opsFilter.splice(0, state.opsFilter.length);
+    state.searchBakery.splice(0, state.searchBakery.length);
+    state.bandFilter = '';
+
+    if (rollingWindow) {
+      rollingWindow.value = '6';
+      rollingValue = parseInt(rollingWindow.value, 10) || 0;
+      G.syncCustomSelect(rollingWindow);
+    }
+
+    if (monthSelect) {
+      monthSelect.value = '';
+      G.syncCustomSelect(monthSelect);
+    }
+
+    if (bandFilter) {
+      bandFilter.value = '';
+      G.syncCustomSelect(bandFilter);
+    }
+
+    if (state.MONTHS && state.MONTHS.length) {
+      state.selectedMonths = rollingValue > 0
+        ? state.MONTHS.slice(-Math.min(rollingValue, state.MONTHS.length))
+        : [].concat(state.MONTHS);
+    } else {
+      state.selectedMonths = [];
+    }
+
+    if (G.rebuildRegionMultiselect) G.rebuildRegionMultiselect();
+    if (G.rebuildOpsMultiselect) G.rebuildOpsMultiselect();
+    if (G.resetBakeryMultiselect) G.resetBakeryMultiselect();
+
+    closeExpandedMobileFilters();
+    refresh();
+  }
+
   function countActiveFilters() {
     var count = 0;
     if (state.regionFilter && state.regionFilter.length) count++;
@@ -998,6 +1054,7 @@
     if (!filterControlsPanel) return;
     filterSidePanelOpen = false;
     clearFilterDragStyles();
+    closeExpandedMobileFilters();
     filterControlsPanel.classList.remove('is-open');
     if (filterSideBackdrop) { filterSideBackdrop.classList.remove('is-open'); filterSideBackdrop.setAttribute('aria-hidden', 'true'); }
     if (filterSideTab) { filterSideTab.classList.remove('is-open'); filterSideTab.setAttribute('aria-expanded', 'false'); }
@@ -1014,6 +1071,7 @@
       filterSideTabBadge.hidden = n === 0;
       if (n > 0) filterSideTabBadge.textContent = n;
     }
+    if (filterPanelReset) filterPanelReset.disabled = n === 0;
     if (filterSideTab) { filterSideTab.classList.toggle('has-active-filters', n > 0); }
   }
 
@@ -1076,7 +1134,10 @@
     filterControlsPanel.addEventListener('pointerdown', function(event) {
       if (!mobileFilterMedia.matches || !filterSidePanelOpen) return;
       if (event.pointerType === 'mouse') return;
-      if (!event.target.closest('.filter-panel-header')) return;
+      var panelRect = filterControlsPanel.getBoundingClientRect();
+      var startedOnHeader = !!event.target.closest('.filter-panel-header');
+      var startedNearEdge = (event.clientX - panelRect.left) <= 28;
+      if (!startedOnHeader && !startedNearEdge) return;
       filterDragState = {
         mode: 'closing',
         pointerId: event.pointerId,
@@ -1113,7 +1174,15 @@
     });
   }
   if (filterPanelClose) { filterPanelClose.addEventListener('click', closeFilterSidePanel); }
+  if (filterPanelReset) { filterPanelReset.addEventListener('click', resetAllFilters); }
   if (filterSideBackdrop) { filterSideBackdrop.addEventListener('click', closeFilterSidePanel); }
+  document.addEventListener('click', function(event) {
+    if (!mobileFilterMedia.matches || !filterSidePanelOpen || !filterControlsPanel) return;
+    var path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+    var insidePanel = path.indexOf(filterControlsPanel) !== -1;
+    var onTab = filterSideTab ? path.indexOf(filterSideTab) !== -1 : false;
+    if (!insidePanel && !onTab) closeFilterSidePanel();
+  });
 
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && filterSidePanelOpen) { closeFilterSidePanel(); }
@@ -1125,6 +1194,82 @@
       if (!e.matches && filterSidePanelOpen) { closeFilterSidePanel(); }
     });
   }
+
+  // ── Mobile filter sub-panel ──────────────────────────────────
+  (function() {
+    var subPanel     = document.getElementById('filterSubPanel');
+    var subTitle     = document.getElementById('filterSubPanelTitle');
+    var subBack      = document.getElementById('filterSubPanelBack');
+    if (!subPanel || !subBack) return;
+    return;
+
+    var subPanelClosing = false;
+
+    function getLabelFor(trigger) {
+      var fc = trigger.closest('.filter-control');
+      var lbl = fc && fc.querySelector('label');
+      return lbl ? lbl.textContent.trim() : '';
+    }
+
+    function showSubPanel(title) {
+      subTitle.textContent = title;
+      subPanel.classList.add('is-open');
+      subPanel.removeAttribute('aria-hidden');
+    }
+
+    function hideSubPanel() {
+      subPanel.classList.remove('is-open');
+      subPanel.setAttribute('aria-hidden', 'true');
+    }
+
+    // After a trigger click, check if something is now open and show the sub-panel header
+    filterControlsPanel.addEventListener('click', function(e) {
+      if (!mobileFilterMedia.matches) return;
+      var trigger = e.target.closest('.filter-select__trigger, .bakery-ms__trigger');
+      if (!trigger) return;
+      setTimeout(function() {
+        if (subPanelClosing) return;
+        // Check which dropdown is now open
+        var openSelect = filterControlsPanel.querySelector('.filter-select.is-open');
+        if (openSelect) { showSubPanel(getLabelFor(openSelect.querySelector('.filter-select__trigger'))); return; }
+        var openMs = filterControlsPanel.querySelector('.bakery-ms__trigger.is-open');
+        if (openMs) { showSubPanel(getLabelFor(openMs)); return; }
+        hideSubPanel();
+      }, 0);
+    });
+
+    // After an option is selected in a filter-select, close the sub-panel
+    filterControlsPanel.addEventListener('change', function() {
+      if (!mobileFilterMedia.matches) return;
+      setTimeout(function() {
+        var stillOpen = filterControlsPanel.querySelector('.filter-select.is-open');
+        if (!stillOpen) hideSubPanel();
+      }, 0);
+    });
+
+    // Back button: close whatever is open, hide sub-panel
+    subBack.addEventListener('click', function() {
+      subPanelClosing = true;
+      // bakery-ms: click trigger to toggle closed (isOpen=true → closeDropdown)
+      filterControlsPanel.querySelectorAll('.bakery-ms__trigger.is-open').forEach(function(t) {
+        t.click();
+      });
+      // filter-select: closeAll fires on document click propagation, but also close explicitly
+      filterControlsPanel.querySelectorAll('.filter-select.is-open').forEach(function(w) {
+        w.classList.remove('is-open');
+        var t = w.querySelector('.filter-select__trigger');
+        if (t) t.setAttribute('aria-expanded', 'false');
+      });
+      hideSubPanel();
+      setTimeout(function() { subPanelClosing = false; }, 60);
+    });
+
+    // When the main filter panel closes, also hide the sub-panel
+    var panelObserver = new MutationObserver(function() {
+      if (!filterControlsPanel.classList.contains('is-open')) hideSubPanel();
+    });
+    panelObserver.observe(filterControlsPanel, { attributes: true, attributeFilter: ['class'] });
+  })();
 
   // Patch refresh to also sync the filter badge
   var originalRefresh = refresh;

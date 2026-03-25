@@ -4106,11 +4106,39 @@ body.table-fullscreen-lock {
 .mgr-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--card-border);
   font-size: 0.85rem;
   color: var(--text-2);
+}
+
+.mgr-row__name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mgr-row__bands {
+  display: flex;
+  flex: 0 1 52%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 8px;
+  text-align: right;
+}
+
+.mgr-row__tag {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mgr-row__tag--below-standard {
+  color: var(--red);
+}
+
+.mgr-row__tag--approaching {
+  color: var(--amber);
 }
 
 .mgr-row:last-child {
@@ -6097,7 +6125,7 @@ a,
     top: 0;
     left: 0;
     bottom: 0;
-    width: min(300px, 86vw);
+    width: min(264px, calc(100vw - 54px));
     height: 100%;
     max-height: 100%;
     display: flex !important;
@@ -6128,8 +6156,8 @@ a,
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 20px 18px 16px;
+    gap: 8px;
+    padding: 12px 14px 10px;
     border-bottom: 1px solid var(--card-border);
     flex-shrink: 0;
     position: sticky;
@@ -6157,7 +6185,7 @@ a,
   }
 
   .filter-panel-header__text {
-    font-size: 1rem;
+    font-size: 0.85rem;
     font-weight: 700;
     color: var(--text);
     white-space: nowrap;
@@ -6182,9 +6210,40 @@ a,
     display: none;
   }
 
+  .filter-panel-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .filter-panel-header__reset {
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 59, 92, 0.24);
+    background: rgba(255, 59, 92, 0.08);
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+  }
+
+  .filter-panel-header__reset:hover {
+    background: rgba(255, 59, 92, 0.14);
+    border-color: rgba(255, 59, 92, 0.4);
+  }
+
+  .filter-panel-header__reset:disabled {
+    opacity: 0.42;
+    cursor: default;
+  }
+
   .filter-panel-header__close {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     flex-shrink: 0;
     border-radius: 50%;
     border: 1px solid var(--card-border-h);
@@ -6218,19 +6277,114 @@ a,
     overflow-x: hidden;
     flex: 1;
     -webkit-overflow-scrolling: touch;
-    padding: 8px 0 calc(80px + env(safe-area-inset-bottom, 0px));
-    gap: 0;
+    padding: 10px 10px calc(88px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0) 18%),
+      var(--card);
   }
 
   /* Each filter control row */
   .filter-controls-body .filter-control {
-    padding: 10px 18px;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.012) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018), 0 10px 22px rgba(0, 0, 0, 0.14);
   }
 
-  /* Ensure custom-select menus render above panel content */
-  .filter-controls .filter-select__menu {
-    z-index: 260;
+  .filter-controls-body .filter-control br {
+    display: none;
   }
+
+  .filter-controls-body .filter-control label {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Compact trigger buttons inside the panel */
+  .filter-controls .filter-select__trigger,
+  .filter-controls .bakery-ms__trigger {
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 0.79rem;
+    border-radius: 11px;
+    gap: 8px;
+  }
+
+  .filter-controls .filter-select__menu {
+    position: static;
+    width: auto;
+    margin-top: 8px;
+    padding: 7px;
+    border-radius: 14px;
+    max-height: min(36vh, 260px);
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(14px);
+  }
+
+  .filter-controls .filter-select__option {
+    padding: 9px 10px;
+    font-size: 0.8rem;
+    border-radius: 9px;
+  }
+
+  .filter-controls .bakery-ms__dropdown {
+    position: static;
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 14px;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(14px);
+  }
+
+  .filter-controls .bakery-ms__trigger.is-open ~ .bakery-ms__dropdown {
+    display: block;
+  }
+
+  .filter-controls .bakery-ms__option {
+    padding: 9px 10px;
+    font-size: 0.8rem;
+    gap: 7px;
+    border-radius: 9px;
+  }
+
+  .filter-controls .bakery-ms__search {
+    min-height: 36px;
+    padding: 7px 9px;
+    font-size: 0.78rem;
+  }
+
+  .filter-controls .bakery-ms__list {
+    max-height: min(30vh, 220px);
+  }
+
+  .filter-controls .bakery-ms__search-row {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 4px 2px 10px;
+    background: linear-gradient(180deg, rgba(24, 24, 40, 0.98) 0%, rgba(24, 24, 40, 0.92) 100%);
+  }
+
+  .filter-controls .bakery-ms__selected-section {
+    margin-top: 8px;
+    padding: 12px 2px 2px;
+  }
+
+  .filter-controls .bakery-ms__selected-chips {
+    max-height: 112px;
+  }
+}
+
+/* ── Mobile filter sub-panel ── */
+.filter-sub-panel {
+  display: none !important;
 }
 
 /* ── Mobile bottom navigation bar ── */
