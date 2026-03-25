@@ -1662,6 +1662,9 @@ body.table-fullscreen-lock {
   line-height: 1.55;
   color: var(--muted-l);
 }
+.login-mobile-brief {
+  display: none;
+}
 .login-form {
   display: grid;
   gap: 12px;
@@ -1758,21 +1761,45 @@ body.table-fullscreen-lock {
     grid-template-columns: 1fr;
     min-height: auto;
     max-height: none;
-    gap: 12px;
+    gap: 0;
   }
   .login-panel {
-    order: 1;
+    order: 0;
     align-items: stretch;
   }
   .login-hero {
-    order: 2;
-    gap: 12px;
-    padding: 16px;
-    border-radius: 20px;
+    display: none;
   }
   .login-card__form-panel {
     max-width: none;
     margin-left: 0;
+  }
+  .login-mobile-brief {
+    position: relative;
+    display: block;
+    margin: 0 0 14px;
+    padding: 6px 110px 0 0;
+    border-top: 1px solid var(--card-border);
+  }
+  .login-mobile-brief__logo {
+    position: absolute;
+    top: 12px;
+    right: 0;
+    width: 92px;
+    display: block;
+    opacity: 0.94;
+  }
+  .login-mobile-brief__title {
+    margin: 14px 0 8px;
+    font-size: clamp(1.2rem, 4.8vw, 1.55rem);
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+  }
+  .login-mobile-brief__copy {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    color: var(--text-2);
   }
   .login-card__masthead-copy {
     padding-right: 0;
@@ -1786,31 +1813,19 @@ body.table-fullscreen-lock {
   }
 }
 @media (max-width: 520px) {
-  .login-hero {
-    padding: 14px;
-  }
-  .login-hero__top {
-    justify-content: space-between;
-  }
-  .login-card__logo {
-    width: 96px;
-  }
-  .login-hero__pill,
-  .login-card__eyebrow {
-    display: none;
-  }
-  .login-card__title {
-    font-size: clamp(1.7rem, 9.8vw, 2.3rem);
-    line-height: 1.05;
-  }
-  .login-card__intro {
-    max-width: none;
-    font-size: 0.88rem;
-    line-height: 1.5;
-  }
   .login-card__form-panel {
     padding: 16px;
     border-radius: 18px;
+  }
+  .login-mobile-brief {
+    padding-right: 98px;
+  }
+  .login-mobile-brief__logo {
+    top: 14px;
+    width: 84px;
+  }
+  .login-mobile-brief__title {
+    font-size: clamp(1.16rem, 6.6vw, 1.5rem);
   }
 }
 .modal-overlay {
