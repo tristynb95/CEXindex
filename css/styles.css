@@ -172,6 +172,9 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; color: var(--text); 
 
 /* Header buttons */
 .header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   padding: 7px 14px;
   font-size: 0.8rem;
   border-radius: 10px;
@@ -194,6 +197,16 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; color: var(--text); 
   border-color: var(--accent);
   box-shadow: 0 0 12px rgba(255,59,92,0.2);
   transform: translateY(-1px);
+}
+.header-btn-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .reload-btn {
   background: linear-gradient(180deg, rgba(255,59,92,0.18) 0%, rgba(255,59,92,0.1) 100%);
@@ -4432,27 +4445,25 @@ button, a, [role="button"],
     gap: 6px;
     flex-wrap: nowrap;
   }
-  /* De-emphasise Admin Portal on mobile — make it smaller / secondary */
-  #adminBtn {
-    font-size: 0;          /* hide text */
-    padding: 0;
+  /* Both header action buttons → compact icon-only squares */
+  #adminBtn,
+  #logoutBtn {
     width: 36px;
     height: 36px;
-    justify-content: center;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-  /* Keep the lock emoji visible as an icon */
-  #adminBtn::before {
-    content: '🔒';
-    font-size: 1rem;
-    line-height: 1;
-  }
-  #logoutBtn {
-    font-size: 0.74rem;
-    padding: 7px 12px;
     min-height: 36px;
-    white-space: nowrap;
+    padding: 0;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 10px;
+  }
+  /* Hide text labels, keep SVG icons */
+  .header-btn-text {
+    display: none;
+  }
+  .header-btn-icon {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
   }
 }
 
