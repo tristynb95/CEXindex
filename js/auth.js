@@ -131,6 +131,16 @@ function startSiteMetaSync() {
   });
 }
 
+function clearLoginForm() {
+  if (loginForm) loginForm.reset();
+  if (emailInput) emailInput.value = '';
+  if (passwordInput) passwordInput.value = '';
+  if (loginError) {
+    loginError.textContent = '';
+    loginError.style.display = 'none';
+  }
+}
+
 async function loadSharedDashboardData(isAdmin) {
   try {
     var statusEl = document.getElementById('uploadStatus');
@@ -242,6 +252,7 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     stopSiteMetaSync();
     applySiteMeta(null);
+    clearLoginForm();
     showApp(undefined);
   }
 });
@@ -310,6 +321,7 @@ if (adminBtn) {
 
 if (logoutBtn) {
   logoutBtn.addEventListener('click', async () => {
+    clearLoginForm();
     await signOut(auth);
   });
 }
