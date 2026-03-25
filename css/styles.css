@@ -172,6 +172,9 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; color: var(--text); 
 
 /* Header buttons */
 .header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   padding: 7px 14px;
   font-size: 0.8rem;
   border-radius: 10px;
@@ -194,6 +197,16 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; color: var(--text); 
   border-color: var(--accent);
   box-shadow: 0 0 12px rgba(255,59,92,0.2);
   transform: translateY(-1px);
+}
+.header-btn-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .reload-btn {
   background: linear-gradient(180deg, rgba(255,59,92,0.18) 0%, rgba(255,59,92,0.1) 100%);
@@ -1381,6 +1394,7 @@ body.table-fullscreen-lock {
 /* ══════════════════════════════════════ AUTH LOADING ══ */
 .auth-loading {
   display: flex; flex-direction: column; align-items: center; gap: 18px;
+  text-align: center;
 }
 .auth-loading__logo {
   width: 72px; opacity: 0.85;
@@ -1649,6 +1663,9 @@ body.table-fullscreen-lock {
   line-height: 1.55;
   color: var(--muted-l);
 }
+.login-mobile-brief {
+  display: none;
+}
 .login-form {
   display: grid;
   gap: 12px;
@@ -1735,54 +1752,125 @@ body.table-fullscreen-lock {
   color: var(--muted);
 }
 @media (max-width: 860px) {
-  .overlay-screen {
-    padding: 18px 14px;
+  #loginScreen.overlay-screen {
+    align-items: stretch;
+    justify-content: stretch;
+    min-height: 100dvh;
+    padding: 0;
   }
   .login-stage {
+    width: 100%;
+    min-height: 100dvh;
+    margin: 0;
     grid-template-columns: 1fr;
-    min-height: auto;
-    gap: 10px;
-  }
-  .login-hero {
-    gap: 16px;
-    padding: 18px;
+    grid-template-rows: 1fr;
+    max-height: none;
+    gap: 0;
   }
   .login-panel {
+    order: 0;
     align-items: stretch;
+  }
+  .login-hero {
+    display: none;
   }
   .login-card__form-panel {
     max-width: none;
-  }
-  .login-hero__scoreboard,
-  .login-card__highlights {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 520px) {
-  .login-hero {
-    padding: 16px;
-    border-radius: 20px;
-  }
-  .login-hero__top {
+    margin-left: 0;
+    min-height: 100dvh;
+    padding: clamp(28px, 6vh, 52px) clamp(20px, 5vw, 38px) clamp(28px, 7vh, 48px);
+    border-radius: 0;
+    display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    justify-content: center;
   }
-  .login-card__title {
-    font-size: clamp(2rem, 12vw, 2.8rem);
-    max-width: none;
+  .login-mobile-brief {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "logo"
+      "title"
+      "copy";
+    justify-items: start;
+    align-items: start;
+    row-gap: 12px;
+    margin: 0 0 24px;
+    padding: 0 0 20px;
+    border-bottom: 1px solid var(--card-border);
   }
-  .login-card__intro {
-    max-width: none;
+  .login-mobile-brief__logo {
+    grid-area: logo;
+    width: 92px;
+    display: block;
+    opacity: 0.95;
+    margin-top: 0;
+    margin-bottom: 18px;
   }
-  .login-card__logo {
-    width: 104px;
+  .login-mobile-brief__title {
+    grid-area: title;
+    margin: 0;
+    font-size: clamp(1.22rem, 4.8vw, 1.58rem);
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+  }
+  .login-mobile-brief__copy {
+    grid-area: copy;
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: var(--text-2);
+  }
+  .login-card__form-head {
+    margin-bottom: 24px;
+  }
+  .login-panel__title {
+    font-size: clamp(1.3rem, 5.4vw, 1.6rem);
+  }
+  .login-card__form-copy {
+    max-width: 28ch;
+  }
+  .login-form {
+    gap: 18px;
+  }
+  .login-field span {
+    margin-bottom: 10px;
+    font-size: 0.74rem;
+  }
+  .login-input,
+  .login-submit {
+    min-height: 56px;
+    font-size: 1rem;
+  }
+  .login-panel__footer {
+    margin-top: 24px;
+    padding-top: 18px;
   }
   .login-card__masthead-copy {
     padding-right: 0;
   }
+  .login-card__title {
+    max-width: none;
+  }
+  .login-hero__scoreboard,
+  .login-card__highlights {
+    display: none;
+  }
+}
+@media (max-width: 520px) {
   .login-card__form-panel {
-    padding: 18px;
-    border-radius: 20px;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(22px, env(safe-area-inset-bottom));
+  }
+  .login-mobile-brief {
+    row-gap: 10px;
+    margin-bottom: 18px;
+    padding: 0 0 14px;
+  }
+  .login-mobile-brief__logo {
+    width: 84px;
+    margin-bottom: 14px;
+  }
+  .login-mobile-brief__title {
+    font-size: clamp(1.16rem, 6.6vw, 1.5rem);
   }
 }
 .modal-overlay {
@@ -3996,4 +4084,673 @@ body.table-fullscreen-lock {
 }
 .wc-empty p {
   font-size: 0.9rem;
+}
+
+/* ══════════════════════════════════════════════════════
+   MOBILE RESPONSIVE IMPROVEMENTS
+   ══════════════════════════════════════════════════════ */
+
+/* ── Touch-action optimisation (removes 300ms tap delay) ── */
+button, a, [role="button"],
+.tab, .filter-bar__toggle, .mobile-bottom-nav__btn,
+.dashboard-nav__btn, .target-subtab, .dashboard-footer__link {
+  touch-action: manipulation;
+}
+
+/* ══════════════════════════════════════════════════════
+   MOBILE FILTER SIDE PANEL
+   ══════════════════════════════════════════════════════ */
+
+/* ── Filter controls body (wraps the 6 controls) ── */
+.filter-controls-body {
+  display: contents; /* transparent passthrough on desktop — children act as direct grid items */
+}
+
+/* ── Filter panel header (mobile only, hidden on desktop) ── */
+.filter-panel-header {
+  display: none;
+}
+
+/* ── Floating filter tab (fixed to left edge, mobile only) ── */
+.filter-side-tab {
+  display: none;
+  position: fixed;
+  left: 0;
+  top: 40%;
+  transform: translateY(-50%);
+  z-index: 45;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  padding: 12px 0;
+  border-radius: 0 12px 12px 0;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-left: none;
+  background: linear-gradient(180deg, rgba(24,24,40,0.8) 0%, rgba(16,16,28,0.84) 100%);
+  color: rgba(232,234,242,0.88);
+  cursor: pointer;
+  box-shadow: 2px 0 14px rgba(0,0,0,0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color 0.28s ease, box-shadow 0.28s ease, background 0.28s ease, opacity 0.24s ease;
+  touch-action: none;
+}
+.filter-side-tab:hover {
+  border-color: rgba(255,255,255,0.2);
+  background: linear-gradient(180deg, rgba(26,26,42,0.9) 0%, rgba(18,18,30,0.9) 100%);
+  box-shadow: 4px 0 16px rgba(0,0,0,0.38);
+}
+.filter-side-tab:active {
+  transform: translateY(-50%) scale(0.96);
+}
+.filter-side-tab.has-active-filters {
+  border-color: rgba(255,59,92,0.34);
+  background: linear-gradient(180deg, rgba(255,59,92,0.1) 0%, rgba(180,30,55,0.08) 100%);
+}
+.filter-side-tab__icon {
+  width: 17px;
+  height: 17px;
+  stroke: var(--accent);
+  flex: 0 0 auto;
+}
+.filter-side-tab__label {
+  font-size: 0.45rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(193,197,212,0.88);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  line-height: 1;
+}
+.filter-side-tab__badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.filter-side-tab__badge[hidden] { display: none; }
+
+/* Tab disappears when panel is open (close button takes over) */
+.filter-side-tab.is-open {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .filter-side-tab {
+    display: flex;
+  }
+}
+
+/* ── Mobile filter side backdrop ── */
+.filter-side-backdrop {
+  display: block;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.62);
+  z-index: 44;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.28s ease, visibility 0.28s ease;
+}
+.filter-side-backdrop.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* ── Mobile: collapse filter-bar and turn filter-controls into a side panel ── */
+@media (max-width: 720px) {
+  /* Strip the filter-bar card visually; keep it as a valid block container so
+     the position:fixed child still renders */
+  .filter-bar {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 0;
+    overflow: visible;
+  }
+
+  /* filter-controls becomes the fixed side drawer */
+  .filter-controls {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(300px, 86vw);
+    height: 100%;
+    max-height: 100%;
+    display: flex !important;
+    flex-direction: column;
+    background: var(--card);
+    border-right: 1px solid var(--card-border-h);
+    border-radius: 0 20px 20px 0;
+    z-index: 46;
+    overflow: hidden;
+    transform: translateX(-110%);
+    transition: transform 0.46s cubic-bezier(0.2, 0.9, 0.25, 1);
+    box-shadow: 10px 0 50px rgba(0,0,0,0.6), 2px 0 16px rgba(0,0,0,0.35);
+    gap: 0;
+    touch-action: pan-y;
+    will-change: transform;
+  }
+
+  .filter-controls.is-open {
+    transform: translateX(0);
+  }
+  .filter-controls.is-dragging {
+    transition: none;
+  }
+
+  /* Panel header — shown on mobile */
+  .filter-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid var(--card-border);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background: var(--card);
+    z-index: 2;
+  }
+  .filter-panel-header__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+  }
+  .filter-panel-header__icon {
+    width: 18px;
+    height: 18px;
+    stroke: var(--accent);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    flex: 0 0 auto;
+  }
+  .filter-panel-header__text {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .filter-panel-header__badge {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .filter-panel-header__badge[hidden] { display: none; }
+  .filter-panel-header__close {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid var(--card-border-h);
+    background: rgba(255,255,255,0.04);
+    color: var(--muted-l);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font: inherit;
+    touch-action: manipulation;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+  .filter-panel-header__close:hover {
+    background: rgba(255,59,92,0.1);
+    border-color: rgba(255,59,92,0.4);
+    color: var(--accent);
+  }
+  .filter-panel-header__close svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* Scrollable body area */
+  .filter-controls-body {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 0 calc(80px + env(safe-area-inset-bottom, 0px));
+    gap: 0;
+  }
+
+  /* Each filter control row */
+  .filter-controls-body .filter-control {
+    padding: 10px 18px;
+  }
+
+  /* Ensure custom-select menus render above panel content */
+  .filter-controls .filter-select__menu {
+    z-index: 260;
+  }
+}
+
+/* ── Mobile bottom navigation bar ── */
+.mobile-bottom-nav {
+  display: none; /* hidden by default; shown via media query */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 29; /* below sidebar (40) and backdrop (34) so nav is covered when sidebar opens */
+  background:
+    linear-gradient(180deg, rgba(14,14,26,0.97) 0%, rgba(10,10,18,0.99) 100%);
+  border-top: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 6px 4px;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  gap: 2px;
+}
+.mobile-bottom-nav__btn {
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  padding: 6px 2px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.mobile-bottom-nav__btn:active {
+  transform: scale(0.93);
+}
+.mobile-bottom-nav__btn.active {
+  color: var(--accent);
+}
+.mobile-bottom-nav__btn.active .mobile-bottom-nav__icon {
+  filter: drop-shadow(0 0 6px rgba(255,59,92,0.45));
+}
+.mobile-bottom-nav__icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+.mobile-bottom-nav__icon rect {
+  fill: currentColor;
+  stroke: none;
+}
+.mobile-bottom-nav__btn span:last-child {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
+@media (max-width: 980px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+  /* Body padding to avoid content hiding behind bottom nav */
+  .container {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Reduce the "open menu" button clutter — bottom nav handles tab switching */
+  .dashboard-workspace__menu-btn {
+    font-size: 0.76rem;
+  }
+}
+
+@media (min-width: 981px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* ── Mobile-specific layout improvements ── */
+
+/* Container padding on small screens */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-top: 14px;
+  }
+  .filter-bar {
+    padding: 14px 16px;
+  }
+  /* Tighter upload zone on mobile */
+  .upload-zone {
+    padding: 48px 20px;
+  }
+  .upload-zone .icon {
+    font-size: 2.5rem;
+    margin-bottom: 14px;
+  }
+  .upload-zone h3 {
+    font-size: 1.1rem;
+  }
+  /* Section padding */
+  .section {
+    padding: 16px 18px;
+  }
+  /* KPI row value size */
+  .kpi .value {
+    font-size: 1.5rem;
+  }
+  .kpi {
+    padding: 14px 16px;
+  }
+  /* Callout grid stacks on mobile */
+  .callout-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  /* Grid-2 already stacks at 900px, but also tighten gap */
+  .grid-2 {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Even smaller KPI values on very small phones */
+  .kpi .value {
+    font-size: 1.35rem;
+  }
+  .kpi .label {
+    font-size: 0.6rem;
+  }
+  /* Section titles */
+  .section h2 {
+    font-size: 0.84rem;
+  }
+  /* Dashboard workspace toolbar on very small screens */
+  .dashboard-workspace__status strong {
+    font-size: 0.9rem;
+  }
+  /* Target stat cards */
+  .target-stat-card__value {
+    font-size: 1.25rem;
+  }
+  /* Spark grid — 1 column on very small screens */
+  .spark-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Drilldown modal mobile ── */
+@media (max-width: 540px) {
+  .drill-modal {
+    padding: 8px;
+    align-items: flex-end;
+  }
+  .drillInner {
+    width: 100%;
+    height: calc(100vh - 16px);
+    border-radius: 20px 20px 0 0;
+  }
+  #drillHeader {
+    padding: 20px 18px 16px;
+  }
+  #drillTitle {
+    font-size: 1.4rem;
+  }
+  #drillSubtitle {
+    font-size: 0.9rem;
+  }
+  #drillBody {
+    padding: 16px 18px 20px;
+  }
+}
+
+/* ── Header on very small screens ── */
+@media (max-width: 400px) {
+  .header {
+    padding: 12px 14px;
+  }
+  .header-brand__logo {
+    width: 88px;
+  }
+  .header-brand__eyebrow {
+    font-size: 0.62rem;
+  }
+  .header .sub {
+    font-size: 0.7rem;
+  }
+  #adminBtn, #logoutBtn {
+    font-size: 0.74rem;
+    padding: 6px 10px;
+  }
+}
+
+/* ── Improved scrollbar for mobile content ── */
+@media (max-width: 980px) {
+  .table-wrap {
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-table-wrap {
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Ensure maps are touch-friendly */
+  #targetMap,
+  #networkMap {
+    height: 380px;
+  }
+  /* League table sort row on mobile */
+  #tab-table .section > div:first-of-type {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* ── Login screen on very small screens ── */
+@media (max-width: 400px) {
+  .overlay-screen {
+    padding: 12px 10px;
+  }
+  .login-hero {
+    padding: 14px;
+    border-radius: 18px;
+  }
+  .login-card__form-panel {
+    padding: 16px;
+    border-radius: 18px;
+  }
+  .login-hero__scoreboard {
+    grid-template-columns: 1fr;
+  }
+  .login-card__highlights {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Safe area support for notched devices ── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-bottom-nav {
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+  @media (max-width: 980px) {
+    .container {
+      padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    }
+  }
+}
+
+/* ── Prevent layout jank on filter open/close animation ── */
+.filter-bar .filter-controls {
+  transition: none;
+}
+
+/* ── Ensure the dashboard sidebar (z-index:40) and backdrop (z-index:34)
+      remain above the bottom nav (z-index:29) when sidebar is open ── */
+
+/* ── Word cloud responsive height ── */
+@media (max-width: 640px) {
+  .wc-canvas-wrap {
+    min-height: 320px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   MOBILE USABILITY — PHASE 2
+   Based on real-device review
+   ══════════════════════════════════════════════════════ */
+
+/* 1. Hide the redundant toolbar (Menu btn + "Active view" label) on mobile.
+      Bottom nav handles all tab switching, so this row is pure noise. */
+@media (max-width: 980px) {
+  .dashboard-workspace__toolbar {
+    display: none;
+  }
+}
+
+/* 2. Compact header on mobile — collapse to a single tight row:
+      [Logo]  [Dashboard title/sub]  [Sign Out]  (Admin hidden in kebab)  */
+@media (max-width: 640px) {
+  .header {
+    padding: 10px 14px;
+    min-height: 52px;
+    gap: 10px;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  /* Stack eyebrow + subtitle tighter */
+  .header-brand {
+    gap: 10px;
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .header-brand__logo {
+    width: 72px;
+    flex-shrink: 0;
+  }
+  .header-brand__copy {
+    overflow: hidden;
+  }
+  .header-brand__eyebrow {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .header .sub {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.68rem;
+  }
+  /* Header actions: push to right, shrink to icon-sized buttons */
+  .header-actions {
+    width: auto;
+    margin-left: 0;
+    flex-shrink: 0;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  /* Both header action buttons → compact icon-only squares */
+  #adminBtn,
+  #logoutBtn {
+    width: 30px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0;
+    justify-content: center;
+    flex: none;
+    border-radius: 8px;
+  }
+  /* Hide text labels, keep SVG icons */
+  .header-btn-text {
+    display: none;
+  }
+  .header-btn-icon {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+  }
+}
+
+/* 3. Fix wrapping KPI labels — allow smaller text and truncation */
+@media (max-width: 980px) {
+  .kpi .label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.6rem;
+  }
+  /* Tighten KPI grid — 2 cols on all mobile widths */
+  .kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .kpi {
+    padding: 14px 14px;
+  }
+  .kpi .value {
+    font-size: 1.6rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .kpi .value {
+    font-size: 1.3rem;
+  }
+  .kpi .label {
+    font-size: 0.57rem;
+  }
+}
+
+/* 4. Filter bar — tighter top margin now toolbar is gone */
+@media (max-width: 980px) {
+  .filter-bar {
+    margin-top: 0;
+  }
 }
