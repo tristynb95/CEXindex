@@ -3997,3 +3997,379 @@ body.table-fullscreen-lock {
 .wc-empty p {
   font-size: 0.9rem;
 }
+
+/* ══════════════════════════════════════════════════════
+   MOBILE RESPONSIVE IMPROVEMENTS
+   ══════════════════════════════════════════════════════ */
+
+/* ── Touch-action optimisation (removes 300ms tap delay) ── */
+button, a, [role="button"],
+.tab, .filter-bar__toggle, .mobile-bottom-nav__btn,
+.dashboard-nav__btn, .target-subtab, .dashboard-footer__link {
+  touch-action: manipulation;
+}
+
+/* ── Filter bar toggle button (visible on mobile) ── */
+.filter-bar__toggle {
+  display: none;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--card-border-h);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  margin-bottom: 0;
+}
+.filter-bar__toggle:hover {
+  border-color: rgba(255,59,92,0.4);
+  background: rgba(255,59,92,0.05);
+}
+.filter-bar__toggle:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-d);
+}
+.filter-bar__toggle-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--muted-l);
+}
+.filter-bar__toggle-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.filter-bar__toggle-badge[hidden] { display: none; }
+.filter-bar__toggle-chevron {
+  margin-left: auto;
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-right: 2px solid var(--muted-l);
+  border-bottom: 2px solid var(--muted-l);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.22s ease, border-color 0.2s ease;
+}
+.filter-bar__toggle[aria-expanded="true"] .filter-bar__toggle-chevron {
+  transform: rotate(-135deg) translateY(2px);
+  border-color: var(--accent);
+}
+.filter-bar__toggle[aria-expanded="true"] {
+  border-color: rgba(255,59,92,0.35);
+  background: rgba(255,59,92,0.06);
+  margin-bottom: 14px;
+}
+.filter-bar__toggle.has-active-filters .filter-bar__toggle-icon {
+  color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .filter-bar__toggle {
+    display: inline-flex;
+  }
+  /* Hide filter controls by default on mobile; toggled open via JS */
+  .filter-bar .filter-controls {
+    display: none;
+  }
+  .filter-bar .filter-controls.is-open {
+    display: grid;
+  }
+}
+
+/* ── Mobile bottom navigation bar ── */
+.mobile-bottom-nav {
+  display: none; /* hidden by default; shown via media query */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 29; /* below sidebar (40) and backdrop (34) so nav is covered when sidebar opens */
+  background:
+    linear-gradient(180deg, rgba(14,14,26,0.97) 0%, rgba(10,10,18,0.99) 100%);
+  border-top: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 6px 4px;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  gap: 2px;
+}
+.mobile-bottom-nav__btn {
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  padding: 6px 2px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.mobile-bottom-nav__btn:active {
+  transform: scale(0.93);
+}
+.mobile-bottom-nav__btn.active {
+  color: var(--accent);
+}
+.mobile-bottom-nav__btn.active .mobile-bottom-nav__icon {
+  filter: drop-shadow(0 0 6px rgba(255,59,92,0.45));
+}
+.mobile-bottom-nav__icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+.mobile-bottom-nav__icon rect {
+  fill: currentColor;
+  stroke: none;
+}
+.mobile-bottom-nav__btn span:last-child {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
+@media (max-width: 980px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+  /* Body padding to avoid content hiding behind bottom nav */
+  .container {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Reduce the "open menu" button clutter — bottom nav handles tab switching */
+  .dashboard-workspace__menu-btn {
+    font-size: 0.76rem;
+  }
+}
+
+@media (min-width: 981px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* ── Mobile-specific layout improvements ── */
+
+/* Container padding on small screens */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-top: 14px;
+  }
+  .filter-bar {
+    padding: 14px 16px;
+  }
+  /* Tighter upload zone on mobile */
+  .upload-zone {
+    padding: 48px 20px;
+  }
+  .upload-zone .icon {
+    font-size: 2.5rem;
+    margin-bottom: 14px;
+  }
+  .upload-zone h3 {
+    font-size: 1.1rem;
+  }
+  /* Section padding */
+  .section {
+    padding: 16px 18px;
+  }
+  /* KPI row value size */
+  .kpi .value {
+    font-size: 1.5rem;
+  }
+  .kpi {
+    padding: 14px 16px;
+  }
+  /* Callout grid stacks on mobile */
+  .callout-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  /* Grid-2 already stacks at 900px, but also tighten gap */
+  .grid-2 {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Even smaller KPI values on very small phones */
+  .kpi .value {
+    font-size: 1.35rem;
+  }
+  .kpi .label {
+    font-size: 0.6rem;
+  }
+  /* Section titles */
+  .section h2 {
+    font-size: 0.84rem;
+  }
+  /* Dashboard workspace toolbar on very small screens */
+  .dashboard-workspace__status strong {
+    font-size: 0.9rem;
+  }
+  /* Target stat cards */
+  .target-stat-card__value {
+    font-size: 1.25rem;
+  }
+  /* Spark grid — 1 column on very small screens */
+  .spark-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Drilldown modal mobile ── */
+@media (max-width: 540px) {
+  .drill-modal {
+    padding: 8px;
+    align-items: flex-end;
+  }
+  .drillInner {
+    width: 100%;
+    height: calc(100vh - 16px);
+    border-radius: 20px 20px 0 0;
+  }
+  #drillHeader {
+    padding: 20px 18px 16px;
+  }
+  #drillTitle {
+    font-size: 1.4rem;
+  }
+  #drillSubtitle {
+    font-size: 0.9rem;
+  }
+  #drillBody {
+    padding: 16px 18px 20px;
+  }
+}
+
+/* ── Header on very small screens ── */
+@media (max-width: 400px) {
+  .header {
+    padding: 12px 14px;
+  }
+  .header-brand__logo {
+    width: 88px;
+  }
+  .header-brand__eyebrow {
+    font-size: 0.62rem;
+  }
+  .header .sub {
+    font-size: 0.7rem;
+  }
+  #adminBtn, #logoutBtn {
+    font-size: 0.74rem;
+    padding: 6px 10px;
+  }
+}
+
+/* ── Improved scrollbar for mobile content ── */
+@media (max-width: 980px) {
+  .table-wrap {
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-table-wrap {
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Ensure maps are touch-friendly */
+  #targetMap,
+  #networkMap {
+    height: 380px;
+  }
+  /* League table sort row on mobile */
+  #tab-table .section > div:first-of-type {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* ── Login screen on very small screens ── */
+@media (max-width: 400px) {
+  .overlay-screen {
+    padding: 12px 10px;
+  }
+  .login-hero {
+    padding: 14px;
+    border-radius: 18px;
+  }
+  .login-card__form-panel {
+    padding: 16px;
+    border-radius: 18px;
+  }
+  .login-hero__scoreboard {
+    grid-template-columns: 1fr;
+  }
+  .login-card__highlights {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Safe area support for notched devices ── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-bottom-nav {
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+  @media (max-width: 980px) {
+    .container {
+      padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    }
+  }
+}
+
+/* ── Prevent layout jank on filter open/close animation ── */
+.filter-bar .filter-controls {
+  transition: none;
+}
+
+/* ── Ensure the dashboard sidebar (z-index:40) and backdrop (z-index:34)
+      remain above the bottom nav (z-index:29) when sidebar is open ── */
+
+/* ── Word cloud responsive height ── */
+@media (max-width: 640px) {
+  .wc-canvas-wrap {
+    min-height: 320px;
+  }
+}

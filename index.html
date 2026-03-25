@@ -156,7 +156,15 @@
 
       <!-- GLOBAL FILTER BAR -->
       <div class="filter-bar">
-        <div class="filter-controls">
+        <button type="button" class="filter-bar__toggle" id="filterBarToggle" aria-expanded="false" aria-controls="filterControlsPanel">
+          <svg class="filter-bar__toggle-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 7h18M7 12h10M11 17h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+          </svg>
+          <span>Filters</span>
+          <span class="filter-bar__toggle-badge" id="filterActiveBadge" hidden></span>
+          <span class="filter-bar__toggle-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="filter-controls" id="filterControlsPanel">
           <div class="filter-control"><label>Month</label><br><select id="monthSelect">
             <option value="">&mdash; Select &mdash;</option>
           </select></div>
@@ -652,6 +660,59 @@
         </div>
       </div>
       <div id="dashboardSidebarBackdrop" class="dashboard-sidebar-backdrop" hidden></div>
+
+      <!-- MOBILE BOTTOM NAVIGATION (visible < 980px) -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Dashboard navigation">
+      <button type="button" class="mobile-bottom-nav__btn tab active" data-tab="overview" aria-label="Overview">
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4" y="4" width="6" height="6" rx="1.5"></rect>
+          <rect x="14" y="4" width="6" height="6" rx="1.5"></rect>
+          <rect x="4" y="14" width="6" height="6" rx="1.5"></rect>
+          <rect x="14" y="14" width="6" height="6" rx="1.5"></rect>
+        </svg>
+        <span>Overview</span>
+      </button>
+      <button type="button" class="mobile-bottom-nav__btn tab" data-tab="target" aria-label="Target Bakeries">
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="7"></circle>
+          <circle cx="12" cy="12" r="3.5"></circle>
+          <path d="M17 7L20 4"></path>
+          <path d="M16.5 4H20V7.5"></path>
+        </svg>
+        <span>Target</span>
+      </button>
+      <button type="button" class="mobile-bottom-nav__btn tab" data-tab="trends" aria-label="Trends">
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 17L10 12L13.5 15.5L19 8.5"></path>
+          <path d="M15.5 8.5H19V12"></path>
+        </svg>
+        <span>Trends</span>
+      </button>
+      <button type="button" class="mobile-bottom-nav__btn tab" data-tab="table" aria-label="League Table">
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 5H17V7C17 9.76142 14.7614 12 12 12C9.23858 12 7 9.76142 7 7V5Z"></path>
+          <path d="M7 6H5C5 8.20914 6.79086 10 9 10"></path>
+          <path d="M17 6H19C19 8.20914 17.2091 10 15 10"></path>
+          <path d="M12 12V16"></path>
+          <path d="M9 19H15"></path>
+        </svg>
+        <span>Rankings</span>
+      </button>
+      <button type="button" class="mobile-bottom-nav__btn tab" data-tab="map" aria-label="Map">
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 20C12 20 18 14.4 18 9.5C18 6.46243 15.3137 4 12 4C8.68629 4 6 6.46243 6 9.5C6 14.4 12 20 12 20Z"></path>
+          <circle cx="12" cy="9.5" r="2"></circle>
+        </svg>
+        <span>Map</span>
+      </button>
+      <button type="button" class="mobile-bottom-nav__btn tab" data-tab="feedback" aria-label="Feedback">
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 5C4 4.45 4.45 4 5 4H19C19.55 4 20 4.45 20 5V15C20 15.55 19.55 16 19 16H8.5L5 19.5V5Z"></path>
+          <path d="M8 9H16M8 12H13"></path>
+        </svg>
+        <span>Feedback</span>
+      </button>
+    </nav>
     </div><!-- end dashboardContent -->
 
     <!-- DRILL-DOWN MODAL -->

@@ -402,6 +402,48 @@
   });
 
   // ========== INITIALISE FILE UPLOAD ==========
+  // ── Mobile filter bar toggle ──
+  var filterBarToggleBtn = document.getElementById('filterBarToggle');
+  var filterControlsPanel = document.getElementById('filterControlsPanel');
+  var filterActiveBadge  = document.getElementById('filterActiveBadge');
+
+  function countActiveFilters() {
+    var count = 0;
+    if (state.regionFilter) count++;
+    if (state.opsFilter) count++;
+    if (state.searchBakery) count++;
+    if (state.bandFilter) count++;
+    return count;
+  }
+
+  function syncFilterBadge() {
+    if (!filterActiveBadge || !filterBarToggleBtn) return;
+    var n = countActiveFilters();
+    if (n > 0) {
+      filterActiveBadge.textContent = n;
+      filterActiveBadge.hidden = false;
+      filterBarToggleBtn.classList.add('has-active-filters');
+    } else {
+      filterActiveBadge.hidden = true;
+      filterBarToggleBtn.classList.remove('has-active-filters');
+    }
+  }
+
+  if (filterBarToggleBtn && filterControlsPanel) {
+    filterBarToggleBtn.addEventListener('click', function() {
+      var isExpanded = filterBarToggleBtn.getAttribute('aria-expanded') === 'true';
+      filterBarToggleBtn.setAttribute('aria-expanded', String(!isExpanded));
+      filterControlsPanel.classList.toggle('is-open', !isExpanded);
+    });
+  }
+
+  // Patch refresh to also sync the filter badge
+  var originalRefresh = refresh;
+  refresh = function() {
+    originalRefresh();
+    syncFilterBadge();
+  };
+
   G.refreshDashboard = refresh;
   G.rebuildDashboardFilters = function() {
     rebuildRegionFilter();
