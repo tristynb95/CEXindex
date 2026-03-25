@@ -33,6 +33,8 @@ window.GAILS = window.GAILS || {};
 
     if (!canvas.__wcTooltipBound) {
       canvas.addEventListener('mousemove', function (evt) {
+        var TOOLTIP_GAP = 10;
+        var TOOLTIP_PAD = 8;
         var tooltip = wrap.__wcTooltip;
         var hitRegions = canvas.__wcHitRegions || [];
         if (!tooltip || !hitRegions.length) {
@@ -64,15 +66,16 @@ window.GAILS = window.GAILS || {};
         tooltip.textContent = match.word + ': ' + match.value;
         tooltip.hidden = false;
 
-        var wrapRect = wrap.getBoundingClientRect();
-        var left = evt.clientX - wrapRect.left + 14;
-        var top = evt.clientY - wrapRect.top - 14;
-        var maxLeft = Math.max(8, wrap.clientWidth - tooltip.offsetWidth - 8);
-        var maxTop = Math.max(8, wrap.clientHeight - tooltip.offsetHeight - 8);
+        var left = canvas.offsetLeft + match.x + match.w + TOOLTIP_GAP;
+        var top = canvas.offsetTop + match.y + (match.h / 2) - (tooltip.offsetHeight / 2);
+        var maxLeft = Math.max(TOOLTIP_PAD, wrap.clientWidth - tooltip.offsetWidth - TOOLTIP_PAD);
+        var maxTop = Math.max(TOOLTIP_PAD, wrap.clientHeight - tooltip.offsetHeight - TOOLTIP_PAD);
 
-        if (left > maxLeft) left = maxLeft;
-        if (top > maxTop) top = maxTop;
-        if (top < 8) top = evt.clientY - wrapRect.top + 18;
+        if (left > maxLeft) {
+          left = canvas.offsetLeft + match.x - tooltip.offsetWidth - TOOLTIP_GAP;
+        }
+        if (left < TOOLTIP_PAD) left = TOOLTIP_PAD;
+        if (top < TOOLTIP_PAD) top = TOOLTIP_PAD;
         if (top > maxTop) top = maxTop;
 
         tooltip.style.left = left + 'px';
@@ -113,6 +116,21 @@ window.GAILS = window.GAILS || {};
     return (body.start_date || '') + '|' + (body.end_date || '') + '|' + bakeries;
   }
 
+  function getWrapContentBox(wrap) {
+    if (!wrap) {
+      return { width: 760, height: 480 };
+    }
+
+    var styles = window.getComputedStyle ? window.getComputedStyle(wrap) : null;
+    var padX = styles ? (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0) : 0;
+    var padY = styles ? (parseFloat(styles.paddingTop) || 0) + (parseFloat(styles.paddingBottom) || 0) : 0;
+
+    return {
+      width: Math.max(220, Math.round(((wrap.clientWidth || 760) - padX) || 760)),
+      height: wrap.clientHeight ? Math.max(220, Math.round(wrap.clientHeight - padY)) : 0
+    };
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   // Convert a dashboard month label ("Jan 25") to an ISO date string.
@@ -128,6 +146,58 @@ window.GAILS = window.GAILS || {};
     return yr + '-' + mm + '-' + String(lastDay).padStart(2, '0');
   }
 
+  function getWordCloudLayout(canvas) {
+    var wrap = canvas && canvas.parentElement;
+    var box = getWrapContentBox(wrap);
+    var cssW = box.width;
+    var wrapH = box.height || 0;
+    var mobileViewport = window.matchMedia ? window.matchMedia('(max-width: 640px)').matches : cssW <= 640;
+    var compact = mobileViewport || cssW <= 520;
+    var narrow = cssW <= 380;
+    var targetH = compact
+      ? Math.max(340, Math.min(430, Math.round(cssW * (narrow ? 1.24 : 1.08))))
+      : 480;
+    var cssH = Math.max(targetH, wrapH);
+
+    return {
+      compact: compact,
+      narrow: narrow,
+      cssW: cssW,
+      cssH: cssH,
+      xyRatio: Math.max(0.72, Math.min(1.14, cssH / cssW)),
+      wordLimit: narrow ? 60 : compact ? 80 : 120,
+      minSize: narrow ? 9 : compact ? 10 : 12,
+      maxSize: narrow ? 34 : compact ? 40 : 60,
+      edgePadX: narrow ? 8 : compact ? 10 : 6,
+      edgePadY: narrow ? 10 : compact ? 12 : 6,
+      sizeExponent: compact ? 0.78 : 0.5,
+      spiralStep: compact ? 0.09 : 0.115,
+      spiralRadius: compact ? 2.35 : 2.65,
+      attempts: compact ? 4200 : 2200,
+      shrinkStep: compact ? 2 : 0,
+      shrinkPasses: compact ? 5 : 1,
+      anchorPasses: compact ? 5 : 1
+    };
+  }
+
+  function getWordCloudAnchors(layout) {
+    if (!layout.compact) {
+      return [{ x: 0.5, y: 0.5 }];
+    }
+
+    return [
+      { x: 0.5,  y: 0.5  },
+      { x: 0.34, y: 0.3  },
+      { x: 0.66, y: 0.3  },
+      { x: 0.34, y: 0.7  },
+      { x: 0.66, y: 0.7  },
+      { x: 0.5,  y: 0.2  },
+      { x: 0.5,  y: 0.8  },
+      { x: 0.22, y: 0.5  },
+      { x: 0.78, y: 0.5  }
+    ];
+  }
+
   // ── Renderer ───────────────────────────────────────────────────────────────
 
   function renderWordCloud(words, canvas) {
@@ -135,10 +205,11 @@ window.GAILS = window.GAILS || {};
     hideWordCloudTooltip(canvas);
     canvas.__wcHitRegions = [];
 
+    var layout = getWordCloudLayout(canvas);
     var dpr    = window.devicePixelRatio || 1;
-    var cssW   = (canvas.parentElement.clientWidth || 760);
-    var cssH   = 480;
-    var xyRatio = cssH / cssW;
+    var cssW   = layout.cssW;
+    var cssH   = layout.cssH;
+    var xyRatio = layout.xyRatio;
 
     canvas.width  = cssW * dpr;
     canvas.height = cssH * dpr;
@@ -162,114 +233,115 @@ window.GAILS = window.GAILS || {};
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, cssW, cssH);
 
-    // Sort descending, cap at 120 words
-    var sorted = words.slice().sort(function (a, b) { return b.value - a.value; }).slice(0, 120);
+    // Sort descending and trim the cloud harder on smaller screens.
+    var sorted = words.slice().sort(function (a, b) { return b.value - a.value; }).slice(0, layout.wordLimit);
     if (!sorted.length) return;
 
     var maxVal = sorted[0].value;
     var minVal = sorted[sorted.length - 1].value;
     var range  = maxVal - minVal || 1;
-    var total  = sorted.length;
-
-    var MIN_SIZE = 12, MAX_SIZE = 60;
-    var EDGE_PAD = 3;
     var placed = [];
-
-    // Draw legend in bottom-right corner before placing words
-    (function drawLegend() {
-      var items = [
-        { label: 'Positive', color: SENTIMENT_COLORS.positive },
-        { label: 'Neutral',  color: SENTIMENT_COLORS.neutral  },
-        { label: 'Negative', color: SENTIMENT_COLORS.negative }
-      ];
-      ctx.font = '500 11px "Space Grotesk", Inter, system-ui, sans-serif';
-      var pad = 14, dotR = 4, rowH = 18;
-      var ly = cssH - pad - (items.length - 1) * rowH;
-      items.forEach(function (item) {
-        var tw = ctx.measureText(item.label).width;
-        var lx = cssW - pad - tw - dotR * 2 - 6;
-        ctx.fillStyle = item.color;
-        ctx.globalAlpha = 0.75;
-        ctx.beginPath();
-        ctx.arc(lx + dotR, ly - dotR * 0.6, dotR, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 0.5;
-        ctx.fillStyle = '#C4C4DC';
-        ctx.fillText(item.label, lx + dotR * 2 + 5, ly);
-        ctx.globalAlpha = 1;
-        ly += rowH;
-      });
-    }());
+    var anchors = getWordCloudAnchors(layout);
 
     sorted.forEach(function (item, idx) {
-      var t      = Math.sqrt((item.value - minVal) / range);
-      var size   = Math.round(MIN_SIZE + t * (MAX_SIZE - MIN_SIZE));
-      var weight = size > 28 ? '700' : size > 16 ? '600' : '400';
-      ctx.font   = weight + ' ' + size + 'px "Space Grotesk", Inter, system-ui, sans-serif';
-
-      var metrics = measureWord(ctx, item.word, size);
-      var tw = metrics.width;
-      var th = metrics.height;
-
-      // Colour from sentiment field
+      var normalized = (item.value - minVal) / range;
+      var t      = Math.pow(normalized, layout.sizeExponent);
+      var size   = Math.round(layout.minSize + t * (layout.maxSize - layout.minSize));
       var sentiment = (item.sentiment || '').toLowerCase();
       var color = SENTIMENT_COLORS[sentiment] || SENTIMENT_FALLBACK;
-
-      // Glow on large words
-      if (size > 32) {
-        ctx.shadowColor = color;
-        ctx.shadowBlur  = size > 44 ? 14 : 8;
-      } else {
-        ctx.shadowBlur = 0;
-      }
-
-      // Archimedean spiral — golden-angle start per word keeps layout varied
       var startAngle = idx * 2.39996;
-      var boxPadX = size > 34 ? 2 : 1;
-      var boxPadY = size > 34 ? 3 : 2;
+      var anchorStart = idx < 4 ? 0 : idx % anchors.length;
+      var placedWord = false;
 
-      for (var i = 0; i < 2200; i++) {
-        var theta = i * 0.115;
-        var r     = 2.65 * theta;
-        var angle = startAngle + theta;
-        var cx    = cssW / 2 + r * Math.cos(angle);
-        var cy    = cssH / 2 + r * Math.sin(angle) * xyRatio;
-        var x     = cx - tw / 2;
-        var y     = cy + metrics.ascent - th / 2;
+      for (var shrink = 0; shrink < layout.shrinkPasses; shrink++) {
+        var attemptSize = Math.max(layout.minSize, size - shrink * layout.shrinkStep);
+        var weight = attemptSize > layout.maxSize * 0.62 ? '700' : attemptSize > layout.minSize + 7 ? '600' : '400';
+        ctx.font = weight + ' ' + attemptSize + 'px "Space Grotesk", Inter, system-ui, sans-serif';
 
-        // Reject positions outside canvas
-        if (x < EDGE_PAD || x + tw > cssW - EDGE_PAD ||
-            y - metrics.ascent < EDGE_PAD || y + metrics.descent > cssH - EDGE_PAD) continue;
+        var metrics = measureWord(ctx, item.word, attemptSize);
+        var maxWordWidth = Math.max(48, cssW - layout.edgePadX * 2 - 4);
+        if (metrics.width > maxWordWidth) {
+          var fittedSize = Math.max(layout.minSize, Math.floor(attemptSize * (maxWordWidth / metrics.width)));
+          if (fittedSize < attemptSize) {
+            attemptSize = fittedSize;
+            weight = attemptSize > layout.maxSize * 0.62 ? '700' : attemptSize > layout.minSize + 7 ? '600' : '400';
+            ctx.font = weight + ' ' + attemptSize + 'px "Space Grotesk", Inter, system-ui, sans-serif';
+            metrics = measureWord(ctx, item.word, attemptSize);
+          }
+        }
 
-        // AABB collision check
-        var box = {
-          x: x - boxPadX,
-          y: y - metrics.ascent - boxPadY,
-          w: tw + boxPadX * 2,
-          h: th + boxPadY * 2
-        };
-        var overlaps = false;
-        for (var p = 0; p < placed.length; p++) {
-          var q = placed[p];
-          if (box.x < q.x + q.w && box.x + box.w > q.x &&
-              box.y < q.y + q.h && box.y + box.h > q.y) {
-            overlaps = true;
+        var tw = metrics.width;
+        var th = metrics.height;
+
+        // Keep large-word glow on roomy layouts, but tone it down on mobile.
+        if (!layout.compact && attemptSize > 32) {
+          ctx.shadowColor = color;
+          ctx.shadowBlur  = attemptSize > 44 ? 14 : 8;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+
+        var boxPadX = layout.compact ? (attemptSize > 24 ? 2 : 1) : (attemptSize > 34 ? 2 : 1);
+        var boxPadY = layout.compact ? (attemptSize > 24 ? 3 : 1) : (attemptSize > 34 ? 3 : 2);
+
+        for (var anchorPass = 0; anchorPass < Math.min(layout.anchorPasses, anchors.length); anchorPass++) {
+          var anchor = anchors[(anchorStart + anchorPass) % anchors.length];
+          var anchorCx = cssW * anchor.x;
+          var anchorCy = cssH * anchor.y;
+
+          for (var i = 0; i < layout.attempts; i++) {
+            var theta = i * layout.spiralStep;
+            var r     = layout.spiralRadius * theta;
+            var angle = startAngle + theta;
+            var cx    = anchorCx + r * Math.cos(angle);
+            var cy    = anchorCy + r * Math.sin(angle) * xyRatio;
+            var x     = cx - tw / 2;
+            var y     = cy + metrics.ascent - th / 2;
+
+            // Reject positions outside canvas
+            if (x < layout.edgePadX || x + tw > cssW - layout.edgePadX ||
+                y - metrics.ascent < layout.edgePadY || y + metrics.descent > cssH - layout.edgePadY) continue;
+
+            // AABB collision check
+            var box = {
+              x: x - boxPadX,
+              y: y - metrics.ascent - boxPadY,
+              w: tw + boxPadX * 2,
+              h: th + boxPadY * 2
+            };
+            var overlaps = false;
+            for (var p = 0; p < placed.length; p++) {
+              var q = placed[p];
+              if (box.x < q.x + q.w && box.x + box.w > q.x &&
+                  box.y < q.y + q.h && box.y + box.h > q.y) {
+                overlaps = true;
+                break;
+              }
+            }
+
+            if (!overlaps) {
+              ctx.fillStyle = color;
+              ctx.fillText(item.word, x, y);
+              placed.push(box);
+              canvas.__wcHitRegions.push({
+                x: box.x,
+                y: box.y,
+                w: box.w,
+                h: box.h,
+                word: item.word,
+                value: item.value
+              });
+              placedWord = true;
+              break;
+            }
+          }
+
+          if (placedWord) {
             break;
           }
         }
 
-        if (!overlaps) {
-          ctx.fillStyle = color;
-          ctx.fillText(item.word, x, y);
-          placed.push(box);
-          canvas.__wcHitRegions.push({
-            x: box.x,
-            y: box.y,
-            w: box.w,
-            h: box.h,
-            word: item.word,
-            value: item.value
-          });
+        if (placedWord || attemptSize === layout.minSize) {
           break;
         }
       }
@@ -277,6 +349,7 @@ window.GAILS = window.GAILS || {};
       // Reset glow after each word
       ctx.shadowBlur = 0;
     });
+
   }
 
   // ── Fetch & Render ─────────────────────────────────────────────────────────

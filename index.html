@@ -50,7 +50,6 @@
         </div>
 
         <div class="login-card__masthead-copy">
-          <p class="login-card__eyebrow">Coffee Experience Dashboard</p>
           <h1 class="login-card__title">Coffee Experience Dashboard</h1>
           <p class="login-card__intro">Track sentiment, coffee quality, and priority actions from one secure reporting workspace.</p>
         </div>
@@ -521,8 +520,8 @@
           <div class="tab-content" id="tab-table">
             <div class="section">
               <h2>League Table</h2>
-              <div style="margin-bottom:10px">
-                <label style="font-size:0.74rem;color:var(--muted);font-weight:600">Sort by: <select id="sortBy" style="margin-left:6px;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:0.82rem;color:var(--text)">
+              <div class="league-table-toolbar" data-table-fullscreen-anchor="true">
+                <label class="league-table-toolbar__label">Sort by: <select id="sortBy" class="league-table-toolbar__select">
                     <option value="cr">CEI Rank</option>
                     <option value="n">NPS</option>
                     <option value="c">CEI (Relative)</option>
@@ -534,8 +533,8 @@
                     <option value="o5">Over 5 Min</option>
                   </select></label>
               </div>
-              <div class="table-wrap">
-                <table>
+              <div class="table-wrap table-wrap--league">
+                <table class="league-table">
                   <thead>
                     <tr>
                       <th>#</th>
@@ -667,6 +666,11 @@
                       <p>No feedback data found for these bakeries.</p>
                     </div>
                   </div>
+                  <div class="wc-legend" aria-label="Word cloud sentiment legend">
+                    <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--positive"></span>Positive</span>
+                    <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--neutral"></span>Neutral</span>
+                    <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--negative"></span>Negative</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -686,6 +690,11 @@
                   <div class="wc-empty__icon">&#128172;</div>
                   <p>No feedback data found for this selection.</p>
                 </div>
+              </div>
+              <div class="wc-legend" aria-label="Word cloud sentiment legend">
+                <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--positive"></span>Positive</span>
+                <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--neutral"></span>Neutral</span>
+                <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--negative"></span>Negative</span>
               </div>
             </div>
           </div>

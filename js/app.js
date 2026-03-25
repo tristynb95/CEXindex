@@ -78,7 +78,15 @@
 
   function syncDashboardKpis(name) {
     if (!dashboardKpiRow) return;
-    var shouldShow = !!dashboardTabsWithKpis[name];
+    var activeTabName = name;
+    if (!activeTabName) {
+      var activePanel = document.querySelector('.tab-content.active');
+      activeTabName = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
+    }
+    var shouldShow = !!dashboardTabsWithKpis[activeTabName];
+    if (compactDashboardSidebarMedia.matches && (activeTabName === 'trends' || activeTabName === 'table')) {
+      shouldShow = false;
+    }
     dashboardKpiRow.hidden = !shouldShow;
     dashboardKpiRow.setAttribute('aria-hidden', String(!shouldShow));
     dashboardKpiRow.style.display = shouldShow ? '' : 'none';
@@ -452,6 +460,9 @@
   document.querySelectorAll('.tab').forEach(function(t) {
     t.addEventListener('click', function() {
       activateDashboardTab(t.dataset.tab);
+      if (window.matchMedia('(max-width: 980px)').matches) {
+        animateScrollToTop();
+      }
     });
   });
 
@@ -478,7 +489,10 @@
   }
 
   if (compactDashboardSidebarMedia && compactDashboardSidebarMedia.addEventListener) {
-    compactDashboardSidebarMedia.addEventListener('change', syncDashboardSidebarForViewport);
+    compactDashboardSidebarMedia.addEventListener('change', function() {
+      syncDashboardSidebarForViewport();
+      syncDashboardKpis();
+    });
   }
 
   document.addEventListener('keydown', function(event) {
@@ -499,6 +513,9 @@
   document.querySelectorAll('.target-subtab').forEach(function(tab) {
     tab.addEventListener('click', function() {
       activateTargetSubtab(tab.dataset.targetSubtab);
+      if (window.matchMedia('(max-width: 980px)').matches) {
+        animateScrollToTop();
+      }
     });
   });
 
