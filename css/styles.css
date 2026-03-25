@@ -4373,3 +4373,122 @@ button, a, [role="button"],
     min-height: 320px;
   }
 }
+
+/* ══════════════════════════════════════════════════════
+   MOBILE USABILITY — PHASE 2
+   Based on real-device review
+   ══════════════════════════════════════════════════════ */
+
+/* 1. Hide the redundant toolbar (Menu btn + "Active view" label) on mobile.
+      Bottom nav handles all tab switching, so this row is pure noise. */
+@media (max-width: 980px) {
+  .dashboard-workspace__toolbar {
+    display: none;
+  }
+}
+
+/* 2. Compact header on mobile — collapse to a single tight row:
+      [Logo]  [Dashboard title/sub]  [Sign Out]  (Admin hidden in kebab)  */
+@media (max-width: 640px) {
+  .header {
+    padding: 10px 14px;
+    min-height: 52px;
+    gap: 10px;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  /* Stack eyebrow + subtitle tighter */
+  .header-brand {
+    gap: 10px;
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .header-brand__logo {
+    width: 72px;
+    flex-shrink: 0;
+  }
+  .header-brand__copy {
+    overflow: hidden;
+  }
+  .header-brand__eyebrow {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .header .sub {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.68rem;
+  }
+  /* Header actions: push to right, shrink to icon-sized buttons */
+  .header-actions {
+    width: auto;
+    margin-left: 0;
+    flex-shrink: 0;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  /* De-emphasise Admin Portal on mobile — make it smaller / secondary */
+  #adminBtn {
+    font-size: 0;          /* hide text */
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  /* Keep the lock emoji visible as an icon */
+  #adminBtn::before {
+    content: '🔒';
+    font-size: 1rem;
+    line-height: 1;
+  }
+  #logoutBtn {
+    font-size: 0.74rem;
+    padding: 7px 12px;
+    min-height: 36px;
+    white-space: nowrap;
+  }
+}
+
+/* 3. Fix wrapping KPI labels — allow smaller text and truncation */
+@media (max-width: 980px) {
+  .kpi .label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.6rem;
+  }
+  /* Tighten KPI grid — 2 cols on all mobile widths */
+  .kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .kpi {
+    padding: 14px 14px;
+  }
+  .kpi .value {
+    font-size: 1.6rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .kpi .value {
+    font-size: 1.3rem;
+  }
+  .kpi .label {
+    font-size: 0.57rem;
+  }
+}
+
+/* 4. Filter bar — tighter top margin now toolbar is gone */
+@media (max-width: 980px) {
+  .filter-bar {
+    margin-top: 0;
+  }
+}
