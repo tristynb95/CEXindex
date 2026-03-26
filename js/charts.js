@@ -142,30 +142,64 @@ window.GAILS.renderTrendCharts = function(data) {
   var state = G.state;
   var RM = G.getRollingMonths();
 
-  var trendNPS = RM.map(function(m) { var mr = state.ALL.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r.n; }, 0) / mr.length : null; });
+  // Build scoped dataset matching the same filters as the bakery tracker
+  var trendSelectedBakeries = Array.isArray(state.searchBakery) ? state.searchBakery.slice() : [];
+  var trendScopedAll = state.ALL.filter(function(r) {
+    if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(r.b))) return false;
+    if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(r.b))) return false;
+    if (state.bandFilter && r.cb !== state.bandFilter) return false;
+    if (trendSelectedBakeries.length && trendSelectedBakeries.indexOf(r.b) === -1) return false;
+    return true;
+  });
+
+  // Build scope label for chart titles
+  var trendScopeLabel = '';
+  if (trendSelectedBakeries.length) {
+    trendScopeLabel = trendSelectedBakeries.length === 1 ? trendSelectedBakeries[0] : trendSelectedBakeries.length + ' Bakeries';
+  } else {
+    var scopeParts = [];
+    if (state.regionFilter.length) scopeParts.push(state.regionFilter.join(', '));
+    if (state.opsFilter.length) scopeParts.push(state.opsFilter.join(', '));
+    if (state.bandFilter) scopeParts.push(state.bandFilter);
+    trendScopeLabel = scopeParts.join(' \u00b7 ');
+  }
+  function trendTitle(base) {
+    return trendScopeLabel ? base + ' \u2014 ' + trendScopeLabel : base;
+  }
+
+  // Update h2 titles
+  var el;
+  el = document.getElementById('trendNPSTitle');       if (el) el.textContent = trendTitle('Average NPS by Month');
+  el = document.getElementById('trendCXTitle');        if (el) el.textContent = trendTitle('Average CX Scores by Month');
+  el = document.getElementById('trendAbsBandsTitle');  if (el) el.textContent = trendTitle('Absolute CEI Bands by Month');
+  el = document.getElementById('trendTimelinessTitle');if (el) el.textContent = trendTitle('Average Barista Speed by Month');
+  el = document.getElementById('trendBandsTitle');     if (el) el.textContent = trendTitle('Relative CEI Bands by Month');
+  el = document.getElementById('trendSpeedTitle');     if (el) el.textContent = trendTitle('Average Speed Metrics by Month');
+
+  var trendNPS = RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r.n; }, 0) / mr.length : null; });
   G.makeChart('trendNPS', { type: 'line', data: { labels: RM, datasets: [{ data: trendNPS, borderColor: G.COL.Excellent, backgroundColor: G.COL.Excellent + '22', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Avg NPS' } } } } });
 
   var trendKeys = [{ k: 'dr', l: 'Quality', c: '#4895FF' }, { k: 'ef', l: 'Overall Efficiency', c: '#00C875' }, { k: 'fr', l: 'Friendliness', c: '#FFB800' }, { k: 'ov', l: 'Overall', c: '#9B5DFF' }];
-  G.makeChart('trendCX', { type: 'line', data: { labels: RM, datasets: trendKeys.map(function(tk) { return { label: tk.l, data: RM.map(function(m) { var mr = state.ALL.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r[tk.k]; }, 0) / mr.length : null; }), borderColor: tk.c, tension: 0.3, pointRadius: 3, borderWidth: 2 }; }) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Score %' } } } } });
+  G.makeChart('trendCX', { type: 'line', data: { labels: RM, datasets: trendKeys.map(function(tk) { return { label: tk.l, data: RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r[tk.k]; }, 0) / mr.length : null; }), borderColor: tk.c, tension: 0.3, pointRadius: 3, borderWidth: 2 }; }) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Score %' } } } } });
 
   // Absolute CEI band distribution over time
-  var absBandDs = G.ABS_BAND_NAMES.map(function(bn) { return { label: bn, data: RM.map(function(m) { var mr = state.ALL.filter(function(r) { return r.m === m; }); return mr.length ? mr.filter(function(r) { return r.acb === bn; }).length / mr.length * 100 : 0; }), backgroundColor: G.ABSCOL[bn] + 'cc', borderColor: G.ABSCOL[bn], borderWidth: 1 }; });
+  var absBandDs = G.ABS_BAND_NAMES.map(function(bn) { return { label: bn, data: RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.filter(function(r) { return r.acb === bn; }).length / mr.length * 100 : 0; }), backgroundColor: G.ABSCOL[bn] + 'cc', borderColor: G.ABSCOL[bn], borderWidth: 1 }; });
   G.makeChart('trendAbsBands', { type: 'bar', data: { labels: RM, datasets: absBandDs }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: '% of Bakeries' }, max: 100 } } } });
 
   // Beverage delivery time trend
-  var trendTS = RM.map(function(m) { var mr = state.ALL.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r.ts; }, 0) / mr.length : null; });
+  var trendTS = RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r.ts; }, 0) / mr.length : null; });
   G.makeChart('trendTimeliness', { type: 'line', data: { labels: RM, datasets: [{ label: 'Avg Barista Speed', data: trendTS, borderColor: '#9B5DFF', backgroundColor: 'rgba(155,93,255,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Barista Speed (0-100)' }, min: 0, max: 100 } } } });
 
   // Band trend
-  var bandDs = G.BAND_NAMES.map(function(bn) { return { label: bn, data: RM.map(function(m) { var mr = state.ALL.filter(function(r) { return r.m === m; }); return mr.length ? mr.filter(function(r) { return r.cb === bn; }).length / mr.length * 100 : 0; }), backgroundColor: G.COL[bn] + 'cc', borderColor: G.COL[bn], borderWidth: 1 }; });
+  var bandDs = G.BAND_NAMES.map(function(bn) { return { label: bn, data: RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.filter(function(r) { return r.cb === bn; }).length / mr.length * 100 : 0; }), backgroundColor: G.COL[bn] + 'cc', borderColor: G.COL[bn], borderWidth: 1 }; });
   G.makeChart('trendBands', { type: 'bar', data: { labels: RM, datasets: bandDs }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: '% of Bakeries' }, max: 100 } } } });
 
   // Speed trend
   G.makeChart('trendSpeed', {
     type: 'line', data: {
       labels: RM, datasets: [
-        { label: 'Avg Within 2 Min %', data: RM.map(function(m) { var mr = state.ALL.filter(function(r) { return r.m === m; }); return mr.length ? avg(mr, 's2') : null; }), borderColor: '#4895FF', tension: 0.3, pointRadius: 3, borderWidth: 2 },
-        { label: 'Avg Over 5 Min %', data: RM.map(function(m) { var mr = state.ALL.filter(function(r) { return r.m === m; }); return mr.length ? avg(mr, 'o5') : null; }), borderColor: '#FF3B5C', tension: 0.3, pointRadius: 3, borderWidth: 2, yAxisID: 'y2' }
+        { label: 'Avg Within 2 Min %', data: RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? avg(mr, 's2') : null; }), borderColor: '#4895FF', tension: 0.3, pointRadius: 3, borderWidth: 2 },
+        { label: 'Avg Over 5 Min %', data: RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? avg(mr, 'o5') : null; }), borderColor: '#FF3B5C', tension: 0.3, pointRadius: 3, borderWidth: 2, yAxisID: 'y2' }
       ]
     }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Within 2 Min %' }, position: 'left' }, y2: { title: { display: true, text: 'Over 5 Min %' }, position: 'right', grid: { drawOnChartArea: false } } } }
   });
