@@ -169,6 +169,43 @@ function _setTargetTrendState(hasData, message) {
   var DEFAULT_CENTER = [52.5, -1.8];
   var DEFAULT_ZOOM = 6;
   var lockedScrollY = 0;
+
+  var NETWORK_LEGEND = {
+    relative: [
+      { label: 'Excellent', color: '#00C875' },
+      { label: 'Good', color: '#4895FF' },
+      { label: 'Developing', color: '#FFB800' },
+      { label: 'Needs Attention', color: '#FF3B5C' }
+    ],
+    absolute: [
+      { label: 'Exceeding', color: '#00C875' },
+      { label: 'Meeting', color: '#4895FF' },
+      { label: 'Approaching', color: '#FFB800' },
+      { label: 'Below Standard', color: '#FF3B5C' }
+    ]
+  };
+
+  var NETWORK_HINT = {
+    relative: '<span style="color:var(--green);font-weight:600">&#9679; Excellent</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Good</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Developing</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Needs Attention</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.',
+    absolute: '<span style="color:var(--green);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.'
+  };
+
+  var TARGET_LEGEND = {
+    relative: [
+      { label: 'Needs Attention', color: '#FF3B5C' },
+      { label: 'Developing', color: '#FFB800' }
+    ],
+    absolute: [
+      { label: 'Below Standard', color: '#FF3B5C' },
+      { label: 'Approaching', color: '#FFB800' }
+    ]
+  };
+
+  var TARGET_HINT = {
+    relative: '<span style="color:var(--red);font-weight:600">&#9679; Needs Attention</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Developing</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL\'s bakery before plotting.',
+    absolute: '<span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL\'s bakery before plotting.'
+  };
+
   var MAPS = {
     network: {
       key: 'network',
@@ -178,12 +215,7 @@ function _setTargetTrendState(hasData, message) {
       modalTitle: 'Filtered Bakeries Not Mapped',
       emptyMessage: 'No bakeries match the current filters.',
       bandField: 'cb',
-      legendItems: [
-        { label: 'Excellent', color: '#00C875' },
-        { label: 'Good', color: '#4895FF' },
-        { label: 'Approaching', color: '#FFB800' },
-        { label: 'Below Standard', color: '#FF3B5C' }
-      ],
+      legendItems: NETWORK_LEGEND.relative,
       items: [],
       missingItems: [],
       instance: null,
@@ -198,10 +230,7 @@ function _setTargetTrendState(hasData, message) {
       modalTitle: 'Target Bakeries Not Mapped',
       emptyMessage: 'No target bakeries for the current selection.',
       bandField: 'acb',
-      legendItems: [
-        { label: 'Below Standard', color: '#FF3B5C' },
-        { label: 'Approaching', color: '#FFB800' }
-      ],
+      legendItems: TARGET_LEGEND.absolute,
       items: [],
       missingItems: [],
       instance: null,
@@ -395,6 +424,36 @@ function _setTargetTrendState(hasData, message) {
     ensureMap('target');
   };
 
+  window.GAILS.setTargetMapMetric = function(metric) {
+    var cfg = MAPS.target;
+    var isAbsolute = metric === 'absolute';
+    cfg.bandField = isAbsolute ? 'acb' : 'cb';
+    cfg.legendItems = isAbsolute ? TARGET_LEGEND.absolute : TARGET_LEGEND.relative;
+
+    var hintEl = document.getElementById('targetMapLegendHint');
+    if (hintEl) hintEl.innerHTML = isAbsolute ? TARGET_HINT.absolute : TARGET_HINT.relative;
+
+    if (cfg.instance) {
+      renderLegend(cfg);
+      placeMarkers(cfg);
+    }
+  };
+
+  window.GAILS.setNetworkMapMetric = function(metric) {
+    var cfg = MAPS.network;
+    var isAbsolute = metric === 'absolute';
+    cfg.bandField = isAbsolute ? 'acb' : 'cb';
+    cfg.legendItems = isAbsolute ? NETWORK_LEGEND.absolute : NETWORK_LEGEND.relative;
+
+    var hintEl = document.getElementById('networkMapLegendHint');
+    if (hintEl) hintEl.innerHTML = isAbsolute ? NETWORK_HINT.absolute : NETWORK_HINT.relative;
+
+    if (cfg.instance) {
+      renderLegend(cfg);
+      placeMarkers(cfg);
+    }
+  };
+
   function lockBackgroundScroll() {
     lockedScrollY = window.scrollY || window.pageYOffset || 0;
     document.documentElement.classList.add('drill-modal-open');
@@ -474,24 +533,33 @@ window.GAILS.renderTargets = function(data) {
   var G = GAILS;
   var avg = G.avg;
   var state = G.state;
-  var targets = [].concat(data).filter(function(b) { return b.acb === 'Below Standard' || b.acb === 'Approaching'; }).sort(function(a, b) { return a.ac - b.ac; });
-  var needsAttn = targets.filter(function(b) { return b.acb === 'Below Standard'; });
-  var developing = targets.filter(function(b) { return b.acb === 'Approaching'; });
+  var isAbsolute = state.targetMetric !== 'relative';
+  var bf = isAbsolute ? 'acb' : 'cb';
+  var cf = isAbsolute ? 'ac' : 'c';
+  var highBand = isAbsolute ? 'Below Standard' : 'Needs Attention';
+  var lowBand = isAbsolute ? 'Approaching' : 'Developing';
+
+  var targets = [].concat(data).filter(function(b) {
+    return b[bf] === highBand || b[bf] === lowBand;
+  }).sort(function(a, b) { return a[cf] - b[cf]; });
+
+  var needsAttn = targets.filter(function(b) { return b[bf] === highBand; });
+  var developing = targets.filter(function(b) { return b[bf] === lowBand; });
   G.storeMapTargets(targets);
 
   document.getElementById('targetSummary').innerHTML = [
-    { v: needsAttn.length, l: 'Below Standard', col: 'var(--red)' },
-    { v: developing.length, l: 'Approaching', col: 'var(--amber)' },
+    { v: needsAttn.length, l: highBand, col: 'var(--red)' },
+    { v: developing.length, l: lowBand, col: 'var(--amber)' },
     { v: targets.length, l: 'Total Targeted', col: 'var(--accent)' },
-    { v: targets.length ? avg(targets, 'ac').toFixed(1) : '\u2014', l: 'Avg Abs CEI (Targeted)', col: 'var(--accent)' },
+    { v: targets.length ? avg(targets, cf).toFixed(1) : '\u2014', l: (isAbsolute ? 'Avg Abs CEI' : 'Avg CEI') + ' (Targeted)', col: 'var(--accent)' },
   ].map(function(k) { return '<div class="target-stat-card"><div class="target-stat-card__value" style="color:' + k.col + '">' + k.v + '</div><div class="target-stat-card__label">' + k.l + '</div></div>'; }).join('');
 
-  _renderInsights(targets);
-  _renderTargetTable(targets);
-  _renderTargetTrends(targets, data);
+  _renderInsights(targets, bf, cf, highBand, lowBand, isAbsolute);
+  _renderTargetTable(targets, bf, cf, highBand, isAbsolute);
+  _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolute);
 };
 
-function _renderInsights(targets) {
+function _renderInsights(targets, bf, cf, highBand, lowBand, isAbsolute) {
   var G = GAILS;
   var insightsEl = document.getElementById('targetInsights');
   if (targets.length === 0) { insightsEl.innerHTML = ''; return; }
@@ -505,13 +573,14 @@ function _renderInsights(targets) {
     focusCounts[areas[0].name].push(b.b);
   });
   var topWeakness = Object.entries(focusCounts).sort(function(a, b) { return b[1].length - a[1].length; })[0];
-  var quickWins = targets.filter(function(b) { return b.acb === 'Approaching' && b.ac >= 70; });
+  var quickWins = targets.filter(function(b) { return b[bf] === lowBand && b[cf] >= 70; });
+  var quickWinsThreshold = isAbsolute ? 'close to Meeting' : 'close to Good';
 
   var mgrCounts = {};
   targets.forEach(function(b) {
     var mgr = G.getBakeryOps(b.b);
     if (!mgrCounts[mgr]) mgrCounts[mgr] = { na: 0, dev: 0 };
-    if (b.acb === 'Below Standard') mgrCounts[mgr].na++; else mgrCounts[mgr].dev++;
+    if (b[bf] === highBand) mgrCounts[mgr].na++; else mgrCounts[mgr].dev++;
   });
   var mgrSorted = Object.entries(mgrCounts).sort(function(a, b) { return (b[1].na + b[1].dev) - (a[1].na + a[1].dev); });
   var weakAreas = Object.entries(focusCounts).filter(function(e) { return e[1].length > 0; }).sort(function(a, b) { return b[1].length - a[1].length; });
@@ -522,18 +591,18 @@ function _renderInsights(targets) {
 
   h += '<div class="insight-card"><h4>\u2B50 Quick Wins</h4>';
   if (quickWins.length > 0) {
-    h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' at 70+ Abs CEI &mdash; close to Meeting</p><ul>' + quickWins.map(function(b) { return '<li><strong>' + b.b + '</strong> \u2014 ' + b.ac + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
+    h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' at 70+ ' + (isAbsolute ? 'Abs ' : '') + 'CEI &mdash; ' + quickWinsThreshold + '</p><ul>' + quickWins.map(function(b) { return '<li><strong>' + b.b + '</strong> \u2014 ' + b[cf] + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
   } else {
-    h += '<p style="color:var(--muted)">No bakeries close enough to Meeting standard yet.</p>';
+    h += '<p style="color:var(--muted)">No bakeries close enough to ' + (isAbsolute ? 'Meeting' : 'Good') + ' standard yet.</p>';
   }
   h += '</div>';
 
   h += '<div class="insight-card"><h4>\uD83D\uDC64 Ops Manager Workload</h4>';
   mgrSorted.slice(0, 5).forEach(function(entry) {
     var mgr = entry[0], info = entry[1];
-    var belowStandardTag = info.na > 0 ? '<span class="mgr-row__tag mgr-row__tag--below-standard">' + info.na + ' Below Standard</span>' : '';
-    var approachingTag = info.dev > 0 ? '<span class="mgr-row__tag mgr-row__tag--approaching">' + info.dev + ' Approaching</span>' : '';
-    h += '<div class="mgr-row"><span class="mgr-row__name">' + mgr + '</span><span class="mgr-row__bands">' + belowStandardTag + approachingTag + '</span></div>';
+    var highTag = info.na > 0 ? '<span class="mgr-row__tag mgr-row__tag--below-standard">' + info.na + ' ' + highBand + '</span>' : '';
+    var lowTag = info.dev > 0 ? '<span class="mgr-row__tag mgr-row__tag--approaching">' + info.dev + ' ' + lowBand + '</span>' : '';
+    h += '<div class="mgr-row"><span class="mgr-row__name">' + mgr + '</span><span class="mgr-row__bands">' + highTag + lowTag + '</span></div>';
   });
   if (mgrSorted.length > 0 && mgrSorted[0][1].na >= 3) {
     h += '<div class="action">\u2192 Support ' + mgrSorted[0][0] + '</div>';
@@ -551,7 +620,7 @@ function _renderInsights(targets) {
   insightsEl.innerHTML = h;
 }
 
-function _renderTargetTable(targets) {
+function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
   var G = GAILS;
   var getFocus = function(b) {
     return [
@@ -564,22 +633,25 @@ function _renderTargetTable(targets) {
     if (pct <= 25) return 'well below most bakeries';
     return 'below the bakery average';
   };
+  var ceiHeader = isAbsolute ? 'Abs CEI' : 'CEI';
+  var altCeiHeader = isAbsolute ? 'CEI' : 'Abs CEI';
+  var altCeiField = isAbsolute ? 'c' : 'ac';
 
   document.getElementById('targetTable').innerHTML = targets.length === 0
-    ? '<p style="text-align:center;color:var(--muted);padding:32px 0">No bakeries in Below Standard or Approaching bands for this period.</p>'
-    : '<div class="table-wrap"><table><thead><tr><th>Priority</th><th>Bakery</th><th>Region</th><th>Ops Manager</th><th>CEI</th><th>Abs CEI</th><th>Band</th><th>NPS</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>Barista Speed</th><th>&gt;5m</th><th>Where to Focus</th></tr></thead><tbody>' +
+    ? '<p style="text-align:center;color:var(--muted);padding:32px 0">No bakeries in ' + highBand + ' or adjacent bands for this period.</p>'
+    : '<div class="table-wrap"><table><thead><tr><th>Priority</th><th>Bakery</th><th>Region</th><th>Ops Manager</th><th>' + ceiHeader + '</th><th>' + altCeiHeader + '</th><th>Band</th><th>NPS</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>Barista Speed</th><th>&gt;5m</th><th>Where to Focus</th></tr></thead><tbody>' +
     targets.map(function(b, i) {
       var focus = getFocus(b);
       var focusColor = focus.pct <= 10 ? 'var(--red)' : 'var(--amber)';
       var confTag = b.co === 'Low' ? ' <span style="font-size:0.58rem;color:var(--red);font-weight:600">LOW VOL</span>' : '';
       return '<tr>' +
-        '<td style="font-weight:700;color:' + (b.acb === 'Below Standard' ? 'var(--red)' : 'var(--amber)') + '">' + (i + 1) + '</td>' +
+        '<td style="font-weight:700;color:' + (b[bf] === highBand ? 'var(--red)' : 'var(--amber)') + '">' + (i + 1) + '</td>' +
         '<td style="font-weight:500">' + b.b + confTag + '</td>' +
         '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryRegion(b.b) + '</td>' +
         '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(b.b) + '</td>' +
-        '<td style="font-weight:700">' + b.c + '</td>' +
-        '<td style="font-weight:600">' + b.ac + '</td>' +
-        '<td><span class="band ' + G.bc(b.acb) + '">' + b.acb + '</span></td>' +
+        '<td style="font-weight:700">' + b[cf] + '</td>' +
+        '<td style="font-weight:600">' + b[altCeiField] + '</td>' +
+        '<td><span class="band ' + G.bc(b[bf]) + '">' + b[bf] + '</span></td>' +
         '<td>' + b.n + '</td><td>' + b.v + '</td>' +
         '<td><span class="conf ' + b.co + '">' + b.co + '</span></td>' +
         '<td style="color:' + (b.dp < 25 ? 'var(--red)' : 'inherit') + '">' + b.dr + '%</td>' +
@@ -592,10 +664,14 @@ function _renderTargetTable(targets) {
   G.makeSortable(document.getElementById('targetTable'));
 }
 
-function _renderTargetTrends(targets, data) {
+function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
   var G = GAILS;
   var avg = G.avg;
   var state = G.state;
+  var palette = isAbsolute ? G.ABSCOL : G.COL;
+  var allBandNames = isAbsolute
+    ? ['Below Standard', 'Approaching', 'Meeting', 'Exceeding']
+    : ['Needs Attention', 'Developing', 'Good', 'Excellent'];
   var FM = G.getRollingMonths();
   var targetNames = targets.map(function(b) { return b.b; });
   var THRESHOLD = 3;
@@ -605,7 +681,7 @@ function _renderTargetTrends(targets, data) {
     document.getElementById('trendSummaryCards').innerHTML = '';
     document.getElementById('sparklineGrid').innerHTML = '';
     document.getElementById('targetTrendTable').innerHTML = '';
-    _setTargetTrendState(false, 'No target bakeries are in the Below Standard or Approaching bands for the current selection.');
+    _setTargetTrendState(false, 'No target bakeries are in the ' + highBand + ' or ' + lowBand + ' bands for the current selection.');
     return;
   }
 
@@ -634,22 +710,22 @@ function _renderTargetTrends(targets, data) {
 
     var direction = 'new', ceiChange = 0, npsChange = 0;
     if (latest && prev) {
-      ceiChange = latest.c - prev.c; npsChange = latest.n - prev.n;
+      ceiChange = latest[cf] - prev[cf]; npsChange = latest.n - prev.n;
       direction = ceiChange >= THRESHOLD ? 'up' : ceiChange <= -THRESHOLD ? 'down' : 'flat';
     }
     var trend3m = 'new', cei3mChange = 0;
-    if (latest && threePrev) { cei3mChange = latest.c - threePrev.c; trend3m = cei3mChange >= THRESHOLD ? 'up' : cei3mChange <= -THRESHOLD ? 'down' : 'flat'; }
+    if (latest && threePrev) { cei3mChange = latest[cf] - threePrev[cf]; trend3m = cei3mChange >= THRESHOLD ? 'up' : cei3mChange <= -THRESHOLD ? 'down' : 'flat'; }
     else if (latest && prev) { trend3m = direction; cei3mChange = ceiChange; }
 
     var streak = 0;
-    for (var i = valid.length - 1; i >= 1; i--) { if (valid[i].c < valid[i - 1].c - 1) streak++; else break; }
+    for (var i = valid.length - 1; i >= 1; i--) { if (valid[i][cf] < valid[i - 1][cf] - 1) streak++; else break; }
 
     var best = null, worst = null;
-    valid.forEach(function(r) { if (!best || r.c > best.c) best = r; if (!worst || r.c < worst.c) worst = r; });
+    valid.forEach(function(r) { if (!best || r[cf] > best[cf]) best = r; if (!worst || r[cf] < worst[cf]) worst = r; });
 
     var first = valid.length > 0 ? valid[0] : null;
     var periodChange = 0;
-    if (latest && first && latest !== first) periodChange = latest.c - first.c;
+    if (latest && first && latest !== first) periodChange = latest[cf] - first[cf];
 
     var compTrends = {};
     if (latest && prev) {
@@ -671,16 +747,16 @@ function _renderTargetTrends(targets, data) {
     { v: chronic.length, l: 'Declining 3+ Mo', col: '#9B5DFF' },
   ].map(function(k) { return '<div class="target-stat-card"><div class="target-stat-card__value" style="color:' + k.col + '">' + k.v + '</div><div class="target-stat-card__label">' + k.l + '</div></div>'; }).join('');
 
-  var targetAvgByMonth = FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m && targetNames.includes(r.b); }); return recs.length ? recs.reduce(function(a, r) { return a + r.c; }, 0) / recs.length : null; });
-  var allAvgByMonth = FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m; }); return recs.length ? recs.reduce(function(a, r) { return a + r.c; }, 0) / recs.length : null; });
+  var ceiLabel = isAbsolute ? 'Avg Abs CEI' : 'Avg CEI';
+  var targetAvgByMonth = FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m && targetNames.includes(r.b); }); return recs.length ? recs.reduce(function(a, r) { return a + r[cf]; }, 0) / recs.length : null; });
+  var allAvgByMonth = FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m; }); return recs.length ? recs.reduce(function(a, r) { return a + r[cf]; }, 0) / recs.length : null; });
 
   G.makeChart('targetAvgTrend', { type: 'line', data: { labels: FM, datasets: [
-    { label: 'Target Bakeries Avg CEI', data: targetAvgByMonth, borderColor: '#FF3B5C', backgroundColor: 'rgba(255,59,92,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-    { label: 'All Bakeries Avg CEI', data: allAvgByMonth, borderColor: 'rgba(150,150,200,0.5)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2, borderDash: [6, 4] },
-  ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: 'Avg CEI' }, min: 0, max: 100 }, x: { ticks: { font: { size: 10 } } } } } });
+    { label: 'Target Bakeries ' + ceiLabel, data: targetAvgByMonth, borderColor: '#FF3B5C', backgroundColor: 'rgba(255,59,92,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+    { label: 'All Bakeries ' + ceiLabel, data: allAvgByMonth, borderColor: 'rgba(150,150,200,0.5)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2, borderDash: [6, 4] },
+  ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: ceiLabel }, min: 0, max: 100 }, x: { ticks: { font: { size: 10 } } } } } });
 
-  var bandNames2 = ['Below Standard', 'Approaching', 'Meeting', 'Exceeding'];
-  G.makeChart('targetBandFlow', { type: 'bar', data: { labels: FM, datasets: bandNames2.map(function(bn) { return { label: bn, data: FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m && targetNames.includes(r.b); }); return recs.length ? recs.filter(function(r) { return r.acb === bn; }).length : 0; }), backgroundColor: G.ABSCOL[bn] + 'cc', borderColor: G.ABSCOL[bn], borderWidth: 1 }; }) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, title: { display: true, text: 'Bakeries' } } } } });
+  G.makeChart('targetBandFlow', { type: 'bar', data: { labels: FM, datasets: allBandNames.map(function(bn) { return { label: bn, data: FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m && targetNames.includes(r.b); }); return recs.length ? recs.filter(function(r) { return r[bf] === bn; }).length : 0; }), backgroundColor: (palette[bn] || '#888') + 'cc', borderColor: palette[bn] || '#888', borderWidth: 1 }; }) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, title: { display: true, text: 'Bakeries' } } } } });
 
   // Sparkline cards
   var sparkGrid = document.getElementById('sparklineGrid');
@@ -693,8 +769,8 @@ function _renderTargetTrends(targets, data) {
     var card = document.createElement('div');
     var dirClass = t.direction === 'up' ? 'up' : t.direction === 'down' ? 'down' : t.direction === 'flat' ? 'flat' : 'new-entry';
     var dirLabel = t.direction === 'up' ? '\u2191 Improving' : t.direction === 'down' ? '\u2193 Declining' : t.direction === 'flat' ? '\u2194 Stable' : 'New';
-    var ceiNow = t.latest ? t.latest.c : '\u2014';
-    var bandNow = t.latest ? t.latest.acb : '\u2014';
+    var ceiNow = t.latest ? t.latest[cf] : '\u2014';
+    var bandNow = t.latest ? t.latest[bf] : '\u2014';
     var changeText = t.ceiChange !== 0 ? (t.ceiChange > 0 ? '+' : '') + t.ceiChange.toFixed(1) : '';
     var changeColor = t.ceiChange > 0 ? 'var(--green)' : 'var(--red)';
 
@@ -727,7 +803,7 @@ function _renderTargetTrends(targets, data) {
       targetNames.forEach(function(name) {
         var curr = state.ALL.find(function(r) { return r.b === name && r.m === m; });
         var prev = state.ALL.find(function(r) { return r.b === name && r.m === prevMonth; });
-        if (curr && prev) { var diff = curr.c - prev.c; if (diff >= THRESHOLD) up++; else if (diff <= -THRESHOLD) down++; else flat++; }
+        if (curr && prev) { var diff = curr[cf] - prev[cf]; if (diff >= THRESHOLD) up++; else if (diff <= -THRESHOLD) down++; else flat++; }
       });
       return { m: m, up: up, down: down, flat: flat };
     });
@@ -761,10 +837,11 @@ function _renderTargetTrends(targets, data) {
   var threeAgoMonth = FM.length > 2 ? FM[FM.length - 3] : (FM.length > 1 ? FM[FM.length - 2] : '—');
   var firstMonth = FM.length > 0 ? FM[0] : '—';
 
-  document.getElementById('targetTrendTable').innerHTML = '<div class="table-wrap"><table><thead><tr><th>Bakery</th><th>Ops Manager</th><th>CEI (' + latestMonth + ')</th><th>CEI Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Direction<br><span style="font-weight:400;font-size:0.6rem">Month-on-Month</span></th><th>NPS Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>3-Month Trend<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>3m CEI Change<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>Period Change<br><span style="font-weight:400;font-size:0.6rem">' + firstMonth + ' &rarr; ' + latestMonth + '</span></th><th>Declining Streak</th><th>Best Month</th><th>Worst Month</th><th>Quality &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Friendliness &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Barista Speed &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th></tr></thead><tbody>' +
+  var trendCeiHeader = (isAbsolute ? 'Abs ' : '') + 'CEI (' + latestMonth + ')';
+  document.getElementById('targetTrendTable').innerHTML = '<div class="table-wrap"><table><thead><tr><th>Bakery</th><th>Ops Manager</th><th>' + trendCeiHeader + '</th><th>CEI Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Direction<br><span style="font-weight:400;font-size:0.6rem">Month-on-Month</span></th><th>NPS Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>3-Month Trend<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>3m CEI Change<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>Period Change<br><span style="font-weight:400;font-size:0.6rem">' + firstMonth + ' &rarr; ' + latestMonth + '</span></th><th>Declining Streak</th><th>Best Month</th><th>Worst Month</th><th>Quality &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Friendliness &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Barista Speed &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th></tr></thead><tbody>' +
   trendData.map(function(t) {
     var streakWarn = t.streak >= 3 ? 'color:#9B5DFF;font-weight:700' : t.streak >= 2 ? 'color:var(--red);font-weight:600' : '';
-    return '<tr><td style="font-weight:500">' + t.name + '</td><td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(t.name) + '</td><td style="font-weight:700">' + (t.latest ? t.latest.c : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best.c + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst.c + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';
+    return '<tr><td style="font-weight:500">' + t.name + '</td><td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(t.name) + '</td><td style="font-weight:700">' + (t.latest ? t.latest[cf] : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best[cf] + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst[cf] + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';
   }).join('') + '</tbody></table></div>';
   G.makeSortable(document.getElementById('targetTrendTable'));
 }

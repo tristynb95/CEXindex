@@ -428,6 +428,34 @@
     });
   });
 
+  // ========== NETWORK MAP METRIC TOGGLE ==========
+  var _networkMapMetric = 'relative';
+  Array.from(document.querySelectorAll('[data-map-metric]')).forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var nextMetric = btn.dataset.mapMetric === 'absolute' ? 'absolute' : 'relative';
+      if (_networkMapMetric === nextMetric) return;
+      _networkMapMetric = nextMetric;
+      Array.from(document.querySelectorAll('[data-map-metric]')).forEach(function(toggleBtn) {
+        toggleBtn.classList.toggle('active', toggleBtn.dataset.mapMetric === nextMetric);
+      });
+      if (G.setNetworkMapMetric) G.setNetworkMapMetric(nextMetric);
+    });
+  });
+
+  // ========== TARGET SECTION METRIC TOGGLE ==========
+  Array.from(document.querySelectorAll('[data-target-map-metric]')).forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var nextMetric = btn.dataset.targetMapMetric === 'relative' ? 'relative' : 'absolute';
+      if (state.targetMetric === nextMetric) return;
+      state.targetMetric = nextMetric;
+      Array.from(document.querySelectorAll('[data-target-map-metric]')).forEach(function(toggleBtn) {
+        toggleBtn.classList.toggle('active', toggleBtn.dataset.targetMapMetric === nextMetric);
+      });
+      if (G.setTargetMapMetric) G.setTargetMapMetric(nextMetric);
+      refresh();
+    });
+  });
+
   // ========== BAKERY MULTI-SELECT ==========
   (function() {
     var selected = state.searchBakery;

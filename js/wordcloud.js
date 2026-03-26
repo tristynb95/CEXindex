@@ -436,8 +436,12 @@ window.GAILS = window.GAILS || {};
     if (G && typeof G.getData === 'function' && state && state.ALL && state.ALL.length) {
       var filtered = G.getData();
       var bakeries = [];
+      var isAbsoluteTarget = state && state.targetMetric !== 'relative';
+      var targetBf = isAbsoluteTarget ? 'acb' : 'cb';
+      var targetHigh = isAbsoluteTarget ? 'Below Standard' : 'Needs Attention';
+      var targetLow = isAbsoluteTarget ? 'Approaching' : 'Developing';
       filtered.forEach(function (r) {
-        if ((r.cb === 'Needs Attention' || r.cb === 'Developing') && r.b && bakeries.indexOf(r.b) === -1) {
+        if ((r[targetBf] === targetHigh || r[targetBf] === targetLow) && r.b && bakeries.indexOf(r.b) === -1) {
           bakeries.push(r.b);
         }
       });

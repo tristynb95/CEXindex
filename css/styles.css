@@ -1817,6 +1817,12 @@ canvas {
   gap: 16px;
 }
 
+.target-subtabs__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .target-subtabs__nav {
   display: flex;
   gap: 4px;

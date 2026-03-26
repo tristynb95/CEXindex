@@ -12,5 +12,6 @@ window.GAILS.state = {
   regionFilter: [],
   opsFilter: [],
   rankingsMetric: 'relative',
+  targetMetric: 'absolute',
   PERIODS: {},
 };
