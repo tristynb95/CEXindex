@@ -276,10 +276,18 @@
             </div>
             <div class="filter-control"><label>Band</label><br><select id="bandFilter">
               <option value="">All</option>
-              <option>Excellent</option>
-              <option>Good</option>
-              <option>Developing</option>
-              <option>Needs Attention</option>
+              <optgroup label="— Relative CEI Band">
+                <option value="Excellent">Excellent</option>
+                <option value="Good">Good</option>
+                <option value="Developing">Developing</option>
+                <option value="Needs Attention">Needs Attention</option>
+              </optgroup>
+              <optgroup label="— Absolute CEI Band">
+                <option value="abs:Exceeding">Exceeding</option>
+                <option value="abs:Meeting">Meeting</option>
+                <option value="abs:Approaching">Approaching</option>
+                <option value="abs:Below Standard">Below Standard</option>
+              </optgroup>
             </select></div>
           </div>
 

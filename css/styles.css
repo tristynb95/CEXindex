@@ -526,6 +526,23 @@ h4 {
   color: var(--muted-l);
 }
 
+.filter-select__separator {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 6px 10px;
+}
+
+.filter-select__group-label {
+  padding: 4px 14px 2px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* ══════════════════════════════════════ BAKERY MULTI-SELECT ══ */
 .bakery-ms {
   position: relative;

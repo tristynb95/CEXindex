@@ -100,37 +100,45 @@
       trigger.focus();
     }
 
+    function makeOptionBtn(option, isFirst) {
+      var optionBtn = document.createElement('button');
+      optionBtn.type = 'button';
+      optionBtn.className = 'filter-select__option';
+      optionBtn.dataset.value = option.value;
+      optionBtn.textContent = option.textContent;
+      optionBtn.setAttribute('role', 'option');
+      optionBtn.setAttribute('aria-selected', 'false');
+      if (isFirst && option.value === '') optionBtn.classList.add('is-placeholder');
+      optionBtn.disabled = option.disabled;
+      optionBtn.addEventListener('click', function() { selectValue(option.value); });
+      optionBtn.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowDown') { event.preventDefault(); focusOption('down'); }
+        else if (event.key === 'ArrowUp') { event.preventDefault(); focusOption('up'); }
+        else if (event.key === 'Escape') { wrapper.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); trigger.focus(); }
+      });
+      return optionBtn;
+    }
+
     function rebuildOptions() {
       menu.innerHTML = '';
-      Array.prototype.forEach.call(select.options, function(option, index) {
-        var optionBtn = document.createElement('button');
-        optionBtn.type = 'button';
-        optionBtn.className = 'filter-select__option';
-        optionBtn.dataset.value = option.value;
-        optionBtn.textContent = option.textContent;
-        optionBtn.setAttribute('role', 'option');
-        optionBtn.setAttribute('aria-selected', 'false');
-        if (index === 0 && option.value === '') optionBtn.classList.add('is-placeholder');
-        optionBtn.disabled = option.disabled;
-
-        optionBtn.addEventListener('click', function() {
-          selectValue(option.value);
-        });
-        optionBtn.addEventListener('keydown', function(event) {
-          if (event.key === 'ArrowDown') {
-            event.preventDefault();
-            focusOption('down');
-          } else if (event.key === 'ArrowUp') {
-            event.preventDefault();
-            focusOption('up');
-          } else if (event.key === 'Escape') {
-            wrapper.classList.remove('is-open');
-            trigger.setAttribute('aria-expanded', 'false');
-            trigger.focus();
-          }
-        });
-
-        menu.appendChild(optionBtn);
+      var optionIndex = 0;
+      Array.prototype.forEach.call(select.children, function(child) {
+        if (child.tagName === 'OPTGROUP') {
+          var sep = document.createElement('div');
+          sep.className = 'filter-select__separator';
+          menu.appendChild(sep);
+          var groupLabel = document.createElement('div');
+          groupLabel.className = 'filter-select__group-label';
+          groupLabel.textContent = child.label.replace(/^—\s*/, '');
+          menu.appendChild(groupLabel);
+          Array.prototype.forEach.call(child.children, function(option) {
+            menu.appendChild(makeOptionBtn(option, false));
+            optionIndex++;
+          });
+        } else if (child.tagName === 'OPTION') {
+          menu.appendChild(makeOptionBtn(child, optionIndex === 0));
+          optionIndex++;
+        }
       });
       syncSelectedState();
     }
