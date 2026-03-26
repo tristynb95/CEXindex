@@ -14,11 +14,6 @@ window.GAILS.getData = function() {
   var recs = state.ALL.filter(function(r) { return state.selectedMonths.includes(r.m); });
   if (state.regionFilter.length) recs = recs.filter(function(r) { return state.regionFilter.includes(G.getBakeryRegion(r.b)); });
   if (state.opsFilter.length) recs = recs.filter(function(r) { return state.opsFilter.includes(G.getBakeryOps(r.b)); });
-  if (state.bandFilter) {
-    var bf = state.bandFilter;
-    if (bf.indexOf('abs:') === 0) { var abv = bf.slice(4); recs = recs.filter(function(r) { return r.acb === abv; }); }
-    else { recs = recs.filter(function(r) { return r.cb === bf; }); }
-  }
   if (state.searchBakery && state.searchBakery.length) recs = recs.filter(function(r) { return state.searchBakery.some(function(s) { return r.b.toLowerCase().includes(s.toLowerCase()); }); });
 
   if (state.selectedMonths.length > 1) {
@@ -48,9 +43,19 @@ window.GAILS.getData = function() {
       a.acb = a.ac >= 90 ? 'Exceeding' : a.ac >= 75 ? 'Meeting' : a.ac >= 60 ? 'Approaching' : 'Below Standard';
       agg.push(a);
     });
+    if (state.bandFilter) {
+      var bf = state.bandFilter;
+      if (bf.indexOf('abs:') === 0) { var abv = bf.slice(4); agg = agg.filter(function(r) { return r.acb === abv; }); }
+      else { agg = agg.filter(function(r) { return r.cb === bf; }); }
+    }
     agg.sort(function(a, b) { return b.c - a.c; });
     agg.forEach(function(a, i) { a.cr = i + 1; a.nr = 0; });
     return agg;
+  }
+  if (state.bandFilter) {
+    var bf = state.bandFilter;
+    if (bf.indexOf('abs:') === 0) { var abv = bf.slice(4); recs = recs.filter(function(r) { return r.acb === abv; }); }
+    else { recs = recs.filter(function(r) { return r.cb === bf; }); }
   }
   recs = [].concat(recs).sort(function(a, b) { return b.c - a.c; });
   return recs;
