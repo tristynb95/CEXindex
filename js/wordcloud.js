@@ -110,6 +110,17 @@ window.GAILS = window.GAILS || {};
     };
   }
 
+  // Maps dashboard bakery names → source data bakery names for the word cloud API
+  var BAKERY_NAME_MAP = {
+    'Blackfriars':        'Black Friars',
+    'Union Street, Bath': 'Union Street - Bath',
+    'Southwark':          'The Fire Station, Southwark'
+  };
+
+  function mapBakeryName(name) {
+    return BAKERY_NAME_MAP[name] || name;
+  }
+
   // Stable string key for a word cloud request body — used to detect filter changes
   function buildWcParamsKey(body) {
     var bakeries = (body.bakery_locations || []).slice().sort().join(',');
@@ -429,7 +440,7 @@ window.GAILS = window.GAILS || {};
       var filtered = G.getData();
       var bakeries = [];
       filtered.forEach(function (r) {
-        if (r.b && bakeries.indexOf(r.b) === -1) bakeries.push(r.b);
+        if (r.b && bakeries.indexOf(r.b) === -1) bakeries.push(mapBakeryName(r.b));
       });
       if (bakeries.length > 0) body.bakery_locations = bakeries;
     }
@@ -507,7 +518,7 @@ window.GAILS = window.GAILS || {};
       var targetLow = isAbsoluteTarget ? 'Approaching' : 'Developing';
       filtered.forEach(function (r) {
         if ((r[targetBf] === targetHigh || r[targetBf] === targetLow) && r.b && bakeries.indexOf(r.b) === -1) {
-          bakeries.push(r.b);
+          bakeries.push(mapBakeryName(r.b));
         }
       });
       if (bakeries.length === 0) {
