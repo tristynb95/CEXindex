@@ -208,6 +208,14 @@
       return activePanel;
     }
 
+    if (name === 'trends' && G._trendsNeedRender) {
+      G._trendsNeedRender = false;
+      requestAnimationFrame(function() {
+        if (G._lastData) G.renderTrendCharts(G._lastData);
+      });
+      return activePanel;
+    }
+
     resizeChartsSoon(activePanel);
     if (name === 'target') {
       var activeSubtab = activePanel.querySelector('.target-subtab-panel.active');
@@ -375,7 +383,14 @@
     }).join('');
 
     G.renderOverviewCharts(data);
-    G.renderTrendCharts(data);
+    G._lastData = data;
+    var trendsPanel = document.getElementById('tab-trends');
+    if (trendsPanel && trendsPanel.classList.contains('active')) {
+      G.renderTrendCharts(data);
+      G._trendsNeedRender = false;
+    } else {
+      G._trendsNeedRender = true;
+    }
     G.renderSpeedCharts(data);
     G.renderLeagueTable(data);
     G.renderTargets(data);
