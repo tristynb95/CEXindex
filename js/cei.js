@@ -2,12 +2,28 @@
 window.GAILS = window.GAILS || {};
 
 // Tiered beverage delivery time score (0-100)
+// Target: 100% under 5 min (o5=0). Bands: <3 min (full) | 3-4 min (-0.2x) | 4-5 min (-0.4x) | >5 min (-3.5x)
 window.GAILS.tieredTimelinessScore = function(r) {
-  var within3 = r.s3 || 0;
-  var over5 = r.o5 || 0;
-  var between3and5 = Math.max(0, (100 - within3) - over5);
-  var score = within3 - (between3and5 * 0.3) - (over5 * 1.0);
+  var within3   = r.s3 || 0;
+  var over5     = r.o5 || 0;
+  // Fall back to within3 if s4 is missing or invalid — preserves 2-band behaviour for old data
+  var s4val     = (typeof r.s4 === 'number' && !isNaN(r.s4) && r.s4 >= within3) ? r.s4 : within3;
+  var band3to4  = Math.max(0, s4val - within3);
+  var band4to5  = Math.max(0, (100 - s4val) - over5);
+  var score     = within3 - (band3to4 * 0.2) - (band4to5 * 0.4) - (over5 * 3.5);
   return Math.max(0, Math.min(100, score));
+};
+
+// Re-rank ts and ap from raw band values — use after multi-month aggregation
+window.GAILS.recomputeTimelinessRanks = function(records) {
+  var G = GAILS;
+  records.forEach(function(r) {
+    r.ts = Math.round(G.tieredTimelinessScore(r) * 10) / 10;
+  });
+  var tsVals = records.map(function(r) { return r.ts; });
+  records.forEach(function(r) {
+    r.ap = Math.round(G.percentileRank(tsVals, r.ts, false) * 10) / 10;
+  });
 };
 
 // Confidence weighting

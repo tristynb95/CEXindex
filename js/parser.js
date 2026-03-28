@@ -35,6 +35,7 @@ window.GAILS.parseExcelFile = function(data) {
       else if (lc.includes('within 2 min') && lc.includes('weekend')) colMap.s2w = i;
       else if (lc.includes('within 2 min')) colMap.s2 = i;
       else if (lc.includes('within 3')) colMap.s3 = i;
+      else if (lc.includes('within 4')) colMap.s4 = i;
       else if (lc.includes('over 5') || lc.includes('5 min')) colMap.o5 = i;
       else if (lc === 'overall') colMap.ov = i;
       else if (lc === 'friendliness') colMap.fr = i;
@@ -64,12 +65,15 @@ window.GAILS.parseExcelFile = function(data) {
         s2: Math.round(num(colMap.s2) * 1000) / 10,
         s2w: Math.round(num(colMap.s2w) * 1000) / 10,
         s3: Math.round(num(colMap.s3) * 1000) / 10,
+        s4: Math.round(num(colMap.s4) * 1000) / 10,
         o5: Math.round(num(colMap.o5) * 1000) / 10,
         ov: Math.round(num(colMap.ov) * 1000) / 10,
         fr: Math.round(num(colMap.fr) * 1000) / 10,
         dr: Math.round(num(colMap.dr) * 1000) / 10,
         ef: Math.round(num(colMap.ef) * 1000) / 10,
       };
+      if (r.s4 < r.s3) r.s4 = r.s3;
+      if (r.s3 + r.o5 > 105) console.warn('[CEXindex] Suspect timing data for ' + bakery + ' (' + monthLabel + '): s3=' + r.s3 + ' o5=' + r.o5);
       monthRecs.push(r);
     }
 

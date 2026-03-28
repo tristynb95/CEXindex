@@ -226,6 +226,7 @@
   // ========== REFRESH ==========
   function refresh() {
     if (state.ALL.length === 0) return;
+    updateBandFilterOptions();
     var data = G.getData();
     var n = data.length;
     updateHeaderSummary(n);
@@ -236,7 +237,15 @@
     }
 
     // KPI cards pair each metric with a compact status so the row scans quickly.
-    var metricState = function(val, good, warn, invert, labels) {
+    var metricState = function(val, good, warn, invert, labels, bands) {
+      if (Array.isArray(bands) && bands.length) {
+        for (var i = 0; i < bands.length; i++) {
+          var band = bands[i];
+          if (typeof band.test === 'function' && band.test(val)) {
+            return { tone: band.tone, status: band.status };
+          }
+        }
+      }
       var tone = invert
         ? (val <= good ? 'kpi-green' : val <= warn ? 'kpi-amber' : 'kpi-red')
         : (val >= good ? 'kpi-green' : val >= warn ? 'kpi-amber' : 'kpi-red');
@@ -244,7 +253,7 @@
       return { tone: tone, status: status };
     };
     var buildMetricCard = function(config) {
-      var status = metricState(config.value, config.good, config.warn, config.invert, config.labels);
+      var status = metricState(config.value, config.good, config.warn, config.invert, config.labels, config.bands);
       return {
         value: config.display,
         eyebrow: config.eyebrow,
@@ -261,7 +270,8 @@
     var dr   = G.avg(data, 'dr');
     var ef   = G.avg(data, 'ef');
     var fr   = G.avg(data, 'fr');
-    var ts   = G.avg(data, 'ts');
+    var _tsVol = data.reduce(function(a, r) { return a + r.v; }, 0);
+    var ts   = _tsVol > 0 ? data.reduce(function(a, r) { return a + r.ts * r.v; }, 0) / _tsVol : 0;
     var o5   = G.avg(data, 'o5');
     dashboardKpiRow.innerHTML = [
       buildMetricCard({
@@ -270,9 +280,13 @@
         eyebrow: 'Customer',
         title: 'Net Promoter Score',
         meta: 'Customer advocacy score.',
-        good: 55,
-        warn: 35,
-        labels: { good: 'Strong', warn: 'At Risk', bad: 'Low' },
+        bands: [
+          { test: function(val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
+          { test: function(val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function(val) { return val <= 60; }, tone: 'kpi-blue', status: 'On Target' },
+          { test: function(val) { return val > 60; }, tone: 'kpi-green', status: 'Exceeding' }
+        ],
+        labels: { good: 'Exceeding', warn: 'Watch', bad: 'Below' },
         primary: true
       }),
       buildMetricCard({
@@ -332,7 +346,7 @@
         display: ts.toFixed(1),
         eyebrow: 'Operations',
         title: 'Barista Speed',
-        meta: 'Target: 75 or better.',
+        meta: '100% under 5 min. Target: 75+.',
         good: 75,
         warn: 50,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Slow' }
@@ -342,9 +356,9 @@
         display: o5.toFixed(1) + '%',
         eyebrow: 'Operations',
         title: 'Orders >5 Min',
-        meta: 'Goal: below 2%.',
+        meta: 'Target: below 2%.',
         good: 2,
-        warn: 4,
+        warn: 3,
         invert: true,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Slow' }
       })
@@ -587,6 +601,59 @@
       if (isOpen) renderList(msSearch.value);
     };
   })();
+  function updateBandFilterOptions() {
+    var bandFilterEl = document.getElementById('bandFilter');
+    if (!bandFilterEl) return;
+
+    // Snapshot original structure once
+    if (!updateBandFilterOptions._orig) {
+      updateBandFilterOptions._orig = Array.from(bandFilterEl.children).map(function(child) {
+        if (child.tagName === 'OPTGROUP') {
+          return { type: 'optgroup', label: child.label, options: Array.from(child.children).map(function(opt) { return { value: opt.value, text: opt.textContent }; }) };
+        }
+        return { type: 'option', value: child.value, text: child.textContent };
+      });
+    }
+
+    var available = G.getAvailableBands();
+    var currentValue = state.bandFilter;
+
+    // Rebuild select from original structure, omitting unavailable options
+    bandFilterEl.innerHTML = '';
+    updateBandFilterOptions._orig.forEach(function(item) {
+      if (item.type === 'option') {
+        var opt = document.createElement('option');
+        opt.value = item.value;
+        opt.textContent = item.text;
+        bandFilterEl.appendChild(opt);
+      } else if (item.type === 'optgroup') {
+        var visibleOpts = item.options.filter(function(o) {
+          return o.value.indexOf('abs:') === 0
+            ? available.absolute.has(o.value.slice(4))
+            : available.relative.has(o.value);
+        });
+        if (!visibleOpts.length) return;
+        var grp = document.createElement('optgroup');
+        grp.label = item.label;
+        visibleOpts.forEach(function(o) {
+          var opt = document.createElement('option');
+          opt.value = o.value;
+          opt.textContent = o.text;
+          grp.appendChild(opt);
+        });
+        bandFilterEl.appendChild(grp);
+      }
+    });
+
+    // Reset to "All" only if the current selection is no longer in the available options
+    var selectionExists = !currentValue || !!Array.from(bandFilterEl.options).find(function(o) { return o.value === currentValue; });
+    if (!selectionExists) currentValue = '';
+    state.bandFilter = currentValue;
+    bandFilterEl.value = currentValue;
+
+    if (bandFilterEl._customSelect) bandFilterEl._customSelect.rebuild();
+  }
+
   document.getElementById('bandFilter').addEventListener('change', function(e) { state.bandFilter = e.target.value; refresh(); });
 
   // ========== REGION MULTI-SELECT ==========

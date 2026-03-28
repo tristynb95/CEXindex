@@ -598,7 +598,7 @@ function _renderInsights(targets, bf, cf, highBand, lowBand, isAbsolute) {
   h += '</div>';
 
   h += '<div class="insight-card"><h4>\uD83D\uDC64 Ops Manager Workload</h4>';
-  mgrSorted.slice(0, 5).forEach(function(entry) {
+  mgrSorted.forEach(function(entry) {
     var mgr = entry[0], info = entry[1];
     var highTag = info.na > 0 ? '<span class="mgr-row__tag mgr-row__tag--below-standard">' + info.na + ' ' + highBand + '</span>' : '';
     var lowTag = info.dev > 0 ? '<span class="mgr-row__tag mgr-row__tag--approaching">' + info.dev + ' ' + lowBand + '</span>' : '';
@@ -658,7 +658,7 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
         '<td style="color:' + (b.ep < 25 ? 'var(--red)' : 'inherit') + '">' + b.ef + '%</td>' +
         '<td style="color:' + (b.fp < 25 ? 'var(--red)' : 'inherit') + '">' + b.fr + '%</td>' +
         '<td style="color:' + (b.ap < 25 ? 'var(--red)' : 'inherit') + '">' + b.ts + '</td>' +
-        '<td style="color:' + (b.o5 > 4 ? 'var(--red)' : b.o5 > 2.5 ? 'var(--amber)' : 'inherit') + '">' + b.o5 + '%</td>' +
+        '<td style="color:' + (b.o5 > 3 ? 'var(--red)' : b.o5 > 2 ? 'var(--amber)' : 'inherit') + '">' + b.o5 + '%</td>' +
         '<td style="font-weight:600;color:' + focusColor + '">' + focus.name + ' &mdash; ' + focusLabel(focus.pct) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   G.makeSortable(document.getElementById('targetTable'));
