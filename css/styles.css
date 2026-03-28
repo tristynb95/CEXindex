@@ -2247,25 +2247,9 @@ body.table-fullscreen-lock {
 }
 
 /* League table sort control */
-#sortBy {
-  background: var(--bg-2) !important;
-  color: var(--text) !important;
-  border-color: var(--card-border-h) !important;
-  font-family: var(--font);
-  cursor: pointer;
-  border-radius: 8px !important;
-  margin-left: 0 !important;
-  padding: 6px 10px;
-  border-width: 1px;
-  border-style: solid;
-  font-size: 0.82rem;
-  max-width: 100%;
-}
-
-#sortBy:focus {
-  outline: none;
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px var(--accent-d);
+.league-table-toolbar .filter-select {
+  width: auto;
+  min-width: 160px;
 }
 
 /* ── Buttons ── */
@@ -6697,9 +6681,8 @@ a,
     max-width: calc(100% - 42px);
   }
 
-  .league-table-toolbar__select {
-    width: min(180px, 52vw);
-    min-width: 0;
+  .league-table-toolbar .filter-select {
+    min-width: min(160px, 52vw);
   }
 
   .tracker-table-header {

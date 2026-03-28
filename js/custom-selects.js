@@ -215,4 +215,5 @@
   });
 
   G.initCustomSelects();
+  buildCustomSelect(document.getElementById('sortBy'));
 })();
