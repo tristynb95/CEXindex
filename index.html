@@ -816,6 +816,19 @@
                       <div class="wc-empty__icon">&#128172;</div>
                       <p>No feedback data found for these bakeries.</p>
                     </div>
+                    <div id="wcTargetSentimentTag" class="wc-sentiment-tag" hidden>
+                      <span class="wc-sentiment-tag__dot" id="wcTargetSentimentTagDot"></span>
+                      <span class="wc-sentiment-tag__label">Sentiment</span>
+                      <span id="wcTargetSentimentTagValue"></span>
+                    </div>
+                  </div>
+                  <div id="wcTargetSentimentBar" class="wc-sentiment-bar" hidden>
+                    <div class="wc-sentiment-bar__header">
+                      <span class="wc-sentiment-bar__title">Overall Sentiment</span>
+                    </div>
+                    <div class="wc-sentiment-bar__track">
+                      <div class="wc-sentiment-bar__marker" id="wcTargetSentimentMarker"></div>
+                    </div>
                   </div>
                   <div class="wc-legend" aria-label="Word cloud sentiment legend">
                     <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--positive"></span>Positive</span>
@@ -840,6 +853,19 @@
                 <div id="wcEmpty" style="display:none" class="wc-empty">
                   <div class="wc-empty__icon">&#128172;</div>
                   <p>No feedback data found for this selection.</p>
+                </div>
+                <div id="wcSentimentTag" class="wc-sentiment-tag" hidden>
+                  <span class="wc-sentiment-tag__dot" id="wcSentimentTagDot"></span>
+                  <span class="wc-sentiment-tag__label">Sentiment</span>
+                  <span id="wcSentimentTagValue"></span>
+                </div>
+              </div>
+              <div id="wcSentimentBar" class="wc-sentiment-bar" hidden>
+                <div class="wc-sentiment-bar__header">
+                  <span class="wc-sentiment-bar__title">Overall Sentiment</span>
+                </div>
+                <div class="wc-sentiment-bar__track">
+                  <div class="wc-sentiment-bar__marker" id="wcSentimentMarker"></div>
                 </div>
               </div>
               <div class="wc-legend" aria-label="Word cloud sentiment legend">

@@ -198,6 +198,68 @@ window.GAILS = window.GAILS || {};
     ];
   }
 
+  // ── Sentiment Score ─────────────────────────────────────────────────────────
+
+  // Returns 0–100: 0 = all negative, 100 = all positive.
+  // Weighted by word frequency (value). Neutral words don't move the needle.
+  function computeSentimentScore(words) {
+    var posW = 0, negW = 0;
+    words.forEach(function (w) {
+      var s = (w.sentiment || '').toLowerCase();
+      if (s === 'positive') posW += w.value;
+      else if (s === 'negative') negW += w.value;
+    });
+    var total = posW + negW;
+    if (total === 0) return 50;
+    return Math.round((posW / total) * 100);
+  }
+
+  // Interpolate a hex colour on the red→amber→green gradient at t ∈ [0,1]
+  function sentimentColor(score) {
+    if (score >= 61) return '#00C875';  // Positive bands — green
+    if (score >= 41) return '#F5C842';  // Mixed — amber
+    return '#FF3B5C';                   // Negative bands — red
+  }
+
+  function sentimentLabel(score) {
+    if (score >= 90) return 'Overwhelmingly Positive';
+    if (score >= 75) return 'Very Positive';
+    if (score >= 61) return 'Mostly Positive';
+    if (score >= 41) return 'Mixed';
+    if (score >= 25) return 'Mostly Negative';
+    if (score >= 11) return 'Very Negative';
+    return 'Overwhelmingly Negative';
+  }
+
+  function updateSentimentUI(words, barId, scoreId, markerId, tagId, tagDotId, tagValueId) {
+    var barEl   = document.getElementById(barId);
+    var scoreEl = document.getElementById(scoreId);
+    var markerEl = document.getElementById(markerId);
+    var tagEl   = document.getElementById(tagId);
+    var tagDotEl = document.getElementById(tagDotId);
+    var tagValEl = document.getElementById(tagValueId);
+
+    if (!barEl || !words || !words.length) {
+      if (barEl) barEl.hidden = true;
+      if (tagEl) tagEl.hidden = true;
+      return;
+    }
+
+    var score = computeSentimentScore(words);
+    var color = sentimentColor(score);
+
+    // Update bar
+    barEl.hidden = false;
+    if (markerEl) { markerEl.style.left = score + '%'; markerEl.style.borderColor = color; markerEl.style.color = color; markerEl.dataset.score = score; }
+
+    // Update tag
+    if (tagEl) {
+      tagEl.hidden = false;
+      if (tagDotEl) tagDotEl.style.background = color;
+      if (tagValEl) { tagValEl.textContent = sentimentLabel(score); tagValEl.style.color = color; }
+    }
+  }
+
   // ── Renderer ───────────────────────────────────────────────────────────────
 
   function renderWordCloud(words, canvas) {
@@ -407,6 +469,7 @@ window.GAILS = window.GAILS || {};
         if (emptyEl)  emptyEl.style.display = '';
         lastWordData = [];
         hideWordCloudTooltip(canvas);
+        updateSentimentUI([], 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
         return;
       }
       lastWordData = words;
@@ -414,11 +477,13 @@ window.GAILS = window.GAILS || {};
       if (totalSurveys !== null) statusText += ' \u00b7 ' + totalSurveys.toLocaleString() + ' surveys';
       if (statusEl) { statusEl.textContent = statusText; statusEl.className = 'status success'; }
       renderWordCloud(words, canvas);
+      updateSentimentUI(words, 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
     })
     .catch(function (err) {
       console.error('Word cloud error:', err);
       if (statusEl) { statusEl.textContent = 'Failed to load: ' + err.message; statusEl.className = 'status error'; }
       hideWordCloudTooltip(canvas);
+      updateSentimentUI([], 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
     });
   };
 
@@ -495,6 +560,7 @@ window.GAILS = window.GAILS || {};
         if (emptyEl)  emptyEl.style.display = '';
         lastTargetWordData = [];
         hideWordCloudTooltip(canvas);
+        updateSentimentUI([], 'wcTargetSentimentBar', 'wcTargetSentimentScore', 'wcTargetSentimentMarker', 'wcTargetSentimentTag', 'wcTargetSentimentTagDot', 'wcTargetSentimentTagValue');
         return;
       }
       lastTargetWordData = words;
@@ -502,11 +568,13 @@ window.GAILS = window.GAILS || {};
       if (totalSurveys !== null) statusText += ' \u00b7 ' + totalSurveys.toLocaleString() + ' surveys';
       if (statusEl) { statusEl.textContent = statusText; statusEl.className = 'status success'; }
       renderWordCloud(words, canvas);
+      updateSentimentUI(words, 'wcTargetSentimentBar', 'wcTargetSentimentScore', 'wcTargetSentimentMarker', 'wcTargetSentimentTag', 'wcTargetSentimentTagDot', 'wcTargetSentimentTagValue');
     })
     .catch(function (err) {
       console.error('Target word cloud error:', err);
       if (statusEl) { statusEl.textContent = 'Failed to load: ' + err.message; statusEl.className = 'status error'; }
       hideWordCloudTooltip(canvas);
+      updateSentimentUI([], 'wcTargetSentimentBar', 'wcTargetSentimentScore', 'wcTargetSentimentMarker', 'wcTargetSentimentTag', 'wcTargetSentimentTagDot', 'wcTargetSentimentTagValue');
     });
   };
 

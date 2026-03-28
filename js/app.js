@@ -133,7 +133,8 @@
     } else if (name === 'feedback') {
       G.fetchTargetWordCloud();
     } else {
-      resizeChartsSoon(workspace.querySelector('.target-subtab-panel.active'));
+      var activePanel = workspace.querySelector('.target-subtab-panel.active');
+      if (activePanel && G.resizeChartsIn) G.resizeChartsIn(activePanel);
     }
   }
 
