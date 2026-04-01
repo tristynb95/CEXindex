@@ -205,6 +205,8 @@
       if (!G.wordCloudInited) {
         G.wordCloudInited = true;
         requestAnimationFrame(function() { G.initWordCloud(); });
+      } else {
+        requestAnimationFrame(function() { G.fetchWordCloud(); });
       }
       return activePanel;
     }
