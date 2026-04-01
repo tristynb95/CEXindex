@@ -1,5 +1,5 @@
 import { firebaseConfig, db, auth as primaryAuth } from './firebase-config.js';
-import { ref, set, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { ref, set, remove, onValue, get, query, limitToLast, orderByKey } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
@@ -59,6 +59,7 @@ const portalUploadBtn = document.getElementById('portalUploadBtn');
 const clearDatasetBtn = document.getElementById('clearDatasetBtn');
 const restoreMetaBtn  = document.getElementById('restoreMetadataBtn');
 const compactSidebarMedia = window.matchMedia('(max-width: 980px)');
+const activityLogList     = document.getElementById('activityLogList');
 
 // ── State ──
 const state = {
@@ -590,6 +591,38 @@ function renderOverview() {
   }).join('');
 }
 
+async function renderActivityLog() {
+  if (!activityLogList) return;
+  activityLogList.innerHTML = '<tr><td colspan="4" class="admin-empty">Loading&hellip;</td></tr>';
+  try {
+    var snap = await get(query(ref(db, 'activityLog'), orderByKey(), limitToLast(20)));
+    if (!snap.exists()) {
+      activityLogList.innerHTML = '<tr><td colspan="4" class="admin-empty">No login activity recorded yet.</td></tr>';
+      return;
+    }
+    var entries = [];
+    snap.forEach(function(child) {
+      entries.push(child.val());
+    });
+    entries.reverse();
+    activityLogList.innerHTML = entries.map(function(entry) {
+      var roleClass = entry.role === 'admin' ? 'admin-pill admin-pill--admin' : 'admin-pill';
+      var isResume = entry.action === 'session_resume';
+      var eventLabel = isResume ? 'Session resumed' : 'Logged in';
+      var eventClass = isResume ? 'admin-status-note' : 'admin-status-note';
+      return '<tr>'
+        + '<td><div class="admin-table__title">' + escapeHtml(entry.email || 'Unknown') + '</div></td>'
+        + '<td><div class="' + roleClass + '">' + escapeHtml(entry.role === 'admin' ? 'Admin' : 'Viewer') + '</div></td>'
+        + '<td><div class="' + eventClass + '">' + escapeHtml(eventLabel) + '</div></td>'
+        + '<td>' + escapeHtml(formatDate(entry.timestamp)) + '</td>'
+        + '</tr>';
+    }).join('');
+  } catch (e) {
+    console.error('Could not load activity log:', e);
+    activityLogList.innerHTML = '<tr><td colspan="4" class="admin-empty">Failed to load activity log.</td></tr>';
+  }
+}
+
 function renderUsers() {
   if (!state.users.length) {
     userList.innerHTML = '<tr><td colspan="4" class="admin-empty">No users found yet.</td></tr>';
@@ -699,6 +732,7 @@ function renderDataControls() {
 function renderPortal() {
   renderSummary();
   renderOverview();
+  renderActivityLog();
   renderUsers();
   renderSites();
   renderDataControls();
@@ -714,6 +748,7 @@ function switchPanel(panelName) {
   panels.forEach(function(panel) {
     panel.classList.toggle('active', panel.dataset.adminPanelContent === panelName);
   });
+  if (panelName === 'overview') renderActivityLog();
 }
 
 // ── Firebase ──

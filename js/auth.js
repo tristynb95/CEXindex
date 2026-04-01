@@ -1,6 +1,6 @@
 import { auth, db } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { ref, get, set, remove, push } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -96,6 +96,26 @@ const loginError = document.getElementById('loginError');
 const logoutBtn = document.getElementById('logoutBtn');
 
 let siteMetaUnsubscribe = null;
+let _freshLogin = false;
+
+const ACTIVITY_LOG_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
+function getLastLogKey(uid) {
+  return 'gails_activity_log_ts_' + uid;
+}
+
+function shouldLogActivity(uid, action) {
+  if (action === 'login') return true;
+  var lastStr = localStorage.getItem(getLastLogKey(uid));
+  if (!lastStr) return true;
+  return (Date.now() - Number(lastStr)) >= ACTIVITY_LOG_COOLDOWN_MS;
+}
+
+function markActivityLogged(uid) {
+  try {
+    localStorage.setItem(getLastLogKey(uid), String(Date.now()));
+  } catch (e) {}
+}
 
 headerEl.style.display = 'none';
 containerEl.style.display = 'none';
@@ -231,6 +251,22 @@ onAuthStateChanged(auth, async (user) => {
       }
 
       if (isAllowed) {
+        const action = _freshLogin ? 'login' : 'session_resume';
+        _freshLogin = false;
+        if (shouldLogActivity(user.uid, action)) {
+          try {
+            await push(ref(db, 'activityLog'), {
+              email: user.email || user.uid,
+              uid: user.uid,
+              role: isAdmin ? 'admin' : 'viewer',
+              action: action,
+              timestamp: nowIso()
+            });
+            markActivityLogged(user.uid);
+          } catch (logErr) {
+            console.warn('Could not write login activity log:', logErr);
+          }
+        }
         showApp(isAdmin);
         startSiteMetaSync();
         await loadSharedDashboardData(isAdmin);
@@ -297,8 +333,10 @@ async function handleLogin(event) {
   loginBtn.disabled = true;
 
   try {
+    _freshLogin = true;
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
+    _freshLogin = false;
     loginError.textContent = error.message;
     loginError.style.display = 'block';
   } finally {
