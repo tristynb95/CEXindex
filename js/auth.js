@@ -1,6 +1,6 @@
 import { auth, db } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { ref, get, set, remove, push } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { ref, get, set, remove, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -96,6 +96,7 @@ const loginError = document.getElementById('loginError');
 const logoutBtn = document.getElementById('logoutBtn');
 
 let siteMetaUnsubscribe = null;
+let dashboardDataUnsubscribe = null;
 let _freshLogin = false;
 
 const ACTIVITY_LOG_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
@@ -139,6 +140,13 @@ function stopSiteMetaSync() {
   if (siteMetaUnsubscribe) {
     siteMetaUnsubscribe();
     siteMetaUnsubscribe = null;
+  }
+}
+
+function stopDashboardDataSync() {
+  if (dashboardDataUnsubscribe) {
+    dashboardDataUnsubscribe();
+    dashboardDataUnsubscribe = null;
   }
 }
 
@@ -209,6 +217,25 @@ async function loadSharedDashboardData(isAdmin) {
         console.warn('Could not cache Firebase data locally:', cacheErr);
       }
     }
+
+    // Set up real-time listener so the month filter updates automatically when new data is uploaded
+    stopDashboardDataSync();
+    var lastSeenUpdatedAt = meta.updatedAt;
+    dashboardDataUnsubscribe = onValue(ref(db, 'dashboardMeta'), function(snap) {
+      if (!snap.exists()) return;
+      var freshMeta = snap.val();
+      if (!freshMeta.updatedAt || freshMeta.updatedAt === lastSeenUpdatedAt) return;
+      lastSeenUpdatedAt = freshMeta.updatedAt;
+      get(ref(db, 'dashboardData')).then(function(dbSnap) {
+        if (!dbSnap.exists() || !window.GAILS_initDashboard) return;
+        var freshData = dbSnap.val();
+        try {
+          localStorage.setItem('gails_firebase_cache_ts', freshMeta.updatedAt);
+          localStorage.setItem('gails_firebase_cache', JSON.stringify({ records: freshData.records || [], months: freshData.months || [] }));
+        } catch (cacheErr) {}
+        window.GAILS_initDashboard(freshData.records || [], freshData.months || []);
+      });
+    });
 
     var tryInit = setInterval(function() {
       if (window.GAILS_initDashboard) {
@@ -287,6 +314,7 @@ onAuthStateChanged(auth, async (user) => {
     }
   } else {
     stopSiteMetaSync();
+    stopDashboardDataSync();
     applySiteMeta(null);
     clearLoginForm();
     showApp(undefined);

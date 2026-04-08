@@ -595,7 +595,7 @@ async function renderActivityLog() {
   if (!activityLogList) return;
   activityLogList.innerHTML = '<tr><td colspan="4" class="admin-empty">Loading&hellip;</td></tr>';
   try {
-    var snap = await get(query(ref(db, 'activityLog'), orderByKey(), limitToLast(20)));
+    var snap = await get(query(ref(db, 'activityLog'), orderByKey(), limitToLast(10)));
     if (!snap.exists()) {
       activityLogList.innerHTML = '<tr><td colspan="4" class="admin-empty">No login activity recorded yet.</td></tr>';
       return;
