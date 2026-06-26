@@ -5496,7 +5496,7 @@ body.table-fullscreen-lock {
 .target-hint {
   font-size: 0.74rem;
   color: var(--muted-l);
-  margin: -4px 0 14px;
+  margin: 8px 0 14px;
   line-height: 1.6;
 }
 
@@ -7267,7 +7267,7 @@ a,
 .map-control-bar {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
