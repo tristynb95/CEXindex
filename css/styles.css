@@ -7267,7 +7267,7 @@ a,
 .map-control-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 18px;
   flex-wrap: wrap;
 }
 

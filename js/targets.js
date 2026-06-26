@@ -282,6 +282,30 @@ function _setTargetTrendState(hasData, message) {
     return lower.concat(upper);
   }
 
+  function padPolygon(points, paddingDistance) {
+    if (points.length < 3) return points;
+    var latSum = 0, lngSum = 0;
+    points.forEach(function(p) {
+      latSum += p[0];
+      lngSum += p[1];
+    });
+    var centroidLat = latSum / points.length;
+    var centroidLng = lngSum / points.length;
+
+    return points.map(function(p) {
+      var dLat = p[0] - centroidLat;
+      var dLng = p[1] - centroidLng;
+      var dist = Math.sqrt(dLat * dLat + dLng * dLng);
+      if (dist === 0) return p;
+      var uLat = dLat / dist;
+      var uLng = dLng / dist;
+      return [
+        p[0] + uLat * paddingDistance,
+        p[1] + uLng * paddingDistance
+      ];
+    });
+  }
+
   function getManagerColor(managerName) {
     if (!managerName || managerName === 'Unknown' || managerName === 'Other') return '#a0aec0';
     var hash = 0;
@@ -424,65 +448,82 @@ function _setTargetTrendState(hasData, message) {
             radius: 2500,
             color: color,
             weight: 2,
-            opacity: 0.8,
+            opacity: 0.65,
             fillColor: color,
-            fillOpacity: 0.15,
+            fillOpacity: 0.04,
             dashArray: '5, 5',
             pane: 'areaPane'
           });
           circle.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
           circle.on('mouseover', function() {
-            this.setStyle({ fillOpacity: 0.35, weight: 3 });
+            this.setStyle({ fillOpacity: 0.22, weight: 3.5, dashArray: null });
+            this.bringToFront();
           });
           circle.on('mouseout', function() {
-            this.setStyle({ fillOpacity: 0.15, weight: 2 });
+            this.setStyle({ fillOpacity: 0.04, weight: 2, dashArray: '5, 5' });
           });
           cfg.areaLayer.addLayer(circle);
         } else if (uniqueCoords.length === 2) {
           var polyline = L.polyline(uniqueCoords, {
             color: color,
             weight: 6,
-            opacity: 0.6,
+            opacity: 0.5,
             dashArray: '5, 5',
+            lineJoin: 'round',
+            lineCap: 'round',
             pane: 'areaPane'
           });
           polyline.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
           polyline.on('mouseover', function() {
             this.setStyle({ opacity: 0.8, weight: 9 });
+            this.bringToFront();
           });
           polyline.on('mouseout', function() {
-            this.setStyle({ opacity: 0.6, weight: 6 });
+            this.setStyle({ opacity: 0.5, weight: 6 });
           });
           cfg.areaLayer.addLayer(polyline);
         } else if (uniqueCoords.length >= 3) {
           var hull = getConvexHull(uniqueCoords);
-          if (hull.length >= 3) {
-            var polygon = L.polygon(hull, {
+          var paddedHull = padPolygon(hull, 0.02); // 0.02 degrees padding (~2.2 km)
+          if (paddedHull.length >= 3) {
+            var polygon = L.polygon(paddedHull, {
               color: color,
               weight: 2,
-              opacity: 0.8,
+              opacity: 0.65,
               fillColor: color,
-              fillOpacity: 0.15,
+              fillOpacity: 0.04,
               dashArray: '5, 5',
+              lineJoin: 'round',
+              lineCap: 'round',
               pane: 'areaPane'
             });
             polygon.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
             polygon.on('mouseover', function() {
-              this.setStyle({ fillOpacity: 0.35, weight: 3 });
+              this.setStyle({ fillOpacity: 0.22, weight: 3.5, dashArray: null });
+              this.bringToFront();
             });
             polygon.on('mouseout', function() {
-              this.setStyle({ fillOpacity: 0.15, weight: 2 });
+              this.setStyle({ fillOpacity: 0.04, weight: 2, dashArray: '5, 5' });
             });
             cfg.areaLayer.addLayer(polygon);
-          } else if (hull.length === 2) {
-            var polyline = L.polyline(hull, {
+          } else if (paddedHull.length === 2) {
+            var polyline = L.polyline(paddedHull, {
               color: color,
               weight: 6,
-              opacity: 0.6,
+              opacity: 0.5,
               dashArray: '5, 5',
+              lineJoin: 'round',
+              lineCap: 'round',
               pane: 'areaPane'
             });
             polyline.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
+            polyline.on('mouseover', function() {
+              this.setStyle({ opacity: 0.8, weight: 9 });
+              this.bringToFront();
+            });
+            polyline.on('mouseout', function() {
+              this.setStyle({ opacity: 0.5, weight: 6 });
+            });
             cfg.areaLayer.addLayer(polyline);
           }
         }
