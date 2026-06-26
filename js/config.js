@@ -230,6 +230,13 @@ function _buildBakeryAliasLookup() {
 var _defaultBakeryAliasLookup = _buildBakeryAliasLookup(window.GAILS.DEFAULT_BAKERY_META);
 var _bakeryMetaAliasLookup = _buildBakeryAliasLookup(window.GAILS.DEFAULT_BAKERY_META);
 
+// Normalized-form aliases for names that can't be matched by the standard lookup.
+// Keys are the output of _normalizeBakeryLookupName; values are canonical meta keys.
+var _BAKERY_EXTRA_ALIASES = {
+  "black friars": "Blackfriars",             // "GAIL's Black Friars" == "GAIL's Blackfriars"
+  "the fire station southwark": "Southwark"  // "GAIL's The Fire Station, Southwark" == "GAIL's Southwark"
+};
+
 window.GAILS.normalizeBakeryLookupName = _normalizeBakeryLookupName;
 window.GAILS.resolveBakeryMetaKey = function(name) {
   var trimmed = String(name == null ? '' : name).trim();
@@ -238,7 +245,8 @@ window.GAILS.resolveBakeryMetaKey = function(name) {
   if (window.GAILS.DEFAULT_BAKERY_META && window.GAILS.DEFAULT_BAKERY_META[trimmed]) return trimmed;
 
   var normalized = _normalizeBakeryLookupName(trimmed);
-  return _bakeryMetaAliasLookup[normalized] || _defaultBakeryAliasLookup[normalized] || trimmed;
+  return _BAKERY_EXTRA_ALIASES[normalized] ||
+         _bakeryMetaAliasLookup[normalized] || _defaultBakeryAliasLookup[normalized] || trimmed;
 };
 
 window.GAILS.getBakeryMeta = function(name) {
@@ -270,9 +278,11 @@ window.GAILS.cloneBakeryMeta = function(meta) {
     var existing = cloned[canonicalName] || {};
     var fallback = window.GAILS.DEFAULT_BAKERY_META[canonicalName] || null;
     var displayName = entry.dn ? String(entry.dn).trim() : trimmedName;
+    var entryR = entry.r ? String(entry.r).trim() : '';
+    var entryO = entry.o ? String(entry.o).trim() : '';
     cloned[canonicalName] = {
-      r: entry.r ? String(entry.r).trim() : 'Unknown',
-      o: entry.o ? String(entry.o).trim() : 'Unknown',
+      r: (entryR && entryR !== 'Unknown') ? entryR : ((existing.r && existing.r !== 'Unknown') ? existing.r : (fallback ? fallback.r : 'Unknown')),
+      o: (entryO && entryO !== 'Unknown') ? entryO : ((existing.o && existing.o !== 'Unknown') ? existing.o : (fallback ? fallback.o : 'Unknown')),
       ll: Array.isArray(entry.ll) ? entry.ll : (existing.ll || (fallback && Array.isArray(fallback.ll) ? fallback.ll : null))
     };
     if (displayName && displayName !== canonicalName) {

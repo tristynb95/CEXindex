@@ -6146,58 +6146,59 @@ a,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  width: 36px;
-  padding: 12px 0;
-  border-radius: 0 12px 12px 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  gap: 6px;
+  width: 40px;
+  padding: 14px 0;
+  border-radius: 0 16px 16px 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-left: none;
-  background: linear-gradient(180deg, rgba(24, 24, 40, 0.8) 0%, rgba(16, 16, 28, 0.84) 100%);
-  color: rgba(232, 234, 242, 0.88);
+  background: linear-gradient(180deg, rgba(30, 30, 50, 0.94) 0%, rgba(16, 16, 28, 0.94) 100%);
+  color: rgba(232, 234, 242, 0.9);
   cursor: pointer;
-  box-shadow: 2px 0 14px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 4px 0 22px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transition: border-color 0.28s ease, box-shadow 0.28s ease, background 0.28s ease, opacity 0.24s ease;
   touch-action: none;
 }
 
 .filter-side-tab:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: linear-gradient(180deg, rgba(26, 26, 42, 0.9) 0%, rgba(18, 18, 30, 0.9) 100%);
-  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.38);
+  border-color: rgba(255, 59, 92, 0.4);
+  background: linear-gradient(180deg, rgba(36, 36, 58, 0.96) 0%, rgba(20, 20, 34, 0.96) 100%);
+  box-shadow: 5px 0 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 59, 92, 0.12);
 }
 
 .filter-side-tab:active {
-  transform: translateY(-50%) scale(0.96);
+  transform: translateY(-50%) scale(0.94);
 }
 
 .filter-side-tab.has-active-filters {
-  border-color: rgba(255, 59, 92, 0.34);
-  background: linear-gradient(180deg, rgba(255, 59, 92, 0.1) 0%, rgba(180, 30, 55, 0.08) 100%);
+  border-color: rgba(255, 59, 92, 0.5);
+  background: linear-gradient(180deg, rgba(255, 59, 92, 0.14) 0%, rgba(180, 30, 55, 0.1) 100%);
+  box-shadow: 4px 0 22px rgba(255, 59, 92, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .filter-side-tab__icon {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   stroke: var(--accent);
   flex: 0 0 auto;
 }
 
 .filter-side-tab__label {
-  font-size: 0.45rem;
+  font-size: 0.46rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(193, 197, 212, 0.88);
+  color: rgba(193, 197, 212, 0.9);
   writing-mode: vertical-rl;
   text-orientation: mixed;
   line-height: 1;
 }
 
 .filter-side-tab__badge {
-  min-width: 16px;
-  height: 16px;
+  min-width: 17px;
+  height: 17px;
   padding: 0 4px;
   border-radius: 999px;
   background: var(--accent);
@@ -6208,6 +6209,7 @@ a,
   align-items: center;
   justify-content: center;
   line-height: 1;
+  box-shadow: 0 2px 8px rgba(255, 59, 92, 0.45);
 }
 
 .filter-side-tab__badge[hidden] {
@@ -6231,14 +6233,14 @@ a,
   display: block;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.62);
+  background: rgba(4, 4, 12, 0.72);
   z-index: 44;
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.28s ease, visibility 0.28s ease;
+  transition: opacity 0.32s ease, visibility 0.32s ease;
 }
 
 .filter-side-backdrop.is-open {
@@ -6268,19 +6270,24 @@ a,
     top: 0;
     left: 0;
     bottom: 0;
-    width: min(264px, calc(100vw - 54px));
+    width: min(296px, calc(100vw - 48px));
     height: 100%;
     max-height: 100%;
     display: flex !important;
     flex-direction: column;
-    background: var(--card);
-    border-right: 1px solid var(--card-border-h);
-    border-radius: 0 20px 20px 0;
+    background:
+      radial-gradient(ellipse 100% 40% at 50% 0%, rgba(255, 59, 92, 0.07) 0%, transparent 60%),
+      linear-gradient(180deg, #1c1c2e 0%, #141422 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 0 26px 26px 0;
     z-index: 46;
     overflow: hidden;
     transform: translateX(-110%);
-    transition: transform 0.46s cubic-bezier(0.2, 0.9, 0.25, 1);
-    box-shadow: 10px 0 50px rgba(0, 0, 0, 0.6), 2px 0 16px rgba(0, 0, 0, 0.35);
+    transition: transform 0.38s cubic-bezier(0.22, 0.92, 0.28, 1);
+    box-shadow:
+      14px 0 60px rgba(0, 0, 0, 0.72),
+      4px 0 20px rgba(0, 0, 0, 0.4),
+      inset -1px 0 0 rgba(255, 59, 92, 0.1);
     gap: 0;
     touch-action: pan-y;
     will-change: transform;
@@ -6300,12 +6307,14 @@ a,
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 12px 14px 10px;
-    border-bottom: 1px solid var(--card-border);
+    padding: 16px 16px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     flex-shrink: 0;
     position: sticky;
     top: 0;
-    background: var(--card);
+    background:
+      linear-gradient(180deg, rgba(255, 59, 92, 0.08) 0%, transparent 100%),
+      #1c1c2e;
     z-index: 2;
   }
 
@@ -6325,13 +6334,15 @@ a,
     stroke-width: 2;
     stroke-linecap: round;
     flex: 0 0 auto;
+    opacity: 0.9;
   }
 
   .filter-panel-header__text {
-    font-size: 0.85rem;
-    font-weight: 700;
+    font-size: 0.88rem;
+    font-weight: 800;
     color: var(--text);
     white-space: nowrap;
+    letter-spacing: 0.01em;
   }
 
   .filter-panel-header__badge {
@@ -6347,6 +6358,7 @@ a,
     align-items: center;
     justify-content: center;
     line-height: 1;
+    box-shadow: 0 2px 8px rgba(255, 59, 92, 0.45);
   }
 
   .filter-panel-header__badge[hidden] {
@@ -6361,36 +6373,36 @@ a,
   }
 
   .filter-panel-header__reset {
-    min-height: 28px;
-    padding: 0 10px;
+    min-height: 30px;
+    padding: 0 12px;
     border-radius: 999px;
-    border: 1px solid rgba(255, 59, 92, 0.24);
-    background: rgba(255, 59, 92, 0.08);
+    border: 1px solid rgba(255, 59, 92, 0.3);
+    background: rgba(255, 59, 92, 0.1);
     color: var(--accent);
     font: inherit;
-    font-size: 0.72rem;
+    font-size: 0.73rem;
     font-weight: 700;
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
   }
 
   .filter-panel-header__reset:hover {
-    background: rgba(255, 59, 92, 0.14);
-    border-color: rgba(255, 59, 92, 0.4);
+    background: rgba(255, 59, 92, 0.2);
+    border-color: rgba(255, 59, 92, 0.55);
   }
 
   .filter-panel-header__reset:disabled {
-    opacity: 0.42;
+    opacity: 0.35;
     cursor: default;
   }
 
   .filter-panel-header__close {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     flex-shrink: 0;
     border-radius: 50%;
-    border: 1px solid var(--card-border-h);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
     color: var(--muted-l);
     display: flex;
     align-items: center;
@@ -6402,8 +6414,8 @@ a,
   }
 
   .filter-panel-header__close:hover {
-    background: rgba(255, 59, 92, 0.1);
-    border-color: rgba(255, 59, 92, 0.4);
+    background: rgba(255, 59, 92, 0.14);
+    border-color: rgba(255, 59, 92, 0.45);
     color: var(--accent);
   }
 
@@ -6420,20 +6432,19 @@ a,
     overflow-x: hidden;
     flex: 1;
     -webkit-overflow-scrolling: touch;
-    padding: 10px 10px calc(88px + env(safe-area-inset-bottom, 0px));
-    gap: 8px;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0) 18%),
-      var(--card);
+    padding: 12px 12px calc(88px + env(safe-area-inset-bottom, 0px));
+    gap: 9px;
+    background: transparent;
   }
 
   /* Each filter control row */
   .filter-controls-body .filter-control {
-    padding: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 12px 13px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-left: 3px solid rgba(255, 59, 92, 0.35);
     border-radius: 14px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.012) 100%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018), 0 10px 22px rgba(0, 0, 0, 0.14);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 14px rgba(0, 0, 0, 0.22);
   }
 
   .filter-controls-body .filter-control br {
@@ -6442,22 +6453,34 @@ a,
 
   .filter-controls-body .filter-control label {
     display: block;
-    margin-bottom: 7px;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--muted-l);
   }
 
   /* Compact trigger buttons inside the panel */
   .filter-controls .filter-select__trigger,
   .filter-controls .bakery-ms__trigger {
-    min-height: 40px;
-    padding: 8px 10px;
-    font-size: 0.79rem;
+    min-height: 42px;
+    padding: 9px 12px;
+    font-size: 0.82rem;
     border-radius: 11px;
-    gap: 8px;
+    gap: 10px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%),
+      rgba(14, 14, 24, 0.9);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .filter-controls .filter-select__trigger:hover,
+  .filter-controls .bakery-ms__trigger:hover {
+    border-color: rgba(255, 59, 92, 0.45);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.03) 100%),
+      rgba(18, 18, 30, 0.95);
   }
 
   .filter-controls .filter-select__menu {
@@ -6467,14 +6490,17 @@ a,
     padding: 7px;
     border-radius: 14px;
     max-height: min(36vh, 260px);
-    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(14px);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.36);
+    backdrop-filter: blur(16px);
+    background:
+      linear-gradient(180deg, rgba(30, 30, 50, 0.99) 0%, rgba(18, 18, 32, 0.99) 100%);
+    border-color: rgba(255, 59, 92, 0.2);
   }
 
   .filter-controls .filter-select__option {
-    padding: 9px 10px;
-    font-size: 0.8rem;
-    border-radius: 9px;
+    padding: 10px 11px;
+    font-size: 0.82rem;
+    border-radius: 10px;
   }
 
   .filter-controls .bakery-ms__dropdown {
@@ -6482,8 +6508,11 @@ a,
     margin-top: 8px;
     padding: 8px;
     border-radius: 14px;
-    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(14px);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.36);
+    backdrop-filter: blur(16px);
+    background:
+      linear-gradient(180deg, rgba(30, 30, 50, 0.99) 0%, rgba(18, 18, 32, 0.99) 100%);
+    border-color: rgba(255, 59, 92, 0.2);
   }
 
   .filter-controls .bakery-ms__trigger.is-open ~ .bakery-ms__dropdown {
@@ -6491,16 +6520,16 @@ a,
   }
 
   .filter-controls .bakery-ms__option {
-    padding: 9px 10px;
-    font-size: 0.8rem;
-    gap: 7px;
-    border-radius: 9px;
+    padding: 10px 11px;
+    font-size: 0.82rem;
+    gap: 8px;
+    border-radius: 10px;
   }
 
   .filter-controls .bakery-ms__search {
-    min-height: 36px;
-    padding: 7px 9px;
-    font-size: 0.78rem;
+    min-height: 37px;
+    padding: 7px 10px;
+    font-size: 0.8rem;
   }
 
   .filter-controls .bakery-ms__list {
@@ -6512,7 +6541,7 @@ a,
     top: 0;
     z-index: 1;
     padding: 4px 2px 10px;
-    background: linear-gradient(180deg, rgba(24, 24, 40, 0.98) 0%, rgba(24, 24, 40, 0.92) 100%);
+    background: linear-gradient(180deg, rgba(26, 26, 44, 0.99) 0%, rgba(26, 26, 44, 0.94) 100%);
   }
 
   .filter-controls .bakery-ms__selected-section {
