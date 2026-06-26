@@ -278,9 +278,11 @@ window.GAILS.cloneBakeryMeta = function(meta) {
     var existing = cloned[canonicalName] || {};
     var fallback = window.GAILS.DEFAULT_BAKERY_META[canonicalName] || null;
     var displayName = entry.dn ? String(entry.dn).trim() : trimmedName;
+    var entryR = entry.r ? String(entry.r).trim() : '';
+    var entryO = entry.o ? String(entry.o).trim() : '';
     cloned[canonicalName] = {
-      r: entry.r ? String(entry.r).trim() : 'Unknown',
-      o: entry.o ? String(entry.o).trim() : 'Unknown',
+      r: (entryR && entryR !== 'Unknown') ? entryR : ((existing.r && existing.r !== 'Unknown') ? existing.r : (fallback ? fallback.r : 'Unknown')),
+      o: (entryO && entryO !== 'Unknown') ? entryO : ((existing.o && existing.o !== 'Unknown') ? existing.o : (fallback ? fallback.o : 'Unknown')),
       ll: Array.isArray(entry.ll) ? entry.ll : (existing.ll || (fallback && Array.isArray(fallback.ll) ? fallback.ll : null))
     };
     if (displayName && displayName !== canonicalName) {
