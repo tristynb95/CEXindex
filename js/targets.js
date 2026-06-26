@@ -623,6 +623,13 @@ function _setTargetTrendState(hasData, message) {
         fillOpacity: 0.88
       });
       marker.bindPopup(getPopupHtml(item, color, bf));
+      marker.bindTooltip(getPopupHtml(item, color, bf), {
+        sticky: false,
+        direction: 'top',
+        offset: [0, -12],
+        className: 'map-marker-tooltip',
+        interactive: false
+      });
       (function(ops) {
         marker.on('mouseover', function() {
           var area = cfg.areaPolygons && cfg.areaPolygons[ops];

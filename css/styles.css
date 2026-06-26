@@ -7265,6 +7265,23 @@ a,
   display: none !important;
 }
 
+.map-marker-tooltip {
+  background: rgba(18, 18, 29, 0.97) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 10px !important;
+  color: #ffffff !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-size: 0.82rem !important;
+  padding: 10px 13px !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(6px);
+  min-width: 160px;
+  pointer-events: none !important;
+}
+.map-marker-tooltip::before {
+  display: none !important;
+}
+
 /* Map Section Header & Control Bar */
 .map-section-header {
   display: flex;
