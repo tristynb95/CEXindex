@@ -25,6 +25,7 @@ const newEmailInput   = document.getElementById('newEmailInput');
 const newPassInput    = document.getElementById('newPassInput');
 const roleSelect      = document.getElementById('newRoleSelect');
 const createMsg       = document.getElementById('createMsg');
+const usersMsg        = document.getElementById('usersMsg');
 const siteImportZone  = document.getElementById('siteImportZone');
 const siteImportInput = document.getElementById('siteImportInput');
 const siteImportBrowseBtn = document.getElementById('siteImportBrowseBtn');
@@ -946,6 +947,8 @@ if (compactSidebarMedia && typeof compactSidebarMedia.addEventListener === 'func
 
 createUserForm.addEventListener('submit', async function(e) {
   e.preventDefault();
+  clearMessage(createMsg);
+  clearMessage(usersMsg);
   setMessage(createMsg, 'info', 'Creating user…');
   var btn = createUserForm.querySelector('button');
   btn.disabled = true;
@@ -957,11 +960,25 @@ createUserForm.addEventListener('submit', async function(e) {
     var uid   = cred.user.uid;
     await set(ref(db, 'users/' + uid), { email: email, role: role });
     if (role === 'admin') await set(ref(db, 'admins/' + uid), true);
+
+    var emailSent = false;
+    try {
+      await sendPasswordResetEmail(secondaryAuth, email);
+      emailSent = true;
+    } catch (emailErr) {
+      console.warn('Failed to send auto-reset email:', emailErr);
+    }
+
     await signOut(secondaryAuth);
     newEmailInput.value = '';
     newPassInput.value  = '';
     roleSelect.value    = 'viewer';
-    setMessage(createMsg, 'success', 'User created and added to the portal.');
+
+    if (emailSent) {
+      setMessage(createMsg, 'success', 'User created successfully and password reset email sent.');
+    } else {
+      setMessage(createMsg, 'success', 'User created, but failed to send password reset email automatically. Please reset manually.');
+    }
   } catch (err) {
     setMessage(createMsg, 'error', 'Error: ' + err.message);
   } finally {
@@ -974,6 +991,9 @@ userList.addEventListener('click', async function(e) {
   if (!btn) return;
   var uid = btn.dataset.uid;
   var action = btn.dataset.action;
+
+  clearMessage(createMsg);
+  clearMessage(usersMsg);
 
   if (action === 'edit-user') {
     state.editingUserUid = uid;
@@ -992,12 +1012,12 @@ userList.addEventListener('click', async function(e) {
     try {
       if (typeof sendPasswordResetEmail === 'function' && primaryAuth) {
         await sendPasswordResetEmail(primaryAuth, email);
-        setMessage(createMsg, 'success', 'Password reset email sent to ' + email + '.');
+        setMessage(usersMsg, 'success', 'Password reset email sent to ' + email + '.');
       } else {
-         setMessage(createMsg, 'error', 'Password reset not available.');
+         setMessage(usersMsg, 'error', 'Password reset not available.');
       }
     } catch (err) {
-      setMessage(createMsg, 'error', 'Error sending password reset: ' + err.message);
+      setMessage(usersMsg, 'error', 'Error sending password reset: ' + err.message);
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -1010,13 +1030,15 @@ userList.addEventListener('click', async function(e) {
       await saveUserRole(uid);
       state.editingUserUid = null;
       renderUsers();
+      setMessage(usersMsg, 'success', 'User role updated successfully.');
     }
     if (action === 'revoke-user') {
       await revokeUser(uid);
       if (state.editingUserUid === uid) state.editingUserUid = null;
+      setMessage(usersMsg, 'success', 'User access revoked successfully.');
     }
   } catch (err) {
-    setMessage(createMsg, 'error', 'Error: ' + err.message);
+    setMessage(usersMsg, 'error', 'Error: ' + err.message);
   } finally {
     if (btn) btn.disabled = false;
   }
