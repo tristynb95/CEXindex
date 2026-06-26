@@ -637,11 +637,7 @@ function _setTargetTrendState(hasData, message) {
         marker.on('mouseout', function() {
           var area = cfg.areaPolygons && cfg.areaPolygons[ops];
           if (!area) return;
-          if (area._isPolyline) {
-            area.setStyle({ opacity: 0.7, weight: 6, dashArray: area._origDash });
-          } else {
-            area.setStyle({ fillOpacity: 0.12, weight: 2.5, dashArray: area._origDash });
-          }
+          area.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: area._origDash });
         });
       }(GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown'));
       cfg.markerLayer.addLayer(marker);
