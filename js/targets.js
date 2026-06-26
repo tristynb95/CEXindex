@@ -440,6 +440,7 @@ function _setTargetTrendState(hasData, message) {
     if (!cfg.instance || !cfg.markerLayer) return;
     cfg.markerLayer.clearLayers();
     if (cfg.areaLayer) cfg.areaLayer.clearLayers();
+    cfg.areaPolygons = {};
 
     if (!cfg.items.length) {
       cfg.missingItems = [];
@@ -495,6 +496,8 @@ function _setTargetTrendState(hasData, message) {
             fillOpacity: 0.12,
             pane: 'areaPane'
           });
+          circle._origDash = dashArray;
+          circle._isPolyline = false;
           circle.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
           circle.on('mouseover', function() {
             this.setStyle({ fillOpacity: 0.28, weight: 3.5, dashArray: null });
@@ -504,6 +507,7 @@ function _setTargetTrendState(hasData, message) {
             this.setStyle({ fillOpacity: 0.12, weight: 2.5, dashArray: dashArray });
           });
           cfg.areaLayer.addLayer(circle);
+          cfg.areaPolygons[mgr] = circle;
         } else if (uniqueCoords.length === 2) {
           var polyline = L.polyline(uniqueCoords, {
             color: color,
@@ -514,6 +518,8 @@ function _setTargetTrendState(hasData, message) {
             lineCap: 'round',
             pane: 'areaPane'
           });
+          polyline._origDash = dashArray;
+          polyline._isPolyline = true;
           polyline.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
           polyline.on('mouseover', function() {
             this.setStyle({ opacity: 0.95, weight: 9, dashArray: null });
@@ -523,9 +529,10 @@ function _setTargetTrendState(hasData, message) {
             this.setStyle({ opacity: 0.7, weight: 6, dashArray: dashArray });
           });
           cfg.areaLayer.addLayer(polyline);
+          cfg.areaPolygons[mgr] = polyline;
         } else if (uniqueCoords.length >= 3) {
           var hull = getConvexHull(uniqueCoords);
-          var paddedHull = padPolygon(hull, 0.06); // 0.06 degrees (~6.7 km) — keeps markers inside
+          var paddedHull = padPolygon(hull, 0.025); // 0.025 degrees (~2.8 km) — keeps markers inside with minimal overlap
           if (paddedHull.length >= 3) {
             var polygon = L.polygon(paddedHull, {
               color: color,
@@ -537,6 +544,8 @@ function _setTargetTrendState(hasData, message) {
               lineJoin: 'round',
               pane: 'areaPane'
             });
+            polygon._origDash = dashArray;
+            polygon._isPolyline = false;
             polygon.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
             polygon.on('mouseover', function() {
               this.setStyle({ fillOpacity: 0.28, weight: 3.5, dashArray: null });
@@ -546,6 +555,7 @@ function _setTargetTrendState(hasData, message) {
               this.setStyle({ fillOpacity: 0.12, weight: 2.5, dashArray: dashArray });
             });
             cfg.areaLayer.addLayer(polygon);
+            cfg.areaPolygons[mgr] = polygon;
           } else if (paddedHull.length === 2) {
             var polyline = L.polyline(paddedHull, {
               color: color,
@@ -556,6 +566,8 @@ function _setTargetTrendState(hasData, message) {
               lineCap: 'round',
               pane: 'areaPane'
             });
+            polyline._origDash = dashArray;
+            polyline._isPolyline = true;
             polyline.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
             polyline.on('mouseover', function() {
               this.setStyle({ opacity: 0.95, weight: 9, dashArray: null });
@@ -565,6 +577,7 @@ function _setTargetTrendState(hasData, message) {
               this.setStyle({ opacity: 0.7, weight: 6, dashArray: dashArray });
             });
             cfg.areaLayer.addLayer(polyline);
+            cfg.areaPolygons[mgr] = polyline;
           }
         }
       });
@@ -598,6 +611,27 @@ function _setTargetTrendState(hasData, message) {
         fillOpacity: 0.88
       });
       marker.bindPopup(getPopupHtml(item, color, bf));
+      (function(ops) {
+        marker.on('mouseover', function() {
+          var area = cfg.areaPolygons && cfg.areaPolygons[ops];
+          if (!area) return;
+          if (area._isPolyline) {
+            area.setStyle({ opacity: 0.95, weight: 9, dashArray: null });
+          } else {
+            area.setStyle({ fillOpacity: 0.28, weight: 3.5, dashArray: null });
+          }
+          area.bringToFront();
+        });
+        marker.on('mouseout', function() {
+          var area = cfg.areaPolygons && cfg.areaPolygons[ops];
+          if (!area) return;
+          if (area._isPolyline) {
+            area.setStyle({ opacity: 0.7, weight: 6, dashArray: area._origDash });
+          } else {
+            area.setStyle({ fillOpacity: 0.12, weight: 2.5, dashArray: area._origDash });
+          }
+        });
+      }(GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown'));
       cfg.markerLayer.addLayer(marker);
       bounds.push(ll);
       placed++;
