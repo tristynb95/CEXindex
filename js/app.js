@@ -488,6 +488,34 @@
     });
   });
 
+  // ========== NETWORK MAP AREA TOGGLE ==========
+  var _networkMapArea = 'off';
+  Array.from(document.querySelectorAll('[data-map-area]')).forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var nextArea = btn.dataset.mapArea === 'on' ? 'on' : 'off';
+      if (_networkMapArea === nextArea) return;
+      _networkMapArea = nextArea;
+      Array.from(document.querySelectorAll('[data-map-area]')).forEach(function(toggleBtn) {
+        toggleBtn.classList.toggle('active', toggleBtn.dataset.mapArea === nextArea);
+      });
+      if (G.setNetworkMapArea) G.setNetworkMapArea(nextArea);
+    });
+  });
+
+  // ========== TARGET MAP AREA TOGGLE ==========
+  var _targetMapArea = 'off';
+  Array.from(document.querySelectorAll('[data-target-map-area]')).forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var nextArea = btn.dataset.targetMapArea === 'on' ? 'on' : 'off';
+      if (_targetMapArea === nextArea) return;
+      _targetMapArea = nextArea;
+      Array.from(document.querySelectorAll('[data-target-map-area]')).forEach(function(toggleBtn) {
+        toggleBtn.classList.toggle('active', toggleBtn.dataset.targetMapArea === nextArea);
+      });
+      if (G.setTargetMapArea) G.setTargetMapArea(nextArea);
+    });
+  });
+
   // ========== BAKERY MULTI-SELECT ==========
   (function() {
     var selected = state.searchBakery;

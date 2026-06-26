@@ -7245,3 +7245,21 @@ a,
     height: calc(100dvh - 172px);
   }
 }
+
+/* Premium Map Area Boundaries Tooltip */
+.map-area-tooltip {
+  background: rgba(18, 18, 29, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 8px !important;
+  color: #ffffff !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  padding: 6px 10px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(4px);
+}
+.map-area-tooltip::before {
+  display: none !important;
+}
+

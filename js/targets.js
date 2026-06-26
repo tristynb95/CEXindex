@@ -206,6 +206,9 @@ function _setTargetTrendState(hasData, message) {
     absolute: '<span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL\'s bakery before plotting.'
   };
 
+  var _networkMapAreaState = 'off';
+  var _targetMapAreaState = 'off';
+
   var MAPS = {
     network: {
       key: 'network',
@@ -220,6 +223,7 @@ function _setTargetTrendState(hasData, message) {
       missingItems: [],
       instance: null,
       markerLayer: null,
+      areaLayer: null,
       legendControl: null
     },
     target: {
@@ -235,6 +239,7 @@ function _setTargetTrendState(hasData, message) {
       missingItems: [],
       instance: null,
       markerLayer: null,
+      areaLayer: null,
       legendControl: null
     }
   };
@@ -246,6 +251,45 @@ function _setTargetTrendState(hasData, message) {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function crossProduct(o, a, b) {
+    return (a[1] - o[1]) * (b[0] - o[0]) - (a[0] - o[0]) * (b[1] - o[1]);
+  }
+
+  function getConvexHull(points) {
+    if (points.length <= 1) return points;
+    var pts = points.slice().sort(function(a, b) {
+      if (a[1] !== b[1]) return a[1] - b[1];
+      return a[0] - b[0];
+    });
+    var lower = [];
+    for (var i = 0; i < pts.length; i++) {
+      while (lower.length >= 2 && crossProduct(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) {
+        lower.pop();
+      }
+      lower.push(pts[i]);
+    }
+    var upper = [];
+    for (var i = pts.length - 1; i >= 0; i--) {
+      while (upper.length >= 2 && crossProduct(upper[upper.length - 2], upper[upper.length - 1], pts[i]) <= 0) {
+        upper.pop();
+      }
+      upper.push(pts[i]);
+    }
+    upper.pop();
+    lower.pop();
+    return lower.concat(upper);
+  }
+
+  function getManagerColor(managerName) {
+    if (!managerName || managerName === 'Unknown' || managerName === 'Other') return '#a0aec0';
+    var hash = 0;
+    for (var i = 0; i < managerName.length; i++) {
+      hash = managerName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    var hue = Math.abs(hash) % 360;
+    return 'hsl(' + hue + ', 65%, 55%)';
   }
 
   function isMapActive(selector) {
@@ -281,11 +325,17 @@ function _setTargetTrendState(hasData, message) {
     }
 
     cfg.instance = L.map(cfg.elId, { zoomControl: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    if (cfg.instance.createPane) {
+      var areaPane = cfg.instance.createPane('areaPane');
+      areaPane.style.zIndex = 350;
+      areaPane.style.pointerEvents = 'auto';
+    }
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19
     }).addTo(cfg.instance);
 
+    cfg.areaLayer = L.layerGroup().addTo(cfg.instance);
     cfg.markerLayer = L.layerGroup().addTo(cfg.instance);
     renderLegend(cfg);
     placeMarkers(cfg);
@@ -330,12 +380,113 @@ function _setTargetTrendState(hasData, message) {
     var statusEl = document.getElementById(cfg.statusId);
     if (!cfg.instance || !cfg.markerLayer) return;
     cfg.markerLayer.clearLayers();
+    if (cfg.areaLayer) cfg.areaLayer.clearLayers();
 
     if (!cfg.items.length) {
       cfg.missingItems = [];
       cfg.instance.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
       if (statusEl) statusEl.textContent = cfg.emptyMessage;
       return;
+    }
+
+    var showAreas = (cfg.key === 'network' ? _networkMapAreaState : _targetMapAreaState) === 'on';
+    if (showAreas && cfg.instance && cfg.areaLayer && cfg.items.length > 0) {
+      var managerGroups = {};
+      cfg.items.forEach(function(item) {
+        var meta = GAILS.getBakeryMeta ? GAILS.getBakeryMeta(item.b) : GAILS.BAKERY_META[item.b];
+        var ll = meta && meta.ll;
+        if (!ll) return;
+        var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
+        if (!managerGroups[ops]) {
+          managerGroups[ops] = [];
+        }
+        managerGroups[ops].push(ll);
+      });
+
+      Object.keys(managerGroups).forEach(function(mgr) {
+        if (mgr === 'Unknown' || mgr === 'Other') return;
+        var coords = managerGroups[mgr];
+        
+        var uniqueCoords = [];
+        var seen = {};
+        coords.forEach(function(c) {
+          var key = c[0] + ',' + c[1];
+          if (!seen[key]) {
+            seen[key] = true;
+            uniqueCoords.push(c);
+          }
+        });
+
+        var color = getManagerColor(mgr);
+
+        if (uniqueCoords.length === 1) {
+          var circle = L.circle(uniqueCoords[0], {
+            radius: 2500,
+            color: color,
+            weight: 2,
+            opacity: 0.8,
+            fillColor: color,
+            fillOpacity: 0.15,
+            dashArray: '5, 5',
+            pane: 'areaPane'
+          });
+          circle.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
+          circle.on('mouseover', function() {
+            this.setStyle({ fillOpacity: 0.35, weight: 3 });
+          });
+          circle.on('mouseout', function() {
+            this.setStyle({ fillOpacity: 0.15, weight: 2 });
+          });
+          cfg.areaLayer.addLayer(circle);
+        } else if (uniqueCoords.length === 2) {
+          var polyline = L.polyline(uniqueCoords, {
+            color: color,
+            weight: 6,
+            opacity: 0.6,
+            dashArray: '5, 5',
+            pane: 'areaPane'
+          });
+          polyline.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
+          polyline.on('mouseover', function() {
+            this.setStyle({ opacity: 0.8, weight: 9 });
+          });
+          polyline.on('mouseout', function() {
+            this.setStyle({ opacity: 0.6, weight: 6 });
+          });
+          cfg.areaLayer.addLayer(polyline);
+        } else if (uniqueCoords.length >= 3) {
+          var hull = getConvexHull(uniqueCoords);
+          if (hull.length >= 3) {
+            var polygon = L.polygon(hull, {
+              color: color,
+              weight: 2,
+              opacity: 0.8,
+              fillColor: color,
+              fillOpacity: 0.15,
+              dashArray: '5, 5',
+              pane: 'areaPane'
+            });
+            polygon.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
+            polygon.on('mouseover', function() {
+              this.setStyle({ fillOpacity: 0.35, weight: 3 });
+            });
+            polygon.on('mouseout', function() {
+              this.setStyle({ fillOpacity: 0.15, weight: 2 });
+            });
+            cfg.areaLayer.addLayer(polygon);
+          } else if (hull.length === 2) {
+            var polyline = L.polyline(hull, {
+              color: color,
+              weight: 6,
+              opacity: 0.6,
+              dashArray: '5, 5',
+              pane: 'areaPane'
+            });
+            polyline.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
+            cfg.areaLayer.addLayer(polyline);
+          }
+        }
+      });
     }
 
     var bounds = [];
@@ -450,6 +601,22 @@ function _setTargetTrendState(hasData, message) {
 
     if (cfg.instance) {
       renderLegend(cfg);
+      placeMarkers(cfg);
+    }
+  };
+
+  window.GAILS.setNetworkMapArea = function(state) {
+    _networkMapAreaState = state;
+    var cfg = MAPS.network;
+    if (cfg.instance) {
+      placeMarkers(cfg);
+    }
+  };
+
+  window.GAILS.setTargetMapArea = function(state) {
+    _targetMapAreaState = state;
+    var cfg = MAPS.target;
+    if (cfg.instance) {
       placeMarkers(cfg);
     }
   };

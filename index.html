@@ -664,9 +664,15 @@
             <div class="section">
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
                 <h2 style="margin:0">Bakery Map</h2>
-                <div class="overview-rankings-toggle" role="group" aria-label="Toggle map CEI metric" id="networkMapToggle">
-                  <button type="button" class="overview-rankings-toggle__btn active" data-map-metric="relative">Relative CEI</button>
-                  <button type="button" class="overview-rankings-toggle__btn" data-map-metric="absolute">Absolute CEI</button>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <div class="overview-rankings-toggle" role="group" aria-label="Toggle map CEI metric" id="networkMapToggle">
+                    <button type="button" class="overview-rankings-toggle__btn active" data-map-metric="relative">Relative CEI</button>
+                    <button type="button" class="overview-rankings-toggle__btn" data-map-metric="absolute">Absolute CEI</button>
+                  </div>
+                  <div class="overview-rankings-toggle" role="group" aria-label="Toggle map area boundaries" id="networkMapAreaToggle">
+                    <button type="button" class="overview-rankings-toggle__btn active" data-map-area="off">Standard Map</button>
+                    <button type="button" class="overview-rankings-toggle__btn" data-map-area="on">Area Boundaries</button>
+                  </div>
                 </div>
               </div>
               <p class="target-hint" id="networkMapLegendHint"><span style="color:var(--green);font-weight:600">&#9679; Excellent</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Good</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Developing</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Needs Attention</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.</p>
@@ -798,7 +804,13 @@
               </div>
               <div class="target-subtab-panel" data-target-subtab-panel="map">
                 <div class="section">
-                  <h2>Target Bakery Locations</h2>
+                  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
+                    <h2 style="margin:0">Target Bakery Locations</h2>
+                    <div class="overview-rankings-toggle" role="group" aria-label="Toggle map area boundaries" id="targetMapAreaToggle">
+                      <button type="button" class="overview-rankings-toggle__btn active" data-target-map-area="off">Standard Map</button>
+                      <button type="button" class="overview-rankings-toggle__btn" data-target-map-area="on">Area Boundaries</button>
+                    </div>
+                  </div>
                   <p class="target-hint" id="targetMapLegendHint"><span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL's bakery before plotting.</p>
                   <div id="targetMap"></div>
                   <div id="targetMapStatus" class="target-map-status"></div>
