@@ -387,6 +387,7 @@ function _setTargetTrendState(hasData, message) {
       var areaPane = cfg.instance.createPane('areaPane');
       areaPane.style.zIndex = 350;
       areaPane.style.pointerEvents = 'auto';
+      areaPane.style.mixBlendMode = 'multiply';
     }
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -462,6 +463,8 @@ function _setTargetTrendState(hasData, message) {
         managerGroups[ops].items.push(item);
       });
 
+      var AREA_DASH_PATTERNS = [null, '8 5', '4 4', '12 4 4 4', '2 5'];
+      var mgrIndex = 0;
       Object.keys(managerGroups).forEach(function(mgr) {
         if (mgr === 'Unknown' || mgr === 'Other') return;
         var group = managerGroups[mgr];
@@ -478,6 +481,8 @@ function _setTargetTrendState(hasData, message) {
 
         var color = getAreaPerformanceColor(group.items, cfg.bandField);
         var tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField);
+        var dashArray = AREA_DASH_PATTERNS[mgrIndex % AREA_DASH_PATTERNS.length] || null;
+        mgrIndex++;
 
         if (uniqueCoords.length === 1) {
           var circle = L.circle(uniqueCoords[0], {
@@ -485,17 +490,18 @@ function _setTargetTrendState(hasData, message) {
             color: color,
             weight: 2.5,
             opacity: 0.8,
+            dashArray: dashArray,
             fillColor: color,
             fillOpacity: 0.12,
             pane: 'areaPane'
           });
           circle.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
           circle.on('mouseover', function() {
-            this.setStyle({ fillOpacity: 0.28, weight: 3.5 });
+            this.setStyle({ fillOpacity: 0.28, weight: 3.5, dashArray: null });
             this.bringToFront();
           });
           circle.on('mouseout', function() {
-            this.setStyle({ fillOpacity: 0.12, weight: 2.5 });
+            this.setStyle({ fillOpacity: 0.12, weight: 2.5, dashArray: dashArray });
           });
           cfg.areaLayer.addLayer(circle);
         } else if (uniqueCoords.length === 2) {
@@ -503,17 +509,18 @@ function _setTargetTrendState(hasData, message) {
             color: color,
             weight: 6,
             opacity: 0.7,
+            dashArray: dashArray,
             lineJoin: 'round',
             lineCap: 'round',
             pane: 'areaPane'
           });
           polyline.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
           polyline.on('mouseover', function() {
-            this.setStyle({ opacity: 0.95, weight: 9 });
+            this.setStyle({ opacity: 0.95, weight: 9, dashArray: null });
             this.bringToFront();
           });
           polyline.on('mouseout', function() {
-            this.setStyle({ opacity: 0.7, weight: 6 });
+            this.setStyle({ opacity: 0.7, weight: 6, dashArray: dashArray });
           });
           cfg.areaLayer.addLayer(polyline);
         } else if (uniqueCoords.length >= 3) {
@@ -524,6 +531,7 @@ function _setTargetTrendState(hasData, message) {
               color: color,
               weight: 2.5,
               opacity: 0.8,
+              dashArray: dashArray,
               fillColor: color,
               fillOpacity: 0.12,
               lineJoin: 'round',
@@ -531,11 +539,11 @@ function _setTargetTrendState(hasData, message) {
             });
             polygon.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
             polygon.on('mouseover', function() {
-              this.setStyle({ fillOpacity: 0.28, weight: 3.5 });
+              this.setStyle({ fillOpacity: 0.28, weight: 3.5, dashArray: null });
               this.bringToFront();
             });
             polygon.on('mouseout', function() {
-              this.setStyle({ fillOpacity: 0.12, weight: 2.5 });
+              this.setStyle({ fillOpacity: 0.12, weight: 2.5, dashArray: dashArray });
             });
             cfg.areaLayer.addLayer(polygon);
           } else if (paddedHull.length === 2) {
@@ -543,17 +551,18 @@ function _setTargetTrendState(hasData, message) {
               color: color,
               weight: 6,
               opacity: 0.7,
+              dashArray: dashArray,
               lineJoin: 'round',
               lineCap: 'round',
               pane: 'areaPane'
             });
             polyline.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
             polyline.on('mouseover', function() {
-              this.setStyle({ opacity: 0.95, weight: 9 });
+              this.setStyle({ opacity: 0.95, weight: 9, dashArray: null });
               this.bringToFront();
             });
             polyline.on('mouseout', function() {
-              this.setStyle({ opacity: 0.7, weight: 6 });
+              this.setStyle({ opacity: 0.7, weight: 6, dashArray: dashArray });
             });
             cfg.areaLayer.addLayer(polyline);
           }
