@@ -662,16 +662,22 @@
           <!-- MAP -->
           <div class="tab-content" id="tab-map">
             <div class="section">
-              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+              <div class="map-section-header" style="margin-bottom:16px;">
                 <h2 style="margin:0">Bakery Map</h2>
                 <div class="map-control-bar">
-                  <div class="overview-rankings-toggle" role="group" aria-label="Toggle map CEI metric" id="networkMapToggle">
-                    <button type="button" class="overview-rankings-toggle__btn active" data-map-metric="relative">Relative CEI</button>
-                    <button type="button" class="overview-rankings-toggle__btn" data-map-metric="absolute">Absolute CEI</button>
+                  <div class="map-toggle-group">
+                    <span class="map-toggle-label">Index Type</span>
+                    <div class="overview-rankings-toggle" role="group" aria-label="Toggle map CEI metric" id="networkMapToggle">
+                      <button type="button" class="overview-rankings-toggle__btn active" data-map-metric="relative">Relative</button>
+                      <button type="button" class="overview-rankings-toggle__btn" data-map-metric="absolute">Absolute</button>
+                    </div>
                   </div>
-                  <div class="overview-rankings-toggle" role="group" aria-label="Toggle map area boundaries" id="networkMapAreaToggle">
-                    <button type="button" class="overview-rankings-toggle__btn active" data-map-area="off">Standard Map</button>
-                    <button type="button" class="overview-rankings-toggle__btn" data-map-area="on">Area Boundaries</button>
+                  <div class="map-toggle-group">
+                    <span class="map-toggle-label">Area Boundaries</span>
+                    <div class="overview-rankings-toggle" role="group" aria-label="Toggle map area boundaries" id="networkMapAreaToggle">
+                      <button type="button" class="overview-rankings-toggle__btn active" data-map-area="off">Off</button>
+                      <button type="button" class="overview-rankings-toggle__btn" data-map-area="on">On</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -804,16 +810,22 @@
               </div>
               <div class="target-subtab-panel" data-target-subtab-panel="map">
                 <div class="section">
-                  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
+                  <div class="map-section-header" style="margin-bottom:8px;">
                     <h2 style="margin:0">Target Bakery Locations</h2>
                     <div class="map-control-bar">
-                      <div class="overview-rankings-toggle" role="group" aria-label="Toggle target CEI metric">
-                        <button type="button" class="overview-rankings-toggle__btn" data-target-map-metric="relative">Relative CEI</button>
-                        <button type="button" class="overview-rankings-toggle__btn active" data-target-map-metric="absolute">Absolute CEI</button>
+                      <div class="map-toggle-group">
+                        <span class="map-toggle-label">Index Type</span>
+                        <div class="overview-rankings-toggle" role="group" aria-label="Toggle target CEI metric">
+                          <button type="button" class="overview-rankings-toggle__btn" data-target-map-metric="relative">Relative</button>
+                          <button type="button" class="overview-rankings-toggle__btn active" data-target-map-metric="absolute">Absolute</button>
+                        </div>
                       </div>
-                      <div class="overview-rankings-toggle" role="group" aria-label="Toggle map area boundaries" id="targetMapAreaToggle">
-                        <button type="button" class="overview-rankings-toggle__btn active" data-target-map-area="off">Standard Map</button>
-                        <button type="button" class="overview-rankings-toggle__btn" data-target-map-area="on">Area Boundaries</button>
+                      <div class="map-toggle-group">
+                        <span class="map-toggle-label">Area Boundaries</span>
+                        <div class="overview-rankings-toggle" role="group" aria-label="Toggle map area boundaries" id="targetMapAreaToggle">
+                          <button type="button" class="overview-rankings-toggle__btn active" data-target-map-area="off">Off</button>
+                          <button type="button" class="overview-rankings-toggle__btn" data-target-map-area="on">On</button>
+                        </div>
                       </div>
                     </div>
                   </div>
