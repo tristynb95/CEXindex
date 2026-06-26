@@ -253,59 +253,6 @@ function _setTargetTrendState(hasData, message) {
       .replace(/'/g, '&#39;');
   }
 
-  function crossProduct(o, a, b) {
-    return (a[1] - o[1]) * (b[0] - o[0]) - (a[0] - o[0]) * (b[1] - o[1]);
-  }
-
-  function getConvexHull(points) {
-    if (points.length <= 1) return points;
-    var pts = points.slice().sort(function(a, b) {
-      if (a[1] !== b[1]) return a[1] - b[1];
-      return a[0] - b[0];
-    });
-    var lower = [];
-    for (var i = 0; i < pts.length; i++) {
-      while (lower.length >= 2 && crossProduct(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) {
-        lower.pop();
-      }
-      lower.push(pts[i]);
-    }
-    var upper = [];
-    for (var i = pts.length - 1; i >= 0; i--) {
-      while (upper.length >= 2 && crossProduct(upper[upper.length - 2], upper[upper.length - 1], pts[i]) <= 0) {
-        upper.pop();
-      }
-      upper.push(pts[i]);
-    }
-    upper.pop();
-    lower.pop();
-    return lower.concat(upper);
-  }
-
-  function padPolygon(points, paddingDistance) {
-    if (points.length < 3) return points;
-    var latSum = 0, lngSum = 0;
-    points.forEach(function(p) {
-      latSum += p[0];
-      lngSum += p[1];
-    });
-    var centroidLat = latSum / points.length;
-    var centroidLng = lngSum / points.length;
-
-    return points.map(function(p) {
-      var dLat = p[0] - centroidLat;
-      var dLng = p[1] - centroidLng;
-      var dist = Math.sqrt(dLat * dLat + dLng * dLng);
-      if (dist === 0) return p;
-      var uLat = dLat / dist;
-      var uLng = dLng / dist;
-      return [
-        p[0] + uLat * paddingDistance,
-        p[1] + uLng * paddingDistance
-      ];
-    });
-  }
-
   var BAND_SCORE = {
     Excellent: 3, Outstanding: 3,
     Good: 2, Exceeding: 2, Meeting: 2,
@@ -435,6 +382,152 @@ function _setTargetTrendState(hasData, message) {
     '</div>';
   }
 
+  function computeVoronoiTerritories(managerGroups) {
+    var SENTINEL = '__SENTINEL__';
+    var realPts = [];
+    Object.keys(managerGroups).forEach(function(mgr) {
+      if (mgr === 'Unknown' || mgr === 'Other') return;
+      var seen = {};
+      managerGroups[mgr].coords.forEach(function(ll) {
+        var k = ll[0].toFixed(6) + ',' + ll[1].toFixed(6);
+        if (!seen[k]) { seen[k] = true; realPts.push({lat: ll[0], lng: ll[1], mgr: mgr}); }
+      });
+    });
+    if (realPts.length < 2) return {};
+
+    var minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    realPts.forEach(function(p) {
+      if(p.lat<minLat)minLat=p.lat; if(p.lat>maxLat)maxLat=p.lat;
+      if(p.lng<minLng)minLng=p.lng; if(p.lng>maxLng)maxLng=p.lng;
+    });
+
+    var spread = Math.max(maxLat - minLat, maxLng - minLng);
+    var sentPad = spread * 3 + 0.8;
+    var clipPad = spread * 0.14 + 0.04;
+
+    var pts = realPts.slice();
+    var mcLat = (minLat + maxLat) / 2, mcLng = (minLng + maxLng) / 2;
+    [[minLat-sentPad,minLng-sentPad],[minLat-sentPad,mcLng],[minLat-sentPad,maxLng+sentPad],
+     [mcLat,minLng-sentPad],[mcLat,maxLng+sentPad],
+     [maxLat+sentPad,minLng-sentPad],[maxLat+sentPad,mcLng],[maxLat+sentPad,maxLng+sentPad]
+    ].forEach(function(c){ pts.push({lat:c[0],lng:c[1],mgr:SENTINEL}); });
+
+    var n = pts.length;
+    var lats = pts.map(function(p){return p.lat;});
+    var lngs = pts.map(function(p){return p.lng;});
+    var mgrs = pts.map(function(p){return p.mgr;});
+
+    function circumcircle(ia, ib, ic) {
+      var ax=lats[ia],ay=lngs[ia],bx=lats[ib],by=lngs[ib],cx=lats[ic],cy=lngs[ic];
+      var D = 2*(ax*(by-cy)+bx*(cy-ay)+cx*(ay-by));
+      if (Math.abs(D) < 1e-12) return null;
+      var ux=((ax*ax+ay*ay)*(by-cy)+(bx*bx+by*by)*(cy-ay)+(cx*cx+cy*cy)*(ay-by))/D;
+      var uy=((ax*ax+ay*ay)*(cx-bx)+(bx*bx+by*by)*(ax-cx)+(cx*cx+cy*cy)*(bx-ax))/D;
+      return {x:ux,y:uy,r2:(ax-ux)*(ax-ux)+(ay-uy)*(ay-uy)};
+    }
+
+    var sMinX=Infinity,sMaxX=-Infinity,sMinY=Infinity,sMaxY=-Infinity;
+    for(var i=0;i<n;i++){
+      if(lats[i]<sMinX)sMinX=lats[i];if(lats[i]>sMaxX)sMaxX=lats[i];
+      if(lngs[i]<sMinY)sMinY=lngs[i];if(lngs[i]>sMaxY)sMaxY=lngs[i];
+    }
+    var dM = Math.max(sMaxX-sMinX,sMaxY-sMinY)*20;
+    lats.push(sMinX-dM, sMinX+dM*3, sMinX-dM);
+    lngs.push(sMinY-dM, sMinY-dM, sMaxY+dM*3);
+
+    var tris = [{v:[n,n+1,n+2], c:circumcircle(n,n+1,n+2)}];
+
+    for (var i=0; i<n; i++) {
+      var px=lats[i],py=lngs[i],bad=[],good=[];
+      for(var t=0;t<tris.length;t++){
+        var ci=tris[t].c;
+        if(ci&&(px-ci.x)*(px-ci.x)+(py-ci.y)*(py-ci.y)<ci.r2-1e-10){bad.push(tris[t]);}
+        else{good.push(tris[t]);}
+      }
+      var eCnt={};
+      for(var b=0;b<bad.length;b++){
+        var v=bad[b].v;
+        for(var j=0;j<3;j++){var a=v[j],bb=v[(j+1)%3];var k=a<bb?a+'_'+bb:bb+'_'+a;eCnt[k]=(eCnt[k]||0)+1;}
+      }
+      tris=good;
+      var eKs=Object.keys(eCnt);
+      for(var ek=0;ek<eKs.length;ek++){
+        if(eCnt[eKs[ek]]!==1)continue;
+        var vs=eKs[ek].split('_');
+        tris.push({v:[+vs[0],+vs[1],i],c:circumcircle(+vs[0],+vs[1],i)});
+      }
+    }
+    tris=tris.filter(function(t){return t.v[0]<n&&t.v[1]<n&&t.v[2]<n;});
+
+    var e2t={};
+    for(var ti=0;ti<tris.length;ti++){
+      var v=tris[ti].v;
+      for(var j=0;j<3;j++){var a=v[j],b=v[(j+1)%3];var k=a<b?a+'_'+b:b+'_'+a;if(!e2t[k])e2t[k]=[];e2t[k].push(ti);}
+    }
+
+    var mgrSegs={};
+    var e2tKs=Object.keys(e2t);
+    for(var ek=0;ek<e2tKs.length;ek++){
+      var tIdxs=e2t[e2tKs[ek]];
+      if(tIdxs.length!==2)continue;
+      var vs=e2tKs[ek].split('_');
+      var mA=mgrs[+vs[0]],mB=mgrs[+vs[1]];
+      if(mA===mB)continue;
+      var c1=tris[tIdxs[0]].c,c2=tris[tIdxs[1]].c;
+      if(!c1||!c2)continue;
+      var seg=[[c1.x,c1.y],[c2.x,c2.y]];
+      if(mA!==SENTINEL){if(!mgrSegs[mA])mgrSegs[mA]=[];mgrSegs[mA].push(seg);}
+      if(mB!==SENTINEL){if(!mgrSegs[mB])mgrSegs[mB]=[];mgrSegs[mB].push(seg);}
+    }
+
+    var clMinLat=minLat-clipPad,clMaxLat=maxLat+clipPad;
+    var clMinLng=minLng-clipPad,clMaxLng=maxLng+clipPad;
+    function clipPoly(poly){
+      function ins(pt,e){if(e===0)return pt[1]>=clMinLng;if(e===1)return pt[1]<=clMaxLng;if(e===2)return pt[0]>=clMinLat;return pt[0]<=clMaxLat;}
+      function inter(a,b,e){var t;if(e<2){var lng=e?clMaxLng:clMinLng;t=(lng-a[1])/(b[1]-a[1]);return[a[0]+t*(b[0]-a[0]),lng];}else{var lat=e===2?clMinLat:clMaxLat;t=(lat-a[0])/(b[0]-a[0]);return[lat,a[1]+t*(b[1]-a[1])];}}
+      var res=poly;
+      for(var e=0;e<4;e++){if(!res.length)return[];var inp=res;res=[];for(var i=0;i<inp.length;i++){var cur=inp[i],prv=inp[(i+inp.length-1)%inp.length];if(ins(cur,e)){if(!ins(prv,e))res.push(inter(prv,cur,e));res.push(cur);}else if(ins(prv,e))res.push(inter(prv,cur,e));}}
+      return res;
+    }
+
+    function ptKey(p){return p[0].toFixed(8)+'|'+p[1].toFixed(8);}
+
+    var result={};
+    var mgrKs=Object.keys(mgrSegs);
+    for(var mi=0;mi<mgrKs.length;mi++){
+      var mgr=mgrKs[mi];
+      var segs=mgrSegs[mgr];
+      var adj={};
+      for(var si=0;si<segs.length;si++){
+        var kA=ptKey(segs[si][0]),kB=ptKey(segs[si][1]);
+        if(!adj[kA])adj[kA]=[];if(!adj[kB])adj[kB]=[];
+        adj[kA].push({k:kB,pt:segs[si][1]});adj[kB].push({k:kA,pt:segs[si][0]});
+      }
+      var usedEdges={},loop=null;
+      for(var si=0;si<segs.length&&!loop;si++){
+        var skA=ptKey(segs[si][0]),skB=ptKey(segs[si][1]);
+        var eKey=skA<skB?skA+'~'+skB:skB+'~'+skA;
+        if(usedEdges[eKey])continue;
+        usedEdges[eKey]=true;
+        var loopPts=[segs[si][0]],prev=skA,cur=skB,curPt=segs[si][1],safety=0;
+        while(cur!==skA&&safety++<20000){
+          var ns=adj[cur]||[],nxt=null;
+          for(var ni=0;ni<ns.length;ni++){
+            if(ns[ni].k===prev)continue;
+            var nek=cur<ns[ni].k?cur+'~'+ns[ni].k:ns[ni].k+'~'+cur;
+            if(usedEdges[nek])continue;
+            nxt=ns[ni];usedEdges[nek]=true;break;
+          }
+          if(!nxt)break;
+          loopPts.push(curPt);prev=cur;cur=nxt.k;curPt=nxt.pt;
+        }
+        if(loopPts.length>=3)loop=loopPts;
+      }
+      if(loop){var cl=clipPoly(loop);if(cl.length>=3)result[mgr]=cl;}
+    }
+    return result;
+  }
+
   function placeMarkers(cfg) {
     var statusEl = document.getElementById(cfg.statusId);
     if (!cfg.instance || !cfg.markerLayer) return;
@@ -457,129 +550,48 @@ function _setTargetTrendState(hasData, message) {
         var ll = meta && meta.ll;
         if (!ll) return;
         var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
-        if (!managerGroups[ops]) {
-          managerGroups[ops] = { coords: [], items: [] };
-        }
+        if (!managerGroups[ops]) managerGroups[ops] = { coords: [], items: [] };
         managerGroups[ops].coords.push(ll);
         managerGroups[ops].items.push(item);
       });
 
+      var voronoiPolys = computeVoronoiTerritories(managerGroups);
       var AREA_DASH_PATTERNS = [null, '8 5', '4 4', '12 4 4 4', '2 5'];
       var mgrIndex = 0;
+
       Object.keys(managerGroups).forEach(function(mgr) {
         if (mgr === 'Unknown' || mgr === 'Other') return;
         var group = managerGroups[mgr];
-
-        var uniqueCoords = [];
-        var seen = {};
-        group.coords.forEach(function(c) {
-          var key = c[0] + ',' + c[1];
-          if (!seen[key]) {
-            seen[key] = true;
-            uniqueCoords.push(c);
-          }
-        });
-
         var color = getAreaPerformanceColor(group.items, cfg.bandField);
         var tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField);
         var dashArray = AREA_DASH_PATTERNS[mgrIndex % AREA_DASH_PATTERNS.length] || null;
         mgrIndex++;
 
-        if (uniqueCoords.length === 1) {
-          var circle = L.circle(uniqueCoords[0], {
-            radius: 5000,
-            color: color,
-            weight: 2.5,
-            opacity: 0.8,
-            dashArray: dashArray,
-            fillColor: color,
-            fillOpacity: 0.12,
-            pane: 'areaPane'
-          });
-          circle._origDash = dashArray;
-          circle._isPolyline = false;
-          circle.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
-          circle.on('mouseover', function() {
-            this.setStyle({ fillOpacity: 0.28, weight: 3.5, dashArray: null });
-            this.bringToFront();
-          });
-          circle.on('mouseout', function() {
-            this.setStyle({ fillOpacity: 0.12, weight: 2.5, dashArray: dashArray });
-          });
-          cfg.areaLayer.addLayer(circle);
-          cfg.areaPolygons[mgr] = circle;
-        } else if (uniqueCoords.length === 2) {
-          var polyline = L.polyline(uniqueCoords, {
-            color: color,
-            weight: 6,
-            opacity: 0.7,
-            dashArray: dashArray,
-            lineJoin: 'round',
-            lineCap: 'round',
-            pane: 'areaPane'
-          });
-          polyline._origDash = dashArray;
-          polyline._isPolyline = true;
-          polyline.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
-          polyline.on('mouseover', function() {
-            this.setStyle({ opacity: 0.95, weight: 9, dashArray: null });
-            this.bringToFront();
-          });
-          polyline.on('mouseout', function() {
-            this.setStyle({ opacity: 0.7, weight: 6, dashArray: dashArray });
-          });
-          cfg.areaLayer.addLayer(polyline);
-          cfg.areaPolygons[mgr] = polyline;
-        } else if (uniqueCoords.length >= 3) {
-          var hull = getConvexHull(uniqueCoords);
-          var paddedHull = padPolygon(hull, 0.025); // 0.025 degrees (~2.8 km) — keeps markers inside with minimal overlap
-          if (paddedHull.length >= 3) {
-            var polygon = L.polygon(paddedHull, {
-              color: color,
-              weight: 2.5,
-              opacity: 0.8,
-              dashArray: dashArray,
-              fillColor: color,
-              fillOpacity: 0.12,
-              lineJoin: 'round',
-              pane: 'areaPane'
-            });
-            polygon._origDash = dashArray;
-            polygon._isPolyline = false;
-            polygon.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
-            polygon.on('mouseover', function() {
-              this.setStyle({ fillOpacity: 0.28, weight: 3.5, dashArray: null });
-              this.bringToFront();
-            });
-            polygon.on('mouseout', function() {
-              this.setStyle({ fillOpacity: 0.12, weight: 2.5, dashArray: dashArray });
-            });
-            cfg.areaLayer.addLayer(polygon);
-            cfg.areaPolygons[mgr] = polygon;
-          } else if (paddedHull.length === 2) {
-            var polyline = L.polyline(paddedHull, {
-              color: color,
-              weight: 6,
-              opacity: 0.7,
-              dashArray: dashArray,
-              lineJoin: 'round',
-              lineCap: 'round',
-              pane: 'areaPane'
-            });
-            polyline._origDash = dashArray;
-            polyline._isPolyline = true;
-            polyline.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
-            polyline.on('mouseover', function() {
-              this.setStyle({ opacity: 0.95, weight: 9, dashArray: null });
-              this.bringToFront();
-            });
-            polyline.on('mouseout', function() {
-              this.setStyle({ opacity: 0.7, weight: 6, dashArray: dashArray });
-            });
-            cfg.areaLayer.addLayer(polyline);
-            cfg.areaPolygons[mgr] = polyline;
-          }
-        }
+        var poly = voronoiPolys[mgr];
+        if (!poly || poly.length < 3) return;
+
+        var polygon = L.polygon(poly, {
+          color: color,
+          weight: 2,
+          opacity: 0.85,
+          dashArray: dashArray,
+          fillColor: color,
+          fillOpacity: 0.1,
+          lineJoin: 'round',
+          pane: 'areaPane'
+        });
+        polygon._origDash = dashArray;
+        polygon._isPolyline = false;
+        polygon.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
+        polygon.on('mouseover', function() {
+          this.setStyle({ fillOpacity: 0.28, weight: 3, dashArray: null });
+          this.bringToFront();
+        });
+        polygon.on('mouseout', function() {
+          this.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: dashArray });
+        });
+        cfg.areaLayer.addLayer(polygon);
+        cfg.areaPolygons[mgr] = polygon;
       });
     }
 
