@@ -403,7 +403,6 @@ function _setTargetTrendState(hasData, message) {
 
     var spread = Math.max(maxLat - minLat, maxLng - minLng);
     var sentPad = spread * 3 + 0.8;
-    var clipPad = spread * 0.14 + 0.04;
 
     var pts = realPts.slice();
     var mcLat = (minLat + maxLat) / 2, mcLng = (minLng + maxLng) / 2;
@@ -480,11 +479,9 @@ function _setTargetTrendState(hasData, message) {
       if(mB!==SENTINEL){if(!mgrSegs[mB])mgrSegs[mB]=[];mgrSegs[mB].push(seg);}
     }
 
-    var clMinLat=minLat-clipPad,clMaxLat=maxLat+clipPad;
-    var clMinLng=minLng-clipPad,clMaxLng=maxLng+clipPad;
-    function clipPoly(poly){
-      function ins(pt,e){if(e===0)return pt[1]>=clMinLng;if(e===1)return pt[1]<=clMaxLng;if(e===2)return pt[0]>=clMinLat;return pt[0]<=clMaxLat;}
-      function inter(a,b,e){var t;if(e<2){var lng=e?clMaxLng:clMinLng;t=(lng-a[1])/(b[1]-a[1]);return[a[0]+t*(b[0]-a[0]),lng];}else{var lat=e===2?clMinLat:clMaxLat;t=(lat-a[0])/(b[0]-a[0]);return[lat,a[1]+t*(b[1]-a[1])];}}
+    function clipPolyToBounds(poly,b0,b1,b2,b3){
+      function ins(pt,e){if(e===0)return pt[1]>=b2;if(e===1)return pt[1]<=b3;if(e===2)return pt[0]>=b0;return pt[0]<=b1;}
+      function inter(a,b,e){var t;if(e<2){var lng=e?b3:b2;t=(lng-a[1])/(b[1]-a[1]);return[a[0]+t*(b[0]-a[0]),lng];}else{var lat=e===2?b0:b1;t=(lat-a[0])/(b[0]-a[0]);return[lat,a[1]+t*(b[1]-a[1])];}}
       var res=poly;
       for(var e=0;e<4;e++){if(!res.length)return[];var inp=res;res=[];for(var i=0;i<inp.length;i++){var cur=inp[i],prv=inp[(i+inp.length-1)%inp.length];if(ins(cur,e)){if(!ins(prv,e))res.push(inter(prv,cur,e));res.push(cur);}else if(ins(prv,e))res.push(inter(prv,cur,e));}}
       return res;
@@ -523,7 +520,14 @@ function _setTargetTrendState(hasData, message) {
         }
         if(loopPts.length>=3)loop=loopPts;
       }
-      if(loop){var cl=clipPoly(loop);if(cl.length>=3)result[mgr]=cl;}
+      if(loop){
+        var mc=managerGroups[mgr]?managerGroups[mgr].coords:[];
+        var mL=Infinity,mH=-Infinity,mLn=Infinity,mLx=-Infinity;
+        mc.forEach(function(c){if(c[0]<mL)mL=c[0];if(c[0]>mH)mH=c[0];if(c[1]<mLn)mLn=c[1];if(c[1]>mLx)mLx=c[1];});
+        var mg=0.07;
+        var cl=clipPolyToBounds(loop,mL-mg,mH+mg,mLn-mg,mLx+mg);
+        if(cl.length>=3)result[mgr]=cl;
+      }
     }
     return result;
   }
