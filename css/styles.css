@@ -7265,11 +7265,19 @@ a,
   display: none !important;
 }
 
-/* Map Control Bar Layout */
+/* Map Section Header & Control Bar */
+.map-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .map-control-bar {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
+  gap: 0;
   flex-wrap: wrap;
 }
 
@@ -7277,15 +7285,59 @@ a,
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 5px;
+  padding: 0 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.map-toggle-group:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.map-toggle-group:last-child {
+  padding-right: 0;
 }
 
 .map-toggle-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
-  padding-left: 2px;
+  color: var(--muted-l);
+  padding-left: 3px;
+  line-height: 1.2;
+}
+
+@media (max-width: 640px) {
+  .map-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .map-control-bar {
+    gap: 12px;
+  }
+
+  .map-toggle-group {
+    padding: 0;
+    border-left: none;
+  }
+
+  .map-toggle-group:first-child {
+    padding-left: 0;
+  }
+
+  .map-control-bar .overview-rankings-toggle__btn {
+    padding: 6px 13px;
+    font-size: 0.71rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-control-bar .overview-rankings-toggle__btn {
+    padding: 5px 11px;
+    font-size: 0.68rem;
+  }
 }
 
