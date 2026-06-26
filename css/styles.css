@@ -1290,35 +1290,37 @@ canvas {
 .overview-rankings-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px;
+  gap: 3px;
+  padding: 3px;
   margin-left: auto;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: 0 10px 24px rgba(5, 6, 15, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .overview-rankings-toggle__btn {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--muted);
-  padding: 8px 14px;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 7px 16px;
   font: inherit;
-  font-size: 0.74rem;
-  font-weight: 700;
+  font-size: 0.73rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  letter-spacing: 0.01em;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .overview-rankings-toggle__btn:hover {
-  color: var(--text);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .overview-rankings-toggle__btn.active {
-  background: rgba(72, 149, 255, 0.18);
-  color: var(--text);
+  background: linear-gradient(135deg, #4895ff 0%, #2d6fd6 100%);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(72, 149, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 /* ══════════════════════════════════════ TABS ══ */

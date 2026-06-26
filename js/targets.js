@@ -306,14 +306,48 @@ function _setTargetTrendState(hasData, message) {
     });
   }
 
-  function getManagerColor(managerName) {
-    if (!managerName || managerName === 'Unknown' || managerName === 'Other') return '#a0aec0';
-    var hash = 0;
-    for (var i = 0; i < managerName.length; i++) {
-      hash = managerName.charCodeAt(i) + ((hash << 5) - hash);
+  var BAND_SCORE = {
+    Excellent: 3, Outstanding: 3,
+    Good: 2, Exceeding: 2, Meeting: 2,
+    Developing: 1, Approaching: 1,
+    'Needs Attention': 0, 'Below Standard': 0
+  };
+
+  var PERF_COLORS = [
+    { threshold: 2.5, color: '#00C875' },
+    { threshold: 1.5, color: '#4895FF' },
+    { threshold: 0.5, color: '#FFB800' },
+    { threshold: -1,  color: '#FF3B5C' }
+  ];
+
+  function getAreaPerformanceColor(items, bandField) {
+    var bf = bandField || 'cb';
+    var sum = 0, total = 0;
+    items.forEach(function(item) {
+      var s = BAND_SCORE[item[bf]];
+      if (s != null) { sum += s; total++; }
+    });
+    if (total === 0) return '#a0aec0';
+    var avg = sum / total;
+    for (var i = 0; i < PERF_COLORS.length; i++) {
+      if (avg >= PERF_COLORS[i].threshold) return PERF_COLORS[i].color;
     }
-    var hue = Math.abs(hash) % 360;
-    return 'hsl(' + hue + ', 65%, 55%)';
+    return '#FF3B5C';
+  }
+
+  var BAND_ORDER = ['Excellent', 'Outstanding', 'Good', 'Exceeding', 'Meeting', 'Developing', 'Approaching', 'Needs Attention', 'Below Standard'];
+
+  function buildAreaTooltip(mgr, items, bandField) {
+    var bf = bandField || 'cb';
+    var counts = {};
+    items.forEach(function(item) {
+      var band = item[bf];
+      if (band) counts[band] = (counts[band] || 0) + 1;
+    });
+    var parts = BAND_ORDER.filter(function(b) { return counts[b]; })
+      .map(function(b) { return counts[b] + ' ' + b; });
+    return '<strong>' + escapeHtml(mgr) + '’s Area</strong>' +
+      (parts.length ? '<br><span style="font-size:0.82em;opacity:0.85">' + parts.join(' · ') + '</span>' : '');
   }
 
   function isMapActive(selector) {
@@ -422,18 +456,19 @@ function _setTargetTrendState(hasData, message) {
         if (!ll) return;
         var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
         if (!managerGroups[ops]) {
-          managerGroups[ops] = [];
+          managerGroups[ops] = { coords: [], items: [] };
         }
-        managerGroups[ops].push(ll);
+        managerGroups[ops].coords.push(ll);
+        managerGroups[ops].items.push(item);
       });
 
       Object.keys(managerGroups).forEach(function(mgr) {
         if (mgr === 'Unknown' || mgr === 'Other') return;
-        var coords = managerGroups[mgr];
-        
+        var group = managerGroups[mgr];
+
         var uniqueCoords = [];
         var seen = {};
-        coords.forEach(function(c) {
+        group.coords.forEach(function(c) {
           var key = c[0] + ',' + c[1];
           if (!seen[key]) {
             seen[key] = true;
@@ -441,88 +476,84 @@ function _setTargetTrendState(hasData, message) {
           }
         });
 
-        var color = getManagerColor(mgr);
+        var color = getAreaPerformanceColor(group.items, cfg.bandField);
+        var tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField);
 
         if (uniqueCoords.length === 1) {
           var circle = L.circle(uniqueCoords[0], {
-            radius: 2500,
+            radius: 5000,
             color: color,
-            weight: 2,
-            opacity: 0.65,
+            weight: 2.5,
+            opacity: 0.8,
             fillColor: color,
-            fillOpacity: 0.04,
-            dashArray: '5, 5',
+            fillOpacity: 0.12,
             pane: 'areaPane'
           });
-          circle.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
+          circle.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
           circle.on('mouseover', function() {
-            this.setStyle({ fillOpacity: 0.22, weight: 3.5, dashArray: null });
+            this.setStyle({ fillOpacity: 0.28, weight: 3.5 });
             this.bringToFront();
           });
           circle.on('mouseout', function() {
-            this.setStyle({ fillOpacity: 0.04, weight: 2, dashArray: '5, 5' });
+            this.setStyle({ fillOpacity: 0.12, weight: 2.5 });
           });
           cfg.areaLayer.addLayer(circle);
         } else if (uniqueCoords.length === 2) {
           var polyline = L.polyline(uniqueCoords, {
             color: color,
             weight: 6,
-            opacity: 0.5,
-            dashArray: '5, 5',
+            opacity: 0.7,
             lineJoin: 'round',
             lineCap: 'round',
             pane: 'areaPane'
           });
-          polyline.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
+          polyline.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
           polyline.on('mouseover', function() {
-            this.setStyle({ opacity: 0.8, weight: 9 });
+            this.setStyle({ opacity: 0.95, weight: 9 });
             this.bringToFront();
           });
           polyline.on('mouseout', function() {
-            this.setStyle({ opacity: 0.5, weight: 6 });
+            this.setStyle({ opacity: 0.7, weight: 6 });
           });
           cfg.areaLayer.addLayer(polyline);
         } else if (uniqueCoords.length >= 3) {
           var hull = getConvexHull(uniqueCoords);
-          var paddedHull = padPolygon(hull, 0.02); // 0.02 degrees padding (~2.2 km)
+          var paddedHull = padPolygon(hull, 0.06); // 0.06 degrees (~6.7 km) — keeps markers inside
           if (paddedHull.length >= 3) {
             var polygon = L.polygon(paddedHull, {
               color: color,
-              weight: 2,
-              opacity: 0.65,
+              weight: 2.5,
+              opacity: 0.8,
               fillColor: color,
-              fillOpacity: 0.04,
-              dashArray: '5, 5',
+              fillOpacity: 0.12,
               lineJoin: 'round',
-              lineCap: 'round',
               pane: 'areaPane'
             });
-            polygon.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
+            polygon.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
             polygon.on('mouseover', function() {
-              this.setStyle({ fillOpacity: 0.22, weight: 3.5, dashArray: null });
+              this.setStyle({ fillOpacity: 0.28, weight: 3.5 });
               this.bringToFront();
             });
             polygon.on('mouseout', function() {
-              this.setStyle({ fillOpacity: 0.04, weight: 2, dashArray: '5, 5' });
+              this.setStyle({ fillOpacity: 0.12, weight: 2.5 });
             });
             cfg.areaLayer.addLayer(polygon);
           } else if (paddedHull.length === 2) {
             var polyline = L.polyline(paddedHull, {
               color: color,
               weight: 6,
-              opacity: 0.5,
-              dashArray: '5, 5',
+              opacity: 0.7,
               lineJoin: 'round',
               lineCap: 'round',
               pane: 'areaPane'
             });
-            polyline.bindTooltip(escapeHtml(mgr) + "'s Area", { sticky: true, className: 'map-area-tooltip' });
+            polyline.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
             polyline.on('mouseover', function() {
-              this.setStyle({ opacity: 0.8, weight: 9 });
+              this.setStyle({ opacity: 0.95, weight: 9 });
               this.bringToFront();
             });
             polyline.on('mouseout', function() {
-              this.setStyle({ opacity: 0.5, weight: 6 });
+              this.setStyle({ opacity: 0.7, weight: 6 });
             });
             cfg.areaLayer.addLayer(polyline);
           }
