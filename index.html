@@ -436,9 +436,15 @@
               <span class="dashboard-workspace__menu-icon" aria-hidden="true"></span>
               <span>Menu</span>
             </button>
-            <div class="dashboard-workspace__status">
-              <p class="dashboard-workspace__status-label">Active view</p>
-              <strong id="dashboardActiveViewLabel">Overview</strong>
+            <div class="dashboard-workspace__status-group">
+              <div class="dashboard-workspace__status">
+                <p class="dashboard-workspace__status-label">Active view</p>
+                <strong id="dashboardActiveViewLabel">Overview</strong>
+              </div>
+              <div class="dashboard-workspace__status" id="dashboardActiveIndexContainer" style="display: none;">
+                <p class="dashboard-workspace__status-label">Active Index</p>
+                <strong id="dashboardActiveIndexLabel">Relative</strong>
+              </div>
             </div>
           </div>
 
