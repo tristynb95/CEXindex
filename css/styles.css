@@ -6105,6 +6105,172 @@ body.table-fullscreen-lock {
   margin-right: 1px;
 }
 
+/* ── Word Cloud Top Signals Panel ───────────────────────────────────────── */
+.wc-sig-panel {
+  margin-top: 16px;
+  background: var(--card-2);
+  border: 1px solid var(--card-border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+}
+
+.wc-sig__header {
+  font: 700 0.72rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.wc-sig__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.wc-sig__col-label {
+  font: 700 0.72rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.wc-sig__col-label--pos { color: var(--green); }
+.wc-sig__col-label--neg { color: var(--accent); }
+
+.wc-sig__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.wc-sig__item {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.wc-sig__item:last-child { border-bottom: none; }
+
+.wc-sig__rank {
+  font: 700 0.7rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
+  color: var(--muted);
+  text-align: right;
+}
+
+.wc-sig__word {
+  font: 600 0.84rem/1.2 "Space Grotesk", Inter, system-ui, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wc-sig__bar-wrap {
+  width: 52px;
+  height: 4px;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.wc-sig__bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.wc-sig__count {
+  font: 700 0.75rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
+  color: var(--muted-l);
+  min-width: 24px;
+  text-align: right;
+}
+
+.wc-sig__empty {
+  font: 400 0.8rem/1.4 "Space Grotesk", Inter, system-ui, sans-serif;
+  color: var(--muted);
+}
+
+@media (max-width: 520px) {
+  .wc-sig__cols { grid-template-columns: 1fr; }
+  .wc-sig__bar-wrap { width: 40px; }
+}
+
+/* ── Word Cloud Drift Panel ─────────────────────────────────────────────── */
+.wc-drift-panel {
+  margin-top: 16px;
+  background: var(--card-2);
+  border: 1px solid var(--card-border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+}
+
+.wc-drift__header {
+  font: 700 0.72rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.wc-drift__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.wc-drift__col-label {
+  font: 700 0.72rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.wc-drift__col-label--up   { color: var(--green); }
+.wc-drift__col-label--down { color: var(--accent); }
+
+.wc-drift__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.wc-drift__item:last-child { border-bottom: none; }
+
+.wc-drift__word {
+  font: 600 0.84rem/1.2 "Space Grotesk", Inter, system-ui, sans-serif;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wc-drift__badge {
+  flex-shrink: 0;
+  font: 700 0.7rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
+  padding: 3px 7px;
+  border-radius: 20px;
+}
+
+.wc-drift__badge--up   { background: var(--green-d);  color: var(--green); }
+.wc-drift__badge--down { background: var(--red-d);    color: var(--accent); }
+.wc-drift__badge--new  { background: var(--blue-d);   color: var(--blue); }
+.wc-drift__badge--gone { background: rgba(144,144,184,0.12); color: var(--muted-l); }
+
+.wc-drift__empty {
+  font: 400 0.8rem/1.4 "Space Grotesk", Inter, system-ui, sans-serif;
+  color: var(--muted);
+}
+
+@media (max-width: 520px) {
+  .wc-drift__cols { grid-template-columns: 1fr; }
+}
+
 /* ══════════════════════════════════════════════════════
    MOBILE RESPONSIVE IMPROVEMENTS
    ══════════════════════════════════════════════════════ */

@@ -16,6 +16,9 @@ window.GAILS = window.GAILS || {};
   var lastTargetWordData = null;
   var lastWcParamsKey = null;     // key of last successful/empty fetch
   var lastTargetWcParamsKey = null;
+  var lastPrevWordData = null;    // previous period words (null = not fetched yet)
+  var lastPrevWcParamsKey = null; // current paramsKey at time prev was fetched
+  var lastPrevPeriodLabel = '';   // display label for prev period ("Mar 25")
   var resizeTimer = null;
 
   function ensureWordCloudTooltip(canvas) {
@@ -125,6 +128,197 @@ window.GAILS = window.GAILS || {};
   function buildWcParamsKey(body) {
     var bakeries = (body.bakery_locations || []).slice().sort().join(',');
     return (body.start_date || '') + '|' + (body.end_date || '') + '|' + bakeries;
+  }
+
+  // Returns info about the equivalent period immediately before selectedMonths,
+  // or null if there aren't enough months in allMonths to look back.
+  function buildPrevPeriodInfo(selectedMonths, allMonths) {
+    if (!selectedMonths || !selectedMonths.length || !allMonths || !allMonths.length) return null;
+    var count = selectedMonths.length;
+    var firstIdx = allMonths.indexOf(selectedMonths[0]);
+    if (firstIdx < count) return null;
+    var prevMonths = allMonths.slice(firstIdx - count, firstIdx);
+    var label = count === 1
+      ? prevMonths[0]
+      : prevMonths[0] + '–' + prevMonths[prevMonths.length - 1];
+    return {
+      months: prevMonths,
+      startDate: monthLabelToIso(prevMonths[0], false),
+      endDate: monthLabelToIso(prevMonths[prevMonths.length - 1], true),
+      label: label
+    };
+  }
+
+  // Compare two word arrays and return top-5 rising and top-5 falling words.
+  function computeWordDrift(currentWords, prevWords) {
+    var currentMap = {};
+    var prevMap = {};
+    var MIN_VAL = 3;
+
+    currentWords.forEach(function (w) { currentMap[w.word] = w; });
+    prevWords.forEach(function (w) { prevMap[w.word] = w; });
+
+    var changes = [];
+
+    currentWords.forEach(function (w) {
+      var prev = prevMap[w.word];
+      var prevVal = prev ? prev.value : 0;
+      var delta = w.value - prevVal;
+      if (Math.max(w.value, prevVal) < MIN_VAL) return;
+      changes.push({ word: w.word, sentiment: w.sentiment, currentVal: w.value, prevVal: prevVal, delta: delta, isNew: !prev });
+    });
+
+    prevWords.forEach(function (w) {
+      if (!currentMap[w.word] && w.value >= MIN_VAL) {
+        changes.push({ word: w.word, sentiment: w.sentiment, currentVal: 0, prevVal: w.value, delta: -w.value, isGone: true });
+      }
+    });
+
+    changes.sort(function (a, b) { return b.delta - a.delta; });
+
+    var rising  = changes.filter(function (c) { return c.delta > 0; }).slice(0, 5);
+    var falling = changes.filter(function (c) { return c.delta < 0; });
+    falling.sort(function (a, b) { return a.delta - b.delta; });
+    falling = falling.slice(0, 5);
+
+    return { rising: rising, falling: falling };
+  }
+
+  function renderSignalsPanel(words, panelId, posListId, negListId) {
+    var panelEl = document.getElementById(panelId);
+    if (!panelEl) return;
+
+    var positives = (words || [])
+      .filter(function (w) { return w && (w.sentiment || '').toLowerCase() === 'positive'; })
+      .sort(function (a, b) { return b.value - a.value; })
+      .slice(0, 5);
+
+    var negatives = (words || [])
+      .filter(function (w) { return w && (w.sentiment || '').toLowerCase() === 'negative'; })
+      .sort(function (a, b) { return b.value - a.value; })
+      .slice(0, 5);
+
+    if (!positives.length && !negatives.length) {
+      panelEl.hidden = true;
+      panelEl.style.display = '';
+      return;
+    }
+
+    panelEl.removeAttribute('hidden');
+    panelEl.style.display = 'block';
+
+    var renderCol = function (listId, items, color, barBg) {
+      var listEl = document.getElementById(listId);
+      if (!listEl) return;
+      listEl.innerHTML = '';
+      if (!items.length) {
+        var em = document.createElement('span');
+        em.className = 'wc-sig__empty';
+        em.textContent = 'No data';
+        listEl.appendChild(em);
+        return;
+      }
+      var maxVal = items[0].value || 1;
+      items.forEach(function (item, idx) {
+        var barPct = Math.round((item.value / maxVal) * 100);
+
+        var row = document.createElement('div');
+        row.className = 'wc-sig__item';
+
+        var rank = document.createElement('span');
+        rank.className = 'wc-sig__rank';
+        rank.textContent = idx + 1;
+
+        var word = document.createElement('span');
+        word.className = 'wc-sig__word';
+        word.style.color = color;
+        word.textContent = item.word;
+
+        var barWrap = document.createElement('div');
+        barWrap.className = 'wc-sig__bar-wrap';
+        barWrap.style.background = barBg;
+        var bar = document.createElement('div');
+        bar.className = 'wc-sig__bar';
+        bar.style.width = barPct + '%';
+        bar.style.background = color;
+        barWrap.appendChild(bar);
+
+        var count = document.createElement('span');
+        count.className = 'wc-sig__count';
+        count.textContent = item.value;
+
+        row.appendChild(rank);
+        row.appendChild(word);
+        row.appendChild(barWrap);
+        row.appendChild(count);
+        listEl.appendChild(row);
+      });
+    };
+
+    renderCol(posListId, positives, '#00C875', 'rgba(0,200,117,0.10)');
+    renderCol(negListId, negatives, '#FF3B5C', 'rgba(255,59,92,0.10)');
+  }
+
+  function hideDriftPanel(panelId) {
+    var el = document.getElementById(panelId);
+    if (el) el.hidden = true;
+  }
+
+  function renderDriftPanel(drift, prevLabel, panelId, prevLabelId, risingId, fallingId) {
+    var panelEl    = document.getElementById(panelId);
+    var prevLblEl  = document.getElementById(prevLabelId);
+    var risingEl   = document.getElementById(risingId);
+    var fallingEl  = document.getElementById(fallingId);
+
+    if (!panelEl) return;
+    if (!drift || (!drift.rising.length && !drift.falling.length)) {
+      panelEl.hidden = true;
+      return;
+    }
+
+    panelEl.hidden = false;
+    if (prevLblEl) prevLblEl.textContent = prevLabel || '';
+
+    function renderItems(container, items, dir) {
+      if (!container) return;
+      container.innerHTML = '';
+      if (!items.length) {
+        var em = document.createElement('span');
+        em.className = 'wc-drift__empty';
+        em.textContent = 'No significant changes';
+        container.appendChild(em);
+        return;
+      }
+      items.forEach(function (item) {
+        var div = document.createElement('div');
+        div.className = 'wc-drift__item';
+
+        var color = SENTIMENT_COLORS[(item.sentiment || '').toLowerCase()] || SENTIMENT_FALLBACK;
+        var wordSpan = document.createElement('span');
+        wordSpan.className = 'wc-drift__word';
+        wordSpan.style.color = color;
+        wordSpan.textContent = item.word;
+
+        var badgeSpan = document.createElement('span');
+        if (item.isNew) {
+          badgeSpan.className = 'wc-drift__badge wc-drift__badge--new';
+          badgeSpan.textContent = 'new';
+        } else if (item.isGone) {
+          badgeSpan.className = 'wc-drift__badge wc-drift__badge--gone';
+          badgeSpan.textContent = 'gone';
+        } else {
+          badgeSpan.className = 'wc-drift__badge ' + (dir === 'up' ? 'wc-drift__badge--up' : 'wc-drift__badge--down');
+          badgeSpan.textContent = (dir === 'up' ? '+' : '−') + Math.abs(item.delta);
+        }
+
+        div.appendChild(wordSpan);
+        div.appendChild(badgeSpan);
+        container.appendChild(div);
+      });
+    }
+
+    renderItems(risingEl, drift.rising, 'up');
+    renderItems(fallingEl, drift.falling, 'down');
   }
 
   function getWrapContentBox(wrap) {
@@ -450,28 +644,56 @@ window.GAILS = window.GAILS || {};
     }
 
     var paramsKey = buildWcParamsKey(body);
+    var prevInfo  = buildPrevPeriodInfo(state && state.selectedMonths, state && state.MONTHS);
 
     // Skip the API call if filters haven't changed and we already have a result
     if (!force && paramsKey === lastWcParamsKey && lastWordData !== null) {
-      if (lastWordData.length) renderWordCloud(lastWordData, canvas);
+      if (lastWordData.length) {
+        renderWordCloud(lastWordData, canvas);
+        updateSentimentUI(lastWordData, 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
+        renderSignalsPanel(lastWordData, 'wcSignalsPanel', 'wcSigPosList', 'wcSigNegList');
+      }
+      if (lastPrevWcParamsKey === paramsKey && lastPrevWordData && lastPrevWordData.length && lastWordData.length) {
+        var cachedDrift = computeWordDrift(lastWordData, lastPrevWordData);
+        renderDriftPanel(cachedDrift, lastPrevPeriodLabel, 'wcDriftPanel', 'wcDriftPrevLabel', 'wcDriftRising', 'wcDriftFalling');
+      } else {
+        hideDriftPanel('wcDriftPanel');
+      }
       return;
     }
 
     if (statusEl) { statusEl.textContent = 'Loading\u2026'; statusEl.className = 'status'; }
     if (emptyEl)  emptyEl.style.display = 'none';
+    hideDriftPanel('wcDriftPanel');
     hideWordCloudTooltip(canvas);
     canvas.__wcHitRegions = [];
 
-    fetch(ENDPOINT, {
+    var currentFetch = fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
-    })
-    .then(function (res) {
+    }).then(function (res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
-    })
-    .then(function (data) {
+    });
+
+    var prevBody = prevInfo
+      ? Object.assign({}, body, { start_date: prevInfo.startDate, end_date: prevInfo.endDate })
+      : null;
+
+    var prevFetch = prevBody
+      ? fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(prevBody)
+        }).then(function (res) { return res.ok ? res.json() : null; }).catch(function () { return null; })
+      : Promise.resolve(null);
+
+    Promise.all([currentFetch, prevFetch])
+    .then(function (results) {
+      var data     = results[0];
+      var prevData = results[1];
+
       lastWcParamsKey = paramsKey;
       var words = data.word_cloud || data.word_cloud_data || data;
       var totalSurveys = data.total_surveys_sampled != null ? data.total_surveys_sampled : null;
@@ -481,6 +703,8 @@ window.GAILS = window.GAILS || {};
         lastWordData = [];
         hideWordCloudTooltip(canvas);
         updateSentimentUI([], 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
+        renderSignalsPanel([], 'wcSignalsPanel', 'wcSigPosList', 'wcSigNegList');
+        hideDriftPanel('wcDriftPanel');
         return;
       }
       lastWordData = words;
@@ -489,12 +713,43 @@ window.GAILS = window.GAILS || {};
       if (statusEl) { statusEl.textContent = statusText; statusEl.className = 'status success'; }
       renderWordCloud(words, canvas);
       updateSentimentUI(words, 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
+
+      try {
+        renderSignalsPanel(words, 'wcSignalsPanel', 'wcSigPosList', 'wcSigNegList');
+      } catch (e) {
+        console.error('Signals panel error:', e);
+      }
+
+      // Drift panel
+      try {
+        if (prevData && prevInfo) {
+          var prevWords = prevData.word_cloud || prevData.word_cloud_data || prevData;
+          if (Array.isArray(prevWords) && prevWords.length) {
+            lastPrevWordData     = prevWords;
+            lastPrevWcParamsKey  = paramsKey;
+            lastPrevPeriodLabel  = prevInfo.label;
+            var drift = computeWordDrift(words, prevWords);
+            renderDriftPanel(drift, prevInfo.label, 'wcDriftPanel', 'wcDriftPrevLabel', 'wcDriftRising', 'wcDriftFalling');
+          } else {
+            lastPrevWordData = [];
+            lastPrevWcParamsKey = paramsKey;
+            hideDriftPanel('wcDriftPanel');
+          }
+        } else {
+          hideDriftPanel('wcDriftPanel');
+        }
+      } catch (e) {
+        console.error('Drift panel error:', e);
+        hideDriftPanel('wcDriftPanel');
+      }
     })
     .catch(function (err) {
       console.error('Word cloud error:', err);
       if (statusEl) { statusEl.textContent = 'Failed to load: ' + err.message; statusEl.className = 'status error'; }
       hideWordCloudTooltip(canvas);
       updateSentimentUI([], 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
+      renderSignalsPanel([], 'wcSignalsPanel', 'wcSigPosList', 'wcSigNegList');
+      hideDriftPanel('wcDriftPanel');
     });
   };
 
