@@ -454,9 +454,12 @@
                 <h2 class="overview-rankings-toolbar__title">Relative vs Absolute View</h2>
                 <p class="overview-rankings-toolbar__text">Switch between peer-relative CEI and benchmark-based absolute CEI for the band split, NPS scatter, radar, drag analysis, and top/bottom bakery rankings.</p>
               </div>
-              <div class="overview-rankings-toggle" role="group" aria-label="Toggle overview metric">
-                <button type="button" class="overview-rankings-toggle__btn active" data-rankings-metric="relative">Relative CEI</button>
-                <button type="button" class="overview-rankings-toggle__btn" data-rankings-metric="absolute">Absolute CEI</button>
+              <div class="map-toggle-group">
+                <span class="map-toggle-label">Index Type</span>
+                <div class="overview-rankings-toggle" role="group" aria-label="Toggle overview metric">
+                  <button type="button" class="overview-rankings-toggle__btn active" data-rankings-metric="relative">Relative</button>
+                  <button type="button" class="overview-rankings-toggle__btn" data-rankings-metric="absolute">Absolute</button>
+                </div>
               </div>
             </div>
             <div class="grid-2 overview-secondary-charts">
@@ -691,9 +694,12 @@
           <div class="tab-content" id="tab-target">
             <div class="target-subtabs" id="targetTabWorkspace">
               <div class="target-subtabs__toolbar">
-                <div class="overview-rankings-toggle" role="group" aria-label="Toggle target CEI metric" id="targetMapToggle">
-                  <button type="button" class="overview-rankings-toggle__btn" data-target-map-metric="relative">Relative CEI</button>
-                  <button type="button" class="overview-rankings-toggle__btn active" data-target-map-metric="absolute">Absolute CEI</button>
+                <div class="map-toggle-group">
+                  <span class="map-toggle-label">Index Type</span>
+                  <div class="overview-rankings-toggle" role="group" aria-label="Toggle target CEI metric" id="targetMapToggle">
+                    <button type="button" class="overview-rankings-toggle__btn" data-target-map-metric="relative">Relative</button>
+                    <button type="button" class="overview-rankings-toggle__btn active" data-target-map-metric="absolute">Absolute</button>
+                  </div>
                 </div>
               </div>
               <div class="target-subtabs__nav" role="tablist" aria-label="Target bakery views">
