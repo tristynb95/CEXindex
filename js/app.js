@@ -287,7 +287,7 @@
     dashboardKpiRow.innerHTML = [
       buildMetricCard({
         value: nps,
-        display: nps.toFixed(1),
+        display: Math.round(nps).toString(),
         eyebrow: 'Customer',
         title: 'Net Promoter Score',
         meta: 'Customer advocacy score.',
@@ -302,7 +302,7 @@
       }),
       buildMetricCard({
         value: cei,
-        display: cei.toFixed(1),
+        display: Math.round(cei).toString(),
         eyebrow: 'Index',
         title: 'Relative CEI',
         meta: 'Vs bakery peer set.',
@@ -313,7 +313,7 @@
       }),
       buildMetricCard({
         value: acei,
-        display: acei.toFixed(1),
+        display: Math.round(acei).toString(),
         eyebrow: 'Index',
         title: 'Absolute CEI',
         meta: 'Vs company benchmark.',
@@ -324,7 +324,7 @@
       }),
       buildMetricCard({
         value: dr,
-        display: dr.toFixed(1) + '%',
+        display: Math.round(dr) + '%',
         eyebrow: 'Experience',
         title: 'Drink Quality',
         meta: 'Target: 90% positive.',
@@ -334,7 +334,7 @@
       }),
       buildMetricCard({
         value: ef,
-        display: ef.toFixed(1) + '%',
+        display: Math.round(ef) + '%',
         eyebrow: 'Experience',
         title: 'Efficiency',
         meta: 'Target: 90% positive.',
@@ -344,7 +344,7 @@
       }),
       buildMetricCard({
         value: fr,
-        display: fr.toFixed(1) + '%',
+        display: Math.round(fr) + '%',
         eyebrow: 'Service',
         title: 'Friendliness',
         meta: 'Target: 90% positive.',
@@ -354,7 +354,7 @@
       }),
       buildMetricCard({
         value: ts,
-        display: ts.toFixed(1),
+        display: Math.round(ts).toString(),
         eyebrow: 'Operations',
         title: 'KV Link Times',
         meta: '100% under 5 min. Target: 75+.',
