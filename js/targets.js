@@ -500,8 +500,8 @@ function _setTargetTrendState(hasData, message) {
         if(!adj[kA])adj[kA]=[];if(!adj[kB])adj[kB]=[];
         adj[kA].push({k:kB,pt:segs[si][1]});adj[kB].push({k:kA,pt:segs[si][0]});
       }
-      var usedEdges={},loop=null;
-      for(var si=0;si<segs.length&&!loop;si++){
+      var usedEdges={},loops=[];
+      for(var si=0;si<segs.length;si++){
         var skA=ptKey(segs[si][0]),skB=ptKey(segs[si][1]);
         var eKey=skA<skB?skA+'~'+skB:skB+'~'+skA;
         if(usedEdges[eKey])continue;
@@ -518,15 +518,15 @@ function _setTargetTrendState(hasData, message) {
           if(!nxt)break;
           loopPts.push(curPt);prev=cur;cur=nxt.k;curPt=nxt.pt;
         }
-        if(loopPts.length>=3)loop=loopPts;
+        if(loopPts.length>=3)loops.push(loopPts);
       }
-      if(loop){
+      if(loops.length>0){
         var mc=managerGroups[mgr]?managerGroups[mgr].coords:[];
         var mL=Infinity,mH=-Infinity,mLn=Infinity,mLx=-Infinity;
         mc.forEach(function(c){if(c[0]<mL)mL=c[0];if(c[0]>mH)mH=c[0];if(c[1]<mLn)mLn=c[1];if(c[1]>mLx)mLx=c[1];});
         var mg=0.07;
-        var cl=clipPolyToBounds(loop,mL-mg,mH+mg,mLn-mg,mLx+mg);
-        if(cl.length>=3)result[mgr]=cl;
+        var clippedLoops=loops.map(function(lp){return clipPolyToBounds(lp,mL-mg,mH+mg,mLn-mg,mLx+mg);}).filter(function(cl){return cl.length>=3;});
+        if(clippedLoops.length>0)result[mgr]=clippedLoops;
       }
     }
     return result;
@@ -571,31 +571,35 @@ function _setTargetTrendState(hasData, message) {
         var dashArray = AREA_DASH_PATTERNS[mgrIndex % AREA_DASH_PATTERNS.length] || null;
         mgrIndex++;
 
-        var poly = voronoiPolys[mgr];
-        if (!poly || poly.length < 3) return;
+        var polyList = voronoiPolys[mgr];
+        if (!polyList || !polyList.length) return;
 
-        var polygon = L.polygon(poly, {
-          color: color,
-          weight: 2,
-          opacity: 0.85,
-          dashArray: dashArray,
-          fillColor: color,
-          fillOpacity: 0.1,
-          lineJoin: 'round',
-          pane: 'areaPane'
+        var polygons = polyList.map(function(poly) {
+          var polygon = L.polygon(poly, {
+            color: color,
+            weight: 2,
+            opacity: 0.85,
+            dashArray: dashArray,
+            fillColor: color,
+            fillOpacity: 0.1,
+            lineJoin: 'round',
+            pane: 'areaPane'
+          });
+          polygon._origDash = dashArray;
+          polygon._isPolyline = false;
+          polygon.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
+          return polygon;
         });
-        polygon._origDash = dashArray;
-        polygon._isPolyline = false;
-        polygon.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
-        polygon.on('mouseover', function() {
-          this.setStyle({ fillOpacity: 0.28, weight: 3, dashArray: null });
-          this.bringToFront();
+        polygons.forEach(function(polygon) {
+          polygon.on('mouseover', function() {
+            polygons.forEach(function(p) { p.setStyle({ fillOpacity: 0.28, weight: 3, dashArray: null }); p.bringToFront(); });
+          });
+          polygon.on('mouseout', function() {
+            polygons.forEach(function(p) { p.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: dashArray }); });
+          });
+          cfg.areaLayer.addLayer(polygon);
         });
-        polygon.on('mouseout', function() {
-          this.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: dashArray });
-        });
-        cfg.areaLayer.addLayer(polygon);
-        cfg.areaPolygons[mgr] = polygon;
+        cfg.areaPolygons[mgr] = polygons;
       });
     }
 
@@ -638,19 +642,23 @@ function _setTargetTrendState(hasData, message) {
       }
       (function(ops) {
         marker.on('mouseover', function() {
-          var area = cfg.areaPolygons && cfg.areaPolygons[ops];
-          if (!area) return;
-          if (area._isPolyline) {
-            area.setStyle({ opacity: 0.95, weight: 9, dashArray: null });
-          } else {
-            area.setStyle({ fillOpacity: 0.28, weight: 3.5, dashArray: null });
-          }
-          area.bringToFront();
+          var areas = cfg.areaPolygons && cfg.areaPolygons[ops];
+          if (!areas) return;
+          (Array.isArray(areas) ? areas : [areas]).forEach(function(area) {
+            if (area._isPolyline) {
+              area.setStyle({ opacity: 0.95, weight: 9, dashArray: null });
+            } else {
+              area.setStyle({ fillOpacity: 0.28, weight: 3.5, dashArray: null });
+            }
+            area.bringToFront();
+          });
         });
         marker.on('mouseout', function() {
-          var area = cfg.areaPolygons && cfg.areaPolygons[ops];
-          if (!area) return;
-          area.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: area._origDash });
+          var areas = cfg.areaPolygons && cfg.areaPolygons[ops];
+          if (!areas) return;
+          (Array.isArray(areas) ? areas : [areas]).forEach(function(area) {
+            area.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: area._origDash });
+          });
         });
       }(GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown'));
       cfg.markerLayer.addLayer(marker);
