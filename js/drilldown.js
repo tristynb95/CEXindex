@@ -203,7 +203,7 @@ window.GAILS = window.GAILS || {};
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.n) + '</span>'; }
         },
         {
-          label: 'CEI',
+          label: 'Score',
           render: function(row) { return metricText(row.c); }
         },
         {
@@ -235,7 +235,7 @@ window.GAILS = window.GAILS || {};
       content += '<div class="drill-topbar" data-table-fullscreen-anchor="true">' +
         '<div class="drill-summary">' +
         renderSummaryCard('Avg NPS', npsAvg) +
-        renderSummaryCard('Avg CEI', ceiAvg) +
+        renderSummaryCard('Avg Score', ceiAvg) +
         renderSummaryCard('Bakeries', npsSorted.length) +
         '</div>' +
         renderTableControls(false) +
@@ -246,7 +246,7 @@ window.GAILS = window.GAILS || {};
       var relSorted = [].concat(bakeries).sort(function(a, b) { return b.c - a.c; });
       content += renderTable(G, baseColumns.concat([
         {
-          label: 'CEI',
+          label: 'Score',
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.c) + '</span>'; }
         },
         {
@@ -285,11 +285,11 @@ window.GAILS = window.GAILS || {};
       var absSorted = [].concat(bakeries).sort(function(a, b) { return b.ac - a.ac; });
       content += renderTable(G, baseColumns.concat([
         {
-          label: 'Abs CEI',
+          label: 'Abs Score',
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.ac) + '</span>'; }
         },
         {
-          label: 'Rel CEI',
+          label: 'Rel Score',
           render: function(row) { return metricText(row.c); }
         },
         {

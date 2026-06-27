@@ -50,8 +50,8 @@ window.GAILS.renderOverviewCharts = function(data) {
   var bandKey = isAbsolute ? 'acb' : 'cb';
   var colorMap = isAbsolute ? G.ABSCOL : G.COL;
   var bandNames = isAbsolute ? G.ABS_BAND_NAMES : G.BAND_NAMES;
-  var metricLabel = isAbsolute ? 'Absolute CEI' : 'Relative CEI';
-  var altMetricLabel = isAbsolute ? 'Relative CEI' : 'Absolute CEI';
+  var metricLabel = isAbsolute ? 'Absolute Score' : 'Relative Score';
+  var altMetricLabel = isAbsolute ? 'Relative Score' : 'Absolute Score';
 
   // NPS Histogram
   var bins = []; for (var i = -10; i <= 100; i += 10) bins.push({ min: i, max: i + 10, count: 0 });
@@ -60,7 +60,7 @@ window.GAILS.renderOverviewCharts = function(data) {
 
   // CEI band split by selected lens
   var bandSplitTitle = document.getElementById('overviewBandSplitTitle');
-  if (bandSplitTitle) bandSplitTitle.textContent = 'CEI Band Split (' + metricLabel + ')';
+  if (bandSplitTitle) bandSplitTitle.textContent = 'Index Band Split (' + metricLabel + ')';
   var bandCounts = bandNames.map(function(bn) { return data.filter(function(d) { return d[bandKey] === bn; }).length; });
   G.makeChart('overviewBandSplit', { type: 'doughnut', data: { labels: bandNames, datasets: [{ data: bandCounts, backgroundColor: bandNames.map(function(bn) { return colorMap[bn]; }), borderWidth: 2, borderColor: 'rgba(24,24,40,0.6)' }] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, onClick: function(evt, elements) { if (elements.length > 0) { var idx = elements[0].index; var band = bandNames[idx]; var bakeries = data.filter(function(d) { return d[bandKey] === band; }); G.showDrillDown(band, bakeries.length + ' bakeries in this band', bakeries, rankingsMetric); } } } });
 
@@ -171,9 +171,9 @@ window.GAILS.renderTrendCharts = function(data) {
   var el;
   el = document.getElementById('trendNPSTitle');       if (el) el.textContent = trendTitle('Average NPS by Month');
   el = document.getElementById('trendCXTitle');        if (el) el.textContent = trendTitle('Average CX Scores by Month');
-  el = document.getElementById('trendAbsBandsTitle');  if (el) el.textContent = trendTitle('Absolute CEI Bands by Month');
+  el = document.getElementById('trendAbsBandsTitle');  if (el) el.textContent = trendTitle('Absolute Score Bands by Month');
   el = document.getElementById('trendTimelinessTitle');if (el) el.textContent = trendTitle('Average KV Link Times by Month');
-  el = document.getElementById('trendBandsTitle');     if (el) el.textContent = trendTitle('Relative CEI Bands by Month');
+  el = document.getElementById('trendBandsTitle');     if (el) el.textContent = trendTitle('Relative Score Bands by Month');
   el = document.getElementById('trendSpeedTitle');     if (el) el.textContent = trendTitle('Average Speed Metrics by Month');
 
   var trendNPS = RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r.n; }, 0) / mr.length : null; });
@@ -323,7 +323,7 @@ window.GAILS.renderTrendCharts = function(data) {
           + tableTitle
           + '</h3><p class="tracker-table-header__copy">'
           + tableDescription
-          + '</p></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th>NPS</th><th>Relative CEI</th><th>Absolute CEI</th><th>Responses</th>' + (selectedBakeries.length ? '<th>All Bakeries Avg NPS</th>' : '') + '</tr></thead><tbody>' +
+          + '</p></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th>NPS</th><th>Relative Score</th><th>Absolute Score</th><th>Responses</th>' + (selectedBakeries.length ? '<th>All Bakeries Avg NPS</th>' : '') + '</tr></thead><tbody>' +
           trackerTableRows.map(function(row) {
             return '<tr>'
               + '<td>' + row.month + '</td>'
@@ -342,8 +342,8 @@ window.GAILS.renderTrendCharts = function(data) {
       type: 'line', data: {
         labels: RM, datasets: [
           { label: scopeLabel + (isSingleBakery ? ' NPS' : ' Avg NPS'), data: trackerNps, borderColor: G.COL.Excellent, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-          { label: scopeLabel + (isSingleBakery ? ' Relative CEI' : ' Avg Relative CEI'), data: trackerCei, borderColor: '#4895FF', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-          { label: scopeLabel + (isSingleBakery ? ' Absolute CEI' : ' Avg Absolute CEI'), data: trackerAbsCei, borderColor: '#9B5DFF', tension: 0.3, pointRadius: 4, borderWidth: 2, borderDash: [6, 3] }
+          { label: scopeLabel + (isSingleBakery ? ' Relative Score' : ' Avg Relative Score'), data: trackerCei, borderColor: '#4895FF', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+          { label: scopeLabel + (isSingleBakery ? ' Absolute Score' : ' Avg Absolute Score'), data: trackerAbsCei, borderColor: '#9B5DFF', tension: 0.3, pointRadius: 4, borderWidth: 2, borderDash: [6, 3] }
         ].concat(selectedBakeries.length ? [
           { label: 'All Bakeries Avg NPS', data: benchmarkNps, borderColor: 'rgba(150,150,200,0.5)', borderDash: [5, 5], tension: 0.3, pointRadius: 0, borderWidth: 1.5 }
         ] : [])

@@ -18,7 +18,7 @@
     map: 'Map',
     target: 'Focus Bakeries',
     speed: 'Speed vs NPS',
-    cei: 'CEI Methodology',
+    cei: 'Coffee Experience Index Methodology',
     feedback: 'Customer Feedback'
   };
   var dashboardTabsWithKpis = {
@@ -35,7 +35,7 @@
 
   function updateHeaderSummary(bakeryCount) {
     var bakeryLabel = bakeryCount === 1 ? '1 bakery' : bakeryCount + ' bakeries';
-    document.getElementById('headerSub').textContent = formatSelectedPeriod() + ' \u00B7 ' + bakeryLabel + ' \u00B7 CEI v4.1';
+    document.getElementById('headerSub').textContent = formatSelectedPeriod() + ' \u00B7 ' + bakeryLabel + ' \u00B7 Index v4.1';
   }
 
   function rebuildRegionFilter() {
@@ -304,7 +304,7 @@
         value: cei,
         display: Math.round(cei).toString(),
         eyebrow: 'Index',
-        title: 'Relative CEI',
+        title: 'Relative Score',
         meta: 'Vs bakery peer set.',
         good: 62.5,
         warn: 37.5,
@@ -315,7 +315,7 @@
         value: acei,
         display: Math.round(acei).toString(),
         eyebrow: 'Index',
-        title: 'Absolute CEI',
+        title: 'Absolute Score',
         meta: 'Vs company benchmark.',
         good: 75,
         warn: 60,

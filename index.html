@@ -276,13 +276,13 @@
             </div>
             <div class="filter-control"><label>Band</label><br><select id="bandFilter">
               <option value="">All</option>
-              <optgroup label="— Relative CEI Band">
+              <optgroup label="— Relative Score Band">
                 <option value="Excellent">Excellent</option>
                 <option value="Good">Good</option>
                 <option value="Developing">Developing</option>
                 <option value="Needs Attention">Needs Attention</option>
               </optgroup>
-              <optgroup label="— Absolute CEI Band">
+              <optgroup label="— Absolute Score Band">
                 <option value="abs:Exceeding">Exceeding</option>
                 <option value="abs:Meeting">Meeting</option>
                 <option value="abs:Approaching">Approaching</option>
@@ -452,7 +452,7 @@
             <div class="overview-rankings-toolbar">
               <div class="overview-rankings-toolbar__copy">
                 <h2 class="overview-rankings-toolbar__title">Relative vs Absolute View</h2>
-                <p class="overview-rankings-toolbar__text">Switch between peer-relative CEI and benchmark-based absolute CEI for the band split, NPS scatter, radar, drag analysis, and top/bottom bakery rankings.</p>
+                <p class="overview-rankings-toolbar__text">Switch between peer-relative Score and benchmark-based absolute Score for the band split, NPS scatter, radar, drag analysis, and top/bottom bakery rankings.</p>
               </div>
               <div class="map-toggle-group">
                 <span class="map-toggle-label">Index Type</span>
@@ -464,28 +464,28 @@
             </div>
             <div class="grid-2 overview-secondary-charts">
               <div class="section overview-card overview-card--scatter">
-                <h2 id="npsScatterTitle">NPS vs Relative CEI</h2><canvas id="npsVsCei"></canvas>
+                <h2 id="npsScatterTitle">NPS vs Relative Score</h2><canvas id="npsVsCei"></canvas>
               </div>
               <div class="section overview-card overview-card--pie">
-                <h2 id="overviewBandSplitTitle">CEI Band Split (Relative)</h2><canvas id="overviewBandSplit"></canvas>
+                <h2 id="overviewBandSplitTitle">Score Band Split (Relative Score)</h2><canvas id="overviewBandSplit"></canvas>
               </div>
             </div>
             <div class="grid-2 overview-cei-pies">
               <div class="section overview-card overview-card--experience">
-                <h2 id="overviewRadarTitle">Customer Experience by Relative CEI Band</h2><canvas id="cxRadar" style="max-height:340px"></canvas>
+                <h2 id="overviewRadarTitle">Customer Experience by Relative Score Band</h2><canvas id="cxRadar" style="max-height:340px"></canvas>
               </div>
               <div class="section overview-card overview-card--drags">
-                <h2 id="overviewDragTitle">Biggest Drags on Relative CEI</h2>
+                <h2 id="overviewDragTitle">Biggest Drags on Relative Score</h2>
                 <p id="overviewDragText" style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Average peer-relative component score across all bakeries &mdash; shows which area is pulling the network down most versus the rest of the cohort.</p>
                 <canvas id="absComponentDrag"></canvas>
               </div>
             </div>
             <div class="grid-2 overview-rankings-grid">
               <div class="section overview-card overview-card--top">
-                <h2 id="top10Title" style="color:var(--green)">Top 10 Bakeries by Relative CEI</h2><canvas id="top10Chart" style="max-height:360px"></canvas>
+                <h2 id="top10Title" style="color:var(--green)">Top 10 Bakeries by Relative Score</h2><canvas id="top10Chart" style="max-height:360px"></canvas>
               </div>
               <div class="section overview-card overview-card--bottom">
-                <h2 id="bot10Title" style="color:var(--red)">Bottom 10 Bakeries by Relative CEI</h2><canvas id="bot10Chart" style="max-height:360px"></canvas>
+                <h2 id="bot10Title" style="color:var(--red)">Bottom 10 Bakeries by Relative Score</h2><canvas id="bot10Chart" style="max-height:360px"></canvas>
               </div>
             </div>
           </div>
@@ -502,7 +502,7 @@
             </div>
             <div class="grid-2">
               <div class="section">
-                <h2 id="trendAbsBandsTitle">Absolute CEI Bands by Month</h2>
+                <h2 id="trendAbsBandsTitle">Absolute Score Bands by Month</h2>
                 <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Network progress against company benchmarks over time &mdash; unlike the relative bands, this will shift as bakeries genuinely improve.</p>
                 <canvas id="trendAbsBands"></canvas>
               </div>
@@ -512,7 +512,7 @@
             </div>
             <div class="grid-2">
               <div class="section">
-                <h2 id="trendBandsTitle">Relative CEI Bands by Month</h2><canvas id="trendBands"></canvas>
+                <h2 id="trendBandsTitle">Relative Score Bands by Month</h2><canvas id="trendBands"></canvas>
               </div>
               <div class="section">
                 <h2 id="trendSpeedTitle">Average Speed Metrics by Month</h2><canvas id="trendSpeed"></canvas>
@@ -565,17 +565,17 @@
             </div>
           </div>
 
-          <!-- CEI METHODOLOGY -->
+          <!-- COFFEE EXPERIENCE INDEX METHODOLOGY -->
           <div class="tab-content" id="tab-cei">
             <div class="section">
               <h2>Coffee Experience Index v4 &mdash; Methodology</h2>
               <div class="explain">
                 <h3>How Do We Measure Success?</h3>
-                <p>The <strong>Coffee Experience Index (CEI)</strong> uses a 0 to 100 score to tell us how well we're doing. We look at this in two ways: <strong>Relative CEI</strong> (how you compare to other bakeries this month) and <strong>Absolute CEI</strong> (how you compare to GAIL's overall strict standards, regardless of everyone else).</p>
+                <p>The <strong>Coffee Experience Index</strong> uses a 0 to 100 score to tell us how well we're doing. We look at this in two ways: <strong>Relative Score</strong> (how you compare to other bakeries this month) and <strong>Absolute Score</strong> (how you compare to GAIL's overall strict standards, regardless of everyone else).</p>
 
                 <h3>Relative vs Absolute Explainer</h3>
-                <p><strong>Relative CEI</strong> is like a race. Every month, all bakeries line up and we rank them against each other. If you finish 1st out of 20 bakeries, your score is near 100. If you finish last, it's near 0. It doesn't matter what the actual numbers are &mdash; only where you finished in the group that month.</p>
-                <p><strong>Absolute CEI</strong> is like a test with a pass mark. The pass mark is 90%. Whether every other bakery is above or below 90% doesn't change your result &mdash; you either hit the standard or you didn't.</p>
+                <p><strong>Relative Score</strong> is like a race. Every month, all bakeries line up and we rank them against each other. If you finish 1st out of 20 bakeries, your score is near 100. If you finish last, it's near 0. It doesn't matter what the actual numbers are &mdash; only where you finished in the group that month.</p>
+                <p><strong>Absolute Score</strong> is like a test with a pass mark. The pass mark is 90%. Whether every other bakery is above or below 90% doesn't change your result &mdash; you either hit the standard or you didn't.</p>
                 <p style="font-size:0.8rem;color:var(--muted);margin-bottom:4px;">Use <strong>Relative</strong> to see who's leading the pack. Use <strong>Absolute</strong> to see if the whole network is genuinely hitting the standard.</p>
 
                 <h3>The Recipe: What Makes Up the Score?</h3>
@@ -622,8 +622,8 @@
               <h2>League Table</h2>
               <div class="league-table-toolbar" data-table-fullscreen-anchor="true">
                 <label class="league-table-toolbar__label">Sort by: <select id="sortBy" class="league-table-toolbar__select">
-                    <option value="c">CEI (Relative)</option>
-                    <option value="ac">CEI (Absolute)</option>
+                    <option value="c">Score (Relative)</option>
+                    <option value="ac">Score (Absolute)</option>
                     <option value="n">NPS</option>
                     <option value="dr">Quality</option>
                     <option value="ef">Overall Efficiency</option>
@@ -640,9 +640,9 @@
                       <th>Bakery</th>
                       <th>Region</th>
                       <th>Ops Manager</th>
-                      <th>CEI</th>
+                      <th>Score</th>
                       <th>Band</th>
-                      <th>Abs CEI</th>
+                      <th>Abs Score</th>
                       <th>Abs Band</th>
                       <th>Conf</th>
                       <th>NPS</th>
@@ -670,7 +670,7 @@
                 <div class="map-control-bar">
                   <div class="map-toggle-group">
                     <span class="map-toggle-label">Index Type</span>
-                    <div class="overview-rankings-toggle" role="group" aria-label="Toggle map CEI metric" id="networkMapToggle">
+                    <div class="overview-rankings-toggle" role="group" aria-label="Toggle map Index metric" id="networkMapToggle">
                       <button type="button" class="overview-rankings-toggle__btn active" data-map-metric="relative">Relative</button>
                       <button type="button" class="overview-rankings-toggle__btn" data-map-metric="absolute">Absolute</button>
                     </div>
@@ -696,7 +696,7 @@
               <div class="target-subtabs__toolbar">
                 <div class="map-toggle-group">
                   <span class="map-toggle-label">Index Type</span>
-                  <div class="overview-rankings-toggle" role="group" aria-label="Toggle target CEI metric" id="targetMapToggle">
+                  <div class="overview-rankings-toggle" role="group" aria-label="Toggle target Index metric" id="targetMapToggle">
                     <button type="button" class="overview-rankings-toggle__btn" data-target-map-metric="relative">Relative</button>
                     <button type="button" class="overview-rankings-toggle__btn active" data-target-map-metric="absolute">Absolute</button>
                   </div>
@@ -789,7 +789,7 @@
                   <div id="targetTrendGraphsContent">
                     <div id="trendSummaryCards" class="target-stat-grid"></div>
                     <div class="section" style="margin-bottom:10px">
-                      <h2 style="font-size:0.88rem">Average CEI &mdash; Focus vs All Bakeries</h2>
+                      <h2 style="font-size:0.88rem">Average Score &mdash; Focus vs All Bakeries</h2>
                       <canvas id="targetAvgTrend" style="max-height:260px"></canvas>
                     </div>
                     <div class="grid-2" style="margin-bottom:10px">
@@ -821,7 +821,7 @@
                     <div class="map-control-bar">
                       <div class="map-toggle-group">
                         <span class="map-toggle-label">Index Type</span>
-                        <div class="overview-rankings-toggle" role="group" aria-label="Toggle target CEI metric">
+                        <div class="overview-rankings-toggle" role="group" aria-label="Toggle target Index metric">
                           <button type="button" class="overview-rankings-toggle__btn" data-target-map-metric="relative">Relative</button>
                           <button type="button" class="overview-rankings-toggle__btn active" data-target-map-metric="absolute">Absolute</button>
                         </div>
@@ -969,7 +969,7 @@
               <p class="dashboard-footer__label">Reference pages</p>
               <div class="dashboard-footer__links">
                 <button type="button" class="dashboard-footer__link" data-footer-tab="speed">Speed vs NPS</button>
-                <button type="button" class="dashboard-footer__link" data-footer-tab="cei">CEI Methodology</button>
+                <button type="button" class="dashboard-footer__link" data-footer-tab="cei">Coffee Experience Index Methodology</button>
               </div>
             </div>
           </footer>
