@@ -909,6 +909,20 @@
                 <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--neutral"></span>Neutral</span>
                 <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--negative"></span>Negative</span>
               </div>
+
+              <div id="wcDriftPanel" class="wc-drift-panel" hidden>
+                <div class="wc-drift__header">Changes vs <span id="wcDriftPrevLabel"></span></div>
+                <div class="wc-drift__cols">
+                  <div class="wc-drift__col">
+                    <div class="wc-drift__col-label wc-drift__col-label--up">&#8593; Rising</div>
+                    <div id="wcDriftRising" class="wc-drift__items"></div>
+                  </div>
+                  <div class="wc-drift__col">
+                    <div class="wc-drift__col-label wc-drift__col-label--down">&#8595; Falling</div>
+                    <div id="wcDriftFalling" class="wc-drift__items"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
