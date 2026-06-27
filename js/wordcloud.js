@@ -189,20 +189,25 @@ window.GAILS = window.GAILS || {};
     if (!panelEl) return;
 
     var positives = (words || [])
-      .filter(function (w) { return (w.sentiment || '').toLowerCase() === 'positive'; })
+      .filter(function (w) { return w && (w.sentiment || '').toLowerCase() === 'positive'; })
       .sort(function (a, b) { return b.value - a.value; })
       .slice(0, 5);
 
     var negatives = (words || [])
-      .filter(function (w) { return (w.sentiment || '').toLowerCase() === 'negative'; })
+      .filter(function (w) { return w && (w.sentiment || '').toLowerCase() === 'negative'; })
       .sort(function (a, b) { return b.value - a.value; })
       .slice(0, 5);
 
-    if (!positives.length && !negatives.length) { panelEl.hidden = true; return; }
+    if (!positives.length && !negatives.length) {
+      panelEl.hidden = true;
+      panelEl.style.display = '';
+      return;
+    }
 
-    panelEl.hidden = false;
+    panelEl.removeAttribute('hidden');
+    panelEl.style.display = 'block';
 
-    function renderCol(listId, items, color, barBg) {
+    var renderCol = function (listId, items, color, barBg) {
       var listEl = document.getElementById(listId);
       if (!listEl) return;
       listEl.innerHTML = '';
@@ -213,7 +218,7 @@ window.GAILS = window.GAILS || {};
         listEl.appendChild(em);
         return;
       }
-      var maxVal = items[0].value;
+      var maxVal = items[0].value || 1;
       items.forEach(function (item, idx) {
         var barPct = Math.round((item.value / maxVal) * 100);
 
@@ -248,7 +253,7 @@ window.GAILS = window.GAILS || {};
         row.appendChild(count);
         listEl.appendChild(row);
       });
-    }
+    };
 
     renderCol(posListId, positives, '#00C875', 'rgba(0,200,117,0.10)');
     renderCol(negListId, negatives, '#FF3B5C', 'rgba(255,59,92,0.10)');
@@ -708,23 +713,33 @@ window.GAILS = window.GAILS || {};
       if (statusEl) { statusEl.textContent = statusText; statusEl.className = 'status success'; }
       renderWordCloud(words, canvas);
       updateSentimentUI(words, 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
-      renderSignalsPanel(words, 'wcSignalsPanel', 'wcSigPosList', 'wcSigNegList');
+
+      try {
+        renderSignalsPanel(words, 'wcSignalsPanel', 'wcSigPosList', 'wcSigNegList');
+      } catch (e) {
+        console.error('Signals panel error:', e);
+      }
 
       // Drift panel
-      if (prevData && prevInfo) {
-        var prevWords = prevData.word_cloud || prevData.word_cloud_data || prevData;
-        if (Array.isArray(prevWords) && prevWords.length) {
-          lastPrevWordData     = prevWords;
-          lastPrevWcParamsKey  = paramsKey;
-          lastPrevPeriodLabel  = prevInfo.label;
-          var drift = computeWordDrift(words, prevWords);
-          renderDriftPanel(drift, prevInfo.label, 'wcDriftPanel', 'wcDriftPrevLabel', 'wcDriftRising', 'wcDriftFalling');
+      try {
+        if (prevData && prevInfo) {
+          var prevWords = prevData.word_cloud || prevData.word_cloud_data || prevData;
+          if (Array.isArray(prevWords) && prevWords.length) {
+            lastPrevWordData     = prevWords;
+            lastPrevWcParamsKey  = paramsKey;
+            lastPrevPeriodLabel  = prevInfo.label;
+            var drift = computeWordDrift(words, prevWords);
+            renderDriftPanel(drift, prevInfo.label, 'wcDriftPanel', 'wcDriftPrevLabel', 'wcDriftRising', 'wcDriftFalling');
+          } else {
+            lastPrevWordData = [];
+            lastPrevWcParamsKey = paramsKey;
+            hideDriftPanel('wcDriftPanel');
+          }
         } else {
-          lastPrevWordData = [];
-          lastPrevWcParamsKey = paramsKey;
           hideDriftPanel('wcDriftPanel');
         }
-      } else {
+      } catch (e) {
+        console.error('Drift panel error:', e);
         hideDriftPanel('wcDriftPanel');
       }
     })
