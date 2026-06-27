@@ -500,13 +500,29 @@ function _setTargetTrendState(hasData, message) {
         if(!adj[kA])adj[kA]=[];if(!adj[kB])adj[kB]=[];
         adj[kA].push({k:kB,pt:segs[si][1]});adj[kB].push({k:kA,pt:segs[si][0]});
       }
-      var usedEdges={},loops=[];
+      // Open-chain segments (manager territory open on one side, e.g. split across geography)
+      // have end-vertices with degree 1. Starting traversal mid-chain fragments it into
+      // pieces too short to render. Sort so open-end segments come first and are
+      // oriented with the open end as the start vertex, ensuring the full chain is walked.
+      var openEnds={};
+      Object.keys(adj).forEach(function(k){if(adj[k].length===1)openEnds[k]=true;});
+      var orderedSegs=[];
       for(var si=0;si<segs.length;si++){
-        var skA=ptKey(segs[si][0]),skB=ptKey(segs[si][1]);
+        var kA=ptKey(segs[si][0]),kB=ptKey(segs[si][1]);
+        if(openEnds[kA])orderedSegs.push(segs[si]);
+        else if(openEnds[kB])orderedSegs.push([segs[si][1],segs[si][0]]);
+      }
+      for(var si=0;si<segs.length;si++){
+        var kA=ptKey(segs[si][0]),kB=ptKey(segs[si][1]);
+        if(!openEnds[kA]&&!openEnds[kB])orderedSegs.push(segs[si]);
+      }
+      var usedEdges={},loops=[];
+      for(var si=0;si<orderedSegs.length;si++){
+        var skA=ptKey(orderedSegs[si][0]),skB=ptKey(orderedSegs[si][1]);
         var eKey=skA<skB?skA+'~'+skB:skB+'~'+skA;
         if(usedEdges[eKey])continue;
         usedEdges[eKey]=true;
-        var loopPts=[segs[si][0]],prev=skA,cur=skB,curPt=segs[si][1],safety=0;
+        var loopPts=[orderedSegs[si][0]],prev=skA,cur=skB,curPt=orderedSegs[si][1],safety=0;
         while(cur!==skA&&safety++<20000){
           var ns=adj[cur]||[],nxt=null;
           for(var ni=0;ni<ns.length;ni++){
