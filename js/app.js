@@ -288,7 +288,7 @@
       buildMetricCard({
         value: nps,
         display: Math.round(nps).toString(),
-        eyebrow: 'Customer',
+        eyebrow: 'NPS',
         title: 'Net Promoter Score',
         meta: 'Customer advocacy score.',
         bands: [
@@ -325,7 +325,7 @@
       buildMetricCard({
         value: dr,
         display: Math.round(dr) + '%',
-        eyebrow: 'Experience',
+        eyebrow: 'SHINE',
         title: 'Drink Quality',
         meta: 'Target: 90% positive.',
         good: 90,
@@ -335,7 +335,7 @@
       buildMetricCard({
         value: ef,
         display: Math.round(ef) + '%',
-        eyebrow: 'Experience',
+        eyebrow: 'SHINE',
         title: 'Efficiency',
         meta: 'Target: 90% positive.',
         good: 90,
@@ -345,7 +345,7 @@
       buildMetricCard({
         value: fr,
         display: Math.round(fr) + '%',
-        eyebrow: 'Service',
+        eyebrow: 'SHINE',
         title: 'Friendliness',
         meta: 'Target: 90% positive.',
         good: 90,
@@ -355,7 +355,7 @@
       buildMetricCard({
         value: ts,
         display: Math.round(ts).toString(),
-        eyebrow: 'Operations',
+        eyebrow: 'Speed',
         title: 'KV Link Times',
         meta: '100% under 5 min. Target: 75+.',
         good: 75,
@@ -365,7 +365,7 @@
       buildMetricCard({
         value: o5,
         display: o5.toFixed(1) + '%',
-        eyebrow: 'Operations',
+        eyebrow: 'Speed',
         title: 'Orders >5 Min',
         meta: 'Target: below 2%.',
         good: 2,
