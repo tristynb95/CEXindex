@@ -6105,8 +6105,8 @@ body.table-fullscreen-lock {
   margin-right: 1px;
 }
 
-/* ── Word Cloud Top Concerns Panel ─────────────────────────────────────── */
-.wc-neg-panel {
+/* ── Word Cloud Top Signals Panel ───────────────────────────────────────── */
+.wc-sig-panel {
   margin-top: 16px;
   background: var(--card-2);
   border: 1px solid var(--card-border);
@@ -6114,80 +6114,88 @@ body.table-fullscreen-lock {
   padding: 14px 16px;
 }
 
-.wc-neg__header {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.wc-neg__title {
+.wc-sig__header {
   font: 700 0.72rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--accent);
-}
-
-.wc-neg__sub {
-  font: 400 0.72rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
   color: var(--muted);
+  margin-bottom: 12px;
 }
 
-.wc-neg__list {
+.wc-sig__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.wc-sig__col-label {
+  font: 700 0.72rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.wc-sig__col-label--pos { color: var(--green); }
+.wc-sig__col-label--neg { color: var(--accent); }
+
+.wc-sig__list {
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
-.wc-neg__item {
+.wc-sig__item {
   display: grid;
-  grid-template-columns: 20px 1fr auto auto;
+  grid-template-columns: 16px 1fr auto auto;
   align-items: center;
-  gap: 10px;
-  padding: 6px 0;
+  gap: 8px;
+  padding: 5px 0;
   border-bottom: 1px solid var(--card-border);
 }
 
-.wc-neg__item:last-child { border-bottom: none; }
+.wc-sig__item:last-child { border-bottom: none; }
 
-.wc-neg__rank {
-  font: 700 0.72rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
+.wc-sig__rank {
+  font: 700 0.7rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
   color: var(--muted);
   text-align: right;
 }
 
-.wc-neg__word {
-  font: 600 0.88rem/1.2 "Space Grotesk", Inter, system-ui, sans-serif;
-  color: var(--accent);
+.wc-sig__word {
+  font: 600 0.84rem/1.2 "Space Grotesk", Inter, system-ui, sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.wc-neg__bar-wrap {
-  width: 80px;
-  height: 5px;
-  background: rgba(255, 59, 92, 0.12);
+.wc-sig__bar-wrap {
+  width: 52px;
+  height: 4px;
   border-radius: 3px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
-.wc-neg__bar {
+.wc-sig__bar {
   height: 100%;
-  background: var(--accent);
   border-radius: 3px;
   transition: width 0.4s ease;
 }
 
-.wc-neg__count {
-  font: 700 0.78rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
+.wc-sig__count {
+  font: 700 0.75rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
   color: var(--muted-l);
-  min-width: 28px;
+  min-width: 24px;
   text-align: right;
 }
 
-@media (max-width: 400px) {
-  .wc-neg__bar-wrap { width: 48px; }
+.wc-sig__empty {
+  font: 400 0.8rem/1.4 "Space Grotesk", Inter, system-ui, sans-serif;
+  color: var(--muted);
+}
+
+@media (max-width: 520px) {
+  .wc-sig__cols { grid-template-columns: 1fr; }
+  .wc-sig__bar-wrap { width: 40px; }
 }
 
 /* ── Word Cloud Drift Panel ─────────────────────────────────────────────── */

@@ -184,53 +184,74 @@ window.GAILS = window.GAILS || {};
     return { rising: rising, falling: falling };
   }
 
-  function renderNegativesPanel(words, panelId, listId) {
+  function renderSignalsPanel(words, panelId, posListId, negListId) {
     var panelEl = document.getElementById(panelId);
-    var listEl  = document.getElementById(listId);
-    if (!panelEl || !listEl) return;
+    if (!panelEl) return;
+
+    var positives = (words || [])
+      .filter(function (w) { return (w.sentiment || '').toLowerCase() === 'positive'; })
+      .sort(function (a, b) { return b.value - a.value; })
+      .slice(0, 5);
 
     var negatives = (words || [])
       .filter(function (w) { return (w.sentiment || '').toLowerCase() === 'negative'; })
       .sort(function (a, b) { return b.value - a.value; })
-      .slice(0, 8);
+      .slice(0, 5);
 
-    if (!negatives.length) { panelEl.hidden = true; return; }
+    if (!positives.length && !negatives.length) { panelEl.hidden = true; return; }
 
-    var maxVal = negatives[0].value;
     panelEl.hidden = false;
-    listEl.innerHTML = '';
 
-    negatives.forEach(function (item, idx) {
-      var barPct = Math.round((item.value / maxVal) * 100);
+    function renderCol(listId, items, color, barBg) {
+      var listEl = document.getElementById(listId);
+      if (!listEl) return;
+      listEl.innerHTML = '';
+      if (!items.length) {
+        var em = document.createElement('span');
+        em.className = 'wc-sig__empty';
+        em.textContent = 'No data';
+        listEl.appendChild(em);
+        return;
+      }
+      var maxVal = items[0].value;
+      items.forEach(function (item, idx) {
+        var barPct = Math.round((item.value / maxVal) * 100);
 
-      var row = document.createElement('div');
-      row.className = 'wc-neg__item';
+        var row = document.createElement('div');
+        row.className = 'wc-sig__item';
 
-      var rank = document.createElement('span');
-      rank.className = 'wc-neg__rank';
-      rank.textContent = idx + 1;
+        var rank = document.createElement('span');
+        rank.className = 'wc-sig__rank';
+        rank.textContent = idx + 1;
 
-      var word = document.createElement('span');
-      word.className = 'wc-neg__word';
-      word.textContent = item.word;
+        var word = document.createElement('span');
+        word.className = 'wc-sig__word';
+        word.style.color = color;
+        word.textContent = item.word;
 
-      var barWrap = document.createElement('div');
-      barWrap.className = 'wc-neg__bar-wrap';
-      var bar = document.createElement('div');
-      bar.className = 'wc-neg__bar';
-      bar.style.width = barPct + '%';
-      barWrap.appendChild(bar);
+        var barWrap = document.createElement('div');
+        barWrap.className = 'wc-sig__bar-wrap';
+        barWrap.style.background = barBg;
+        var bar = document.createElement('div');
+        bar.className = 'wc-sig__bar';
+        bar.style.width = barPct + '%';
+        bar.style.background = color;
+        barWrap.appendChild(bar);
 
-      var count = document.createElement('span');
-      count.className = 'wc-neg__count';
-      count.textContent = item.value;
+        var count = document.createElement('span');
+        count.className = 'wc-sig__count';
+        count.textContent = item.value;
 
-      row.appendChild(rank);
-      row.appendChild(word);
-      row.appendChild(barWrap);
-      row.appendChild(count);
-      listEl.appendChild(row);
-    });
+        row.appendChild(rank);
+        row.appendChild(word);
+        row.appendChild(barWrap);
+        row.appendChild(count);
+        listEl.appendChild(row);
+      });
+    }
+
+    renderCol(posListId, positives, '#00C875', 'rgba(0,200,117,0.10)');
+    renderCol(negListId, negatives, '#FF3B5C', 'rgba(255,59,92,0.10)');
   }
 
   function hideDriftPanel(panelId) {
@@ -625,7 +646,7 @@ window.GAILS = window.GAILS || {};
       if (lastWordData.length) {
         renderWordCloud(lastWordData, canvas);
         updateSentimentUI(lastWordData, 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
-        renderNegativesPanel(lastWordData, 'wcNegPanel', 'wcNegList');
+        renderSignalsPanel(lastWordData, 'wcSignalsPanel', 'wcSigPosList', 'wcSigNegList');
       }
       if (lastPrevWcParamsKey === paramsKey && lastPrevWordData && lastPrevWordData.length && lastWordData.length) {
         var cachedDrift = computeWordDrift(lastWordData, lastPrevWordData);
@@ -677,7 +698,7 @@ window.GAILS = window.GAILS || {};
         lastWordData = [];
         hideWordCloudTooltip(canvas);
         updateSentimentUI([], 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
-        renderNegativesPanel([], 'wcNegPanel', 'wcNegList');
+        renderSignalsPanel([], 'wcSignalsPanel', 'wcSigPosList', 'wcSigNegList');
         hideDriftPanel('wcDriftPanel');
         return;
       }
@@ -687,7 +708,7 @@ window.GAILS = window.GAILS || {};
       if (statusEl) { statusEl.textContent = statusText; statusEl.className = 'status success'; }
       renderWordCloud(words, canvas);
       updateSentimentUI(words, 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
-      renderNegativesPanel(words, 'wcNegPanel', 'wcNegList');
+      renderSignalsPanel(words, 'wcSignalsPanel', 'wcSigPosList', 'wcSigNegList');
 
       // Drift panel
       if (prevData && prevInfo) {
@@ -712,7 +733,7 @@ window.GAILS = window.GAILS || {};
       if (statusEl) { statusEl.textContent = 'Failed to load: ' + err.message; statusEl.className = 'status error'; }
       hideWordCloudTooltip(canvas);
       updateSentimentUI([], 'wcSentimentBar', 'wcSentimentScore', 'wcSentimentMarker', 'wcSentimentTag', 'wcSentimentTagDot', 'wcSentimentTagValue');
-      renderNegativesPanel([], 'wcNegPanel', 'wcNegList');
+      renderSignalsPanel([], 'wcSignalsPanel', 'wcSigPosList', 'wcSigNegList');
       hideDriftPanel('wcDriftPanel');
     });
   };

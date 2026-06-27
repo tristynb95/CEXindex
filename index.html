@@ -910,12 +910,18 @@
                 <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--negative"></span>Negative</span>
               </div>
 
-              <div id="wcNegPanel" class="wc-neg-panel" hidden>
-                <div class="wc-neg__header">
-                  <span class="wc-neg__title">Top Concerns</span>
-                  <span class="wc-neg__sub">Highest-frequency negative words</span>
+              <div id="wcSignalsPanel" class="wc-sig-panel" hidden>
+                <div class="wc-sig__header">Top Signals</div>
+                <div class="wc-sig__cols">
+                  <div class="wc-sig__col">
+                    <div class="wc-sig__col-label wc-sig__col-label--pos">&#10003; Strengths</div>
+                    <div id="wcSigPosList" class="wc-sig__list"></div>
+                  </div>
+                  <div class="wc-sig__col">
+                    <div class="wc-sig__col-label wc-sig__col-label--neg">&#10007; Concerns</div>
+                    <div id="wcSigNegList" class="wc-sig__list"></div>
+                  </div>
                 </div>
-                <div id="wcNegList" class="wc-neg__list"></div>
               </div>
 
               <div id="wcDriftPanel" class="wc-drift-panel" hidden>
