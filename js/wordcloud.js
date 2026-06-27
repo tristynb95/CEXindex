@@ -19,6 +19,9 @@ window.GAILS = window.GAILS || {};
   var lastPrevWordData = null;    // previous period words (null = not fetched yet)
   var lastPrevWcParamsKey = null; // current paramsKey at time prev was fetched
   var lastPrevPeriodLabel = '';   // display label for prev period ("Mar 25")
+  var lastTargetPrevWordData = null;
+  var lastTargetPrevWcParamsKey = null;
+  var lastTargetPrevPeriodLabel = '';
   var resizeTimer = null;
 
   function ensureWordCloudTooltip(canvas) {
@@ -437,10 +440,8 @@ window.GAILS = window.GAILS || {};
   }
 
   function updateSentimentUI(words, barId, scoreId, markerId, tagId, tagDotId, tagValueId) {
-    var barEl   = document.getElementById(barId);
-    var scoreEl = document.getElementById(scoreId);
-    var markerEl = document.getElementById(markerId);
-    var tagEl   = document.getElementById(tagId);
+    var barEl    = document.getElementById(barId);
+    var tagEl    = document.getElementById(tagId);
     var tagDotEl = document.getElementById(tagDotId);
     var tagValEl = document.getElementById(tagValueId);
 
@@ -450,14 +451,35 @@ window.GAILS = window.GAILS || {};
       return;
     }
 
+    var posW = 0, neutW = 0, negW = 0;
+    words.forEach(function (w) {
+      var s = (w.sentiment || '').toLowerCase();
+      if (s === 'positive') posW += w.value;
+      else if (s === 'negative') negW += w.value;
+      else neutW += w.value;
+    });
+    var total  = posW + neutW + negW || 1;
+    var posPct = (posW / total) * 100;
+    var neutPct = (neutW / total) * 100;
+    var negPct  = (negW / total) * 100;
+
+    barEl.hidden = false;
+    var trackEl = barEl.querySelector('.wc-sentiment-bar__track');
+    if (trackEl) {
+      trackEl.innerHTML =
+        '<div class="wc-sentiment-bar__seg wc-sentiment-bar__seg--pos" style="flex-basis:' + posPct.toFixed(2) + '%" title="Positive ' + Math.round(posPct) + '%">' +
+          (posPct >= 10 ? '<span>' + Math.round(posPct) + '%</span>' : '') +
+        '</div>' +
+        '<div class="wc-sentiment-bar__seg wc-sentiment-bar__seg--neu" style="flex-basis:' + neutPct.toFixed(2) + '%" title="Neutral ' + Math.round(neutPct) + '%">' +
+          (neutPct >= 10 ? '<span>' + Math.round(neutPct) + '%</span>' : '') +
+        '</div>' +
+        '<div class="wc-sentiment-bar__seg wc-sentiment-bar__seg--neg" style="flex-basis:' + negPct.toFixed(2) + '%" title="Negative ' + Math.round(negPct) + '%">' +
+          (negPct >= 10 ? '<span>' + Math.round(negPct) + '%</span>' : '') +
+        '</div>';
+    }
+
     var score = computeSentimentScore(words);
     var color = sentimentColor(score);
-
-    // Update bar
-    barEl.hidden = false;
-    if (markerEl) { markerEl.style.left = score + '%'; markerEl.style.borderColor = color; markerEl.style.color = color; markerEl.dataset.score = score; }
-
-    // Update tag
     if (tagEl) {
       tagEl.hidden = false;
       if (tagDotEl) tagDotEl.style.background = color;
@@ -753,7 +775,7 @@ window.GAILS = window.GAILS || {};
     });
   };
 
-  // ── Target Bakeries Word Cloud ─────────────────────────────────────────────
+  // ── Focus Bakeries Word Cloud ─────────────────────────────────────────────
 
   GAILS.fetchTargetWordCloud = function (force) {
     var G        = window.GAILS;
@@ -762,7 +784,7 @@ window.GAILS = window.GAILS || {};
     var canvas   = document.getElementById('wcTargetCanvas');
     var emptyEl  = document.getElementById('wcTargetEmpty');
 
-    // Build request body first — target bakeries only (Needs Attention + Developing)
+    // Build request body first -- focus bakeries only (Needs Attention + Developing)
     var body = {};
     if (G && typeof G.getData === 'function' && state && state.ALL && state.ALL.length) {
       var filtered = G.getData();
@@ -777,15 +799,17 @@ window.GAILS = window.GAILS || {};
         }
       });
       if (bakeries.length === 0) {
-        // No target bakeries — show empty state without hitting the API
+        // No focus bakeries -- show empty state without hitting the API
         var emptyKey = buildWcParamsKey(body);
         if (!force && emptyKey === lastTargetWcParamsKey && lastTargetWordData !== null) return;
-        if (statusEl) { statusEl.textContent = 'No target bakeries for the current selection.'; statusEl.className = 'status'; }
+        if (statusEl) { statusEl.textContent = 'No focus bakeries for the current selection.'; statusEl.className = 'status'; }
         if (emptyEl)  emptyEl.style.display = '';
         lastTargetWordData = [];
         lastTargetWcParamsKey = emptyKey;
         hideWordCloudTooltip(canvas);
         canvas.__wcHitRegions = [];
+        renderSignalsPanel([], 'wcTargetSignalsPanel', 'wcTargetSigPosList', 'wcTargetSigNegList');
+        hideDriftPanel('wcTargetDriftPanel');
         return;
       }
       body.bakery_locations = bakeries;
@@ -796,28 +820,56 @@ window.GAILS = window.GAILS || {};
     }
 
     var paramsKey = buildWcParamsKey(body);
+    var prevInfo  = buildPrevPeriodInfo(state && state.selectedMonths, state && state.MONTHS);
 
     // Skip the API call if filters haven't changed and we already have a result
     if (!force && paramsKey === lastTargetWcParamsKey && lastTargetWordData !== null) {
-      if (lastTargetWordData.length) renderWordCloud(lastTargetWordData, canvas);
+      if (lastTargetWordData.length) {
+        renderWordCloud(lastTargetWordData, canvas);
+        updateSentimentUI(lastTargetWordData, 'wcTargetSentimentBar', 'wcTargetSentimentScore', 'wcTargetSentimentMarker', 'wcTargetSentimentTag', 'wcTargetSentimentTagDot', 'wcTargetSentimentTagValue');
+        renderSignalsPanel(lastTargetWordData, 'wcTargetSignalsPanel', 'wcTargetSigPosList', 'wcTargetSigNegList');
+      }
+      if (lastTargetPrevWcParamsKey === paramsKey && lastTargetPrevWordData && lastTargetPrevWordData.length && lastTargetWordData.length) {
+        var cachedDrift = computeWordDrift(lastTargetWordData, lastTargetPrevWordData);
+        renderDriftPanel(cachedDrift, lastTargetPrevPeriodLabel, 'wcTargetDriftPanel', 'wcTargetDriftPrevLabel', 'wcTargetDriftRising', 'wcTargetDriftFalling');
+      } else {
+        hideDriftPanel('wcTargetDriftPanel');
+      }
       return;
     }
 
-    if (statusEl) { statusEl.textContent = 'Loading\u2026'; statusEl.className = 'status'; }
+    if (statusEl) { statusEl.textContent = 'Loading…'; statusEl.className = 'status'; }
     if (emptyEl)  emptyEl.style.display = 'none';
+    hideDriftPanel('wcTargetDriftPanel');
     hideWordCloudTooltip(canvas);
     canvas.__wcHitRegions = [];
 
-    fetch(ENDPOINT, {
+    var currentFetch = fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
-    })
-    .then(function (res) {
+    }).then(function (res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
-    })
-    .then(function (data) {
+    });
+
+    var prevBody = prevInfo
+      ? Object.assign({}, body, { start_date: prevInfo.startDate, end_date: prevInfo.endDate })
+      : null;
+
+    var prevFetch = prevBody
+      ? fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(prevBody)
+        }).then(function (res) { return res.ok ? res.json() : null; }).catch(function () { return null; })
+      : Promise.resolve(null);
+
+    Promise.all([currentFetch, prevFetch])
+    .then(function (results) {
+      var data     = results[0];
+      var prevData = results[1];
+
       lastTargetWcParamsKey = paramsKey;
       var words = data.word_cloud || data.word_cloud_data || data;
       var totalSurveys = data.total_surveys_sampled != null ? data.total_surveys_sampled : null;
@@ -827,20 +879,52 @@ window.GAILS = window.GAILS || {};
         lastTargetWordData = [];
         hideWordCloudTooltip(canvas);
         updateSentimentUI([], 'wcTargetSentimentBar', 'wcTargetSentimentScore', 'wcTargetSentimentMarker', 'wcTargetSentimentTag', 'wcTargetSentimentTagDot', 'wcTargetSentimentTagValue');
+        renderSignalsPanel([], 'wcTargetSignalsPanel', 'wcTargetSigPosList', 'wcTargetSigNegList');
+        hideDriftPanel('wcTargetDriftPanel');
         return;
       }
       lastTargetWordData = words;
       var statusText = words.length + ' words';
-      if (totalSurveys !== null) statusText += ' \u00b7 ' + totalSurveys.toLocaleString() + ' surveys';
+      if (totalSurveys !== null) statusText += ' · ' + totalSurveys.toLocaleString() + ' surveys';
       if (statusEl) { statusEl.textContent = statusText; statusEl.className = 'status success'; }
       renderWordCloud(words, canvas);
       updateSentimentUI(words, 'wcTargetSentimentBar', 'wcTargetSentimentScore', 'wcTargetSentimentMarker', 'wcTargetSentimentTag', 'wcTargetSentimentTagDot', 'wcTargetSentimentTagValue');
+
+      try {
+        renderSignalsPanel(words, 'wcTargetSignalsPanel', 'wcTargetSigPosList', 'wcTargetSigNegList');
+      } catch (e) {
+        console.error('Target signals panel error:', e);
+      }
+
+      try {
+        if (prevData && prevInfo) {
+          var prevWords = prevData.word_cloud || prevData.word_cloud_data || prevData;
+          if (Array.isArray(prevWords) && prevWords.length) {
+            lastTargetPrevWordData    = prevWords;
+            lastTargetPrevWcParamsKey = paramsKey;
+            lastTargetPrevPeriodLabel = prevInfo.label;
+            var drift = computeWordDrift(words, prevWords);
+            renderDriftPanel(drift, prevInfo.label, 'wcTargetDriftPanel', 'wcTargetDriftPrevLabel', 'wcTargetDriftRising', 'wcTargetDriftFalling');
+          } else {
+            lastTargetPrevWordData = [];
+            lastTargetPrevWcParamsKey = paramsKey;
+            hideDriftPanel('wcTargetDriftPanel');
+          }
+        } else {
+          hideDriftPanel('wcTargetDriftPanel');
+        }
+      } catch (e) {
+        console.error('Target drift panel error:', e);
+        hideDriftPanel('wcTargetDriftPanel');
+      }
     })
     .catch(function (err) {
       console.error('Target word cloud error:', err);
       if (statusEl) { statusEl.textContent = 'Failed to load: ' + err.message; statusEl.className = 'status error'; }
       hideWordCloudTooltip(canvas);
       updateSentimentUI([], 'wcTargetSentimentBar', 'wcTargetSentimentScore', 'wcTargetSentimentMarker', 'wcTargetSentimentTag', 'wcTargetSentimentTagDot', 'wcTargetSentimentTagValue');
+      renderSignalsPanel([], 'wcTargetSignalsPanel', 'wcTargetSigPosList', 'wcTargetSigNegList');
+      hideDriftPanel('wcTargetDriftPanel');
     });
   };
 

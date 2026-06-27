@@ -5448,7 +5448,7 @@ body.table-fullscreen-lock {
   color: var(--accent);
 }
 
-/* ── Target Bakeries Redesign ─────────────────── */
+/* ── Focus Bakeries Redesign ─────────────────── */
 #tab-target .section {
   padding: 16px 20px;
   margin-bottom: 10px;
@@ -6014,50 +6014,31 @@ body.table-fullscreen-lock {
 }
 
 .wc-sentiment-bar__track {
-  position: relative;
-  height: 8px;
-  border-radius: 4px;
-  background: linear-gradient(to right, #FF3B5C 0%, #FF8C42 30%, #F5C842 55%, #5BD88A 80%, #00C875 100%);
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.35);
-}
-
-.wc-sentiment-bar__marker {
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2.5px solid currentColor;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-  transition: left 0.5s cubic-bezier(.4,0,.2,1), border-color 0.3s;
-  pointer-events: all;
-  cursor: default;
-}
-
-.wc-sentiment-bar__marker::after {
-  content: attr(data-score) '/100';
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: #1a1a2e;
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 4px 8px;
+  display: flex;
+  height: 18px;
   border-radius: 6px;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
 }
 
-.wc-sentiment-bar__marker:hover::after {
-  opacity: 1;
+.wc-sentiment-bar__seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: flex-basis 0.5s cubic-bezier(.4,0,.2,1);
+  min-width: 0;
 }
+
+.wc-sentiment-bar__seg--pos { background: #00C875; }
+.wc-sentiment-bar__seg--neu { background: #9899A6; }
+.wc-sentiment-bar__seg--neg { background: #FF3B5C; }
 
 .wc-sentiment-bar__labels {
   display: flex;

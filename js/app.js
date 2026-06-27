@@ -16,7 +16,7 @@
     trends: 'Trends',
     table: 'League Table',
     map: 'Map',
-    target: 'Target Bakeries',
+    target: 'Focus Bakeries',
     speed: 'Speed vs NPS',
     cei: 'CEI Methodology',
     feedback: 'Customer Feedback'
@@ -356,7 +356,7 @@
         value: ts,
         display: ts.toFixed(1),
         eyebrow: 'Operations',
-        title: 'Barista Speed',
+        title: 'KV Link Times',
         meta: '100% under 5 min. Target: 75+.',
         good: 75,
         warn: 50,

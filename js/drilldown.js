@@ -223,7 +223,7 @@ window.GAILS = window.GAILS || {};
           render: function(row) { return metricText(row.fr, '%'); }
         },
         {
-          label: 'Barista Speed',
+          label: 'KV Link Times',
           render: function(row) { return metricText(row.ts); }
         },
         {
@@ -266,7 +266,7 @@ window.GAILS = window.GAILS || {};
           render: function(row) { return metricText(row.fr, '%'); }
         },
         {
-          label: 'Barista Speed',
+          label: 'KV Link Times',
           render: function(row) { return metricText(row.ts); }
         },
         {
@@ -318,7 +318,7 @@ window.GAILS = window.GAILS || {};
           }
         },
         {
-          label: 'Barista Speed',
+          label: 'KV Link Times',
           render: function(row) { return metricText(row.ts); }
         },
         {

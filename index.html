@@ -62,7 +62,7 @@
           </div>
           <div class="login-hero__score">
             <span class="login-hero__score-label">Prioritise</span>
-            <strong>Target bakeries</strong>
+            <strong>Focus bakeries</strong>
             <p>Surface where coaching and operational support will make the biggest difference.</p>
           </div>
           <div class="login-hero__score">
@@ -355,7 +355,7 @@
                 <strong>Overview</strong>
               </span>
             </button>
-            <button type="button" class="tab dashboard-nav__btn" data-tab="target" aria-label="Target Bakeries">
+            <button type="button" class="tab dashboard-nav__btn" data-tab="target" aria-label="Focus Bakeries">
               <span class="dashboard-nav__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" focusable="false">
                   <circle cx="12" cy="12" r="7"></circle>
@@ -366,7 +366,7 @@
               </span>
               <span class="dashboard-nav__content">
                 <span class="dashboard-nav__eyebrow">Priority</span>
-                <strong>Target Bakeries</strong>
+                <strong>Focus Bakeries</strong>
               </span>
             </button>
             <button type="button" class="tab dashboard-nav__btn" data-tab="trends" aria-label="Trends">
@@ -507,7 +507,7 @@
                 <canvas id="trendAbsBands"></canvas>
               </div>
               <div class="section">
-                <h2 id="trendTimelinessTitle">Average Barista Speed by Month</h2><canvas id="trendTimeliness"></canvas>
+                <h2 id="trendTimelinessTitle">Average KV Link Times by Month</h2><canvas id="trendTimeliness"></canvas>
               </div>
             </div>
             <div class="grid-2">
@@ -628,7 +628,7 @@
                     <option value="dr">Quality</option>
                     <option value="ef">Overall Efficiency</option>
                     <option value="fr">Friendliness</option>
-                    <option value="ts">Barista Speed</option>
+                    <option value="ts">KV Link Times</option>
                     <option value="o5">Over 5 Min</option>
                   </select></label>
               </div>
@@ -650,7 +650,7 @@
                       <th>Quality</th>
                       <th>Efficiency</th>
                       <th>Friendliness</th>
-                      <th>Barista Speed</th>
+                      <th>KV Link Times</th>
                       <th>&gt;5m</th>
                       <th>Overall</th>
                       <th>&le;2m</th>
@@ -690,7 +690,7 @@
             </div>
           </div>
 
-          <!-- TARGET BAKERIES -->
+          <!-- FOCUS BAKERIES -->
           <div class="tab-content" id="tab-target">
             <div class="target-subtabs" id="targetTabWorkspace">
               <div class="target-subtabs__toolbar">
@@ -702,7 +702,7 @@
                   </div>
                 </div>
               </div>
-              <div class="target-subtabs__nav" role="tablist" aria-label="Target bakery views">
+              <div class="target-subtabs__nav" role="tablist" aria-label="Focus bakery views">
                 <button class="target-subtab active" type="button" data-target-subtab="summary">
                   <span class="target-subtab__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
@@ -760,7 +760,7 @@
 
               <div class="target-subtab-panel active" data-target-subtab-panel="summary">
                 <div class="section">
-                  <h2>&#127919; Target Bakery Summary</h2>
+                  <h2>&#127919; Focus Bakery Summary</h2>
                   <div id="targetSummary" class="target-stat-grid"></div>
                   <div id="targetInsights"></div>
                 </div>
@@ -789,7 +789,7 @@
                   <div id="targetTrendGraphsContent">
                     <div id="trendSummaryCards" class="target-stat-grid"></div>
                     <div class="section" style="margin-bottom:10px">
-                      <h2 style="font-size:0.88rem">Average CEI &mdash; Target vs All Bakeries</h2>
+                      <h2 style="font-size:0.88rem">Average CEI &mdash; Focus vs All Bakeries</h2>
                       <canvas id="targetAvgTrend" style="max-height:260px"></canvas>
                     </div>
                     <div class="grid-2" style="margin-bottom:10px">
@@ -817,7 +817,7 @@
               <div class="target-subtab-panel" data-target-subtab-panel="map">
                 <div class="section">
                   <div class="map-section-header" style="margin-bottom:8px;">
-                    <h2 style="margin:0">Target Bakery Locations</h2>
+                    <h2 style="margin:0">Focus Bakery Locations</h2>
                     <div class="map-control-bar">
                       <div class="map-toggle-group">
                         <span class="map-toggle-label">Index Type</span>
@@ -862,14 +862,40 @@
                     <div class="wc-sentiment-bar__header">
                       <span class="wc-sentiment-bar__title">Overall Sentiment</span>
                     </div>
-                    <div class="wc-sentiment-bar__track">
-                      <div class="wc-sentiment-bar__marker" id="wcTargetSentimentMarker"></div>
-                    </div>
+                    <div class="wc-sentiment-bar__track"></div>
                   </div>
                   <div class="wc-legend" aria-label="Word cloud sentiment legend">
                     <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--positive"></span>Positive</span>
                     <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--neutral"></span>Neutral</span>
                     <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--negative"></span>Negative</span>
+                  </div>
+
+                  <div id="wcTargetSignalsPanel" class="wc-sig-panel" hidden>
+                    <div class="wc-sig__header">Top Signals</div>
+                    <div class="wc-sig__cols">
+                      <div class="wc-sig__col">
+                        <div class="wc-sig__col-label wc-sig__col-label--pos">&#10003; Strengths</div>
+                        <div id="wcTargetSigPosList" class="wc-sig__list"></div>
+                      </div>
+                      <div class="wc-sig__col">
+                        <div class="wc-sig__col-label wc-sig__col-label--neg">&#10007; Concerns</div>
+                        <div id="wcTargetSigNegList" class="wc-sig__list"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="wcTargetDriftPanel" class="wc-drift-panel" hidden>
+                    <div class="wc-drift__header">Changes vs <span id="wcTargetDriftPrevLabel"></span></div>
+                    <div class="wc-drift__cols">
+                      <div class="wc-drift__col">
+                        <div class="wc-drift__col-label wc-drift__col-label--up">&#8593; Rising</div>
+                        <div id="wcTargetDriftRising" class="wc-drift__items"></div>
+                      </div>
+                      <div class="wc-drift__col">
+                        <div class="wc-drift__col-label wc-drift__col-label--down">&#8595; Falling</div>
+                        <div id="wcTargetDriftFalling" class="wc-drift__items"></div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -900,9 +926,7 @@
                 <div class="wc-sentiment-bar__header">
                   <span class="wc-sentiment-bar__title">Overall Sentiment</span>
                 </div>
-                <div class="wc-sentiment-bar__track">
-                  <div class="wc-sentiment-bar__marker" id="wcSentimentMarker"></div>
-                </div>
+                <div class="wc-sentiment-bar__track"></div>
               </div>
               <div class="wc-legend" aria-label="Word cloud sentiment legend">
                 <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--positive"></span>Positive</span>
@@ -964,14 +988,14 @@
         </svg>
         <span>Overview</span>
       </button>
-      <button type="button" class="mobile-bottom-nav__btn tab" data-tab="target" aria-label="Target Bakeries">
+      <button type="button" class="mobile-bottom-nav__btn tab" data-tab="target" aria-label="Focus Bakeries">
         <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="7"></circle>
           <circle cx="12" cy="12" r="3.5"></circle>
           <path d="M17 7L20 4"></path>
           <path d="M16.5 4H20V7.5"></path>
         </svg>
-        <span>Target</span>
+        <span>Focus</span>
       </button>
       <button type="button" class="mobile-bottom-nav__btn tab" data-tab="trends" aria-label="Trends">
         <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">

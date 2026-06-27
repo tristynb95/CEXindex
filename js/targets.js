@@ -116,7 +116,7 @@ function _setTargetTrendState(hasData, message) {
     _mapMarkerLayer.clearLayers();
 
     if (_mapTargets.length === 0) {
-      if (statusEl) statusEl.textContent = 'No target bakeries for the current selection.';
+      if (statusEl) statusEl.textContent = 'No focus bakeries for the current selection.';
       return;
     }
 
@@ -231,8 +231,8 @@ function _setTargetTrendState(hasData, message) {
       elId: 'targetMap',
       statusId: 'targetMapStatus',
       activeSelector: '[data-target-subtab-panel="map"]',
-      modalTitle: 'Target Bakeries Not Mapped',
-      emptyMessage: 'No target bakeries for the current selection.',
+      modalTitle: 'Focus Bakeries Not Mapped',
+      emptyMessage: 'No focus bakeries for the current selection.',
       bandField: 'acb',
       legendItems: TARGET_LEGEND.absolute,
       items: [],
@@ -891,11 +891,11 @@ function _renderInsights(targets, bf, cf, highBand, lowBand, isAbsolute) {
   var insightsEl = document.getElementById('targetInsights');
   if (targets.length === 0) { insightsEl.innerHTML = ''; return; }
 
-  var focusCounts = { 'Overall Efficiency': [], 'Drink Quality': [], Friendliness: [], 'Barista Speed': [] };
+  var focusCounts = { 'Overall Efficiency': [], 'Drink Quality': [], Friendliness: [], 'KV Link Times': [] };
   targets.forEach(function(b) {
     var areas = [
       { name: 'Overall Efficiency', pct: b.ep }, { name: 'Drink Quality', pct: b.dp },
-      { name: 'Friendliness', pct: b.fp }, { name: 'Barista Speed', pct: b.ap },
+      { name: 'Friendliness', pct: b.fp }, { name: 'KV Link Times', pct: b.ap },
     ].sort(function(a, x) { return a.pct - x.pct; });
     focusCounts[areas[0].name].push(b.b);
   });
@@ -952,7 +952,7 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
   var getFocus = function(b) {
     return [
       { name: 'Overall Efficiency', pct: b.ep }, { name: 'Drink Quality', pct: b.dp },
-      { name: 'Friendliness', pct: b.fp }, { name: 'Barista Speed', pct: b.ap },
+      { name: 'Friendliness', pct: b.fp }, { name: 'KV Link Times', pct: b.ap },
     ].sort(function(a, x) { return a.pct - x.pct; })[0];
   };
   var focusLabel = function(pct) {
@@ -966,7 +966,7 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
 
   document.getElementById('targetTable').innerHTML = targets.length === 0
     ? '<p style="text-align:center;color:var(--muted);padding:32px 0">No bakeries in ' + highBand + ' or adjacent bands for this period.</p>'
-    : '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">\ud83c\udfaf Priority Support List</h3><p class="tracker-table-header__copy">Ranked lowest CEI first. <strong>Where to Focus</strong> = the single area dragging each bakery down most. <span style="color:var(--red)">Red</span> scores = bottom quarter of all bakeries.</p></div></div><div class="table-wrap"><table><thead><tr><th>Priority</th><th>Bakery</th><th>Region</th><th>Ops Manager</th><th>' + ceiHeader + '</th><th>' + altCeiHeader + '</th><th>Band</th><th>NPS</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>Barista Speed</th><th>&gt;5m</th><th>Where to Focus</th></tr></thead><tbody>' +
+    : '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">\ud83c\udfaf Priority Support List</h3><p class="tracker-table-header__copy">Ranked lowest CEI first. <strong>Where to Focus</strong> = the single area dragging each bakery down most. <span style="color:var(--red)">Red</span> scores = bottom quarter of all bakeries.</p></div></div><div class="table-wrap"><table><thead><tr><th>Priority</th><th>Bakery</th><th>Region</th><th>Ops Manager</th><th>' + ceiHeader + '</th><th>' + altCeiHeader + '</th><th>Band</th><th>NPS</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>KV Link Times</th><th>&gt;5m</th><th>Where to Focus</th></tr></thead><tbody>' +
     targets.map(function(b, i) {
       var focus = getFocus(b);
       var focusColor = focus.pct <= 10 ? 'var(--red)' : 'var(--amber)';
@@ -1008,7 +1008,7 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
     document.getElementById('trendSummaryCards').innerHTML = '';
     document.getElementById('sparklineGrid').innerHTML = '';
     document.getElementById('targetTrendTable').innerHTML = '';
-    _setTargetTrendState(false, 'No target bakeries are in the ' + highBand + ' or ' + lowBand + ' bands for the current selection.');
+    _setTargetTrendState(false, 'No focus bakeries are in the ' + highBand + ' or ' + lowBand + ' bands for the current selection.');
     return;
   }
 
@@ -1017,7 +1017,7 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
     document.getElementById('trendSummaryCards').innerHTML = '';
     document.getElementById('sparklineGrid').innerHTML = '';
     document.getElementById('targetTrendTable').innerHTML = '';
-    _setTargetTrendState(false, 'Select at least two months to view target bakery trend graphs and tables.');
+    _setTargetTrendState(false, 'Select at least two months to view focus bakery trend graphs and tables.');
     return;
   }
 
@@ -1079,7 +1079,7 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
   var allAvgByMonth = FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m; }); return recs.length ? recs.reduce(function(a, r) { return a + r[cf]; }, 0) / recs.length : null; });
 
   G.makeChart('targetAvgTrend', { type: 'line', data: { labels: FM, datasets: [
-    { label: 'Target Bakeries ' + ceiLabel, data: targetAvgByMonth, borderColor: '#FF3B5C', backgroundColor: 'rgba(255,59,92,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+    { label: 'Focus Bakeries ' + ceiLabel, data: targetAvgByMonth, borderColor: '#FF3B5C', backgroundColor: 'rgba(255,59,92,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
     { label: 'All Bakeries ' + ceiLabel, data: allAvgByMonth, borderColor: 'rgba(150,150,200,0.5)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2, borderDash: [6, 4] },
   ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: ceiLabel }, min: 0, max: 100 }, x: { ticks: { font: { size: 10 } } } } } });
 
@@ -1165,7 +1165,7 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
   var firstMonth = FM.length > 0 ? FM[0] : '—';
 
   var trendCeiHeader = (isAbsolute ? 'Abs ' : '') + 'CEI (' + latestMonth + ')';
-  document.getElementById('targetTrendTable').innerHTML = '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">Performance Trends \u2014 Table</h3><p class="tracker-table-header__copy"><span style="color:var(--green);font-weight:600">\u2191 Improving</span> = +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">\u2193 Declining</span> = \u22123pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">\u2194 Stable</span> = \u00b13pts &nbsp;&middot;&nbsp; Direction = month-on-month. 3-Month Trend = last 3 months.</p></div></div><div class="table-wrap"><table><thead><tr><th>Bakery</th><th>Ops Manager</th><th>' + trendCeiHeader + '</th><th>CEI Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Direction<br><span style="font-weight:400;font-size:0.6rem">Month-on-Month</span></th><th>NPS Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>3-Month Trend<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>3m CEI Change<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>Period Change<br><span style="font-weight:400;font-size:0.6rem">' + firstMonth + ' &rarr; ' + latestMonth + '</span></th><th>Declining Streak</th><th>Best Month</th><th>Worst Month</th><th>Quality &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Friendliness &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Barista Speed &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th></tr></thead><tbody>' +
+  document.getElementById('targetTrendTable').innerHTML = '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">Performance Trends \u2014 Table</h3><p class="tracker-table-header__copy"><span style="color:var(--green);font-weight:600">\u2191 Improving</span> = +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">\u2193 Declining</span> = \u22123pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">\u2194 Stable</span> = \u00b13pts &nbsp;&middot;&nbsp; Direction = month-on-month. 3-Month Trend = last 3 months.</p></div></div><div class="table-wrap"><table><thead><tr><th>Bakery</th><th>Ops Manager</th><th>' + trendCeiHeader + '</th><th>CEI Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Direction<br><span style="font-weight:400;font-size:0.6rem">Month-on-Month</span></th><th>NPS Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>3-Month Trend<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>3m CEI Change<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>Period Change<br><span style="font-weight:400;font-size:0.6rem">' + firstMonth + ' &rarr; ' + latestMonth + '</span></th><th>Declining Streak</th><th>Best Month</th><th>Worst Month</th><th>Quality &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Friendliness &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>KV Link Times &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th></tr></thead><tbody>' +
   trendData.map(function(t) {
     var streakWarn = t.streak >= 3 ? 'color:#9B5DFF;font-weight:700' : t.streak >= 2 ? 'color:var(--red);font-weight:600' : '';
     return '<tr><td style="font-weight:500">' + t.name + '</td><td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(t.name) + '</td><td style="font-weight:700">' + (t.latest ? t.latest[cf] : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best[cf] + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst[cf] + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';
