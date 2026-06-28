@@ -73,6 +73,24 @@ body {
   overflow-x: hidden;
 }
 
+/* ── Mobile app-shell: lock layout height so browser chrome (address bar)
+   showing/hiding only shifts the visible window into the scroll container,
+   never reflowing the page layout or jumping fixed elements ── */
+@media (max-width: 980px) {
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .container {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+}
+
 html.drill-modal-open,
 body.drill-modal-open {
   overflow: hidden;
@@ -6423,7 +6441,7 @@ a,
   display: none;
   position: fixed;
   left: 0;
-  top: 40%;
+  top: 40svh;
   transform: translateY(-50%);
   z-index: 45;
   flex-direction: column;
@@ -6554,8 +6572,8 @@ a,
     left: 0;
     bottom: 0;
     width: min(296px, calc(100vw - 48px));
-    height: 100%;
-    max-height: 100%;
+    height: 100svh;
+    max-height: 100svh;
     display: flex !important;
     flex-direction: column;
     background:
