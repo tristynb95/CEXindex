@@ -5460,6 +5460,23 @@ body.table-fullscreen-lock {
   color: var(--accent);
 }
 
+/* ── Sparkline sorting dropdown ── */
+.spark-sort-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.spark-sort-label .filter-select {
+  width: auto;
+  min-width: 180px;
+}
+
 /* ── Focus Bakeries Redesign ─────────────────── */
 #tab-target .section {
   padding: 16px 20px;

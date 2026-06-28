@@ -216,4 +216,5 @@
 
   G.initCustomSelects();
   buildCustomSelect(document.getElementById('sortBy'));
+  buildCustomSelect(document.getElementById('sparkSortBy'));
 })();

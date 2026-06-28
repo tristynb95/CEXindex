@@ -9,6 +9,7 @@ function _drawSparklines(absolute) {
   var sparkSorted = _sparkState.sparkSorted;
   var allAvgByMonth = _sparkState.allAvgByMonth;
   var FM = _sparkState.FM;
+  var cf = _sparkState.cf || 'c';
 
   sparkSorted.forEach(function(t) {
     var canvasId = 'spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_');
@@ -19,7 +20,7 @@ function _drawSparklines(absolute) {
     G.makeChart(canvasId, {
       type: 'line',
       data: { labels: FM, datasets: [
-        { data: t.hist.map(function(r) { return r ? r.c : null; }), borderColor: lineColor, backgroundColor: lineColor + '18', fill: true, tension: 0.3, pointRadius: 1.5, borderWidth: 2, spanGaps: true },
+        { data: t.hist.map(function(r) { return r ? r[cf] : null; }), borderColor: lineColor, backgroundColor: lineColor + '18', fill: true, tension: 0.3, pointRadius: 1.5, borderWidth: 2, spanGaps: true },
         { data: allAvgByMonth, borderColor: 'rgba(150,150,200,0.4)', borderWidth: 1, borderDash: [4, 3], pointRadius: 0, fill: false, tension: 0.3 }
       ] },
       options: {
@@ -34,6 +35,13 @@ function _drawSparklines(absolute) {
 window.GAILS.toggleSparkScale = function() {
   var absolute = !!(document.getElementById('sparkAbsoluteToggle') || {}).checked;
   _drawSparklines(absolute);
+};
+
+window.GAILS.changeSparkSort = function() {
+  var G = GAILS;
+  if (G._lastData) {
+    G.renderTargets(G._lastData);
+  }
 };
 
 function _clearTargetTrendCharts() {
@@ -1088,7 +1096,33 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
 
   // Sparkline cards
   var sparkGrid = document.getElementById('sparklineGrid');
-  var sparkSorted = [].concat(trendData).sort(function(a, b) { return (a.latest ? a.latest.c : 999) - (b.latest ? b.latest.c : 999); });
+  var sortVal = (document.getElementById('sparkSortBy') || {}).value || 'perf-asc';
+  var sparkSorted = [].concat(trendData).sort(function(a, b) {
+    if (sortVal === 'perf-asc') {
+      var valA = a.latest ? a.latest[cf] : 999;
+      var valB = b.latest ? b.latest[cf] : 999;
+      if (valA !== valB) return valA - valB;
+      return a.name.localeCompare(b.name);
+    } else if (sortVal === 'perf-desc') {
+      var valA = a.latest ? a.latest[cf] : -999;
+      var valB = b.latest ? b.latest[cf] : -999;
+      if (valA !== valB) return valB - valA;
+      return a.name.localeCompare(b.name);
+    } else if (sortVal === 'improve-desc') {
+      var valA = a.periodChange || 0;
+      var valB = b.periodChange || 0;
+      if (valA !== valB) return valB - valA;
+      return a.name.localeCompare(b.name);
+    } else if (sortVal === 'improve-asc') {
+      var valA = a.periodChange || 0;
+      var valB = b.periodChange || 0;
+      if (valA !== valB) return valA - valB;
+      return a.name.localeCompare(b.name);
+    } else if (sortVal === 'alpha-asc') {
+      return a.name.localeCompare(b.name);
+    }
+    return (a.latest ? a.latest[cf] : 999) - (b.latest ? b.latest[cf] : 999);
+  });
   // Destroy any existing sparkline charts
   sparkSorted.forEach(function(t) { G.destroyChart('spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_')); });
   sparkGrid.innerHTML = '';
@@ -1120,7 +1154,7 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
     sparkGrid.appendChild(card);
   });
   // Cache data and draw with current toggle state
-  _sparkState = { sparkSorted: sparkSorted, allAvgByMonth: allAvgByMonth, FM: FM };
+  _sparkState = { sparkSorted: sparkSorted, allAvgByMonth: allAvgByMonth, FM: FM, cf: cf };
   var toggleEl = document.getElementById('sparkAbsoluteToggle');
   _drawSparklines(toggleEl && toggleEl.checked);
 

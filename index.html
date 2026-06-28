@@ -436,16 +436,6 @@
               <span class="dashboard-workspace__menu-icon" aria-hidden="true"></span>
               <span>Menu</span>
             </button>
-            <div class="dashboard-workspace__status-group">
-              <div class="dashboard-workspace__status">
-                <p class="dashboard-workspace__status-label">Active view</p>
-                <strong id="dashboardActiveViewLabel">Overview</strong>
-              </div>
-              <div class="dashboard-workspace__status" id="dashboardActiveIndexContainer" style="display: none;">
-                <p class="dashboard-workspace__status-label">Active Index</p>
-                <strong id="dashboardActiveIndexLabel">Relative</strong>
-              </div>
-            </div>
           </div>
 
           <div class="kpi-row" id="kpis"></div>
@@ -809,11 +799,22 @@
                     <div class="section" style="margin-bottom:10px">
                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
                         <h2 style="font-size:0.88rem;margin-bottom:0">Individual Bakery Trends</h2>
-                        <label class="spark-scale-toggle" title="Fix all charts to the same 0-100 scale">
-                          <input type="checkbox" id="sparkAbsoluteToggle" onchange="GAILS.toggleSparkScale()">
-                          <span class="spark-toggle-track"><span class="spark-toggle-thumb"></span></span>
-                          <span class="spark-toggle-label">0-100 scale</span>
-                        </label>
+                        <div style="display:flex;align-items:center;gap:12px">
+                          <label class="spark-sort-label">Sort:
+                            <select id="sparkSortBy" class="spark-sort-select" onchange="GAILS.changeSparkSort()">
+                              <option value="perf-asc">Performance (Lowest to Highest)</option>
+                              <option value="perf-desc">Performance (Highest to Lowest)</option>
+                              <option value="improve-desc">Most Improved</option>
+                              <option value="improve-asc">Least Improved</option>
+                              <option value="alpha-asc">Alphabetical (A-Z)</option>
+                            </select>
+                          </label>
+                          <label class="spark-scale-toggle" title="Fix all charts to the same 0-100 scale">
+                            <input type="checkbox" id="sparkAbsoluteToggle" onchange="GAILS.toggleSparkScale()">
+                            <span class="spark-toggle-track"><span class="spark-toggle-thumb"></span></span>
+                            <span class="spark-toggle-label">0-100 scale</span>
+                          </label>
+                        </div>
                       </div>
                       <div id="sparklineGrid" class="spark-grid"></div>
                     </div>
