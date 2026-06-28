@@ -1,4 +1,4 @@
-// ========== MAIN APPLICATION ENTRY POINT ==========
+﻿// ========== MAIN APPLICATION ENTRY POINT ==========
 (function() {
   var G = GAILS;
   var state = G.state;
@@ -268,6 +268,92 @@
     return activePanel;
   }
 
+  // ========== KPI DELTA & GAP HELPERS ==========
+
+  function getPriorAvgs() {
+    var sel = state.selectedMonths;
+    var all = state.MONTHS;
+    if (!sel || sel.length === 0 || all.length === 0) return null;
+    var indices = sel.map(function(m) { return all.indexOf(m); }).filter(function(i) { return i >= 0; });
+    if (indices.length === 0) return null;
+    indices.sort(function(a, b) { return a - b; });
+    var firstIdx = indices[0];
+    var n = indices.length;
+    if (firstIdx < n) return null;
+    var priorMonths = all.slice(firstIdx - n, firstIdx);
+    var recs = state.ALL.filter(function(r) { return priorMonths.indexOf(r.m) >= 0; });
+    if (state.regionFilter.length) recs = recs.filter(function(r) { return state.regionFilter.indexOf(G.getBakeryRegion(r.b)) >= 0; });
+    if (state.opsFilter.length) recs = recs.filter(function(r) { return state.opsFilter.indexOf(G.getBakeryOps(r.b)) >= 0; });
+    if (state.searchBakery && state.searchBakery.length) recs = recs.filter(function(r) {
+      return state.searchBakery.some(function(s) { return r.b.toLowerCase().indexOf(s.toLowerCase()) >= 0; });
+    });
+    if (recs.length === 0) return null;
+    var avg = function(key) { return recs.reduce(function(a, r) { return a + (r[key] || 0); }, 0) / recs.length; };
+    var tsVol = recs.reduce(function(a, r) { return a + r.v; }, 0);
+    var label = n === 1 ? priorMonths[0] : 'prior ' + n + 'm';
+    return {
+      n: avg('n'), c: avg('c'), ac: avg('ac'),
+      dr: avg('dr'), ef: avg('ef'), fr: avg('fr'),
+      ts: tsVol > 0 ? recs.reduce(function(a, r) { return a + (r.ts || 0) * r.v; }, 0) / tsVol : avg('ts'),
+      o5: avg('o5'),
+      label: label
+    };
+  }
+
+  function kpiDeltaHtml(current, priorObj, key, invert) {
+    if (!priorObj || priorObj[key] === undefined || isNaN(priorObj[key])) return '';
+    var prior = priorObj[key];
+    var raw = current - prior;
+    var effective = invert ? -raw : raw;
+    var abs = Math.abs(raw);
+    var ref = '<span class="kpi__delta-ref">vs ' + priorObj.label + '</span>';
+    if (abs < 0.3) return '<span class="kpi__delta kpi__delta--flat">— flat ' + ref + '</span>';
+    var arrow = raw > 0 ? '↑' : '↓';
+    var cls = effective > 0 ? 'kpi__delta--up' : 'kpi__delta--down';
+    return '<span class="kpi__delta ' + cls + '">' + arrow + ' ' + abs.toFixed(1) + ' ' + ref + '</span>';
+  }
+
+  function kpiGapText(val, gapMetric) {
+    if (!gapMetric) return '';
+    var r = Math.round(val);
+    var gap, next;
+    if (gapMetric === 'nps') {
+      if (val < 45)      { gap = 45 - r; next = 'Watch'; }
+      else if (val < 55) { gap = 55 - r; next = 'On Target'; }
+      else if (val <= 60){ gap = 61 - r; next = 'Exceeding'; }
+      else return '';
+      return gap + ' pts from ' + next;
+    }
+    if (gapMetric === 'cei') {
+      if (val < 25)      { gap = 25 - r; next = 'Developing'; }
+      else if (val < 50) { gap = 50 - r; next = 'Good'; }
+      else if (val < 75) { gap = 75 - r; next = 'Excellent'; }
+      else return '';
+      return gap + ' pts from ' + next;
+    }
+    if (gapMetric === 'acei') {
+      if (val < 60)      { gap = 60 - r; next = 'Approaching'; }
+      else if (val < 75) { gap = 75 - r; next = 'Meeting'; }
+      else if (val < 90) { gap = 90 - r; next = 'Exceeding'; }
+      else return '';
+      return gap + ' pts from ' + next;
+    }
+    if (gapMetric === 'pct90') {
+      if (val < 90) return (90 - r) + '% below target';
+      return '';
+    }
+    if (gapMetric === 'ts') {
+      if (val < 75) return (75 - r) + ' pts from target';
+      return '';
+    }
+    if (gapMetric === 'o5') {
+      var disp = parseFloat(val.toFixed(1));
+      if (disp > 2) return '+' + (disp - 2).toFixed(1) + '% above target';
+      return '';
+    }
+    return '';
+  }
+
   // ========== REFRESH ==========
   function refresh() {
     if (state.ALL.length === 0) return;
@@ -298,6 +384,7 @@
       var status = tone === 'kpi-green' ? labels.good : tone === 'kpi-amber' ? labels.warn : labels.bad;
       return { tone: tone, status: status };
     };
+    var prior = getPriorAvgs();
     var buildMetricCard = function(config) {
       var status = metricState(config.value, config.good, config.warn, config.invert, config.labels, config.bands);
       return {
@@ -305,6 +392,8 @@
         eyebrow: config.eyebrow,
         title: config.title,
         meta: config.meta,
+        delta: kpiDeltaHtml(config.value, prior, config.priorKey, config.invert),
+        gap: kpiGapText(config.value, config.gapMetric),
         tone: status.tone,
         status: status.status,
         primary: !!config.primary
@@ -326,6 +415,8 @@
         eyebrow: 'NPS',
         title: 'Net Promoter Score',
         meta: 'Customer advocacy score.',
+        priorKey: 'n',
+        gapMetric: 'nps',
         bands: [
           { test: function(val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
           { test: function(val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
@@ -341,6 +432,8 @@
         eyebrow: 'Index',
         title: 'Relative Score',
         meta: 'Vs bakery peer set.',
+        priorKey: 'c',
+        gapMetric: 'cei',
         good: 62.5,
         warn: 37.5,
         labels: { good: 'Leading', warn: 'Mid-Pack', bad: 'Lagging' },
@@ -352,6 +445,8 @@
         eyebrow: 'Index',
         title: 'Absolute Score',
         meta: 'Vs company benchmark.',
+        priorKey: 'ac',
+        gapMetric: 'acei',
         good: 75,
         warn: 60,
         labels: { good: 'On Target', warn: 'Near', bad: 'Below' },
@@ -363,6 +458,8 @@
         eyebrow: 'SHINE',
         title: 'Drink Quality',
         meta: 'Target: 90% positive.',
+        priorKey: 'dr',
+        gapMetric: 'pct90',
         good: 90,
         warn: 80,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
@@ -373,6 +470,8 @@
         eyebrow: 'SHINE',
         title: 'Efficiency',
         meta: 'Target: 90% positive.',
+        priorKey: 'ef',
+        gapMetric: 'pct90',
         good: 90,
         warn: 80,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
@@ -383,6 +482,8 @@
         eyebrow: 'SHINE',
         title: 'Friendliness',
         meta: 'Target: 90% positive.',
+        priorKey: 'fr',
+        gapMetric: 'pct90',
         good: 90,
         warn: 80,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
@@ -393,6 +494,8 @@
         eyebrow: 'Speed',
         title: 'KV Link Times',
         meta: '100% under 5 min. Target: 75+.',
+        priorKey: 'ts',
+        gapMetric: 'ts',
         good: 75,
         warn: 50,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Slow' }
@@ -403,6 +506,8 @@
         eyebrow: 'Speed',
         title: 'Orders >5 Min',
         meta: 'Target: below 2%.',
+        priorKey: 'o5',
+        gapMetric: 'o5',
         good: 2,
         warn: 3,
         invert: true,
@@ -416,7 +521,8 @@
         + '</div>'
         + '<div class="kpi__value">' + metric.value + '</div>'
         + '<div class="kpi__title">' + metric.title + '</div>'
-        + '<div class="kpi__meta">' + metric.meta + '</div>'
+        + (metric.delta ? metric.delta : '')
+        + '<div class="kpi__meta">' + metric.meta + (metric.gap ? '<span class="kpi__gap">' + metric.gap + '</span>' : '') + '</div>'
         + '</article>';
     }).join('');
 

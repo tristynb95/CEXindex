@@ -1100,6 +1100,48 @@ h4 {
   max-width: none;
 }
 
+.kpi__delta {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.67rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  margin-top: 6px;
+  padding: 2px 7px 2px 5px;
+  border-radius: 6px;
+  line-height: 1.4;
+}
+
+.kpi__delta--up {
+  color: var(--green);
+  background: rgba(0, 200, 117, 0.10);
+}
+
+.kpi__delta--down {
+  color: var(--accent);
+  background: rgba(255, 59, 92, 0.10);
+}
+
+.kpi__delta--flat {
+  color: var(--muted-l);
+  background: rgba(144, 144, 184, 0.08);
+}
+
+.kpi__delta-ref {
+  font-weight: 500;
+  opacity: 0.72;
+  margin-left: 1px;
+}
+
+.kpi__gap {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted-l);
+  font-size: 0.63rem;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (min-width: 1280px) {
   .dashboard-workspace[data-sidebar-collapsed="true"] .kpi-row {
     grid-template-columns: repeat(8, minmax(0, 1fr));
