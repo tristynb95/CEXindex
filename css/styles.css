@@ -1205,35 +1205,55 @@ h4 {
 @media (max-width: 720px) {
   .kpi-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 10px;
   }
 
   .kpi {
-    min-height: 142px;
-    padding: 14px;
-    border-radius: 18px;
+    min-height: 0;
+    padding: 13px;
+    border-radius: 16px;
   }
 
   .kpi__top {
-    margin-bottom: 14px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 10px;
   }
 
-  .kpi__value {
-    font-size: 1.72rem;
-  }
-
-  .kpi--primary .kpi__value {
-    font-size: 1.88rem;
+  .kpi__eyebrow {
+    font-size: 0.62rem;
   }
 
   .kpi__status {
-    font-size: 0.58rem;
+    font-size: 0.54rem;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
-}
 
-@media (max-width: 540px) {
-  .kpi-row {
-    grid-template-columns: 1fr;
+  .kpi__value {
+    font-size: 1.65rem;
+    margin-bottom: 6px;
+  }
+
+  .kpi--primary .kpi__value {
+    font-size: 1.8rem;
+  }
+
+  .kpi__title {
+    font-size: 0.72rem;
+  }
+
+  .kpi__delta {
+    font-size: 0.62rem;
+    padding: 2px 5px 2px 4px;
+    margin-top: 5px;
+  }
+
+  .kpi__meta {
+    padding-top: 8px;
+    font-size: 0.62rem;
   }
 }
 
