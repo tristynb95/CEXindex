@@ -11,6 +11,7 @@
   var dashboardKpiRow = document.getElementById('kpis');
   var compactDashboardSidebarMedia = window.matchMedia('(max-width: 980px)');
   var desktopDashboardSidebarCollapsed = false;
+  var _networkMapMetric = 'relative';
   var dashboardTabLabels = {
     overview: 'Overview',
     trends: 'Trends',
@@ -52,10 +53,39 @@
     });
   }
 
+  function updateDashboardActiveIndex(name) {
+    var container = document.getElementById('dashboardActiveIndexContainer');
+    var label = document.getElementById('dashboardActiveIndexLabel');
+    if (!container || !label) return;
+
+    var currentTab = name;
+    if (!currentTab) {
+      var activePanel = document.querySelector('.tab-content.active');
+      currentTab = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
+    }
+
+    if (currentTab === 'overview') {
+      container.style.display = '';
+      label.textContent = state.rankingsMetric === 'absolute' ? 'Absolute Score' : 'Relative Score';
+    } else if (currentTab === 'target') {
+      container.style.display = '';
+      label.textContent = state.targetMetric === 'absolute' ? 'Absolute Score' : 'Relative Score';
+    } else if (currentTab === 'map') {
+      container.style.display = '';
+      label.textContent = _networkMapMetric === 'absolute' ? 'Absolute Score' : 'Relative Score';
+    } else if (currentTab === 'table' || currentTab === 'trends' || currentTab === 'speed') {
+      container.style.display = '';
+      label.textContent = 'Relative & Absolute';
+    } else {
+      container.style.display = 'none';
+    }
+  }
+
   function updateDashboardActiveView(name) {
     if (dashboardActiveViewLabel) {
       dashboardActiveViewLabel.textContent = dashboardTabLabels[name] || name;
     }
+    updateDashboardActiveIndex(name);
   }
 
   function syncDashboardKpis(name) {
@@ -237,6 +267,7 @@
   // ========== REFRESH ==========
   function refresh() {
     if (state.ALL.length === 0) return;
+    updateDashboardActiveIndex();
     updateBandFilterOptions();
     var data = G.getData();
     var n = data.length;
@@ -456,12 +487,13 @@
       Array.from(document.querySelectorAll('[data-rankings-metric]')).forEach(function(toggleBtn) {
         toggleBtn.classList.toggle('active', toggleBtn.dataset.rankingsMetric === nextMetric);
       });
+      updateDashboardActiveIndex();
       refresh();
     });
   });
 
   // ========== NETWORK MAP METRIC TOGGLE ==========
-  var _networkMapMetric = 'relative';
+  _networkMapMetric = 'relative';
   Array.from(document.querySelectorAll('[data-map-metric]')).forEach(function(btn) {
     btn.addEventListener('click', function() {
       var nextMetric = btn.dataset.mapMetric === 'absolute' ? 'absolute' : 'relative';
@@ -471,6 +503,7 @@
         toggleBtn.classList.toggle('active', toggleBtn.dataset.mapMetric === nextMetric);
       });
       if (G.setNetworkMapMetric) G.setNetworkMapMetric(nextMetric);
+      updateDashboardActiveIndex();
     });
   });
 
@@ -484,6 +517,7 @@
         toggleBtn.classList.toggle('active', toggleBtn.dataset.targetMapMetric === nextMetric);
       });
       if (G.setTargetMapMetric) G.setTargetMapMetric(nextMetric);
+      updateDashboardActiveIndex();
       refresh();
     });
   });

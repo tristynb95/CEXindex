@@ -1657,6 +1657,18 @@ canvas {
   gap: 12px;
 }
 
+.dashboard-workspace__status-group {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+@media (max-width: 480px) {
+  .dashboard-workspace__status-group {
+    gap: 12px;
+  }
+}
+
 .dashboard-workspace__status {
   display: grid;
   gap: 4px;

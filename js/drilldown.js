@@ -203,11 +203,11 @@ window.GAILS = window.GAILS || {};
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.n) + '</span>'; }
         },
         {
-          label: 'Score',
+          label: 'Relative Score',
           render: function(row) { return metricText(row.c); }
         },
         {
-          label: 'Band',
+          label: 'Relative Band',
           render: function(row) { return renderBandPill(G, row.cb); }
         },
         {
@@ -246,7 +246,7 @@ window.GAILS = window.GAILS || {};
       var relSorted = [].concat(bakeries).sort(function(a, b) { return b.c - a.c; });
       content += renderTable(G, baseColumns.concat([
         {
-          label: 'Score',
+          label: 'Relative Score',
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.c) + '</span>'; }
         },
         {
@@ -285,11 +285,11 @@ window.GAILS = window.GAILS || {};
       var absSorted = [].concat(bakeries).sort(function(a, b) { return b.ac - a.ac; });
       content += renderTable(G, baseColumns.concat([
         {
-          label: 'Abs Score',
+          label: 'Absolute Score',
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.ac) + '</span>'; }
         },
         {
-          label: 'Rel Score',
+          label: 'Relative Score',
           render: function(row) { return metricText(row.c); }
         },
         {
