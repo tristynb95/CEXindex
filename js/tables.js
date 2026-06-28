@@ -25,8 +25,22 @@ window.GAILS.makeSortable = function(container) {
           var bCell = b.cells[colIdx];
           if (!aCell || !bCell) return 0;
 
-          var aVal = aCell.textContent.trim().replace(/[%,pts]/g, '').replace(/[\u2191\u2193\u2194]/g, '').trim();
-          var bVal = bCell.textContent.trim().replace(/[%,pts]/g, '').replace(/[\u2191\u2193\u2194]/g, '').trim();
+          var aVal = aCell.textContent.trim().replace(/%|,|pts/g, '').replace(/[\u2191\u2193\u2194]/g, '').trim();
+          var bVal = bCell.textContent.trim().replace(/%|,|pts/g, '').replace(/[\u2191\u2193\u2194]/g, '').trim();
+
+          var isMonth = function(val) {
+            var parts = val.split(' ');
+            return parts.length === 2 &&
+                   window.GAILS.MONTH_SHORT &&
+                   window.GAILS.MONTH_SHORT.indexOf(parts[0]) !== -1 &&
+                   !isNaN(parseInt(parts[1], 10));
+          };
+
+          if (isMonth(aVal) && isMonth(bVal)) {
+            var aKey = window.GAILS.monthSortKey(aVal);
+            var bKey = window.GAILS.monthSortKey(bVal);
+            return asc ? aKey - bKey : bKey - aKey;
+          }
 
           var aNum = parseFloat(aVal);
           var bNum = parseFloat(bVal);

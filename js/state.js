@@ -11,7 +11,8 @@ window.GAILS.state = {
   bandFilter: '',
   regionFilter: [],
   opsFilter: [],
+  indexType: 'relative',
   rankingsMetric: 'relative',
-  targetMetric: 'absolute',
+  targetMetric: 'relative',
   PERIODS: {},
 };

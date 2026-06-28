@@ -271,6 +271,41 @@ h4 {
   stroke-linejoin: round;
 }
 
+/* ── Global Index Type Toggle (header bar) ── */
+.header-index-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-index-toggle__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-l);
+  white-space: nowrap;
+}
+
+/* Override .header button defaults for the toggle pills */
+.header-index-toggle .overview-rankings-toggle__btn {
+  border-radius: 999px;
+  min-height: auto;
+  box-shadow: none;
+  padding: 6px 14px;
+  font-size: 0.73rem;
+}
+
+.header-index-toggle .overview-rankings-toggle__btn.active {
+  box-shadow: 0 2px 10px rgba(72, 149, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 480px) {
+  .header-index-toggle__label {
+    display: none;
+  }
+}
+
 .reload-btn {
   background: linear-gradient(180deg, rgba(255, 59, 92, 0.18) 0%, rgba(255, 59, 92, 0.1) 100%);
   color: var(--accent);
@@ -1655,6 +1690,14 @@ canvas {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.section-page-title {
+  margin: 0 0 18px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
 
 .dashboard-workspace__status-group {

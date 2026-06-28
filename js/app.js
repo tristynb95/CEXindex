@@ -9,6 +9,7 @@
   var dashboardSidebarBackdrop = document.getElementById('dashboardSidebarBackdrop');
   var dashboardActiveViewLabel = document.getElementById('dashboardActiveViewLabel');
   var dashboardKpiRow = document.getElementById('kpis');
+  var sectionPageTitle = document.getElementById('sectionPageTitle');
   var compactDashboardSidebarMedia = window.matchMedia('(max-width: 980px)');
   var desktopDashboardSidebarCollapsed = false;
   var _networkMapMetric = 'relative';
@@ -84,6 +85,9 @@
   function updateDashboardActiveView(name) {
     if (dashboardActiveViewLabel) {
       dashboardActiveViewLabel.textContent = dashboardTabLabels[name] || name;
+    }
+    if (sectionPageTitle) {
+      sectionPageTitle.textContent = dashboardTabLabels[name] || name;
     }
     updateDashboardActiveIndex(name);
   }
@@ -479,43 +483,20 @@
     }
   });
 
-  Array.from(document.querySelectorAll('[data-rankings-metric]')).forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var nextMetric = btn.dataset.rankingsMetric === 'absolute' ? 'absolute' : 'relative';
-      if (state.rankingsMetric === nextMetric) return;
-      state.rankingsMetric = nextMetric;
-      Array.from(document.querySelectorAll('[data-rankings-metric]')).forEach(function(toggleBtn) {
-        toggleBtn.classList.toggle('active', toggleBtn.dataset.rankingsMetric === nextMetric);
-      });
-      updateDashboardActiveIndex();
-      refresh();
-    });
-  });
-
-  // ========== NETWORK MAP METRIC TOGGLE ==========
+  // ========== GLOBAL INDEX TYPE TOGGLE (header) ==========
   _networkMapMetric = 'relative';
-  Array.from(document.querySelectorAll('[data-map-metric]')).forEach(function(btn) {
+  Array.from(document.querySelectorAll('[data-global-index]')).forEach(function(btn) {
     btn.addEventListener('click', function() {
-      var nextMetric = btn.dataset.mapMetric === 'absolute' ? 'absolute' : 'relative';
-      if (_networkMapMetric === nextMetric) return;
+      var nextMetric = btn.dataset.globalIndex === 'absolute' ? 'absolute' : 'relative';
+      if (state.indexType === nextMetric) return;
+      state.indexType = nextMetric;
+      state.rankingsMetric = nextMetric;
+      state.targetMetric = nextMetric;
       _networkMapMetric = nextMetric;
-      Array.from(document.querySelectorAll('[data-map-metric]')).forEach(function(toggleBtn) {
-        toggleBtn.classList.toggle('active', toggleBtn.dataset.mapMetric === nextMetric);
+      Array.from(document.querySelectorAll('[data-global-index]')).forEach(function(toggleBtn) {
+        toggleBtn.classList.toggle('active', toggleBtn.dataset.globalIndex === nextMetric);
       });
       if (G.setNetworkMapMetric) G.setNetworkMapMetric(nextMetric);
-      updateDashboardActiveIndex();
-    });
-  });
-
-  // ========== TARGET SECTION METRIC TOGGLE ==========
-  Array.from(document.querySelectorAll('[data-target-map-metric]')).forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var nextMetric = btn.dataset.targetMapMetric === 'relative' ? 'relative' : 'absolute';
-      if (state.targetMetric === nextMetric) return;
-      state.targetMetric = nextMetric;
-      Array.from(document.querySelectorAll('[data-target-map-metric]')).forEach(function(toggleBtn) {
-        toggleBtn.classList.toggle('active', toggleBtn.dataset.targetMapMetric === nextMetric);
-      });
       if (G.setTargetMapMetric) G.setTargetMapMetric(nextMetric);
       updateDashboardActiveIndex();
       refresh();

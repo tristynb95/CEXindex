@@ -330,8 +330,10 @@ function showApp(isAdmin) {
     containerEl.style.display = 'block';
 
     const adminBtn = document.getElementById('adminBtn');
+    const globalIndexToggle = document.getElementById('globalIndexToggle');
     const uploader = document.getElementById('uploadZone');
     if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
+    if (globalIndexToggle) globalIndexToggle.style.display = 'inline-flex';
 
     // Always hide upload zone initially — loadSharedDashboardData will reveal it
     // for admins only if there is no Firebase data to load.
