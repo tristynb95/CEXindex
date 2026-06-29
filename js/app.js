@@ -386,7 +386,8 @@
     };
     var prior = getPriorAvgs();
     var buildMetricCard = function(config) {
-      var status = metricState(config.value, config.good, config.warn, config.invert, config.labels, config.bands);
+      var cmpVal = config.compare != null ? config.compare : config.value;
+      var status = metricState(cmpVal, config.good, config.warn, config.invert, config.labels, config.bands);
       return {
         value: config.display,
         eyebrow: config.eyebrow,
@@ -411,6 +412,7 @@
     dashboardKpiRow.innerHTML = [
       buildMetricCard({
         value: nps,
+        compare: Math.round(nps),
         display: Math.round(nps).toString(),
         eyebrow: 'NPS',
         title: 'Net Promoter Score',
@@ -428,6 +430,7 @@
       }),
       buildMetricCard({
         value: cei,
+        compare: Math.round(cei),
         display: Math.round(cei).toString(),
         eyebrow: 'Index',
         title: 'Relative Score',
@@ -441,6 +444,7 @@
       }),
       buildMetricCard({
         value: acei,
+        compare: Math.round(acei),
         display: Math.round(acei).toString(),
         eyebrow: 'Index',
         title: 'Absolute Score',
@@ -454,6 +458,7 @@
       }),
       buildMetricCard({
         value: dr,
+        compare: Math.round(dr),
         display: Math.round(dr) + '%',
         eyebrow: 'SHINE',
         title: 'Drink Quality',
@@ -466,6 +471,7 @@
       }),
       buildMetricCard({
         value: ef,
+        compare: Math.round(ef),
         display: Math.round(ef) + '%',
         eyebrow: 'SHINE',
         title: 'Efficiency',
@@ -478,6 +484,7 @@
       }),
       buildMetricCard({
         value: fr,
+        compare: Math.round(fr),
         display: Math.round(fr) + '%',
         eyebrow: 'SHINE',
         title: 'Friendliness',
@@ -490,6 +497,7 @@
       }),
       buildMetricCard({
         value: ts,
+        compare: Math.round(ts),
         display: Math.round(ts).toString(),
         eyebrow: 'Speed',
         title: 'KV Link Times',
