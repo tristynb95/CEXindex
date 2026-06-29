@@ -1,4 +1,4 @@
-﻿// ========== MAIN APPLICATION ENTRY POINT ==========
+// ========== MAIN APPLICATION ENTRY POINT ==========
 (function() {
   var G = GAILS;
   var state = G.state;
@@ -416,7 +416,7 @@
         display: Math.round(nps).toString(),
         eyebrow: 'NPS',
         title: 'Net Promoter Score',
-        meta: 'Customer advocacy score.',
+        meta: 'Target: 55 NPS.',
         priorKey: 'n',
         gapMetric: 'nps',
         bands: [
@@ -434,7 +434,7 @@
         display: Math.round(cei).toString(),
         eyebrow: 'Index',
         title: 'Relative Score',
-        meta: 'Vs bakery peer set.',
+        meta: 'vs bakery peer set.',
         priorKey: 'c',
         gapMetric: 'cei',
         good: 62.5,
@@ -448,7 +448,7 @@
         display: Math.round(acei).toString(),
         eyebrow: 'Index',
         title: 'Absolute Score',
-        meta: 'Vs company benchmark.',
+        meta: 'vs company benchmark.',
         priorKey: 'ac',
         gapMetric: 'acei',
         good: 75,
@@ -462,7 +462,7 @@
         display: Math.round(dr) + '%',
         eyebrow: 'SHINE',
         title: 'Drink Quality',
-        meta: 'Target: 90% positive.',
+        meta: 'Target: 90%.',
         priorKey: 'dr',
         gapMetric: 'pct90',
         good: 90,
@@ -475,7 +475,7 @@
         display: Math.round(ef) + '%',
         eyebrow: 'SHINE',
         title: 'Efficiency',
-        meta: 'Target: 90% positive.',
+        meta: 'Target: 90%.',
         priorKey: 'ef',
         gapMetric: 'pct90',
         good: 90,
@@ -488,7 +488,7 @@
         display: Math.round(fr) + '%',
         eyebrow: 'SHINE',
         title: 'Friendliness',
-        meta: 'Target: 90% positive.',
+        meta: 'Target: 90%.',
         priorKey: 'fr',
         gapMetric: 'pct90',
         good: 90,
@@ -501,7 +501,7 @@
         display: Math.round(ts).toString(),
         eyebrow: 'KV Link',
         title: 'Coffee Efficiency',
-        meta: 'Target: 80% under 2 min.',
+        meta: 'Target: 80% < 2 min.',
         priorKey: 'ts',
         gapMetric: 'ts',
         good: 75,
@@ -513,7 +513,7 @@
         display: o5.toFixed(1) + '%',
         eyebrow: 'KV Link',
         title: 'Orders >5 Min',
-        meta: 'Target: below 2%.',
+        meta: 'Target: < 2%.',
         priorKey: 'o5',
         gapMetric: 'o5',
         good: 2,
@@ -530,7 +530,10 @@
         + '<div class="kpi__value">' + metric.value + '</div>'
         + '<div class="kpi__title">' + metric.title + '</div>'
         + (metric.delta ? metric.delta : '')
-        + '<div class="kpi__meta">' + metric.meta + (metric.gap ? '<span class="kpi__gap">' + metric.gap + '</span>' : '') + '</div>'
+        + '<div class="kpi__meta">'
+        + '<span class="kpi__meta-text">' + metric.meta + '</span>'
+        + '<span class="kpi__gap">' + (metric.gap ? metric.gap : '&nbsp;') + '</span>'
+        + '</div>'
         + '</article>';
     }).join('');
 

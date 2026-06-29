@@ -1120,6 +1120,13 @@ h4 {
   max-width: none;
 }
 
+.kpi__meta-text {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .kpi__delta {
   display: inline-flex;
   align-items: center;
@@ -7602,6 +7609,24 @@ a,
   pointer-events: none !important;
 }
 .map-marker-tooltip::before {
+  display: none !important;
+}
+
+.map-name-tooltip {
+  background: rgba(18, 18, 29, 0.93) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 20px !important;
+  color: #ffffff !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  padding: 5px 11px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(6px);
+  pointer-events: none !important;
+  white-space: nowrap;
+}
+.map-name-tooltip::before {
   display: none !important;
 }
 
