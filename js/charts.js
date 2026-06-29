@@ -105,13 +105,13 @@ window.GAILS.renderOverviewCharts = function(data) {
       { name: 'Overall Efficiency', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.ef, G.BENCHMARKS.ef); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ef') },
       { name: 'Drink Quality', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.dr, G.BENCHMARKS.dr); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'dr') },
       { name: 'Friendliness', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.fr, G.BENCHMARKS.fr); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'fr') },
-      { name: 'KV Link Times', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.ts, G.BENCHMARKS.time); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ts') }
+      { name: 'Coffee Efficiency', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.ts, G.BENCHMARKS.time); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ts') }
     ]
     : [
       { name: 'Overall Efficiency', avg: avg(data, 'ep'), raw: avg(data, 'ef') },
       { name: 'Drink Quality', avg: avg(data, 'dp'), raw: avg(data, 'dr') },
       { name: 'Friendliness', avg: avg(data, 'fp'), raw: avg(data, 'fr') },
-      { name: 'KV Link Times', avg: avg(data, 'ap'), raw: avg(data, 'ts') }
+      { name: 'Coffee Efficiency', avg: avg(data, 'ap'), raw: avg(data, 'ts') }
     ];
   componentAvgs.sort(function(a, b) { return a.avg - b.avg; });
   G.makeChart('absComponentDrag', {
@@ -172,7 +172,7 @@ window.GAILS.renderTrendCharts = function(data) {
   el = document.getElementById('trendNPSTitle');       if (el) el.textContent = trendTitle('Average NPS by Month');
   el = document.getElementById('trendCXTitle');        if (el) el.textContent = trendTitle('Average CX Scores by Month');
   el = document.getElementById('trendAbsBandsTitle');  if (el) el.textContent = trendTitle('Absolute Score Bands by Month');
-  el = document.getElementById('trendTimelinessTitle');if (el) el.textContent = trendTitle('Average KV Link Times by Month');
+  el = document.getElementById('trendTimelinessTitle');if (el) el.textContent = trendTitle('Average Coffee Efficiency by Month');
   el = document.getElementById('trendBandsTitle');     if (el) el.textContent = trendTitle('Relative Score Bands by Month');
   el = document.getElementById('trendSpeedTitle');     if (el) el.textContent = trendTitle('Average Speed Metrics by Month');
 
@@ -188,7 +188,7 @@ window.GAILS.renderTrendCharts = function(data) {
 
   // Beverage delivery time trend
   var trendTS = RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r.ts; }, 0) / mr.length : null; });
-  G.makeChart('trendTimeliness', { type: 'line', data: { labels: RM, datasets: [{ label: 'Avg KV Link Times', data: trendTS, borderColor: '#9B5DFF', backgroundColor: 'rgba(155,93,255,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'KV Link Times (0-100)' }, min: 0, max: 100 } } } });
+  G.makeChart('trendTimeliness', { type: 'line', data: { labels: RM, datasets: [{ label: 'Avg Coffee Efficiency', data: trendTS, borderColor: '#9B5DFF', backgroundColor: 'rgba(155,93,255,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Coffee Efficiency (0-100)' }, min: 0, max: 100 } } } });
 
   // Band trend
   var bandDs = G.BAND_NAMES.map(function(bn) { return { label: bn, data: RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.filter(function(r) { return r.cb === bn; }).length / mr.length * 100 : 0; }), backgroundColor: G.COL[bn] + 'cc', borderColor: G.COL[bn], borderWidth: 1 }; });
@@ -406,7 +406,7 @@ window.GAILS.renderSpeedCharts = function(data) {
   var corr = function(k) { var xm = avg(data, k), ym = avg(data, 'n'); var num = 0, xd = 0, yd = 0; data.forEach(function(b) { num += (b[k] - xm) * (b.n - ym); xd += (b[k] - xm) ** 2; yd += (b.n - ym) ** 2; }); return xd && yd ? (num * num) / (xd * yd) * 100 : 0; };
   var metrics = [
     { name: 'Within 2 min', r2: corr('s2'), t: 'speed' }, { name: 'Within 3 min', r2: corr('s3'), t: 'speed' },
-    { name: 'Over 5 min', r2: corr('o5'), t: 'speed' }, { name: 'KV Link Times', r2: corr('ts'), t: 'speed' },
+    { name: 'Over 5 min', r2: corr('o5'), t: 'speed' }, { name: 'Coffee Efficiency', r2: corr('ts'), t: 'speed' },
     { name: 'Friendliness', r2: corr('fr'), t: 'cx' }, { name: 'Drink Quality', r2: corr('dr'), t: 'cx' },
     { name: 'Overall Efficiency', r2: corr('ef'), t: 'cx' }, { name: 'Overall CX', r2: corr('ov'), t: 'cx' }
   ];

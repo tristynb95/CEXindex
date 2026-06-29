@@ -223,7 +223,7 @@ window.GAILS = window.GAILS || {};
           render: function(row) { return metricText(row.fr, '%'); }
         },
         {
-          label: 'KV Link Times',
+          label: 'Coffee Efficiency',
           render: function(row) { return metricText(row.ts); }
         },
         {
@@ -266,7 +266,7 @@ window.GAILS = window.GAILS || {};
           render: function(row) { return metricText(row.fr, '%'); }
         },
         {
-          label: 'KV Link Times',
+          label: 'Coffee Efficiency',
           render: function(row) { return metricText(row.ts); }
         },
         {
@@ -318,7 +318,7 @@ window.GAILS = window.GAILS || {};
           }
         },
         {
-          label: 'KV Link Times',
+          label: 'Coffee Efficiency',
           render: function(row) { return metricText(row.ts); }
         },
         {
