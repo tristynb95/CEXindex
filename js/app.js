@@ -501,7 +501,7 @@
         display: Math.round(ts).toString(),
         eyebrow: 'KV Link',
         title: 'Coffee Efficiency',
-        meta: '100% under 5 min. Target: 75+.',
+        meta: 'Target: 80% under 2 min.',
         priorKey: 'ts',
         gapMetric: 'ts',
         good: 75,
