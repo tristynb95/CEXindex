@@ -1,4 +1,4 @@
-// ========== TARGETS MODULE ==========
+﻿// ========== TARGETS MODULE ==========
 window.GAILS = window.GAILS || {};
 
 var _sparkState = null; // cached data for toggle re-render
@@ -151,7 +151,7 @@ function _setTargetTrendState(hasData, message) {
         '<div class="map-popup">' +
           '<div class="map-popup__name">' + siteLabel + '</div>' +
           '<span class="map-popup__band" style="background:' + color + '">' + b.acb + '</span>' +
-          '<div class="map-popup__stats">Index <strong>' + b.c + '</strong> &nbsp;·&nbsp; NPS ' + b.n + ' &nbsp;·&nbsp; Vol ' + b.v + '</div>' +
+          '<div class="map-popup__stats">Index <strong>' + b.ac + '</strong> &nbsp;·&nbsp; NPS ' + b.n + ' &nbsp;·&nbsp; Vol ' + b.v + '</div>' +
           '<div class="map-popup__mgr">' + GAILS.getBakeryOps(b.b) + '</div>' +
         '</div>'
       );
@@ -261,48 +261,34 @@ function _setTargetTrendState(hasData, message) {
       .replace(/'/g, '&#39;');
   }
 
-  var BAND_SCORE = {
-    Excellent: 3, Outstanding: 3,
-    Good: 2, Exceeding: 2, Meeting: 2,
-    Developing: 1, Approaching: 1,
-    'Needs Attention': 0, 'Below Standard': 0
-  };
-
-  var PERF_COLORS = [
-    { threshold: 2.5, color: '#00C875' },
-    { threshold: 1.5, color: '#4895FF' },
-    { threshold: 0.5, color: '#FFB800' },
-    { threshold: -1,  color: '#FF3B5C' }
-  ];
-
-  function getAreaPerformanceColor(items, bandField) {
-    var bf = bandField || 'cb';
+  function getAreaPerformanceColor(items, bandField, networkAvg) {
+    var scoreField = bandField === 'acb' ? 'ac' : 'c';
     var sum = 0, total = 0;
     items.forEach(function(item) {
-      var s = BAND_SCORE[item[bf]];
-      if (s != null) { sum += s; total++; }
+      var s = item[scoreField];
+      if (s != null && !isNaN(s)) { sum += s; total++; }
     });
     if (total === 0) return '#a0aec0';
-    var avg = sum / total;
-    for (var i = 0; i < PERF_COLORS.length; i++) {
-      if (avg >= PERF_COLORS[i].threshold) return PERF_COLORS[i].color;
-    }
+    var delta = (sum / total) - networkAvg;
+    if (delta >= 5)  return '#00C875';
+    if (delta >= 0)  return '#4895FF';
+    if (delta >= -5) return '#FFB800';
     return '#FF3B5C';
   }
 
-  var BAND_ORDER = ['Excellent', 'Outstanding', 'Good', 'Exceeding', 'Meeting', 'Developing', 'Approaching', 'Needs Attention', 'Below Standard'];
-
-  function buildAreaTooltip(mgr, items, bandField) {
-    var bf = bandField || 'cb';
-    var counts = {};
+  function buildAreaTooltip(mgr, items, bandField, networkAvg) {
+    var scoreField = bandField === 'acb' ? 'ac' : 'c';
+    var sum = 0, total = 0;
     items.forEach(function(item) {
-      var band = item[bf];
-      if (band) counts[band] = (counts[band] || 0) + 1;
+      var s = item[scoreField];
+      if (s != null && !isNaN(s)) { sum += s; total++; }
     });
-    var parts = BAND_ORDER.filter(function(b) { return counts[b]; })
-      .map(function(b) { return counts[b] + ' ' + b; });
+    if (total === 0) return '<strong>' + escapeHtml(mgr) + '’s Area</strong>';
+    var areaAvg = Math.round(sum / total * 10) / 10;
+    var diff = Math.round((areaAvg - networkAvg) * 10) / 10;
+    var diffStr = diff >= 0 ? '+' + diff : '' + diff;
     return '<strong>' + escapeHtml(mgr) + '’s Area</strong>' +
-      (parts.length ? '<br><span style="font-size:0.82em;opacity:0.85">' + parts.join(' · ') + '</span>' : '');
+      '<br><span style="font-size:0.82em;opacity:0.85">' + areaAvg + ' &nbsp;&middot;&nbsp; ' + diffStr + ' vs avg</span>';
   }
 
   function isMapActive(selector) {
@@ -377,7 +363,9 @@ function _setTargetTrendState(hasData, message) {
     var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b;
     var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
     var region = GAILS.getBakeryRegion ? GAILS.getBakeryRegion(item.b) : 'Unknown';
-    var cei = item.c != null ? item.c : '\u2014';
+    var isAbs = bandField === 'acb';
+    var _score = isAbs ? item.ac : item.c;
+    var cei = _score != null ? _score : '\u2014';
     var nps = item.n != null ? item.n : '\u2014';
     var volume = item.v != null ? item.v : '\u2014';
 
@@ -574,24 +562,30 @@ function _setTargetTrendState(hasData, message) {
     if (showAreas && cfg.instance && cfg.areaLayer && cfg.items.length > 0) {
       var managerGroups = {};
       cfg.items.forEach(function(item) {
-        var meta = GAILS.getBakeryMeta ? GAILS.getBakeryMeta(item.b) : GAILS.BAKERY_META[item.b];
-        var ll = meta && meta.ll;
-        if (!ll) return;
         var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
         if (!managerGroups[ops]) managerGroups[ops] = { coords: [], items: [] };
-        managerGroups[ops].coords.push(ll);
         managerGroups[ops].items.push(item);
+        var meta = GAILS.getBakeryMeta ? GAILS.getBakeryMeta(item.b) : GAILS.BAKERY_META[item.b];
+        var ll = meta && meta.ll;
+        if (ll) managerGroups[ops].coords.push(ll);
       });
 
       var voronoiPolys = computeVoronoiTerritories(managerGroups);
       var AREA_DASH_PATTERNS = [null, '8 5', '4 4', '12 4 4 4', '2 5'];
       var mgrIndex = 0;
+      var _areaScoreField = cfg.bandField === 'acb' ? 'ac' : 'c';
+      var _netSum = 0, _netCount = 0;
+      cfg.items.forEach(function(item) {
+        var s = item[_areaScoreField];
+        if (s != null && !isNaN(s)) { _netSum += s; _netCount++; }
+      });
+      var networkAvg = _netCount > 0 ? _netSum / _netCount : 0;
 
       Object.keys(managerGroups).forEach(function(mgr) {
         if (mgr === 'Unknown' || mgr === 'Other') return;
         var group = managerGroups[mgr];
-        var color = getAreaPerformanceColor(group.items, cfg.bandField);
-        var tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField);
+        var color = getAreaPerformanceColor(group.items, cfg.bandField, networkAvg);
+        var tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField, networkAvg);
         var dashArray = AREA_DASH_PATTERNS[mgrIndex % AREA_DASH_PATTERNS.length] || null;
         mgrIndex++;
 
