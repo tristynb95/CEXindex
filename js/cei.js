@@ -78,7 +78,7 @@ window.GAILS.computeCEI = function(monthRecords) {
     var absEf = G.computeAbsoluteComponent(r.ef, G.BENCHMARKS.ef);
     var absDr = G.computeAbsoluteComponent(r.dr, G.BENCHMARKS.dr);
     var absFr = G.computeAbsoluteComponent(r.fr, G.BENCHMARKS.fr);
-    var absTs = G.computeAbsoluteComponent(r.ts, G.BENCHMARKS.time);
+    var absTs = Math.max(0, Math.min(100, Math.round(((r.s2 || 0) + Math.max(0, (r.s3 || 0) - (r.s2 || 0)) * 0.5 - (r.o5 || 0) * 5.0) * 10) / 10));
     r.ac = Math.round((absEf * 0.35 + absDr * 0.35 + absFr * 0.25 + absTs * 0.05) * 10) / 10;
     r.acb = r.ac >= 90 ? 'Exceeding' : r.ac >= 75 ? 'Meeting' : r.ac >= 60 ? 'Approaching' : 'Below Standard';
   });

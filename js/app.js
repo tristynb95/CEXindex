@@ -343,12 +343,12 @@
       return '';
     }
     if (gapMetric === 'ts') {
-      if (val < 75) return (75 - r) + ' pts from target';
+      if (val < 80) return (80 - r) + '% below target';
       return '';
     }
     if (gapMetric === 'o5') {
       var disp = parseFloat(val.toFixed(1));
-      if (disp > 2) return '+' + (disp - 2).toFixed(1) + '% above target';
+      if (disp > 1) return '+' + (disp - 1).toFixed(1) + '% above target';
       return '';
     }
     return '';
@@ -498,26 +498,32 @@
       buildMetricCard({
         value: ts,
         compare: Math.round(ts),
-        display: Math.round(ts).toString(),
+        display: Math.round(ts) + '%',
         eyebrow: 'KV Link',
         title: 'Coffee Efficiency',
         meta: 'Target: 80% < 2 min.',
         priorKey: 'ts',
         gapMetric: 'ts',
-        good: 75,
-        warn: 50,
-        labels: { good: 'On Target', warn: 'Watch', bad: 'Slow' }
+        good: 80,
+        warn: 70,
+        labels: { good: 'On Target', warn: 'Watch', bad: 'Slow' },
+        bands: [
+          { test: function(v) { return v > 80; }, tone: 'kpi-green', status: 'Excellent' },
+          { test: function(v) { return v >= 70 && v <= 80; }, tone: 'kpi-green', status: 'Good' },
+          { test: function(v) { return v >= 60 && v < 70; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function(v) { return v < 60; }, tone: 'kpi-red', status: 'Slow' }
+        ]
       }),
       buildMetricCard({
         value: o5,
         display: o5.toFixed(1) + '%',
         eyebrow: 'KV Link',
         title: 'Orders >5 Min',
-        meta: 'Target: < 2%.',
+        meta: 'Target: < 1%.',
         priorKey: 'o5',
         gapMetric: 'o5',
-        good: 2,
-        warn: 3,
+        good: 1,
+        warn: 2,
         invert: true,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Slow' }
       })

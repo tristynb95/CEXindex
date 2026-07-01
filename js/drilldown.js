@@ -272,7 +272,7 @@ window.GAILS = window.GAILS || {};
         {
           label: '>5m',
           render: function(row) {
-            var color = row.o5 > 3 ? 'var(--red)' : row.o5 > 2 ? 'var(--amber)' : 'inherit';
+            var color = row.o5 > 2 ? 'var(--red)' : row.o5 > 1 ? 'var(--amber)' : 'inherit';
             return '<span style="color:' + color + '">' + metricText(row.o5, '%') + '</span>';
           }
         },

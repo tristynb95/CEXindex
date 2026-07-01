@@ -372,7 +372,7 @@ window.GAILS.renderLeagueTable = function(data) {
     '<td>' + b.n + '</td><td>' + b.v + '</td>' +
     '<td>' + b.dr + '%</td><td>' + b.ef + '%</td><td>' + b.fr + '%</td>' +
     '<td>' + b.ts + '</td>' +
-    '<td style="color:' + (b.o5 > 3 ? 'var(--red)' : b.o5 > 2 ? 'var(--amber)' : 'inherit') + '">' + b.o5 + '%</td>' +
+    '<td style="color:' + (b.o5 > 2 ? 'var(--red)' : b.o5 > 1 ? 'var(--amber)' : 'inherit') + '">' + b.o5 + '%</td>' +
     '<td>' + b.ov + '%</td><td>' + b.s2 + '%</td>' +
     '</tr>'; }).join('');
   G.makeSortable(document.getElementById('tableBody').closest('table'));
