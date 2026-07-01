@@ -562,10 +562,10 @@
               <h2>Coffee Experience Index v4 &mdash; Methodology</h2>
               <div class="explain">
                 <h3>How Do We Measure Success?</h3>
-                <p>The <strong>Coffee Experience Index</strong> uses a 0 to 100 score to tell us how well we're doing. We look at this in two ways: <strong>Relative Score</strong> (how you compare to other bakeries this month) and <strong>Absolute Score</strong> (how you compare to GAIL's overall strict standards, regardless of everyone else).</p>
+                <p>The <strong>Coffee Experience Index</strong> uses a 0 to 100 score to tell us how well we're doing. We look at this in two ways: <strong>Relative Score</strong> (how you compare to other bakeries this selected period) and <strong>Absolute Score</strong> (how you compare to GAIL's overall strict standards, regardless of everyone else).</p>
 
                 <h3>Relative vs Absolute Explainer</h3>
-                <p><strong>Relative Score</strong> is like a race. Every month, all bakeries line up and we rank them against each other. If you finish 1st out of 20 bakeries, your score is near 100. If you finish last, it's near 0. It doesn't matter what the actual numbers are &mdash; only where you finished in the group that month.</p>
+                <p><strong>Relative Score</strong> is like a race. Every selected period, all bakeries line up and we rank them against each other. If you finish 1st out of 20 bakeries, your score is near 100. If you finish last, it's near 0. It doesn't matter what the actual numbers are &mdash; only where you finished in the group that selected period.</p>
                 <p><strong>Absolute Score</strong> is like a test with a pass mark. The pass mark is 90%. Whether every other bakery is above or below 90% doesn't change your result &mdash; you either hit the standard or you didn't.</p>
                 <p style="font-size:0.8rem;color:var(--muted);margin-bottom:4px;">Use <strong>Relative</strong> to see who's leading the pack. Use <strong>Absolute</strong> to see if the whole network is genuinely hitting the standard.</p>
 
@@ -579,7 +579,7 @@
                 </ul>
 
                 <h3>Keeping It Fair</h3>
-                <p>If a bakery only gets 2 or 3 reviews in a month, one bad review could unfairly ruin their score, or one perfect review could push them to the very top. To be fair, if you don't have many reviews, we gently blend your score with the average to keep things balanced and fair for everyone.</p>
+                <p>If a bakery only gets 2 or 3 reviews in a selected period, one bad review could unfairly ruin their score, or one perfect review could push them to the very top. To be fair, if you don't have many reviews, we gently blend your score with the average to keep things balanced and fair for everyone.</p>
 
                 <h3>Our Standards</h3>
                 <p>Our standard is simple: we aim for <strong>90% or higher</strong> on everything. If a bakery hits 90%, they get full marks. However, if a score drops below 90%, we apply strict point deductions. For example, an 80% score loses <em>half</em> its points, and anything under 75% gets almost zero.</p>
@@ -592,12 +592,21 @@
                 </div>
 
                 <h3>How We Group Bakeries (Bands)</h3>
-                <div class="benchmarks">
+                <div class="benchmarks" style="margin-bottom:20px">
                   <div class="benchmark exc"><div class="bval">75&ndash;100</div><div class="blabel">Excellent</div></div>
                   <div class="benchmark gd"><div class="bval">50&ndash;74</div><div class="blabel">Good</div></div>
                   <div class="benchmark dev"><div class="bval">25&ndash;49</div><div class="blabel">Developing</div></div>
                   <div class="benchmark na"><div class="bval">0&ndash;24</div><div class="blabel">Needs Attention</div></div>
                 </div>
+
+                <h3>KPI Card Status Thresholds</h3>
+                <p>To help scan the dashboard quickly, each KPI card displays a color-coded status tag (<strong>Exceeding</strong>, <strong>On Target</strong>, <strong>Watch</strong>, or <strong>Below</strong>) based on specific performance bands for the selected period:</p>
+                <ul style="margin-left: 20px; margin-bottom: 20px;">
+                  <li style="margin-bottom: 6px;"><strong>Net Promoter Score (NPS)</strong>: Exceeding (&gt;60), On Target (55–60), Watch (45–54), Below (&lt;45).</li>
+                  <li style="margin-bottom: 6px;"><strong>SHINE Cards (Drink Quality, Efficiency, Friendliness)</strong>: Exceeding (&ge;93%), On Target (90–92%), Watch (80–89%), Below (&lt;80%).</li>
+                  <li style="margin-bottom: 6px;"><strong>Coffee Efficiency</strong>: Exceeding (&gt;80%), On Target (70–80%), Watch (60–69%), Below (&lt;60%).</li>
+                  <li style="margin-bottom: 6px;"><strong>Orders &gt;5 Min</strong>: Exceeding (&lt;0.5%), On Target (0.5–0.9%), Watch (1.0–1.4%), Below (&ge;1.5%).</li>
+                </ul>
 
                 <h3 style="margin-top:20px">What's New in v4?</h3>
                 <p><strong>1. Listening to the customer:</strong> We reduced the score for Coffee Efficiency from 20% down to 5%, and instead put that focus strictly on how the customer rated their speed and quality.</p>

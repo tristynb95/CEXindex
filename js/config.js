@@ -329,7 +329,7 @@ window.GAILS.ABS_BAND_NAMES = ['Exceeding', 'Meeting', 'Approaching', 'Below Sta
 
 // ========== CEI WEIGHTS & BENCHMARKS ==========
 window.GAILS.CEI_WEIGHTS = { ef: 0.35, dr: 0.35, fr: 0.25, time: 0.05 };
-window.GAILS.BENCHMARKS = { ef: 90, dr: 90, fr: 90, time: 90 };
+window.GAILS.BENCHMARKS = { ef: 90, dr: 90, fr: 90, time: 80 };
 
 // ========== UTILITY ==========
 window.GAILS.bc = function(b) { return b.replace(/\s/g, '-'); };
