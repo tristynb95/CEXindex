@@ -979,7 +979,7 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
         '<td style="color:' + (b.ep < 25 ? 'var(--red)' : 'inherit') + '">' + b.ef + '%</td>' +
         '<td style="color:' + (b.fp < 25 ? 'var(--red)' : 'inherit') + '">' + b.fr + '%</td>' +
         '<td style="color:' + (b.ap < 25 ? 'var(--red)' : 'inherit') + '">' + b.ts + '</td>' +
-        '<td style="color:' + (b.o5 > 2 ? 'var(--red)' : b.o5 > 1 ? 'var(--amber)' : 'inherit') + '">' + b.o5 + '%</td>' +
+        '<td style="color:' + (b.o5 > 1.5 ? 'var(--red)' : b.o5 > 1.0 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
         '<td style="font-weight:600;color:' + focusColor + '">' + focus.name + ' &mdash; ' + focusLabel(focus.pct) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   G.makeSortable(document.getElementById('targetTable'));

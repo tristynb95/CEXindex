@@ -422,7 +422,7 @@
         bands: [
           { test: function(val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
           { test: function(val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
-          { test: function(val) { return val <= 60; }, tone: 'kpi-blue', status: 'On Target' },
+          { test: function(val) { return val <= 60; }, tone: 'kpi-green', status: 'On Target' },
           { test: function(val) { return val > 60; }, tone: 'kpi-green', status: 'Exceeding' }
         ],
         labels: { good: 'Exceeding', warn: 'Watch', bad: 'Below' },
@@ -467,6 +467,12 @@
         gapMetric: 'pct90',
         good: 90,
         warn: 80,
+        bands: [
+          { test: function(val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function(val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function(val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function(val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
+        ],
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       }),
       buildMetricCard({
@@ -480,6 +486,12 @@
         gapMetric: 'pct90',
         good: 90,
         warn: 80,
+        bands: [
+          { test: function(val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function(val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function(val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function(val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
+        ],
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       }),
       buildMetricCard({
@@ -493,6 +505,12 @@
         gapMetric: 'pct90',
         good: 90,
         warn: 80,
+        bands: [
+          { test: function(val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function(val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function(val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function(val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
+        ],
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       }),
       buildMetricCard({
@@ -506,12 +524,12 @@
         gapMetric: 'ts',
         good: 80,
         warn: 70,
-        labels: { good: 'On Target', warn: 'Watch', bad: 'Slow' },
+        labels: { good: 'On Target', warn: 'Watch', bad: 'Below' },
         bands: [
-          { test: function(v) { return v > 80; }, tone: 'kpi-green', status: 'Excellent' },
-          { test: function(v) { return v >= 70 && v <= 80; }, tone: 'kpi-green', status: 'Good' },
+          { test: function(v) { return v > 80; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function(v) { return v >= 70 && v <= 80; }, tone: 'kpi-green', status: 'On Target' },
           { test: function(v) { return v >= 60 && v < 70; }, tone: 'kpi-amber', status: 'Watch' },
-          { test: function(v) { return v < 60; }, tone: 'kpi-red', status: 'Slow' }
+          { test: function(v) { return v < 60; }, tone: 'kpi-red', status: 'Below' }
         ]
       }),
       buildMetricCard({
@@ -522,10 +540,16 @@
         meta: 'Target: < 1%.',
         priorKey: 'o5',
         gapMetric: 'o5',
-        good: 1,
-        warn: 2,
+        bands: [
+          { test: function(v) { return v < 0.5; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function(v) { return v < 1.0; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function(v) { return v < 1.5; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function(v) { return v >= 1.5; }, tone: 'kpi-red', status: 'Below' }
+        ],
+        good: 1.0,
+        warn: 1.5,
         invert: true,
-        labels: { good: 'On Target', warn: 'Watch', bad: 'Slow' }
+        labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       })
     ].map(function(metric) {
       return '<article class="kpi ' + metric.tone + (metric.primary ? ' kpi--primary' : '') + '">'
