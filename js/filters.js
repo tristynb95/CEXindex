@@ -70,6 +70,7 @@ window.GAILS.getData = function() {
         fp: Math.round(avg('fp') * 10) / 10,
         c: Math.round(avg('c') * 10) / 10, co: rows[0].co, s2w: Math.round(avg('s2w') * 10) / 10,
         ac: Math.round(avg('ac') * 10) / 10,
+        ats: Math.round(avg('ats') * 10) / 10,
         c_raw: Math.round(avg('c_raw') * 10) / 10,
       };
       a.cb = a.c >= 75 ? 'Excellent' : a.c >= 50 ? 'Good' : a.c >= 25 ? 'Developing' : 'Needs Attention';

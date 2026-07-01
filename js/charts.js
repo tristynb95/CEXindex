@@ -105,7 +105,7 @@ window.GAILS.renderOverviewCharts = function(data) {
       { name: 'Overall Efficiency', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.ef, G.BENCHMARKS.ef); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ef') },
       { name: 'Drink Quality', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.dr, G.BENCHMARKS.dr); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'dr') },
       { name: 'Friendliness', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.fr, G.BENCHMARKS.fr); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'fr') },
-      { name: 'Coffee Efficiency', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.ts, G.BENCHMARKS.time); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ts') }
+      { name: 'Coffee Efficiency', avg: data.map(function(b) { return b.ats; }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ts') }
     ]
     : [
       { name: 'Overall Efficiency', avg: avg(data, 'ep'), raw: avg(data, 'ef') },
