@@ -1295,7 +1295,7 @@
     var monthSelect = document.getElementById('monthSelect');
     var rollingWindow = document.getElementById('rollingWindow');
     var bandFilter = document.getElementById('bandFilter');
-    var rollingValue = 6;
+    var rollingValue = 1;
 
     state.regionFilter.splice(0, state.regionFilter.length);
     state.opsFilter.splice(0, state.opsFilter.length);
@@ -1303,7 +1303,7 @@
     state.bandFilter = '';
 
     if (rollingWindow) {
-      rollingWindow.value = '6';
+      rollingWindow.value = '1';
       rollingValue = parseInt(rollingWindow.value, 10) || 0;
       G.syncCustomSelect(rollingWindow);
     }
