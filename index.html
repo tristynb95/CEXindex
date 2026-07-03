@@ -1042,6 +1042,23 @@
       </div>
     </div>
 
+    <!-- VISIT REPORT MODAL -->
+    <div id="visitReportModal" class="drill-modal" style="display:none;" onclick="if(event.target===this)GAILS.closeVisitReport()">
+      <div class="drillInner">
+        <div class="drill-modal-header">
+          <div>
+            <h3 class="drill-modal-title" id="visitReportTitle"></h3>
+            <p class="drill-modal-subtitle" id="visitReportSubtitle"></p>
+          </div>
+          <div class="visit-report-header-actions">
+            <button type="button" class="drill-close-btn visit-report-print-btn" onclick="window.print()">&#128438; Print</button>
+            <button class="drill-close-btn" onclick="GAILS.closeVisitReport()">&#10005; Close</button>
+          </div>
+        </div>
+        <div id="visitReportBody" class="drill-modal-body visit-report-body"></div>
+      </div>
+    </div>
+
     <div id="unmappedSitesModal" class="modal-overlay map-unmapped-modal" style="display:none;" onclick="if(event.target===this)GAILS.closeUnmappedSitesModal()">
       <div class="map-unmapped-panel glass-panel">
         <div class="map-unmapped-panel__head">
@@ -1076,6 +1093,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/state.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/visit-schema.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/cei.js"></script>
   <script src="js/parser.js"></script>
@@ -1085,6 +1103,7 @@
   <script src="js/drilldown.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/targets.js?v=1.0.8"></script>
+  <script src="js/visit-report.js"></script>
   <script src="js/upload.js"></script>
   <script src="js/custom-selects.js"></script>
   <script src="js/wordcloud.js"></script>

@@ -140,6 +140,21 @@
                     <span class="admin-pg-nav__meta">Maintain bakery regions and ops manager ownership.</span>
                   </span>
                 </button>
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="visits" aria-label="Bakery visits">
+                  <span class="admin-pg-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M6 3.5h9l3 3.2V20a.6.6 0 0 1-.6.6H6.6A.6.6 0 0 1 6 20V3.5Z"></path>
+                      <path d="M9 10h6"></path>
+                      <path d="M9 13.5h6"></path>
+                      <path d="M9 17h4"></path>
+                    </svg>
+                  </span>
+                  <span class="admin-pg-nav__content">
+                    <span class="admin-pg-nav__eyebrow">Field visits</span>
+                    <strong>Visits</strong>
+                    <span class="admin-pg-nav__meta">Log, edit, or remove routine coffee visit records.</span>
+                  </span>
+                </button>
                 <button type="button" class="admin-pg-nav__btn" data-admin-panel="data" aria-label="Dataset">
                   <span class="admin-pg-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
@@ -205,6 +220,11 @@
                     <span class="admin-action-card__label">Shared Dataset</span>
                     <strong>Refresh, inspect, or clear the synced workbook</strong>
                     <span>Control the live data every user sees.</span>
+                  </button>
+                  <button type="button" class="admin-action-card" data-admin-panel-target="visits">
+                    <span class="admin-action-card__label">Bakery Visits</span>
+                    <strong>Log, edit, or remove routine coffee visits</strong>
+                    <span>Keep last-visited dates accurate.</span>
                   </button>
                 </div>
               </div>
@@ -364,6 +384,47 @@
               </div>
                 </section>
 
+                <section class="admin-portal__panel" data-admin-panel-content="visits">
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
+                    <h3>Routine Bakery Visits</h3>
+                    <p>Visits are recorded in the field with the Routine Coffee Visit form and sync here automatically. Review a visit, edit a field, or remove a record entirely.</p>
+                  </div>
+                </div>
+                <div class="admin-toolbar">
+                  <label class="admin-form-field admin-form-field--search" for="visitSearchInput">
+                    <span>Search visits</span>
+                    <input type="text" id="visitSearchInput" placeholder="Search bakery, coffee partner, or MOD">
+                  </label>
+                  <div class="admin-toolbar__meta" id="visitTableMeta">Loading visit history&hellip;</div>
+                </div>
+                <div id="visitMsg" class="admin-message" style="display:none;"></div>
+                <div class="admin-table-wrap admin-table-wrap--tall">
+                  <table class="admin-table admin-table--visits">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Bakery</th>
+                        <th>Coffee Partner</th>
+                        <th>Score</th>
+                        <th>MOD</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="visitList"></tbody>
+                  </table>
+                </div>
+              </div>
+                </section>
+
+                <div id="visitDetailModal" class="modal-overlay" style="display:none;">
+                  <div class="visit-detail-panel">
+                    <button type="button" id="visitDetailClose" class="admin-portal__close" aria-label="Close visit detail">&times;</button>
+                    <div id="visitDetailBody" class="visit-detail-body"></div>
+                  </div>
+                </div>
+
                 <section class="admin-portal__panel" data-admin-panel-content="data">
               <div class="admin-section">
                 <div class="admin-section__header">
@@ -413,6 +474,7 @@
   <script src="js/cei.js"></script>
   <script src="js/parser.js"></script>
   <script src="js/tables.js"></script>
+  <script src="js/visit-schema.js"></script>
   <script type="module" src="js/admin-page.js"></script>
 </body>
 

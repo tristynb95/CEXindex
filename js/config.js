@@ -190,8 +190,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "Southbank":                 { "r": "London Region", "o": "Andrea D'Epifanio",      "ll": [51.5073,-0.1126] },
   "Southwark":                 { "r": "London Region", "o": "Andrea D'Epifanio",      "ll": [51.5038,-0.0935] },
   "The Cut":                   { "r": "London Region", "o": "Andrea D'Epifanio",      "ll": [51.5027,-0.1074] },
-  "Camden Lock":               { "r": "Other",         "o": "Other",                  "ll": [51.5441,-0.1471] },
-  "South Kensington":          { "r": "London Region", "o": "Other",                  "ll": [51.4941,-0.1779] }
+  "Camden Lock":               { "r": "Other",         "o": "Other",                  "ll": [51.5441,-0.1471] }
 };
 
 // ========== HELPER FUNCTIONS ==========
@@ -234,7 +233,9 @@ var _bakeryMetaAliasLookup = _buildBakeryAliasLookup(window.GAILS.DEFAULT_BAKERY
 // Keys are the output of _normalizeBakeryLookupName; values are canonical meta keys.
 var _BAKERY_EXTRA_ALIASES = {
   "black friars": "Blackfriars",             // "GAIL's Black Friars" == "GAIL's Blackfriars"
-  "the fire station southwark": "Southwark"  // "GAIL's The Fire Station, Southwark" == "GAIL's Southwark"
+  "the fire station southwark": "Southwark", // "GAIL's The Fire Station, Southwark" == "GAIL's Southwark"
+  "south kensington": "Cromwell Place",
+  "south kinsington": "Cromwell Place"
 };
 
 window.GAILS.normalizeBakeryLookupName = _normalizeBakeryLookupName;
@@ -317,6 +318,26 @@ window.GAILS.getBakeryRegion = function(b) {
 window.GAILS.getBakeryOps = function(b) {
   var meta = window.GAILS.getBakeryMeta(b);
   return meta ? meta.o : 'Unknown';
+};
+
+// ========== ROUTINE VISITS (for map tooltips + the full visit report) ==========
+// Keyed by resolved bakery name -> the most recent routineVisits record (full
+// record, including its Firebase key as .id), populated from the
+// routineVisits Firebase node (see js/auth.js).
+window.GAILS._lastVisitRecords = {};
+
+window.GAILS.setLastVisitRecords = function(records) {
+  window.GAILS._lastVisitRecords = records && typeof records === 'object' ? records : {};
+};
+
+window.GAILS.getLastVisitRecord = function(b) {
+  var key = window.GAILS.resolveBakeryMetaKey(b) || b;
+  return window.GAILS._lastVisitRecords[key] || null;
+};
+
+window.GAILS.getLastVisitDate = function(b) {
+  var record = window.GAILS.getLastVisitRecord(b);
+  return record ? record.date : null;
 };
 
 // ========== COLOUR MAPS ==========

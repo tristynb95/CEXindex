@@ -97,6 +97,7 @@ const logoutBtn = document.getElementById('logoutBtn');
 
 let siteMetaUnsubscribe = null;
 let dashboardDataUnsubscribe = null;
+let routineVisitsUnsubscribe = null;
 let _freshLogin = false;
 
 const ACTIVITY_LOG_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
@@ -156,6 +157,45 @@ function startSiteMetaSync() {
   }).catch(function(error) {
     console.error('Failed to load site metadata:', error);
     applySiteMeta(null);
+  });
+}
+
+function computeLastVisitRecords(visitsObj) {
+  var lastVisit = {};
+  Object.keys(visitsObj || {}).forEach(function(id) {
+    var v = visitsObj[id];
+    var bakery = v && v.bakery;
+    var date = v && v.date;
+    if (!bakery || !date) return;
+    var key = (window.GAILS && typeof window.GAILS.resolveBakeryMetaKey === 'function')
+      ? window.GAILS.resolveBakeryMetaKey(bakery)
+      : bakery;
+    if (!lastVisit[key] || date > lastVisit[key].date) {
+      lastVisit[key] = Object.assign({ id: id }, v);
+    }
+  });
+  return lastVisit;
+}
+
+function applyLastVisitDates(visitsObj) {
+  if (window.GAILS && typeof window.GAILS.setLastVisitRecords === 'function') {
+    window.GAILS.setLastVisitRecords(computeLastVisitRecords(visitsObj));
+  }
+}
+
+function stopRoutineVisitsSync() {
+  if (routineVisitsUnsubscribe) {
+    routineVisitsUnsubscribe();
+    routineVisitsUnsubscribe = null;
+  }
+}
+
+function startRoutineVisitsSync() {
+  stopRoutineVisitsSync();
+  routineVisitsUnsubscribe = onValue(ref(db, 'routineVisits'), function(snapshot) {
+    applyLastVisitDates(snapshot.exists() ? snapshot.val() : {});
+  }, function(error) {
+    console.error('Failed to sync routine visits for map tooltips:', error);
   });
 }
 
@@ -296,11 +336,13 @@ onAuthStateChanged(auth, async (user) => {
         }
         showApp(isAdmin);
         startSiteMetaSync();
+        startRoutineVisitsSync();
         await loadSharedDashboardData(isAdmin);
       } else {
         loginError.textContent = "You don't have access to this dashboard. Contact your administrator.";
         loginError.style.display = 'block';
         stopSiteMetaSync();
+        stopRoutineVisitsSync();
         await signOut(auth);
         showApp(undefined);
       }
@@ -309,12 +351,14 @@ onAuthStateChanged(auth, async (user) => {
       loginError.textContent = "Database connection error or permission denied. Check configuration and rules.";
       loginError.style.display = 'block';
       stopSiteMetaSync();
+      stopRoutineVisitsSync();
       await signOut(auth);
       showApp(undefined);
     }
   } else {
     stopSiteMetaSync();
     stopDashboardDataSync();
+    stopRoutineVisitsSync();
     applySiteMeta(null);
     clearLoginForm();
     showApp(undefined);

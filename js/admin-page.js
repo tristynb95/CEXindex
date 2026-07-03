@@ -61,6 +61,21 @@ const clearDatasetBtn = document.getElementById('clearDatasetBtn');
 const restoreMetaBtn  = document.getElementById('restoreMetadataBtn');
 const compactSidebarMedia = window.matchMedia('(max-width: 980px)');
 const activityLogList     = document.getElementById('activityLogList');
+const visitSearchInput    = document.getElementById('visitSearchInput');
+const visitTableMeta      = document.getElementById('visitTableMeta');
+const visitMsg            = document.getElementById('visitMsg');
+const visitList           = document.getElementById('visitList');
+const visitDetailModal    = document.getElementById('visitDetailModal');
+const visitDetailClose    = document.getElementById('visitDetailClose');
+const visitDetailBody     = document.getElementById('visitDetailBody');
+
+// ── Routine visit schema ──
+// Sourced from js/visit-schema.js (shared with index.html's js/visit-report.js)
+// so the form structure can't drift between the editable admin view and the
+// read-only dashboard report. Keep that file in sync with
+// apps-script/RoutineVisitSync.gs's QUESTION_MAP when questions change.
+const VISIT_GENERAL_FIELDS = window.GAILS_VISIT_SCHEMA.general;
+const VISIT_SECTIONS = window.GAILS_VISIT_SCHEMA.sections;
 
 // ── State ──
 const state = {
@@ -73,10 +88,14 @@ const state = {
   siteMetaDirty: false,
   siteSearch: '',
   datasetInfo: null,
-  siteImportInfo: null
+  siteImportInfo: null,
+  visits: [],
+  visitSearch: '',
+  visitDetailId: null
 };
 
 let usersUnsubscribe = null;
+let visitsUnsubscribe = null;
 
 function nowIso() {
   return new Date().toISOString();
@@ -730,12 +749,215 @@ function renderDataControls() {
   }).join('');
 }
 
+// ── Routine visits ──
+function formatVisitDate(isoDate) {
+  if (!isoDate) return 'No date';
+  var d = new Date(isoDate + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return isoDate;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function getVisibleVisits() {
+  var search = state.visitSearch.trim().toLowerCase();
+  var rows = state.visits.slice().sort(function(a, b) {
+    return String(b.date || '').localeCompare(String(a.date || ''));
+  });
+  if (!search) return rows;
+  return rows.filter(function(v) {
+    return String(v.bakery || '').toLowerCase().includes(search)
+      || String(v.coffeePartner || '').toLowerCase().includes(search)
+      || String(v.mod || '').toLowerCase().includes(search);
+  });
+}
+
+function updateVisitTableMeta(count) {
+  visitTableMeta.textContent = count + ' visible visit' + (count === 1 ? '' : 's')
+    + ' of ' + state.visits.length + ' logged';
+}
+
+function renderVisits() {
+  var rows = getVisibleVisits();
+  updateVisitTableMeta(rows.length);
+
+  if (!rows.length) {
+    visitList.innerHTML = '<tr><td colspan="6" class="admin-empty">No visits logged yet. Submit the Routine Coffee Visit form to see records here.</td></tr>';
+    return;
+  }
+
+  visitList.innerHTML = rows.map(function(v) {
+    var scoreText = (v.score != null && v.score !== '') ? (v.score + (v.scoreMax ? ' / ' + v.scoreMax : '')) : '—';
+    return '<tr>'
+      + '<td>' + escapeHtml(formatVisitDate(v.date)) + '</td>'
+      + '<td><div class="admin-table__title">' + escapeHtml(v.bakery || 'Unknown') + '</div></td>'
+      + '<td>' + escapeHtml(v.coffeePartner || '—') + '</td>'
+      + '<td>' + escapeHtml(scoreText) + '</td>'
+      + '<td>' + escapeHtml(v.mod || '—') + '</td>'
+      + '<td><div class="admin-table__actions">'
+      + '<button type="button" class="admin-inline-btn" data-action="view-visit" data-id="' + escapeHtml(v.id) + '">View / Edit</button>'
+      + '<button type="button" class="admin-inline-danger" data-action="remove-visit" data-id="' + escapeHtml(v.id) + '">Delete</button>'
+      + '</div></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function ynnaOptionsHtml(value) {
+  var options = ['Yes', 'No', 'N/A'];
+  return options.map(function(opt) {
+    return '<option value="' + opt + '" ' + (value === opt ? 'selected' : '') + '>' + opt + '</option>';
+  }).join('') + (options.indexOf(value) === -1 ? '<option value="" selected>—</option>' : '');
+}
+
+function scaleOptionsHtml(value) {
+  var out = '';
+  for (var i = 1; i <= 10; i++) {
+    out += '<option value="' + i + '" ' + (Number(value) === i ? 'selected' : '') + '>' + i + '</option>';
+  }
+  if (value == null || value === '') out += '<option value="" selected>—</option>';
+  return out;
+}
+
+function fieldInputHtml(sectionKey, field, value) {
+  var dataAttrs = 'data-section="' + escapeHtml(sectionKey || '') + '" data-field="' + escapeHtml(field.key) + '" data-type="' + escapeHtml(field.type) + '"';
+  var wide = (field.type === 'textarea' || field.type === 'photos') ? ' admin-form-field--wide' : '';
+  var input;
+
+  if (field.type === 'ynna') {
+    input = '<select ' + dataAttrs + '>' + ynnaOptionsHtml(value) + '</select>';
+  } else if (field.type === 'scale') {
+    input = '<select ' + dataAttrs + '>' + scaleOptionsHtml(value) + '</select>';
+  } else if (field.type === 'textarea') {
+    input = '<textarea rows="2" ' + dataAttrs + '>' + escapeHtml(value || '') + '</textarea>';
+  } else if (field.type === 'photos') {
+    var urls = Array.isArray(value) ? value.join(', ') : (value || '');
+    input = '<textarea rows="2" placeholder="Comma-separated photo URLs" ' + dataAttrs + '>' + escapeHtml(urls) + '</textarea>';
+  } else if (field.type === 'number') {
+    input = '<input type="number" value="' + escapeHtml(value != null ? value : '') + '" ' + dataAttrs + '>';
+  } else if (field.type === 'date') {
+    input = '<input type="date" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
+  } else if (field.type === 'time') {
+    input = '<input type="time" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
+  } else {
+    input = '<input type="text" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
+  }
+
+  var photoLinks = '';
+  if (field.type === 'photos' && Array.isArray(value) && value.length) {
+    photoLinks = '<div class="visit-detail-photos">' + value.map(function(url) {
+      return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener">Photo &#8599;</a>';
+    }).join('') + '</div>';
+  }
+
+  return '<label class="admin-form-field' + wide + '"><span>' + escapeHtml(field.label) + '</span>' + input + '</label>' + photoLinks;
+}
+
+function buildVisitDetailHtml(visit) {
+  var generalHtml = VISIT_GENERAL_FIELDS.map(function(field) {
+    return fieldInputHtml(null, field, visit[field.key]);
+  }).join('');
+
+  var sectionsHtml = VISIT_SECTIONS.map(function(section) {
+    var sectionData = visit[section.key] || {};
+    var fieldsHtml = section.fields.map(function(field) {
+      return fieldInputHtml(section.key, field, sectionData[field.key]);
+    }).join('');
+    return '<div class="visit-detail-section"><h4>' + escapeHtml(section.title) + '</h4><div class="visit-detail-grid">' + fieldsHtml + '</div></div>';
+  }).join('');
+
+  return '<h3>' + escapeHtml(visit.bakery || 'Visit detail') + '</h3>'
+    + '<p>Recorded ' + escapeHtml(formatVisitDate(visit.date)) + (visit.meta && visit.meta.source === 'form' ? ' via the Routine Coffee Visit form.' : ' manually by an admin.') + '</p>'
+    + '<div class="visit-detail-section"><h4>General</h4><div class="visit-detail-grid">' + generalHtml + '</div></div>'
+    + sectionsHtml
+    + '<div class="visit-detail-actions">'
+    + '<button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
+    + '<button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Changes</button>'
+    + '</div>';
+}
+
+function openVisitDetail(id) {
+  var visit = state.visits.find(function(v) { return v.id === id; });
+  if (!visit) return;
+  state.visitDetailId = id;
+  visitDetailBody.innerHTML = buildVisitDetailHtml(visit);
+  visitDetailModal.style.display = 'flex';
+}
+
+function closeVisitDetail() {
+  visitDetailModal.style.display = 'none';
+  visitDetailBody.innerHTML = '';
+  state.visitDetailId = null;
+}
+
+function collectVisitFormValues() {
+  var result = { general: {} };
+  VISIT_SECTIONS.forEach(function(section) { result[section.key] = {}; });
+
+  Array.from(visitDetailBody.querySelectorAll('[data-field]')).forEach(function(input) {
+    var section = input.dataset.section;
+    var key = input.dataset.field;
+    var type = input.dataset.type;
+    var raw = input.value;
+    var value;
+
+    if (type === 'number') {
+      value = raw === '' ? null : Number(raw);
+    } else if (type === 'scale') {
+      value = raw === '' ? null : Number(raw);
+    } else if (type === 'photos') {
+      value = raw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    } else {
+      value = raw;
+    }
+
+    if (section) {
+      result[section][key] = value;
+    } else {
+      result.general[key] = value;
+    }
+  });
+
+  return result;
+}
+
+async function saveVisitDetail(id) {
+  var existing = state.visits.find(function(v) { return v.id === id; });
+  if (!existing) return;
+
+  var collected = collectVisitFormValues();
+  if (!collected.general.bakery || !collected.general.date) {
+    setMessage(visitMsg, 'error', 'A visit needs at least a bakery name and a date.');
+    return;
+  }
+
+  var payload = Object.assign({}, existing, collected.general);
+  VISIT_SECTIONS.forEach(function(section) {
+    payload[section.key] = collected[section.key];
+  });
+  payload.meta = Object.assign({}, existing.meta, {
+    updatedAt: nowIso(),
+    updatedBy: currentUserEmail()
+  });
+  delete payload.id;
+
+  await set(ref(db, 'routineVisits/' + id), payload);
+  setMessage(visitMsg, 'success', 'Saved visit for ' + (collected.general.bakery || 'bakery') + '.');
+  closeVisitDetail();
+}
+
+async function removeVisitRecord(id) {
+  var existing = state.visits.find(function(v) { return v.id === id; });
+  if (!confirm('Delete the visit record for ' + (existing ? existing.bakery : 'this bakery') + '? This cannot be undone.')) return;
+  await remove(ref(db, 'routineVisits/' + id));
+  setMessage(visitMsg, 'success', 'Visit record deleted.');
+  if (state.visitDetailId === id) closeVisitDetail();
+}
+
 function renderPortal() {
   renderSummary();
   renderOverview();
   renderActivityLog();
   renderUsers();
   renderSites();
+  renderVisits();
   renderDataControls();
   renderImportZones();
 }
@@ -874,6 +1096,20 @@ function ensurePortalSync() {
   }).catch(function(err) {
     console.error('Failed to load site metadata snapshot:', err);
   });
+
+  visitsUnsubscribe = onValue(ref(db, 'routineVisits'), function(snapshot) {
+    state.visits = [];
+    if (snapshot.exists()) {
+      var visits = snapshot.val();
+      state.visits = Object.keys(visits).map(function(id) {
+        return Object.assign({ id: id }, visits[id]);
+      });
+    }
+    renderVisits();
+  }, function(err) {
+    console.error('Failed to sync routine visits:', err);
+    setMessage(visitMsg, 'error', 'Could not load visit history from Firebase.');
+  });
 }
 
 // ── Auth guard ──
@@ -915,8 +1151,63 @@ onAuthStateChanged(primaryAuth, async function(user) {
 // ── Event listeners ──
 signOutBtn.addEventListener('click', async function() {
   if (usersUnsubscribe) { usersUnsubscribe(); usersUnsubscribe = null; }
+  if (visitsUnsubscribe) { visitsUnsubscribe(); visitsUnsubscribe = null; }
   await signOut(primaryAuth);
   window.location.href = 'index.html';
+});
+
+visitSearchInput.addEventListener('input', function(e) {
+  state.visitSearch = e.target.value;
+  renderVisits();
+});
+
+visitList.addEventListener('click', async function(e) {
+  var btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  var id = btn.dataset.id;
+
+  if (btn.dataset.action === 'view-visit') {
+    openVisitDetail(id);
+    return;
+  }
+  if (btn.dataset.action === 'remove-visit') {
+    btn.disabled = true;
+    try {
+      await removeVisitRecord(id);
+    } catch (err) {
+      setMessage(visitMsg, 'error', 'Error: ' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+});
+
+visitDetailBody.addEventListener('click', async function(e) {
+  var btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  var id = btn.dataset.id;
+  btn.disabled = true;
+
+  try {
+    if (btn.dataset.action === 'save-visit-detail') {
+      await saveVisitDetail(id);
+    }
+    if (btn.dataset.action === 'delete-visit-detail') {
+      await removeVisitRecord(id);
+    }
+  } catch (err) {
+    setMessage(visitMsg, 'error', 'Error: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+});
+
+if (visitDetailClose) {
+  visitDetailClose.addEventListener('click', closeVisitDetail);
+}
+
+visitDetailModal.addEventListener('click', function(e) {
+  if (e.target === visitDetailModal) closeVisitDetail();
 });
 
 nav.addEventListener('click', function(e) {

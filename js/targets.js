@@ -73,105 +73,6 @@ function _setTargetTrendState(hasData, message) {
   if (tableContent) tableContent.style.display = hasData ? '' : 'none';
 }
 
-// ========== MAP MODULE ==========
-(function() {
-  var _mapInstance = null;
-  var _mapMarkerLayer = null;
-  var _mapTargets = [];
-  window.GAILS.storeMapTargets = function(targets) {
-    _mapTargets = [].concat(targets);
-    // Re-render immediately if the map panel is already open
-    var panel = document.querySelector('[data-target-subtab-panel="map"]');
-    if (panel && panel.classList.contains('active') && _mapInstance) {
-      _placeMarkers(document.getElementById('targetMapStatus'));
-    }
-  };
-
-  window.GAILS.initTargetMap = function() {
-    var el = document.getElementById('targetMap');
-    if (!el || typeof L === 'undefined') return;
-    var statusEl = document.getElementById('targetMapStatus');
-
-    if (_mapInstance) {
-      _mapInstance.invalidateSize();
-      _placeMarkers(statusEl);
-      return;
-    }
-
-    _mapInstance = L.map('targetMap', { zoomControl: true }).setView([52.5, -1.8], 6);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    }).addTo(_mapInstance);
-
-    var legend = L.control({ position: 'bottomright' });
-    legend.onAdd = function() {
-      var div = L.DomUtil.create('div', 'map-legend');
-      div.innerHTML =
-        '<div><span class="map-legend__dot" style="background:#FF3B5C"></span>Below Standard</div>' +
-        '<div><span class="map-legend__dot" style="background:#FFB800"></span>Approaching</div>';
-      return div;
-    };
-    legend.addTo(_mapInstance);
-
-    _mapMarkerLayer = L.layerGroup().addTo(_mapInstance);
-    _placeMarkers(statusEl);
-  };
-
-  function _placeMarkers(statusEl) {
-    if (!_mapInstance || !_mapMarkerLayer) return;
-    _mapMarkerLayer.clearLayers();
-
-    if (_mapTargets.length === 0) {
-      if (statusEl) statusEl.textContent = 'No focus bakeries for the current selection.';
-      return;
-    }
-
-    var bounds = [];
-    var placed = 0;
-    var missing = [];
-
-    _mapTargets.forEach(function(b) {
-      var meta = GAILS.getBakeryMeta ? GAILS.getBakeryMeta(b.b) : GAILS.BAKERY_META[b.b];
-      var ll = meta && meta.ll;
-      if (!ll) { missing.push(b.b); return; }
-
-      var color = b.acb === 'Below Standard' ? '#FF3B5C' : '#FFB800';
-      var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(b.b) : b.b;
-      var marker = L.circleMarker(ll, {
-        radius: 9,
-        fillColor: color,
-        color: '#fff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.88
-      });
-      marker.bindPopup(
-        '<div class="map-popup">' +
-          '<div class="map-popup__name">' + siteLabel + '</div>' +
-          '<span class="map-popup__band" style="background:' + color + '">' + b.acb + '</span>' +
-          '<div class="map-popup__stats">Index <strong>' + b.ac + '</strong> &nbsp;·&nbsp; NPS ' + b.n + ' &nbsp;·&nbsp; Vol ' + b.v + '</div>' +
-          '<div class="map-popup__mgr">' + GAILS.getBakeryOps(b.b) + '</div>' +
-        '</div>'
-      );
-      _mapMarkerLayer.addLayer(marker);
-      bounds.push(ll);
-      placed++;
-    });
-
-    if (bounds.length > 1) {
-      _mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
-    } else if (bounds.length === 1) {
-      _mapInstance.setView(bounds[0], 14);
-    }
-
-    var msg = placed + ' baker' + (placed === 1 ? 'y' : 'ies') + ' mapped.';
-    if (missing.length) msg += ' ' + missing.length + ' without coordinates.';
-    if (statusEl) statusEl.textContent = msg;
-  }
-})();
-
 // Shared map controller for the dashboard-wide map tab and the target map sub-tab.
 (function() {
   var DEFAULT_CENTER = [52.5, -1.8];
@@ -358,16 +259,28 @@ function _setTargetTrendState(hasData, message) {
     return (band && palette && palette[band]) || '#FF3B5C';
   }
 
+  function formatLastVisitDate(isoDate) {
+    if (!isoDate) return 'No routine visit logged yet';
+    var d = new Date(isoDate + 'T00:00:00');
+    if (isNaN(d.getTime())) return 'No routine visit logged yet';
+    return 'Last visited ' + d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
   function getPopupHtml(item, color, bandField) {
     var band = item[(bandField || 'cb')];
     var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b;
     var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
     var region = GAILS.getBakeryRegion ? GAILS.getBakeryRegion(item.b) : 'Unknown';
+    var lastVisit = GAILS.getLastVisitDate ? GAILS.getLastVisitDate(item.b) : null;
     var isAbs = bandField === 'acb';
     var _score = isAbs ? item.ac : item.c;
     var cei = _score != null ? _score : '\u2014';
     var nps = item.n != null ? item.n : '\u2014';
     var volume = item.v != null ? item.v : '\u2014';
+
+    var visitLine = lastVisit
+      ? '<button type="button" class="map-popup__visit map-popup__visit--link" data-visit-report="' + escapeHtml(item.b) + '">' + escapeHtml(formatLastVisitDate(lastVisit)) + ' &rarr;</button>'
+      : '<div class="map-popup__visit">' + escapeHtml(formatLastVisitDate(lastVisit)) + '</div>';
 
     return '<div class="map-popup">' +
       '<div class="map-popup__name">' + escapeHtml(siteLabel) + '</div>' +
@@ -375,6 +288,7 @@ function _setTargetTrendState(hasData, message) {
       '<div class="map-popup__stats">Index <strong>' + escapeHtml(cei) + '</strong> &nbsp;&middot;&nbsp; NPS ' + escapeHtml(nps) + ' &nbsp;&middot;&nbsp; Vol ' + escapeHtml(volume) + '</div>' +
       '<div class="map-popup__mgr">' + escapeHtml(ops) + '</div>' +
       '<div class="map-popup__meta">' + escapeHtml(region) + '</div>' +
+      visitLine +
     '</div>';
   }
 
