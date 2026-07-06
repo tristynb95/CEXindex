@@ -315,7 +315,8 @@ h4 {
 }
 
 .header-index-toggle .overview-rankings-toggle__btn.active {
-  box-shadow: 0 2px 10px rgba(72, 149, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #ff3b5c 0%, #d6264a 100%);
+  box-shadow: 0 2px 10px rgba(255, 59, 92, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 @media (max-width: 480px) {
@@ -583,6 +584,56 @@ h4 {
   height: 1px;
   background: rgba(255, 255, 255, 0.08);
   margin: 6px 10px;
+}
+
+.filter-select__menu--searchable {
+  display: none;
+  flex-direction: column;
+  max-height: 360px;
+  overflow: hidden;
+  padding: 8px;
+}
+
+.filter-select.is-open .filter-select__menu--searchable {
+  display: flex;
+}
+
+.filter-select__search {
+  flex: 0 0 auto;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 59, 92, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.filter-select__search::placeholder {
+  color: var(--muted-l);
+  font-weight: 500;
+}
+
+.filter-select__search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 59, 92, 0.16);
+}
+
+.filter-select__options {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.filter-select__empty {
+  padding: 14px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted-l);
 }
 
 .filter-select__group-label {
@@ -6359,6 +6410,16 @@ body.table-fullscreen-lock {
     background: #fff !important;
   }
 
+  /* Scroll-lock (openVisitReport) sets body to position:fixed with a negative
+     top offset inline; that pins body to one viewport height when printing
+     and clips everything beyond it, so it must be forced back to static. */
+  body {
+    position: static !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+
   .container {
     overflow: visible !important;
     height: auto !important;
@@ -8104,3 +8165,344 @@ a,
   }
 }
 
+/* Hide global filter bar on the visit-log tab */
+.filter-bar.filter-bar--hidden {
+  display: none !important;
+}
+
+/* ── Visit Log Styles ── */
+.visit-log-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 15px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 15px 20px;
+  margin-bottom: 25px;
+}
+
+.visit-log-filter-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.visit-log-filter-control label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-l);
+}
+
+.visit-log-input,
+.visit-log-select {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.visit-log-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236868A0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  padding-right: 32px;
+}
+
+.visit-log-input:focus,
+.visit-log-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-d);
+}
+
+.visit-log-reset-btn {
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 38px;
+}
+
+.visit-log-reset-btn:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Visit Log Rows (Table-like layout) ──
+   Fixed height + internal scroll so the card's overall size stays put as the
+   result count changes (filtering/search no longer pushes the page around). */
+.visit-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+  height: 560px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+}
+
+.visit-log-list .visit-log-empty {
+  height: 100%;
+  justify-content: center;
+}
+
+.visit-log-row {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 14px 20px;
+  display: grid;
+  grid-template-columns: 140px 180px 130px 90px 1fr 100px;
+  align-items: center;
+  gap: 15px;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.visit-log-row:hover {
+  transform: translateY(-1px);
+  border-color: var(--card-border-h);
+  background: var(--card-hover);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.visit-log-row__date-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.visit-log-row__date {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.visit-log-row__time {
+  font-size: 0.72rem;
+  color: var(--muted-l);
+}
+
+.visit-log-row__bakery-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.visit-log-row__bakery {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.visit-log-row__manager {
+  font-size: 0.72rem;
+  color: var(--muted-l);
+}
+
+.visit-log-row__partner {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.visit-log-row__score-col {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.visit-log-row__notes-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.visit-log-row__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.visit-log-row__tag {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+
+.visit-log-row__notes-preview {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.visit-log-row__action-col {
+  text-align: right;
+}
+
+.visit-log-row__btn {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-2);
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.visit-log-row:hover .visit-log-row__btn {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.visit-log-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px dashed var(--card-border);
+  border-radius: 16px;
+  width: 100%;
+}
+
+.visit-log-empty__icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 980px) {
+  .visit-log-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 14px;
+  }
+  
+  .visit-log-row__date-col {
+    grid-column: 1;
+  }
+  
+  .visit-log-row__score-col {
+    grid-column: 2;
+    text-align: right;
+  }
+  
+  .visit-log-row__bakery-col {
+    grid-column: 1 / span 2;
+  }
+  
+  .visit-log-row__partner {
+    grid-column: 1;
+    font-size: 0.78rem;
+  }
+  
+  .visit-log-row__notes-col {
+    grid-column: 1 / span 2;
+  }
+  
+  .visit-log-row__action-col {
+    grid-column: 1 / span 2;
+    text-align: left;
+    margin-top: 4px;
+  }
+  
+  .visit-log-row__btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+/* ── Visit Log Toggle buttons ── */
+.visit-log-toggle-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--card-border);
+  color: var(--text-2);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.visit-log-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+.visit-log-toggle-btn.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Unvisited list grouping styles ── */
+.unvisited-manager-section {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 15px;
+}
+.unvisited-manager-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 8px;
+  margin-top: 0;
+}
+.unvisited-bakeries-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.unvisited-bakery-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.84rem;
+  color: var(--text-2);
+  transition: all 0.2s ease;
+}
+.unvisited-bakery-item:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}

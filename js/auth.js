@@ -81,6 +81,28 @@ window.GAILS_Firebase = {
     var payload = buildSiteMetaPayload(meta, sourceInfo);
     await set(ref(db, 'portalData/siteMeta'), payload);
     return payload;
+  },
+  saveSiteVisit: async function(visitRecord) {
+    if (!auth.currentUser) throw new Error('You must be signed in to log a visit.');
+    var newVisitRef = push(ref(db, 'routineVisits'));
+    var nowIsoStr = nowIso();
+    var payload = Object.assign({
+      type: 'siteVisit',
+      score: null,
+      scoreMax: null,
+      meta: {
+        source: 'siteVisit',
+        createdAt: nowIsoStr,
+        updatedAt: nowIsoStr,
+        updatedBy: auth.currentUser.email || auth.currentUser.uid
+      }
+    }, visitRecord);
+    await set(newVisitRef, payload);
+    return newVisitRef.key;
+  },
+  deleteSiteVisit: async function(visitId) {
+    if (!auth.currentUser) throw new Error('You must be signed in to delete a visit.');
+    await remove(ref(db, 'routineVisits/' + visitId));
   }
 };
 
@@ -178,8 +200,17 @@ function computeLastVisitRecords(visitsObj) {
 }
 
 function applyLastVisitDates(visitsObj) {
-  if (window.GAILS && typeof window.GAILS.setLastVisitRecords === 'function') {
-    window.GAILS.setLastVisitRecords(computeLastVisitRecords(visitsObj));
+  if (window.GAILS) {
+    if (typeof window.GAILS.setLastVisitRecords === 'function') {
+      window.GAILS.setLastVisitRecords(computeLastVisitRecords(visitsObj));
+    }
+    window.GAILS._allVisitsObj = visitsObj || {};
+    if (typeof window.GAILS.renderVisitLog === 'function') {
+      window.GAILS.renderVisitLog();
+    }
+    if (typeof window.GAILS.refreshMapVisitFilters === 'function') {
+      window.GAILS.refreshMapVisitFilters();
+    }
   }
 }
 
@@ -366,6 +397,7 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function showApp(isAdmin) {
+  if (window.GAILS) window.GAILS.isAdmin = !!isAdmin;
   if (isAdmin !== undefined) {
     // Keep the loading screen visible — loadSharedDashboardData will dismiss it
     // once Firebase data has finished loading.

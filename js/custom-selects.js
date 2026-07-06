@@ -41,6 +41,34 @@
     menu.className = 'filter-select__menu';
     menu.setAttribute('role', 'listbox');
 
+    var searchable = select.dataset.searchable === 'true';
+    var searchInput = null;
+    var optionsList = menu;
+    var emptyState = null;
+
+    if (searchable) {
+      menu.classList.add('filter-select__menu--searchable');
+
+      searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.className = 'filter-select__search';
+      searchInput.setAttribute('placeholder', 'Type to search…');
+      searchInput.setAttribute('autocomplete', 'off');
+      searchInput.setAttribute('aria-label', 'Search options');
+      menu.appendChild(searchInput);
+
+      optionsList = document.createElement('div');
+      optionsList.className = 'filter-select__options';
+      optionsList.setAttribute('role', 'presentation');
+      menu.appendChild(optionsList);
+
+      emptyState = document.createElement('div');
+      emptyState.className = 'filter-select__empty';
+      emptyState.textContent = 'No matches found';
+      emptyState.style.display = 'none';
+      menu.appendChild(emptyState);
+    }
+
     select.parentNode.insertBefore(wrapper, select);
     wrapper.appendChild(select);
     wrapper.appendChild(trigger);
@@ -58,7 +86,7 @@
     }
 
     function syncSelectedState() {
-      Array.prototype.forEach.call(menu.querySelectorAll('.filter-select__option'), function(optionBtn) {
+      Array.prototype.forEach.call(optionsList.querySelectorAll('.filter-select__option'), function(optionBtn) {
         var selected = optionBtn.dataset.value === select.value;
         optionBtn.classList.toggle('is-selected', selected);
         optionBtn.setAttribute('aria-selected', selected ? 'true' : 'false');
@@ -66,10 +94,31 @@
       syncLabel();
     }
 
-    function focusOption(direction) {
-      var items = Array.prototype.filter.call(menu.querySelectorAll('.filter-select__option'), function(item) {
-        return !item.disabled;
+    function visibleOptions() {
+      return Array.prototype.filter.call(optionsList.querySelectorAll('.filter-select__option'), function(item) {
+        return !item.disabled && item.style.display !== 'none';
       });
+    }
+
+    function filterOptions(query) {
+      var q = query.trim().toLowerCase();
+      var matchCount = 0;
+      Array.prototype.forEach.call(optionsList.children, function(child) {
+        if (!child.classList.contains('filter-select__option')) {
+          // separators / group labels ride along with search, hide them since
+          // grouping isn't meaningful once the list is filtered down
+          child.style.display = q ? 'none' : '';
+          return;
+        }
+        var match = !q || child.textContent.toLowerCase().indexOf(q) !== -1;
+        child.style.display = match ? '' : 'none';
+        if (match) matchCount++;
+      });
+      if (emptyState) emptyState.style.display = matchCount ? 'none' : 'block';
+    }
+
+    function focusOption(direction) {
+      var items = visibleOptions();
       if (!items.length) return;
 
       var currentIndex = items.indexOf(document.activeElement);
@@ -120,55 +169,88 @@
     }
 
     function rebuildOptions() {
-      menu.innerHTML = '';
+      optionsList.innerHTML = '';
       var optionIndex = 0;
       Array.prototype.forEach.call(select.children, function(child) {
         if (child.tagName === 'OPTGROUP') {
           var sep = document.createElement('div');
           sep.className = 'filter-select__separator';
-          menu.appendChild(sep);
+          optionsList.appendChild(sep);
           var groupLabel = document.createElement('div');
           groupLabel.className = 'filter-select__group-label';
           groupLabel.textContent = child.label.replace(/^—\s*/, '');
-          menu.appendChild(groupLabel);
+          optionsList.appendChild(groupLabel);
           Array.prototype.forEach.call(child.children, function(option) {
-            menu.appendChild(makeOptionBtn(option, false));
+            optionsList.appendChild(makeOptionBtn(option, false));
             optionIndex++;
           });
         } else if (child.tagName === 'OPTION') {
-          menu.appendChild(makeOptionBtn(child, optionIndex === 0));
+          optionsList.appendChild(makeOptionBtn(child, optionIndex === 0));
           optionIndex++;
         }
       });
       syncSelectedState();
+      if (searchable) filterOptions(searchInput.value);
+    }
+
+    function openMenu() {
+      closeAll(wrapper);
+      wrapper.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      if (searchable) {
+        searchInput.value = '';
+        filterOptions('');
+        searchInput.focus();
+      } else {
+        var selected = optionsList.querySelector('.filter-select__option.is-selected') || optionsList.querySelector('.filter-select__option:not(:disabled)');
+        if (selected) selected.focus();
+      }
+    }
+
+    function closeMenu() {
+      wrapper.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
     }
 
     trigger.addEventListener('click', function() {
       var willOpen = !wrapper.classList.contains('is-open');
-      closeAll(wrapper);
-      wrapper.classList.toggle('is-open', willOpen);
-      trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-      if (willOpen) {
-        var selected = menu.querySelector('.filter-select__option.is-selected') || menu.querySelector('.filter-select__option:not(:disabled)');
-        if (selected) selected.focus();
-      }
+      if (willOpen) openMenu(); else closeMenu();
     });
 
     trigger.addEventListener('keydown', function(event) {
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         if (!wrapper.classList.contains('is-open')) {
-          closeAll(wrapper);
-          wrapper.classList.add('is-open');
-          trigger.setAttribute('aria-expanded', 'true');
+          openMenu();
+        } else if (!searchable) {
+          var selected = optionsList.querySelector('.filter-select__option.is-selected') || optionsList.querySelector('.filter-select__option:not(:disabled)');
+          if (selected) selected.focus();
         }
-        var selected = menu.querySelector('.filter-select__option.is-selected') || menu.querySelector('.filter-select__option:not(:disabled)');
-        if (selected) selected.focus();
       } else if (event.key === 'Escape') {
-        wrapper.classList.remove('is-open');
-        trigger.setAttribute('aria-expanded', 'false');
+        closeMenu();
       }
     });
+
+    if (searchable) {
+      searchInput.addEventListener('click', function(event) { event.stopPropagation(); });
+      searchInput.addEventListener('input', function() {
+        filterOptions(searchInput.value);
+      });
+      searchInput.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          var items = visibleOptions();
+          if (items.length) items[0].focus();
+        } else if (event.key === 'Enter') {
+          event.preventDefault();
+          var items2 = visibleOptions();
+          if (items2.length) selectValue(items2[0].dataset.value);
+        } else if (event.key === 'Escape') {
+          closeMenu();
+          trigger.focus();
+        }
+      });
+    }
 
     select.addEventListener('change', syncSelectedState);
     select.addEventListener('blur', function() {
@@ -195,7 +277,7 @@
 
   G.initCustomSelects = function(root) {
     var scope = root || document;
-    scope.querySelectorAll('.filter-bar select').forEach(buildCustomSelect);
+    scope.querySelectorAll('.filter-bar select, .visit-log-filters select, .visit-log-filter-control select, #addSiteVisitModal select').forEach(buildCustomSelect);
   };
 
   G.syncCustomSelect = function(input) {

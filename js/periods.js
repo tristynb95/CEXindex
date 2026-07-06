@@ -3,7 +3,7 @@ window.GAILS = window.GAILS || {};
 
 window.GAILS.buildPeriods = function(months) {
   var G = GAILS;
-  var periods = { latest: [months[months.length - 1]], all: [].concat(months) };
+  var periods = { latest: [months[months.length - 1]], all: G.withCurrentMonth(months) };
   var fyQuarters = {};
   var fyHalves = {};
 

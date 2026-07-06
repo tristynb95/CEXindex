@@ -207,7 +207,8 @@
             </select></div>
             <div class="filter-control"><label>Period</label><br><select id="rollingWindow">
               <option value="0">All Months</option>
-              <option value="1" selected>Last Month</option>
+              <option value="current" selected>This Month</option>
+              <option value="1">Last Month</option>
               <option value="3">Last 3 Months</option>
               <option value="5">Last 5 Months</option>
               <option value="6">Last 6 Months</option>
@@ -426,6 +427,17 @@
               <span class="dashboard-nav__content">
                 <span class="dashboard-nav__eyebrow">Sentiment</span>
                 <strong>Feedback</strong>
+              </span>
+            </button>
+            <button type="button" class="tab dashboard-nav__btn" data-tab="visit-log" aria-label="Visit Log">
+              <span class="dashboard-nav__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H14V17H7V15Z"></path>
+                </svg>
+              </span>
+              <span class="dashboard-nav__content">
+                <span class="dashboard-nav__eyebrow">Visits</span>
+                <strong>Visit Log</strong>
               </span>
             </button>
           </nav>
@@ -685,6 +697,14 @@
                       <button type="button" class="overview-rankings-toggle__btn" data-map-area="on">On</button>
                     </div>
                   </div>
+                  <div class="map-toggle-group">
+                    <span class="map-toggle-label">Visited</span>
+                    <div class="overview-rankings-toggle" role="group" aria-label="Filter map by visited status" id="networkMapVisitToggle">
+                      <button type="button" class="overview-rankings-toggle__btn active" data-map-visit="all">All</button>
+                      <button type="button" class="overview-rankings-toggle__btn" data-map-visit="visited">Visited</button>
+                      <button type="button" class="overview-rankings-toggle__btn" data-map-visit="unvisited">Unvisited</button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <p class="target-hint" id="networkMapLegendHint"><span style="color:var(--green);font-weight:600">&#9679; Excellent</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Good</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Developing</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Needs Attention</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.</p>
@@ -831,6 +851,14 @@
                           <button type="button" class="overview-rankings-toggle__btn" data-target-map-area="on">On</button>
                         </div>
                       </div>
+                      <div class="map-toggle-group">
+                        <span class="map-toggle-label">Visited</span>
+                        <div class="overview-rankings-toggle" role="group" aria-label="Filter map by visited status" id="targetMapVisitToggle">
+                          <button type="button" class="overview-rankings-toggle__btn active" data-target-map-visit="all">All</button>
+                          <button type="button" class="overview-rankings-toggle__btn" data-target-map-visit="visited">Visited</button>
+                          <button type="button" class="overview-rankings-toggle__btn" data-target-map-visit="unvisited">Unvisited</button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <p class="target-hint" id="targetMapLegendHint"><span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL's bakery before plotting.</p>
@@ -962,6 +990,66 @@
             </div>
           </div>
 
+          <!-- VISIT LOG -->
+          <div class="tab-content" id="tab-visit-log">
+            <div class="section">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                <div>
+                  <h2 style="margin-bottom:4px;">Visit Log</h2>
+                  <p style="font-size:0.78rem;color:var(--muted);margin:0;">
+                    A historical log of routine visits and notes taken by the coffee team.
+                  </p>
+                </div>
+                <button type="button" id="visitLogAddBtn" class="btn" style="padding:8px 16px; font-size:0.85rem; font-weight:700;">+ Log Site Visit</button>
+              </div>
+
+              <!-- VIEW TOGGLE BUTTONS -->
+              <div class="visit-log-toggle" role="group" aria-label="Visit log view" style="margin-bottom:20px; display:flex; gap:8px;">
+                <button type="button" class="visit-log-toggle-btn active" data-view="history">Visit History</button>
+                <button type="button" class="visit-log-toggle-btn" data-view="unvisited">Unvisited Sites</button>
+              </div>
+
+              <!-- STANDALONE VISIT LOG FILTERS -->
+              <div class="visit-log-filters">
+                <div class="visit-log-filter-control">
+                  <label for="visitLogSearch">Bakery Search</label>
+                  <input type="text" id="visitLogSearch" placeholder="Search bakery..." class="visit-log-input" autocomplete="off">
+                </div>
+                <div class="visit-log-filter-control">
+                  <label for="visitLogRegion">Region</label>
+                  <select id="visitLogRegion" class="visit-log-select">
+                    <option value="">All Regions</option>
+                  </select>
+                </div>
+                <div class="visit-log-filter-control">
+                  <label for="visitLogOps">Ops Manager</label>
+                  <select id="visitLogOps" class="visit-log-select">
+                    <option value="">All Managers</option>
+                  </select>
+                </div>
+                <div class="visit-log-filter-control">
+                  <label for="visitLogPeriod">Period</label>
+                  <select id="visitLogPeriod" class="visit-log-select">
+                    <option value="0">All Time</option>
+                    <option value="currentMonth">This Month</option>
+                    <option value="1">Last Month</option>
+                    <option value="2">Last 2 Months</option>
+                    <option value="3" selected>Last 3 Months</option>
+                    <option value="6">Last 6 Months</option>
+                    <option value="12">Last 12 Months</option>
+                  </select>
+                </div>
+                <button type="button" id="visitLogResetBtn" class="visit-log-reset-btn">Reset</button>
+              </div>
+
+              <div id="visitLogStatus" class="status" style="margin-bottom:15px"></div>
+              
+              <div id="visitLogList" class="visit-log-list">
+                <!-- Rows will be dynamically rendered here -->
+              </div>
+            </div>
+          </div>
+
           <footer class="dashboard-footer" aria-label="Dashboard footer">
             <div class="dashboard-footer__inner">
               <p class="dashboard-footer__label">Reference pages</p>
@@ -1026,6 +1114,12 @@
         </svg>
         <span>Feedback</span>
       </button>
+      <button type="button" class="mobile-bottom-nav__btn tab" data-tab="visit-log" aria-label="Visit Log">
+        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H14V17H7V15Z"></path>
+        </svg>
+        <span>Visit Log</span>
+      </button>
     </nav>
     </div><!-- end dashboardContent -->
 
@@ -1057,6 +1151,59 @@
           </div>
         </div>
         <div id="visitReportBody" class="drill-modal-body visit-report-body"></div>
+      </div>
+    </div>
+
+    <!-- ADD SITE VISIT MODAL -->
+    <div id="addSiteVisitModal" class="drill-modal" style="display:none;" onclick="if(event.target===this)GAILS.closeAddSiteVisitModal()">
+      <div class="drillInner" style="max-width: 550px;">
+        <div class="drill-modal-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 15px;">
+          <div>
+            <h3 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0;">Log Site Visit</h3>
+            <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">Record a quick site visit with comments.</p>
+          </div>
+          <button class="drill-close-btn" onclick="GAILS.closeAddSiteVisitModal()">&#10005; Close</button>
+        </div>
+        
+        <form id="addSiteVisitForm" style="display:flex;flex-direction:column;gap:15px;margin-top:20px;padding:0 30px 30px;">
+          <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Bakery</label>
+            <select id="addVisitBakery" required class="visit-log-select" data-searchable="true">
+              <option value="">-- Select Bakery --</option>
+            </select>
+          </div>
+          
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+            <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
+              <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Visit Date</label>
+              <input type="date" id="addVisitDate" required class="visit-log-input">
+            </div>
+            <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
+              <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Visit Time</label>
+              <input type="time" id="addVisitTime" required class="visit-log-input">
+            </div>
+          </div>
+          
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+            <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
+              <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Coffee Partner</label>
+              <input type="text" id="addVisitPartner" placeholder="Enter name..." class="visit-log-input">
+            </div>
+            <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
+              <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">MOD</label>
+              <input type="text" id="addVisitMod" placeholder="Enter name..." class="visit-log-input">
+            </div>
+          </div>
+          
+          <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Comments / Notes</label>
+            <textarea id="addVisitComments" required placeholder="Write your notes here..." class="visit-log-input" style="min-height:100px;resize:vertical;"></textarea>
+          </div>
+          
+          <div id="addVisitError" style="color:var(--red);font-size:0.8rem;display:none;"></div>
+          
+          <button type="submit" id="addVisitSubmitBtn" class="btn" style="padding:12px;font-size:0.95rem;font-weight:700;margin-top:10px;">Save Visit Log</button>
+        </form>
       </div>
     </div>
 

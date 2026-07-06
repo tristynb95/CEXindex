@@ -84,13 +84,15 @@ function _setTargetTrendState(hasData, message) {
       { label: 'Excellent', color: '#00C875' },
       { label: 'Good', color: '#4895FF' },
       { label: 'Developing', color: '#FFB800' },
-      { label: 'Needs Attention', color: '#FF3B5C' }
+      { label: 'Needs Attention', color: '#FF3B5C' },
+      { label: 'No Data', color: '#a0aec0' }
     ],
     absolute: [
       { label: 'Exceeding', color: '#00C875' },
       { label: 'Meeting', color: '#4895FF' },
       { label: 'Approaching', color: '#FFB800' },
-      { label: 'Below Standard', color: '#FF3B5C' }
+      { label: 'Below Standard', color: '#FF3B5C' },
+      { label: 'No Data', color: '#a0aec0' }
     ]
   };
 
@@ -117,6 +119,8 @@ function _setTargetTrendState(hasData, message) {
 
   var _networkMapAreaState = 'off';
   var _targetMapAreaState = 'off';
+  var _networkMapVisitState = 'all';
+  var _targetMapVisitState = 'all';
 
   var MAPS = {
     network: {
@@ -128,6 +132,7 @@ function _setTargetTrendState(hasData, message) {
       emptyMessage: 'No bakeries match the current filters.',
       bandField: 'cb',
       legendItems: NETWORK_LEGEND.relative,
+      noDataFallback: true,
       items: [],
       missingItems: [],
       instance: null,
@@ -253,7 +258,10 @@ function _setTargetTrendState(hasData, message) {
     }[band] || 0;
   }
 
+  var NO_DATA_COLOR = '#a0aec0';
+
   function getMarkerColor(item, bandField) {
+    if (item && item.noData) return NO_DATA_COLOR;
     var band = item && item[bandField || 'cb'];
     var palette = (bandField === 'acb') ? GAILS.ABSCOL : GAILS.COL;
     return (band && palette && palette[band]) || '#FF3B5C';
@@ -267,11 +275,26 @@ function _setTargetTrendState(hasData, message) {
   }
 
   function getPopupHtml(item, color, bandField) {
-    var band = item[(bandField || 'cb')];
     var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b;
     var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
     var region = GAILS.getBakeryRegion ? GAILS.getBakeryRegion(item.b) : 'Unknown';
     var lastVisit = GAILS.getLastVisitDate ? GAILS.getLastVisitDate(item.b) : null;
+
+    if (item.noData) {
+      var noDataVisitLine = lastVisit
+        ? '<button type="button" class="map-popup__visit map-popup__visit--link" data-visit-report="' + escapeHtml(item.b) + '">' + escapeHtml(formatLastVisitDate(lastVisit)) + ' &rarr;</button>'
+        : '<div class="map-popup__visit">' + escapeHtml(formatLastVisitDate(lastVisit)) + '</div>';
+      return '<div class="map-popup">' +
+        '<div class="map-popup__name">' + escapeHtml(siteLabel) + '</div>' +
+        '<span class="map-popup__band" style="background:' + color + '">No Data</span>' +
+        '<div class="map-popup__stats">No performance data for this period</div>' +
+        '<div class="map-popup__mgr">' + escapeHtml(ops) + '</div>' +
+        '<div class="map-popup__meta">' + escapeHtml(region) + '</div>' +
+        noDataVisitLine +
+      '</div>';
+    }
+
+    var band = item[(bandField || 'cb')];
     var isAbs = bandField === 'acb';
     var _score = isAbs ? item.ac : item.c;
     var cei = _score != null ? _score : '\u2014';
@@ -458,6 +481,50 @@ function _setTargetTrendState(hasData, message) {
     return result;
   }
 
+  function getVisitFilteredItems(cfg, items) {
+    var list = items || cfg.items;
+    var filterState = (cfg.key === 'network' ? _networkMapVisitState : _targetMapVisitState) || 'all';
+    if (filterState === 'all') return list;
+    var months = (GAILS.state && GAILS.state.selectedMonths) || [];
+    return list.filter(function(item) {
+      var visited = GAILS.isBakeryVisitedInPeriod ? GAILS.isBakeryVisitedInPeriod(item.b, months) : false;
+      return filterState === 'visited' ? visited : !visited;
+    });
+  }
+
+  // Names of every bakery matching the active region/ops/bakery filters,
+  // regardless of whether they have any scored data for the current period.
+  function getFilteredBakeryNames() {
+    var G = GAILS;
+    var state = G.state || {};
+    var regionFilter = state.regionFilter || [];
+    var opsFilter = state.opsFilter || [];
+    var searchBakery = state.searchBakery || [];
+    var names = Object.keys(G.BAKERY_META || {});
+    return names.filter(function(name) {
+      if (regionFilter.length && regionFilter.indexOf(G.getBakeryRegion(name)) < 0) return false;
+      if (opsFilter.length && opsFilter.indexOf(G.getBakeryOps(name)) < 0) return false;
+      if (searchBakery.length && !searchBakery.some(function(s) { return name.toLowerCase().indexOf(s.toLowerCase()) >= 0; })) return false;
+      return true;
+    }).sort();
+  }
+
+  // Fills any gap between the scored bakeries for the current period and the full
+  // set of bakeries matching the active filters, so a site with no data yet (a
+  // freshly added bakery, or "This Month" before any responses come in) still gets
+  // a grey "no data" pin instead of disappearing from the map entirely.
+  function buildMergedItems(cfg) {
+    var G = GAILS;
+    var byName = {};
+    cfg.items.forEach(function(item) {
+      var key = G.resolveBakeryMetaKey ? G.resolveBakeryMetaKey(item.b) : item.b;
+      byName[key] = item;
+    });
+    return getFilteredBakeryNames().map(function(name) {
+      return byName[name] || { b: name, noData: true };
+    });
+  }
+
   function placeMarkers(cfg) {
     var statusEl = document.getElementById(cfg.statusId);
     if (!cfg.instance || !cfg.markerLayer) return;
@@ -465,17 +532,21 @@ function _setTargetTrendState(hasData, message) {
     if (cfg.areaLayer) cfg.areaLayer.clearLayers();
     cfg.areaPolygons = {};
 
-    if (!cfg.items.length) {
+    var sourceItems = cfg.noDataFallback ? buildMergedItems(cfg) : cfg.items;
+
+    var visibleItems = getVisitFilteredItems(cfg, sourceItems);
+
+    if (!sourceItems.length || !visibleItems.length) {
       cfg.missingItems = [];
       cfg.instance.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-      if (statusEl) statusEl.textContent = cfg.emptyMessage;
+      if (statusEl) statusEl.textContent = sourceItems.length ? 'No bakeries match the current visit filter.' : cfg.emptyMessage;
       return;
     }
 
     var showAreas = (cfg.key === 'network' ? _networkMapAreaState : _targetMapAreaState) === 'on';
-    if (showAreas && cfg.instance && cfg.areaLayer && cfg.items.length > 0) {
+    if (showAreas && cfg.instance && cfg.areaLayer && visibleItems.length > 0) {
       var managerGroups = {};
-      cfg.items.forEach(function(item) {
+      visibleItems.forEach(function(item) {
         var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
         if (!managerGroups[ops]) managerGroups[ops] = { coords: [], items: [] };
         managerGroups[ops].items.push(item);
@@ -489,7 +560,7 @@ function _setTargetTrendState(hasData, message) {
       var mgrIndex = 0;
       var _areaScoreField = cfg.bandField === 'acb' ? 'ac' : 'c';
       var _netSum = 0, _netCount = 0;
-      cfg.items.forEach(function(item) {
+      visibleItems.forEach(function(item) {
         var s = item[_areaScoreField];
         if (s != null && !isNaN(s)) { _netSum += s; _netCount++; }
       });
@@ -539,7 +610,10 @@ function _setTargetTrendState(hasData, message) {
     var placed = 0;
     var missing = [];
     var bf = cfg.bandField || 'cb';
-    var items = [].concat(cfg.items).sort(function(a, b) {
+    var items = [].concat(visibleItems).sort(function(a, b) {
+      var aNoData = !!a.noData, bNoData = !!b.noData;
+      if (aNoData && bNoData) return (a.b || '').localeCompare(b.b || '');
+      if (aNoData !== bNoData) return aNoData ? 1 : -1;
       var bandDelta = getBandPriority(a, bf) - getBandPriority(b, bf);
       if (bandDelta !== 0) return bandDelta;
       return (a.c || 0) - (b.c || 0);
@@ -607,8 +681,14 @@ function _setTargetTrendState(hasData, message) {
       };
     });
 
-    var total = cfg.items.length;
+    var total = visibleItems.length;
     var msg = placed + ' of ' + total + ' baker' + (total === 1 ? 'y' : 'ies') + ' mapped.';
+    var noDataCount = items.filter(function(it) { return it.noData; }).length;
+    if (noDataCount === total) {
+      msg = 'No performance data yet for this period — showing ' + msg.charAt(0).toLowerCase() + msg.slice(1);
+    } else if (noDataCount > 0) {
+      msg += ' ' + noDataCount + ' site' + (noDataCount === 1 ? '' : 's') + ' with no data yet this period.';
+    }
     if (statusEl) {
       if (missing.length) {
         statusEl.innerHTML = msg + ' <button type="button" class="target-map-status__link" data-unmapped-trigger="' + cfg.key + '">' + missing.length + ' site' + (missing.length === 1 ? '' : 's') + ' not mapped</button>.';
@@ -617,6 +697,36 @@ function _setTargetTrendState(hasData, message) {
       }
     }
   }
+
+  // Console diagnostic: for the given bakery names (or the network map's current
+  // "no data" list if none given), shows why each is/isn't matching a real data
+  // record for the current filters — the resolved canonical key, whether that key
+  // exists in BAKERY_META, and the raw item.b values in the current dataset whose
+  // resolved key equals it. Run GAILS.debugMapMatch() in the browser console.
+  window.GAILS.debugMapMatch = function(names) {
+    var G = GAILS;
+    var cfg = MAPS.network;
+    var targetNames = names && names.length ? names : buildMergedItems(cfg).filter(function(it) { return it.noData; }).map(function(it) { return it.b; });
+    if (!targetNames.length) {
+      console.log('[debugMapMatch] Nothing currently flagged as no-data on the network map.');
+      return;
+    }
+    var rawByResolvedKey = {};
+    (cfg.items || []).forEach(function(item) {
+      var key = G.resolveBakeryMetaKey ? G.resolveBakeryMetaKey(item.b) : item.b;
+      if (!rawByResolvedKey[key]) rawByResolvedKey[key] = [];
+      rawByResolvedKey[key].push(item.b);
+    });
+    targetNames.forEach(function(name) {
+      var inMeta = !!(G.BAKERY_META && G.BAKERY_META[name]);
+      var matches = rawByResolvedKey[name] || [];
+      console.log(
+        '[debugMapMatch]', JSON.stringify(name),
+        '| in BAKERY_META:', inMeta,
+        '| raw record names resolving to this key:', matches.length ? matches : '(none found in current dataset for this period)'
+      );
+    });
+  };
 
   function storeMapItems(mapKey, items) {
     var cfg = MAPS[mapKey];
@@ -686,6 +796,35 @@ function _setTargetTrendState(hasData, message) {
     if (cfg.instance) {
       placeMarkers(cfg);
     }
+  };
+
+  window.GAILS.setNetworkMapVisitFilter = function(state) {
+    _networkMapVisitState = state;
+    var cfg = MAPS.network;
+    if (cfg.instance) {
+      placeMarkers(cfg);
+    }
+  };
+
+  window.GAILS.setTargetMapVisitFilter = function(state) {
+    _targetMapVisitState = state;
+    var cfg = MAPS.target;
+    if (cfg.instance) {
+      placeMarkers(cfg);
+    }
+  };
+
+  // Re-renders any active maps whose visit filter is not "all", so a fresh
+  // routineVisits sync (js/auth.js) is reflected without needing a manual
+  // filter toggle or period change.
+  window.GAILS.refreshMapVisitFilters = function() {
+    Object.keys(MAPS).forEach(function(key) {
+      var cfg = MAPS[key];
+      var filterState = key === 'network' ? _networkMapVisitState : _targetMapVisitState;
+      if (filterState !== 'all' && cfg.instance) {
+        placeMarkers(cfg);
+      }
+    });
   };
 
   function lockBackgroundScroll() {

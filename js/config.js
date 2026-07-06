@@ -113,6 +113,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "Manchester Sale":           { "r": "North Region",  "o": "Chris Kral",             "ll": [53.4247,-2.3226] },
   "Prestwich":                 { "r": "North Region",  "o": "Chris Kral",             "ll": [53.5344,-2.2875] },
   "Wilmslow":                  { "r": "North Region",  "o": "Chris Kral",             "ll": [53.3294,-2.2334] },
+  "Banbury Gateway":           { "r": "North Region",  "o": "Bobby Holmes",           "ll": [52.0658,-1.3183] },
   "Beaconsfield":              { "r": "North Region",  "o": "Bobby Holmes",           "ll": [51.6077,-0.6437] },
   "Gerrards Cross":            { "r": "North Region",  "o": "Bobby Holmes",           "ll": [51.5826,-0.5549] },
   "Henley":                    { "r": "North Region",  "o": "Bobby Holmes",           "ll": [51.5353,-0.8991] },
@@ -124,6 +125,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "Witney":                    { "r": "North Region",  "o": "Bobby Holmes",           "ll": [51.7853,-1.4851] },
   "Baker Street":              { "r": "London Region", "o": "Sandra Cano Cardona",    "ll": [51.5225,-0.1568] },
   "Great Portland Street":     { "r": "London Region", "o": "Sandra Cano Cardona",    "ll": [51.5241,-0.1437] },
+  "Holland Park":              { "r": "London Region", "o": "Sandra Cano Cardona",    "ll": [51.5064,-0.2059] },
   "Marylebone Village":        { "r": "London Region", "o": "Sandra Cano Cardona",    "ll": [51.5196,-0.1534] },
   "Melcombe Street":           { "r": "London Region", "o": "Sandra Cano Cardona",    "ll": [51.5230,-0.1581] },
   "Notting Hill":              { "r": "London Region", "o": "Sandra Cano Cardona",    "ll": [51.5117,-0.2011] },
@@ -163,6 +165,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "Kings Road":                { "r": "London Region", "o": "Magda Miszkiewicz",      "ll": [51.4876,-0.1742] },
   "Pimlico":                   { "r": "London Region", "o": "Magda Miszkiewicz",      "ll": [51.4898,-0.1352] },
   "Strand":                    { "r": "London Region", "o": "Magda Miszkiewicz",      "ll": [51.5094,-0.1228] },
+  "Cheapside":                 { "r": "London Region", "o": "George Austin",          "ll": [51.5142,-0.0910] },
   "Cowcross Street":           { "r": "London Region", "o": "George Austin",          "ll": [51.5210,-0.1027] },
   "Exmouth Market":            { "r": "London Region", "o": "George Austin",          "ll": [51.5237,-0.1095] },
   "Holborn":                   { "r": "London Region", "o": "George Austin",          "ll": [51.5175,-0.1196] },
@@ -171,6 +174,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "Millennium Bridge":         { "r": "London Region", "o": "George Austin",          "ll": [51.5096,-0.0979] },
   "Old Street":                { "r": "London Region", "o": "George Austin",          "ll": [51.5258,-0.0877] },
   "Shaftesbury Avenue":        { "r": "London Region", "o": "George Austin",          "ll": [51.5128,-0.1305] },
+  "Shoreditch":                { "r": "London Region", "o": "George Austin",          "ll": [51.5257,-0.0791] },
   "Spitalfields":              { "r": "London Region", "o": "George Austin",          "ll": [51.5196,-0.0729] },
   "Beckenham":                 { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4085,-0.0219] },
   "Blackheath":                { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4663, 0.0095] },
@@ -179,6 +183,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "Crystal Palace":            { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4174,-0.0735] },
   "Dulwich":                   { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4487,-0.0885] },
   "East Dulwich":              { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4532,-0.0745] },
+  "Westfield Stratford":       { "r": "South Region",  "o": "Elena Ilciuc",           "ll": [51.5432,-0.0077] },
   "Woolwich Station":          { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4904, 0.0694] },
   "Bermondsey Street":         { "r": "London Region", "o": "Andrea D'Epifanio",      "ll": [51.4997,-0.0853] },
   "Blackfriars":               { "r": "London Region", "o": "Andrea D'Epifanio",      "ll": [51.5122,-0.1033] },
@@ -226,8 +231,36 @@ function _buildBakeryAliasLookup() {
   return index;
 }
 
+// Space-insensitive fallback: catches names that only differ from their canonical
+// meta key by spacing/punctuation (e.g. "Black Friars" vs "Blackfriars") without
+// needing a hand-maintained alias for every such variant.
+function _collapseBakeryLookupName(value) {
+  return _normalizeBakeryLookupName(value).replace(/\s+/g, '');
+}
+
+function _registerBakeryCollapsedAlias(index, name) {
+  var trimmed = String(name == null ? '' : name).trim();
+  var collapsed = _collapseBakeryLookupName(trimmed);
+  if (!trimmed || !collapsed || index[collapsed]) return;
+  index[collapsed] = trimmed;
+}
+
+function _buildBakeryCollapsedAliasLookup() {
+  var index = {};
+  Array.prototype.slice.call(arguments).forEach(function(source) {
+    Object.keys(source || {}).forEach(function(name) {
+      _registerBakeryCollapsedAlias(index, name);
+      _registerBakeryCollapsedAlias(index, "GAIL's " + name);
+      _registerBakeryCollapsedAlias(index, "GAIL's Bakery " + name);
+    });
+  });
+  return index;
+}
+
 var _defaultBakeryAliasLookup = _buildBakeryAliasLookup(window.GAILS.DEFAULT_BAKERY_META);
 var _bakeryMetaAliasLookup = _buildBakeryAliasLookup(window.GAILS.DEFAULT_BAKERY_META);
+var _defaultBakeryCollapsedAliasLookup = _buildBakeryCollapsedAliasLookup(window.GAILS.DEFAULT_BAKERY_META);
+var _bakeryMetaCollapsedAliasLookup = _buildBakeryCollapsedAliasLookup(window.GAILS.DEFAULT_BAKERY_META);
 
 // Normalized-form aliases for names that can't be matched by the standard lookup.
 // Keys are the output of _normalizeBakeryLookupName; values are canonical meta keys.
@@ -246,8 +279,12 @@ window.GAILS.resolveBakeryMetaKey = function(name) {
   if (window.GAILS.DEFAULT_BAKERY_META && window.GAILS.DEFAULT_BAKERY_META[trimmed]) return trimmed;
 
   var normalized = _normalizeBakeryLookupName(trimmed);
-  return _BAKERY_EXTRA_ALIASES[normalized] ||
-         _bakeryMetaAliasLookup[normalized] || _defaultBakeryAliasLookup[normalized] || trimmed;
+  var direct = _BAKERY_EXTRA_ALIASES[normalized] ||
+               _bakeryMetaAliasLookup[normalized] || _defaultBakeryAliasLookup[normalized];
+  if (direct) return direct;
+
+  var collapsed = normalized.replace(/\s+/g, '');
+  return _bakeryMetaCollapsedAliasLookup[collapsed] || _defaultBakeryCollapsedAliasLookup[collapsed] || trimmed;
 };
 
 window.GAILS.getBakeryMeta = function(name) {
@@ -299,6 +336,7 @@ window.GAILS.setBakeryMeta = function(meta) {
   var fallback = window.GAILS.DEFAULT_BAKERY_META || {};
   window.GAILS.BAKERY_META = window.GAILS.cloneBakeryMeta(meta && Object.keys(meta).length ? meta : fallback);
   _bakeryMetaAliasLookup = _buildBakeryAliasLookup(fallback, window.GAILS.BAKERY_META);
+  _bakeryMetaCollapsedAliasLookup = _buildBakeryCollapsedAliasLookup(fallback, window.GAILS.BAKERY_META);
   if (typeof window.GAILS.onBakeryMetaChanged === 'function') {
     window.GAILS.onBakeryMetaChanged(window.GAILS.BAKERY_META);
   }
@@ -338,6 +376,34 @@ window.GAILS.getLastVisitRecord = function(b) {
 window.GAILS.getLastVisitDate = function(b) {
   var record = window.GAILS.getLastVisitRecord(b);
   return record ? record.date : null;
+};
+
+// Converts a routineVisits ISO date ("yyyy-MM-dd") to the dashboard's
+// month label format ("MMM YY"), so it can be matched against
+// state.selectedMonths / state.MONTHS.
+function _isoDateToMonthLabel(dateStr) {
+  var parts = String(dateStr || '').split('-');
+  if (parts.length < 2) return null;
+  var mi = parseInt(parts[1], 10) - 1;
+  if (isNaN(mi) || mi < 0 || mi > 11 || !window.GAILS.MONTH_SHORT) return null;
+  return window.GAILS.MONTH_SHORT[mi] + ' ' + parts[0].slice(-2);
+}
+
+// Whether bakery b has a logged routine visit falling within the given list
+// of dashboard month labels (pass the current state.selectedMonths so map
+// toggles can filter markers by the selected period).
+window.GAILS.isBakeryVisitedInPeriod = function(b, months) {
+  var key = window.GAILS.resolveBakeryMetaKey(b) || b;
+  var visits = window.GAILS._allVisitsObj || {};
+  var monthSet = months || [];
+  return Object.keys(visits).some(function(id) {
+    var v = visits[id];
+    if (!v || !v.bakery || !v.date) return false;
+    if ((window.GAILS.resolveBakeryMetaKey(v.bakery) || v.bakery) !== key) return false;
+    if (!monthSet.length) return true;
+    var label = _isoDateToMonthLabel(v.date);
+    return !!label && monthSet.indexOf(label) !== -1;
+  });
 };
 
 // ========== COLOUR MAPS ==========
