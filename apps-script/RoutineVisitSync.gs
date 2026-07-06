@@ -50,10 +50,12 @@ var QUESTION_MAP = {
   'All seasonal products available': { section: 'service', field: 'seasonalAvailable' },
   'Filter available': { section: 'service', field: 'filterAvailable' },
   'Cold Brew available': { section: 'service', field: 'coldBrewAvailable' },
+  'Full range available online': { section: 'service', field: 'fullRangeAvailableOnline' },
   'Service Comments': { section: 'service', field: 'comments' },
   'Upload Service Photos': { section: 'service', field: 'photos', isFile: true },
 
   'Allergens are controlled': { section: 'healthSafety', field: 'allergensControlled' },
+  'E-commerce stickers available and in use': { section: 'healthSafety', field: 'ecommerceStickersAvailable' },
   'Open containers have correct date labels': { section: 'healthSafety', field: 'dateLabels' },
   'Orders only marked as complete after collection': { section: 'healthSafety', field: 'ordersCompleteAfterCollection' },
   'Steam wand wiped and purged between uses': { section: 'healthSafety', field: 'steamWandWipedPurged' },
@@ -71,9 +73,12 @@ var QUESTION_MAP = {
   'Till supporting with teas and iced drinks': { section: 'coffeeEfficiency', field: 'tillSupportingTeas' },
   'Baristas using easy-cream': { section: 'coffeeEfficiency', field: 'easyCream' },
   'Efficient Layout/Workflow': { section: 'coffeeEfficiency', field: 'efficientLayoutWorkflow' },
+  'Barista routine in use. Baristas scaling to service needs.': { section: 'coffeeEfficiency', field: 'baristaRoutineScaling' },
   'Comments': { section: 'coffeeEfficiency', field: 'comments' },
 
   'House Blend is prepared to recipe': { section: 'coffeeQuality', field: 'houseBlendRecipe' },
+  'Filter is balanced and within 2hr shelf life': { section: 'coffeeQuality', field: 'filterBalancedShelfLife' },
+  'Espresso tamping is even and there are no cracks or craters in coffee bed': { section: 'coffeeQuality', field: 'espressoTampingEven' },
   'Espresso Taste': { section: 'coffeeQuality', field: 'espressoTaste', parse: Number },
   'Milk steamed to standard': { section: 'coffeeQuality', field: 'milkSteamedStandard' },
   'Milk Quality': { section: 'coffeeQuality', field: 'milkQuality', parse: Number },
@@ -84,6 +89,7 @@ var QUESTION_MAP = {
   'Upload Coffee Quality Photos': { section: 'coffeeQuality', field: 'photos', isFile: true },
 
   'Head Barista actively coaching team': { section: 'leadership', field: 'headBaristaCoaching' },
+  'Lead barista actively communicating with till and coffee standby': { section: 'leadership', field: 'leadBaristaCommunicatingTillStandby' },
   'Leadership Comments': { section: 'leadership', field: 'comments' },
 
   'All baristas signed off': { section: 'complianceTraining', field: 'allBaristasSignedOff' },

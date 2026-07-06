@@ -27,6 +27,7 @@ window.GAILS_VISIT_SCHEMA = {
         { key: 'seasonalAvailable', label: 'All seasonal products available', type: 'ynna' },
         { key: 'filterAvailable', label: 'Filter available', type: 'ynna' },
         { key: 'coldBrewAvailable', label: 'Cold Brew available', type: 'ynna' },
+        { key: 'fullRangeAvailableOnline', label: 'Full range available online', type: 'ynna' },
         { key: 'comments', label: 'Service comments', type: 'textarea' },
         { key: 'photos', label: 'Service photos', type: 'photos' }
       ]
@@ -34,6 +35,7 @@ window.GAILS_VISIT_SCHEMA = {
     {
       key: 'healthSafety', title: 'Health & Safety', fields: [
         { key: 'allergensControlled', label: 'Allergens are controlled', type: 'ynna' },
+        { key: 'ecommerceStickersAvailable', label: 'E-commerce stickers available and in use', type: 'ynna' },
         { key: 'dateLabels', label: 'Open containers have correct date labels', type: 'ynna' },
         { key: 'ordersCompleteAfterCollection', label: 'Orders only marked as complete after collection', type: 'ynna' },
         { key: 'steamWandWipedPurged', label: 'Steam wand wiped and purged between uses', type: 'ynna' },
@@ -54,12 +56,15 @@ window.GAILS_VISIT_SCHEMA = {
         { key: 'tillSupportingTeas', label: 'Till supporting with teas and iced drinks', type: 'ynna' },
         { key: 'easyCream', label: 'Baristas using easy-cream', type: 'ynna' },
         { key: 'efficientLayoutWorkflow', label: 'Efficient Layout/Workflow', type: 'ynna' },
+        { key: 'baristaRoutineScaling', label: 'Barista routine in use. Baristas scaling to service needs.', type: 'ynna' },
         { key: 'comments', label: 'Comments', type: 'textarea' }
       ]
     },
     {
       key: 'coffeeQuality', title: 'Coffee Quality', fields: [
         { key: 'houseBlendRecipe', label: 'House Blend is prepared to recipe', type: 'ynna' },
+        { key: 'filterBalancedShelfLife', label: 'Filter is balanced and within 2hr shelf life', type: 'ynna' },
+        { key: 'espressoTampingEven', label: 'Espresso tamping is even and there are no cracks or craters in coffee bed', type: 'ynna' },
         { key: 'espressoTaste', label: 'Espresso Taste (1-10)', type: 'scale' },
         { key: 'milkSteamedStandard', label: 'Milk steamed to standard', type: 'ynna' },
         { key: 'milkQuality', label: 'Milk Quality (1-10)', type: 'scale' },
@@ -73,6 +78,7 @@ window.GAILS_VISIT_SCHEMA = {
     {
       key: 'leadership', title: 'Leadership', fields: [
         { key: 'headBaristaCoaching', label: 'Head Barista actively coaching team', type: 'ynna' },
+        { key: 'leadBaristaCommunicatingTillStandby', label: 'Lead barista actively communicating with till and coffee standby', type: 'ynna' },
         { key: 'comments', label: 'Leadership comments', type: 'textarea' }
       ]
     },
