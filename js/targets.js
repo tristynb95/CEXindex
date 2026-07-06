@@ -197,6 +197,39 @@ function _setTargetTrendState(hasData, message) {
       '<br><span style="font-size:0.82em;opacity:0.85">' + areaAvg + ' &nbsp;&middot;&nbsp; ' + diffStr + ' vs avg</span>';
   }
 
+  function pointInLatLngRing(latlng, ring) {
+    var x = latlng.lng, y = latlng.lat, inside = false;
+    for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      var xi = ring[i].lng, yi = ring[i].lat;
+      var xj = ring[j].lng, yj = ring[j].lat;
+      var intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function ringsFromLatLngs(arr) {
+    if (!arr || !arr.length) return [];
+    if (typeof arr[0].lat === 'number' && typeof arr[0].lng === 'number') return [arr];
+    var rings = [];
+    arr.forEach(function(sub) { rings = rings.concat(ringsFromLatLngs(sub)); });
+    return rings;
+  }
+
+  // Approximate point-in-polygon test used as a safety net so hover-triggered
+  // area tooltips/highlights can be force-closed even if the DOM never
+  // dispatches a mouseout for the layer (can happen with overlapping/
+  // reordered SVG paths from bringToFront on adjacent voronoi cells).
+  function pointInPolygonLayer(latlng, polygon) {
+    var rings = ringsFromLatLngs(polygon.getLatLngs());
+    if (!rings.length) return false;
+    var inside = false;
+    rings.forEach(function(ring) {
+      if (pointInLatLngRing(latlng, ring)) inside = !inside;
+    });
+    return inside;
+  }
+
   function isMapActive(selector) {
     var panel = document.querySelector(selector);
     return !!(panel && panel.classList.contains('active'));
@@ -243,6 +276,23 @@ function _setTargetTrendState(hasData, message) {
 
     cfg.areaLayer = L.layerGroup().addTo(cfg.instance);
     cfg.markerLayer = L.layerGroup().addTo(cfg.instance);
+    cfg._areaTooltipLayers = [];
+    cfg.instance.getContainer().addEventListener('mouseleave', function() {
+      (cfg._areaTooltipLayers || []).forEach(function(p) { p.closeTooltip(); });
+      cfg._hoveredArea = null;
+    });
+    cfg.instance.on('mousemove', function(e) {
+      var active = cfg._hoveredArea;
+      if (!active) return;
+      var stillInside = active.polygons.some(function(p) { return pointInPolygonLayer(e.latlng, p); });
+      if (!stillInside) {
+        active.polygons.forEach(function(p) {
+          p.closeTooltip();
+          p.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: active.dashArray });
+        });
+        cfg._hoveredArea = null;
+      }
+    });
     renderLegend(cfg);
     placeMarkers(cfg);
   }
@@ -531,6 +581,8 @@ function _setTargetTrendState(hasData, message) {
     cfg.markerLayer.clearLayers();
     if (cfg.areaLayer) cfg.areaLayer.clearLayers();
     cfg.areaPolygons = {};
+    cfg._areaTooltipLayers = [];
+    cfg._hoveredArea = null;
 
     var sourceItems = cfg.noDataFallback ? buildMergedItems(cfg) : cfg.items;
 
@@ -591,14 +643,19 @@ function _setTargetTrendState(hasData, message) {
           polygon._origDash = dashArray;
           polygon._isPolyline = false;
           polygon.bindTooltip(tooltip, { sticky: true, className: 'map-area-tooltip', interactive: false });
+          cfg._areaTooltipLayers.push(polygon);
           return polygon;
         });
         polygons.forEach(function(polygon) {
           polygon.on('mouseover', function() {
+            cfg._areaTooltipLayers.forEach(function(p) { if (p !== polygon) p.closeTooltip(); });
             polygons.forEach(function(p) { p.setStyle({ fillOpacity: 0.28, weight: 3, dashArray: null }); p.bringToFront(); });
+            cfg._hoveredArea = { polygons: polygons, dashArray: dashArray };
           });
           polygon.on('mouseout', function() {
+            polygon.closeTooltip();
             polygons.forEach(function(p) { p.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: dashArray }); });
+            if (cfg._hoveredArea && cfg._hoveredArea.polygons === polygons) cfg._hoveredArea = null;
           });
           cfg.areaLayer.addLayer(polygon);
         });
@@ -639,6 +696,8 @@ function _setTargetTrendState(hasData, message) {
       marker.bindPopup(getPopupHtml(item, color, bf));
       (function(ops) {
         marker.on('mouseover', function() {
+          (cfg._areaTooltipLayers || []).forEach(function(p) { p.closeTooltip(); });
+          cfg._hoveredArea = null;
           var areas = cfg.areaPolygons && cfg.areaPolygons[ops];
           if (!areas) return;
           (Array.isArray(areas) ? areas : [areas]).forEach(function(area) {

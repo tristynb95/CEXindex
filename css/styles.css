@@ -2489,6 +2489,10 @@ body.table-fullscreen-lock {
   box-shadow: 0 8px 28px rgba(255, 59, 92, 0.5);
 }
 
+
+
+
+
 /* ══════════════════════════════════════ BADGES ══ */
 .band {
   display: inline-block;
@@ -8255,16 +8259,8 @@ a,
   flex-direction: column;
   gap: 10px;
   margin-top: 15px;
-  height: 560px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 6px;
 }
 
-.visit-log-list .visit-log-empty {
-  height: 100%;
-  justify-content: center;
-}
 
 .visit-log-row {
   background: var(--card);
@@ -8472,19 +8468,17 @@ a,
 
 /* ── Unvisited list grouping styles ── */
 .unvisited-manager-section {
-  background: var(--card);
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  padding: 16px 20px;
-  margin-bottom: 15px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 30px;
 }
 .unvisited-manager-title {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--gold);
   margin-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom: 8px;
   margin-top: 0;
 }
 .unvisited-bakeries-grid {
@@ -8493,10 +8487,10 @@ a,
   gap: 10px;
 }
 .unvisited-bakery-item {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   font-size: 0.84rem;
   color: var(--text-2);
   transition: all 0.2s ease;
@@ -8504,5 +8498,6 @@ a,
 .unvisited-bakery-item:hover {
   border-color: var(--accent);
   color: var(--text);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--card-hover);
+  transform: translateY(-1px);
 }
