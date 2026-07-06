@@ -1207,6 +1207,34 @@
       </div>
     </div>
 
+    <!-- DELETE CONFIRMATION MODAL -->
+    <div id="deleteConfirmModal" class="drill-modal" style="display:none;" onclick="if(event.target===this)GAILS.closeDeleteConfirmModal()">
+      <div class="drillInner" style="max-width: 460px; height: auto; background: var(--card); border: 1px solid var(--card-border-h); box-shadow: var(--shadow-md);">
+        <div class="drill-modal-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
+          <div>
+            <h3 style="font-size:1.3rem;font-weight:700;color:#FF4A70;margin:0;">Delete Visit Log</h3>
+            <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">This action is permanent and cannot be undone.</p>
+          </div>
+          <button class="drill-close-btn" onclick="GAILS.closeDeleteConfirmModal()">&#10005;</button>
+        </div>
+        
+        <div style="padding: 20px 30px 25px; display: flex; flex-direction: column; gap: 15px;">
+          <p id="deleteConfirmPromptText" style="font-size:0.92rem; line-height: 1.5; color: var(--text-2); margin: 0;"></p>
+          
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label for="deleteConfirmInput" style="font-size:0.72rem; font-weight:700; text-transform:uppercase; color:var(--muted-l); letter-spacing: 0.05em;">Type <strong style="color:var(--text); font-weight: 800;">delete record</strong> to confirm</label>
+            <input type="text" id="deleteConfirmInput" autocomplete="off" placeholder="delete record" class="visit-log-input" />
+          </div>
+          
+          <div style="display:flex; gap:12px; margin-top: 10px; justify-content: flex-end;">
+            <button type="button" class="drill-close-btn" onclick="GAILS.closeDeleteConfirmModal()" style="padding: 9px 15px;">Cancel</button>
+            <button type="button" id="deleteConfirmSubmitBtn" class="drill-close-btn" disabled 
+                    style="background:#4A1521; color:#FF4A70; border-color:rgba(255,74,112,0.2); padding: 9px 18px;">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="unmappedSitesModal" class="modal-overlay map-unmapped-modal" style="display:none;" onclick="if(event.target===this)GAILS.closeUnmappedSitesModal()">
       <div class="map-unmapped-panel glass-panel">
         <div class="map-unmapped-panel__head">

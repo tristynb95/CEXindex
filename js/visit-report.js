@@ -221,6 +221,7 @@ window.GAILS = window.GAILS || {};
     if (!modal || modal.style.display === 'none') return;
     modal.style.display = 'none';
     if (window.GAILS.destroyChart) window.GAILS.destroyChart(CHART_ID);
+    if (window.GAILS.closeDeleteConfirmModal) window.GAILS.closeDeleteConfirmModal();
     unlockBackgroundScroll();
   };
 
@@ -379,25 +380,68 @@ window.GAILS = window.GAILS || {};
     requestAnimationFrame(function() { drawScoreChart(record); });
   };
 
-  window.GAILS.deleteVisit = async function(visitId) {
-    if (!confirm('Are you sure you want to permanently delete this visit log?')) return;
-    var deleteBtn = document.querySelector('.visit-report-delete-btn');
-    if (deleteBtn) {
-      deleteBtn.disabled = true;
-      deleteBtn.textContent = 'Deleting...';
-    }
-    try {
-      if (!window.GAILS_Firebase || typeof window.GAILS_Firebase.deleteSiteVisit !== 'function') {
-        throw new Error('Database helper not loaded yet. Please try again.');
-      }
-      await window.GAILS_Firebase.deleteSiteVisit(visitId);
-      window.GAILS.closeVisitReport();
-    } catch (err) {
-      console.error(err);
-      alert(err.message || 'Failed to delete visit log.');
+  window.GAILS.deleteVisit = function(visitId) {
+    var record = window.GAILS._allVisitsObj ? window.GAILS._allVisitsObj[visitId] : null;
+    var bakeryName = record ? (window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery) : 'this';
+    var dateText = record ? formatVisitDate(record.date) : '';
+    
+    var modal = document.getElementById('deleteConfirmModal');
+    var promptText = document.getElementById('deleteConfirmPromptText');
+    var input = document.getElementById('deleteConfirmInput');
+    var submitBtn = document.getElementById('deleteConfirmSubmitBtn');
+    
+    if (!modal || !promptText || !input || !submitBtn) return;
+    
+    promptText.textContent = 'Are you sure you want to permanently delete the visit log for ' + bakeryName + (dateText ? ' on ' + dateText : '') + '?';
+    input.value = '';
+    submitBtn.disabled = true;
+    
+    modal.style.display = 'flex';
+    lockBackgroundScroll();
+    
+    input.oninput = function() {
+      submitBtn.disabled = input.value.trim().toLowerCase() !== 'delete record';
+    };
+    
+    submitBtn.onclick = async function() {
+      if (input.value.trim().toLowerCase() !== 'delete record') return;
+      
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Deleting...';
+      
+      var deleteBtn = document.querySelector('.visit-report-delete-btn');
       if (deleteBtn) {
-        deleteBtn.disabled = false;
-        deleteBtn.textContent = 'Delete';
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = 'Deleting...';
+      }
+      
+      try {
+        if (!window.GAILS_Firebase || typeof window.GAILS_Firebase.deleteSiteVisit !== 'function') {
+          throw new Error('Database helper not loaded yet. Please try again.');
+        }
+        await window.GAILS_Firebase.deleteSiteVisit(visitId);
+        window.GAILS.closeDeleteConfirmModal();
+        window.GAILS.closeVisitReport();
+      } catch (err) {
+        console.error(err);
+        alert(err.message || 'Failed to delete visit log.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Delete';
+        if (deleteBtn) {
+          deleteBtn.disabled = false;
+          deleteBtn.textContent = 'Delete';
+        }
+      }
+    };
+  };
+
+  window.GAILS.closeDeleteConfirmModal = function() {
+    var modal = document.getElementById('deleteConfirmModal');
+    if (modal) {
+      modal.style.display = 'none';
+      var reportModal = document.getElementById('visitReportModal');
+      if (!reportModal || reportModal.style.display === 'none') {
+        unlockBackgroundScroll();
       }
     }
   };

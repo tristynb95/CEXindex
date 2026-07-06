@@ -69,6 +69,13 @@ const visitDetailModal    = document.getElementById('visitDetailModal');
 const visitDetailClose    = document.getElementById('visitDetailClose');
 const visitDetailBody     = document.getElementById('visitDetailBody');
 
+const deleteConfirmModal      = document.getElementById('deleteConfirmModal');
+const deleteConfirmClose      = document.getElementById('deleteConfirmClose');
+const deleteConfirmCancel     = document.getElementById('deleteConfirmCancel');
+const deleteConfirmInput      = document.getElementById('deleteConfirmInput');
+const deleteConfirmSubmitBtn  = document.getElementById('deleteConfirmSubmitBtn');
+const deleteConfirmPromptText = document.getElementById('deleteConfirmPromptText');
+
 // ── Routine visit schema ──
 // Sourced from js/visit-schema.js (shared with index.html's js/visit-report.js)
 // so the form structure can't drift between the editable admin view and the
@@ -943,12 +950,79 @@ async function saveVisitDetail(id) {
   closeVisitDetail();
 }
 
+function openDeleteConfirmModal(promptText) {
+  return new Promise((resolve) => {
+    deleteConfirmPromptText.textContent = promptText;
+    deleteConfirmInput.value = '';
+    deleteConfirmSubmitBtn.disabled = true;
+    deleteConfirmSubmitBtn.textContent = 'Delete';
+    deleteConfirmSubmitBtn.style.cursor = 'not-allowed';
+    deleteConfirmSubmitBtn.style.opacity = '0.5';
+    deleteConfirmModal.style.display = 'flex';
+    
+    function onInput() {
+      var matches = deleteConfirmInput.value.trim().toLowerCase() === 'delete record';
+      deleteConfirmSubmitBtn.disabled = !matches;
+      if (matches) {
+        deleteConfirmSubmitBtn.style.cursor = 'pointer';
+        deleteConfirmSubmitBtn.style.opacity = '1';
+      } else {
+        deleteConfirmSubmitBtn.style.cursor = 'not-allowed';
+        deleteConfirmSubmitBtn.style.opacity = '0.5';
+      }
+    }
+    
+    async function onSubmit() {
+      if (deleteConfirmInput.value.trim().toLowerCase() !== 'delete record') return;
+      deleteConfirmSubmitBtn.disabled = true;
+      deleteConfirmSubmitBtn.textContent = 'Deleting...';
+      cleanup();
+      resolve(true);
+    }
+    
+    function onCancel() {
+      cleanup();
+      resolve(false);
+    }
+    
+    function cleanup() {
+      deleteConfirmInput.removeEventListener('input', onInput);
+      deleteConfirmSubmitBtn.removeEventListener('click', onSubmit);
+      deleteConfirmCancel.removeEventListener('click', onCancel);
+      deleteConfirmClose.removeEventListener('click', onCancel);
+      deleteConfirmModal.removeEventListener('click', onOutsideClick);
+    }
+    
+    function onOutsideClick(e) {
+      if (e.target === deleteConfirmModal) {
+        onCancel();
+      }
+    }
+    
+    deleteConfirmInput.addEventListener('input', onInput);
+    deleteConfirmSubmitBtn.addEventListener('click', onSubmit);
+    deleteConfirmCancel.addEventListener('click', onCancel);
+    deleteConfirmClose.addEventListener('click', onCancel);
+    deleteConfirmModal.addEventListener('click', onOutsideClick);
+  });
+}
+
 async function removeVisitRecord(id) {
   var existing = state.visits.find(function(v) { return v.id === id; });
-  if (!confirm('Delete the visit record for ' + (existing ? existing.bakery : 'this bakery') + '? This cannot be undone.')) return;
-  await remove(ref(db, 'routineVisits/' + id));
-  setMessage(visitMsg, 'success', 'Visit record deleted.');
-  if (state.visitDetailId === id) closeVisitDetail();
+  var bakeryName = existing ? existing.bakery : 'this bakery';
+  var dateText = existing && existing.date ? formatVisitDate(existing.date) : '';
+  
+  var promptMsg = 'Delete the visit record for ' + bakeryName + (dateText ? ' on ' + dateText : '') + '?';
+  var confirmed = await openDeleteConfirmModal(promptMsg);
+  if (!confirmed) return;
+  
+  try {
+    await remove(ref(db, 'routineVisits/' + id));
+    setMessage(visitMsg, 'success', 'Visit record deleted.');
+    if (state.visitDetailId === id) closeVisitDetail();
+  } finally {
+    deleteConfirmModal.style.display = 'none';
+  }
 }
 
 function renderPortal() {
