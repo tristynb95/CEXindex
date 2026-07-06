@@ -43,6 +43,10 @@ window.GAILS.parseExcelFile = function(data) {
       else if (lc === 'efficiency' || lc === 'overall efficiency' || lc === 'speed of service' || lc === 'speed') colMap.ef = i;
     });
 
+    if (colMap.s2 === undefined) {
+      console.warn('[CEXindex] Coffee Efficiency column ("within 2 min") not found on sheet "' + sheetName + '" — it will read as 0%. Headers seen: ' + JSON.stringify(headers));
+    }
+
     var monthRecs = [];
     for (var i = headerIdx + 1; i < json.length; i++) {
       var row = json[i];
@@ -56,17 +60,33 @@ window.GAILS.parseExcelFile = function(data) {
         return typeof v === 'number' ? v : parseFloat(v) || 0;
       };
 
+      // Coffee Efficiency (timing) columns are sometimes exported as a fraction
+      // (0.75) and sometimes as a whole percentage (75, or the text "75%") depending
+      // on how the source sheet was formatted. Normalize both to a 0-100 scale:
+      // a "%" sign or any value already above 1 is treated as already-percentage.
+      var pct = function(idx) {
+        var v = row[idx];
+        if (v === null || v === undefined || v === '') return 0;
+        if (typeof v === 'string') {
+          var isPercentText = v.indexOf('%') !== -1;
+          var n = parseFloat(v.replace('%', '')) || 0;
+          return isPercentText ? n : (n <= 1 ? n * 100 : n);
+        }
+        var n = typeof v === 'number' ? v : parseFloat(v) || 0;
+        return n <= 1 ? n * 100 : n;
+      };
+
       var r = {
         b: bakery,
         m: monthLabel,
         nr: num(colMap.rank),
         n: Math.round(num(colMap.nps) * 10) / 10,
         v: Math.round(num(colMap.vol)),
-        s2: Math.round(num(colMap.s2) * 1000) / 10,
-        s2w: Math.round(num(colMap.s2w) * 1000) / 10,
-        s3: Math.round(num(colMap.s3) * 1000) / 10,
-        s4: Math.round(num(colMap.s4) * 1000) / 10,
-        o5: Math.round(num(colMap.o5) * 1000) / 10,
+        s2: Math.round(pct(colMap.s2) * 10) / 10,
+        s2w: Math.round(pct(colMap.s2w) * 10) / 10,
+        s3: Math.round(pct(colMap.s3) * 10) / 10,
+        s4: Math.round(pct(colMap.s4) * 10) / 10,
+        o5: Math.round(pct(colMap.o5) * 10) / 10,
         ov: Math.round(num(colMap.ov) * 1000) / 10,
         fr: Math.round(num(colMap.fr) * 1000) / 10,
         dr: Math.round(num(colMap.dr) * 1000) / 10,

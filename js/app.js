@@ -314,12 +314,11 @@
     });
     if (recs.length === 0) return null;
     var avg = function(key) { return recs.reduce(function(a, r) { return a + (r[key] || 0); }, 0) / recs.length; };
-    var tsVol = recs.reduce(function(a, r) { return a + r.v; }, 0);
     var label = n === 1 ? priorMonths[0] : 'prior ' + n + 'm';
     return {
       n: avg('n'), c: avg('c'), ac: avg('ac'),
       dr: avg('dr'), ef: avg('ef'), fr: avg('fr'),
-      ts: tsVol > 0 ? recs.reduce(function(a, r) { return a + (r.ts || 0) * r.v; }, 0) / tsVol : avg('ts'),
+      ts: avg('ts'),
       o5: avg('o5'),
       label: label
     };
@@ -431,8 +430,7 @@
     var dr   = G.avg(data, 'dr');
     var ef   = G.avg(data, 'ef');
     var fr   = G.avg(data, 'fr');
-    var _tsVol = data.reduce(function(a, r) { return a + r.v; }, 0);
-    var ts   = _tsVol > 0 ? data.reduce(function(a, r) { return a + r.ts * r.v; }, 0) / _tsVol : 0;
+    var ts   = G.avg(data, 'ts');
     var o5   = G.avg(data, 'o5');
     dashboardKpiRow.innerHTML = [
       buildMetricCard({
