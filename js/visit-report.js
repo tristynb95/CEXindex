@@ -336,11 +336,7 @@ window.GAILS = window.GAILS || {};
 
     var actionsEl = modal.querySelector('.visit-report-header-actions');
     if (actionsEl) {
-      var deleteHtml = '';
-      if (window.GAILS.isAdmin) {
-        deleteHtml = '<button type="button" class="drill-close-btn visit-report-delete-btn" style="background:#4A1521; color:#FF4A70; border-color:rgba(255,74,112,0.2); margin-right:8px;" onclick="GAILS.deleteVisit(\'' + escapeHtml(visitId) + '\')">&#128465; Delete</button>';
-      }
-      actionsEl.innerHTML = deleteHtml +
+      actionsEl.innerHTML =
         '<button type="button" class="drill-close-btn visit-report-print-btn" onclick="window.print()">&#128438; Print</button>' +
         '<button class="drill-close-btn" onclick="GAILS.closeVisitReport()">&#10005; Close</button>';
     }

@@ -3409,45 +3409,118 @@ body.table-fullscreen-lock {
 
 .visit-detail-panel {
   position: relative;
-  width: min(760px, 100%);
+  width: min(840px, 100%);
   max-height: calc(100vh - 48px);
   overflow-y: auto;
-  border-radius: 22px;
-  padding: 28px;
+  border-radius: 24px;
+  padding: 32px;
   border-top: 5px solid var(--accent);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.015) 100%),
     rgba(12, 12, 24, 0.98);
   border: 1px solid var(--card-border-h);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-lg);
 }
 
 .visit-detail-body h3 {
-  margin: 0 0 4px;
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
 }
 
 .visit-detail-body > p {
-  margin: 0 0 20px;
+  margin: 0;
   color: var(--muted);
   font-size: 0.86rem;
 }
 
-.visit-detail-section {
-  padding: 18px 0;
-  border-top: 1px solid var(--card-border);
+.visit-detail-header-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
 }
 
-.visit-detail-section:first-of-type {
-  border-top: none;
+.visit-detail-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.visit-detail-section {
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  margin-bottom: 20px;
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+
+.visit-detail-section:hover {
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .visit-detail-section h4 {
-  margin: 0 0 14px;
-  font-size: 0.72rem;
+  margin: 0 0 16px;
+  font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--gold);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 10px;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid transparent;
+}
+
+.admin-badge--adhoc {
+  background: rgba(0, 180, 216, 0.15);
+  color: #00b4d8;
+  border-color: rgba(0, 180, 216, 0.25);
+}
+
+.admin-badge--routine {
+  background: rgba(255, 184, 0, 0.15);
+  color: #FFB800;
+  border-color: rgba(255, 184, 0, 0.25);
+}
+
+.admin-table__title-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-table-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-table-badge--adhoc {
+  background: rgba(0, 180, 216, 0.15);
+  color: #00b4d8;
+}
+
+.admin-table-badge--routine {
+  background: rgba(255, 184, 0, 0.12);
+  color: #FFB800;
 }
 
 .visit-detail-grid {
@@ -5297,7 +5370,11 @@ body.table-fullscreen-lock {
 .admin-page input[type="email"],
 .admin-page input[type="text"],
 .admin-page input[type="password"],
-.admin-page select {
+.admin-page input[type="date"],
+.admin-page input[type="time"],
+.admin-page input[type="number"],
+.admin-page select,
+.admin-page textarea {
   width: 100%;
   min-height: 50px;
   padding: 13px 16px;
@@ -5314,6 +5391,11 @@ body.table-fullscreen-lock {
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
+.admin-page textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
 .admin-page input::placeholder {
   color: rgba(196, 196, 220, 0.48);
 }
@@ -5321,7 +5403,11 @@ body.table-fullscreen-lock {
 .admin-page input[type="email"]:focus,
 .admin-page input[type="text"]:focus,
 .admin-page input[type="password"]:focus,
-.admin-page select:focus {
+.admin-page input[type="date"]:focus,
+.admin-page input[type="time"]:focus,
+.admin-page input[type="number"]:focus,
+.admin-page select:focus,
+.admin-page textarea:focus {
   border-color: rgba(255, 184, 0, 0.5);
   box-shadow: 0 0 0 3px rgba(255, 184, 0, 0.12);
   transform: translateY(-1px);
@@ -5465,16 +5551,27 @@ body.table-fullscreen-lock {
   max-height: 500px;
 }
 
-/* The visits table's Action column holds two buttons. Without a floor
-   width the table's auto layout shrinks that column until the flex
-   actions wrap onto separate lines, inflating row height and pushing the
-   buttons out past the visible edge instead of just scrolling into view. */
+/* table-layout:auto sizes columns from every row's content, so the Action
+   column (holding two buttons) would get squeezed differently depending on
+   how many/how long the other rows' bakery & partner names are - fine with
+   one filtered row, cut off with a full unfiltered list. A fixed layout
+   (widths set via <colgroup> in admin.html) reserves Action's width
+   permanently regardless of row count or text length. */
 .admin-table--visits {
+  table-layout: fixed;
   min-width: 720px;
+}
+
+.admin-table--visits td,
+.admin-table--visits th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-table--visits .admin-table__actions {
   flex-wrap: nowrap;
+  overflow: visible;
 }
 
 .admin-table th,
@@ -5576,6 +5673,60 @@ body.table-fullscreen-lock {
 
 .admin-danger-btn {
   min-width: 180px;
+}
+
+.admin-table__actions--icons {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.admin-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 38px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-2);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-icon-btn svg {
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+.admin-icon-btn:hover {
+  border-color: rgba(255, 184, 0, 0.24);
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.admin-icon-btn--danger {
+  border-color: rgba(255, 59, 92, 0.28);
+  background: rgba(255, 59, 92, 0.1);
+  color: #ffb3c0;
+}
+
+.admin-icon-btn--danger:hover {
+  background: rgba(255, 59, 92, 0.18);
+  color: #ffd7df;
+  box-shadow: 0 10px 26px rgba(255, 59, 92, 0.16);
+}
+
+@media (max-width: 860px) {
+  .admin-table__actions--icons {
+    flex-direction: row;
+    align-items: center;
+  }
 }
 
 @media (max-width: 1180px) {
@@ -8522,4 +8673,20 @@ a,
   color: var(--text);
   background: var(--card-hover);
   transform: translateY(-1px);
+}
+
+/* Compact fullscreen button inside table headers */
+.admin-table th .table-fullscreen-inline-anchor {
+  flex-wrap: nowrap;
+}
+
+.admin-table th .table-fullscreen-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.admin-table th .table-fullscreen-btn__icon {
+  width: 12px;
+  height: 12px;
 }

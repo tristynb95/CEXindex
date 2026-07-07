@@ -276,7 +276,8 @@ window.GAILS.makeSortable = function(container) {
 
     button.appendChild(icon);
     button.appendChild(label);
-    button.addEventListener('click', function() {
+    button.addEventListener('click', function(event) {
+      event.stopPropagation();
       toggleFullscreen(shell);
     });
 

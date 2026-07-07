@@ -793,15 +793,28 @@ function renderVisits() {
 
   visitList.innerHTML = rows.map(function(v) {
     var scoreText = (v.score != null && v.score !== '') ? (v.score + (v.scoreMax ? ' / ' + v.scoreMax : '')) : '—';
+    var isSiteVisit = v.type === 'siteVisit';
+    var typeBadge = isSiteVisit
+      ? '<span class="admin-table-badge admin-table-badge--adhoc">Ad-Hoc</span>'
+      : '<span class="admin-table-badge admin-table-badge--routine">Routine</span>';
+
     return '<tr>'
       + '<td>' + escapeHtml(formatVisitDate(v.date)) + '</td>'
-      + '<td><div class="admin-table__title">' + escapeHtml(v.bakery || 'Unknown') + '</div></td>'
+      + '<td><div class="admin-table__title-cell">'
+      + '  <div class="admin-table__title">' + escapeHtml(v.bakery || 'Unknown') + '</div>'
+      + '  ' + typeBadge
+      + '</div></td>'
       + '<td>' + escapeHtml(v.coffeePartner || '—') + '</td>'
       + '<td>' + escapeHtml(scoreText) + '</td>'
       + '<td>' + escapeHtml(v.mod || '—') + '</td>'
-      + '<td><div class="admin-table__actions">'
-      + '<button type="button" class="admin-inline-btn" data-action="view-visit" data-id="' + escapeHtml(v.id) + '">View / Edit</button>'
-      + '<button type="button" class="admin-inline-danger" data-action="remove-visit" data-id="' + escapeHtml(v.id) + '">Delete</button>'
+      + '<td><div class="admin-table__actions admin-table__actions--icons">'
+      + '<button type="button" class="admin-icon-btn" data-action="view-visit" data-id="' + escapeHtml(v.id) + '" title="View / Edit" aria-label="View / Edit">'
+      +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>'
+      +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>'
+      + '</button>'
+      + '<button type="button" class="admin-icon-btn admin-icon-btn--danger" data-action="remove-visit" data-id="' + escapeHtml(v.id) + '" title="Delete" aria-label="Delete">'
+      +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>'
+      + '</button>'
       + '</div></td>'
       + '</tr>';
   }).join('');
@@ -858,26 +871,80 @@ function fieldInputHtml(sectionKey, field, value) {
 }
 
 function buildVisitDetailHtml(visit) {
-  var generalHtml = VISIT_GENERAL_FIELDS.map(function(field) {
-    return fieldInputHtml(null, field, visit[field.key]);
-  }).join('');
+  var isSiteVisit = visit.type === 'siteVisit';
+  var badgeHtml = isSiteVisit
+    ? '<span class="admin-badge admin-badge--adhoc">Ad-Hoc Visit Log</span>'
+    : '<span class="admin-badge admin-badge--routine">Routine Coffee Visit</span>';
 
-  var sectionsHtml = VISIT_SECTIONS.map(function(section) {
-    var sectionData = visit[section.key] || {};
-    var fieldsHtml = section.fields.map(function(field) {
-      return fieldInputHtml(section.key, field, sectionData[field.key]);
-    }).join('');
-    return '<div class="visit-detail-section"><h4>' + escapeHtml(section.title) + '</h4><div class="visit-detail-grid">' + fieldsHtml + '</div></div>';
-  }).join('');
+  var recorderText = '';
+  if (visit.meta) {
+    var actionWord = isSiteVisit ? 'Logged' : 'Recorded';
+    var datePart = formatVisitDate(visit.date);
+    var userPart = visit.meta.updatedBy ? ' by ' + visit.meta.updatedBy : '';
+    var sourcePart = (visit.meta.source === 'form') ? ' via the Routine Coffee Visit form.' : ' manually.';
+    recorderText = actionWord + ' on ' + datePart + userPart + sourcePart;
+  } else {
+    recorderText = 'Recorded on ' + formatVisitDate(visit.date);
+  }
 
-  return '<h3>' + escapeHtml(visit.bakery || 'Visit detail') + '</h3>'
-    + '<p>Recorded ' + escapeHtml(formatVisitDate(visit.date)) + (visit.meta && visit.meta.source === 'form' ? ' via the Routine Coffee Visit form.' : ' manually by an admin.') + '</p>'
-    + '<div class="visit-detail-section"><h4>General</h4><div class="visit-detail-grid">' + generalHtml + '</div></div>'
-    + sectionsHtml
-    + '<div class="visit-detail-actions">'
-    + '<button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
-    + '<button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Changes</button>'
+  var headerHtml = '<div class="visit-detail-header-wrap">'
+    + '  <div class="visit-detail-title-row">'
+    + '    <h3>' + escapeHtml(visit.bakery || 'Visit detail') + '</h3>'
+    + '    ' + badgeHtml
+    + '  </div>'
+    + '  <p>' + escapeHtml(recorderText) + '</p>'
     + '</div>';
+
+  if (isSiteVisit) {
+    var adhocFields = [
+      { key: 'bakery', label: 'Bakery', type: 'text' },
+      { key: 'date', label: 'Visit date', type: 'date' },
+      { key: 'time', label: 'Visit time', type: 'time' },
+      { key: 'coffeePartner', label: 'Coffee Partner', type: 'text' },
+      { key: 'mod', label: 'MOD', type: 'text' },
+      { key: 'comments', label: 'Comments', type: 'textarea' }
+    ];
+
+    var adhocHtml = adhocFields.map(function(field) {
+      return fieldInputHtml(null, field, visit[field.key]);
+    }).join('');
+
+    return headerHtml
+      + '<div class="visit-detail-section">'
+      + '  <h4>Details</h4>'
+      + '  <div class="visit-detail-grid">' + adhocHtml + '</div>'
+      + '</div>'
+      + '<div class="visit-detail-actions">'
+      + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
+      + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Changes</button>'
+      + '</div>';
+  } else {
+    var generalHtml = VISIT_GENERAL_FIELDS.map(function(field) {
+      return fieldInputHtml(null, field, visit[field.key]);
+    }).join('');
+
+    var sectionsHtml = VISIT_SECTIONS.map(function(section) {
+      var sectionData = visit[section.key] || {};
+      var fieldsHtml = section.fields.map(function(field) {
+        return fieldInputHtml(section.key, field, sectionData[field.key]);
+      }).join('');
+      return '<div class="visit-detail-section">'
+        + '  <h4>' + escapeHtml(section.title) + '</h4>'
+        + '  <div class="visit-detail-grid">' + fieldsHtml + '</div>'
+        + '</div>';
+    }).join('');
+
+    return headerHtml
+      + '<div class="visit-detail-section">'
+      + '  <h4>General</h4>'
+      + '  <div class="visit-detail-grid">' + generalHtml + '</div>'
+      + '</div>'
+      + sectionsHtml
+      + '<div class="visit-detail-actions">'
+      + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
+      + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Changes</button>'
+      + '</div>';
+  }
 }
 
 function openVisitDetail(id) {
@@ -936,9 +1003,11 @@ async function saveVisitDetail(id) {
   }
 
   var payload = Object.assign({}, existing, collected.general);
-  VISIT_SECTIONS.forEach(function(section) {
-    payload[section.key] = collected[section.key];
-  });
+  if (existing.type !== 'siteVisit') {
+    VISIT_SECTIONS.forEach(function(section) {
+      payload[section.key] = collected[section.key];
+    });
+  }
   payload.meta = Object.assign({}, existing.meta, {
     updatedAt: nowIso(),
     updatedBy: currentUserEmail()
