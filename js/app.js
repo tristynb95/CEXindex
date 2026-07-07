@@ -36,10 +36,6 @@
     return selectedMonths[0] + ' \u2013 ' + selectedMonths[count - 1];
   }
 
-  var tabsWithoutHeaderFilterSummary = {
-    'table': true,
-    'visit-log': true
-  };
   var lastHeaderBakeryCount = 0;
 
   function renderHeaderSummary() {
@@ -47,12 +43,16 @@
     if (!headerSub) return;
     var activePanel = document.querySelector('.tab-content.active');
     var currentTab = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
-    if (tabsWithoutHeaderFilterSummary[currentTab]) {
-      headerSub.textContent = 'Index v4.1';
+    if (currentTab === 'table') {
+      headerSub.textContent = 'League Table';
+      return;
+    }
+    if (currentTab === 'visit-log') {
+      headerSub.textContent = 'Visit Log';
       return;
     }
     var bakeryLabel = lastHeaderBakeryCount === 1 ? '1 bakery' : lastHeaderBakeryCount + ' bakeries';
-    headerSub.textContent = formatSelectedPeriod() + ' \u00B7 ' + bakeryLabel + ' \u00B7 Index v4.1';
+    headerSub.textContent = formatSelectedPeriod() + ' \u00B7 ' + bakeryLabel;
   }
 
   function updateHeaderSummary(bakeryCount) {
@@ -642,7 +642,7 @@
     state.BAKERIES = [...new Set(records.map(function(r) { return r.b; }))].sort();
     state.PERIODS = G.buildPeriods(months);
 
-    state.selectedMonths = G.resolvePeriodMonths(document.getElementById('rollingWindow').value, months);
+    state.selectedMonths = G.resolvePeriodMonths(document.getElementById('rollingWindow').value, months, records);
 
     var mSel = document.getElementById('monthSelect');
     mSel.innerHTML = '<option value="">\u2014 Select \u2014</option>';
@@ -1230,7 +1230,7 @@
   document.getElementById('sortBy').addEventListener('change', refresh);
 
   document.getElementById('rollingWindow').addEventListener('change', function() {
-    state.selectedMonths = G.resolvePeriodMonths(this.value, state.MONTHS);
+    state.selectedMonths = G.resolvePeriodMonths(this.value, state.MONTHS, state.ALL);
     document.getElementById('monthSelect').value = '';
     G.syncCustomSelect('monthSelect');
     refresh();
@@ -1365,7 +1365,7 @@
     state.bandFilter = '';
 
     if (rollingWindow) {
-      rollingWindow.value = 'current';
+      rollingWindow.value = '3';
       G.syncCustomSelect(rollingWindow);
     }
 
@@ -1380,7 +1380,7 @@
     }
 
     state.selectedMonths = (state.MONTHS && state.MONTHS.length)
-      ? G.resolvePeriodMonths(rollingWindow ? rollingWindow.value : 'current', state.MONTHS)
+      ? G.resolvePeriodMonths(rollingWindow ? rollingWindow.value : '3', state.MONTHS, state.ALL)
       : [];
 
     if (G.rebuildRegionMultiselect) G.rebuildRegionMultiselect();

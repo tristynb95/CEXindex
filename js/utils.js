@@ -41,11 +41,30 @@ window.GAILS.withCurrentMonth = function(months) {
 // labels that period represents. "current" isn't a rolling-window count
 // like the others - it's always just this calendar month, even before any
 // data has been uploaded for it.
-window.GAILS.resolvePeriodMonths = function(rawValue, months) {
+//
+// "Last N months" windows are calendar-based and include the current month
+// by default. If the current month has no data yet, or has data for fewer
+// bakeries than a normal month (i.e. it's still mid-collection), it's
+// dropped from the window and the window shrinks by one so it falls back
+// to the most recent N-1 complete months instead of silently including a
+// half-finished month.
+window.GAILS.resolvePeriodMonths = function(rawValue, months, records) {
   var list = months || [];
-  if (rawValue === 'current') return [GAILS.getCurrentMonthLabel()];
+  var current = GAILS.getCurrentMonthLabel();
+  if (rawValue === 'current') return [current];
   var val = parseInt(rawValue, 10);
-  if (val > 0) return list.slice(-Math.min(val, list.length));
+  if (val > 0) {
+    var currentIsUsable = list.indexOf(current) !== -1;
+    if (currentIsUsable && records && records.length) {
+      var totalBakeries = new Set(records.map(function(r) { return r.b; })).size;
+      var currentCount = records.filter(function(r) { return r.m === current; }).length;
+      if (currentCount < totalBakeries) currentIsUsable = false;
+    }
+    if (currentIsUsable) return list.slice(-Math.min(val, list.length));
+    var past = list.filter(function(m) { return m !== current; });
+    var windowSize = Math.max(1, val - 1);
+    return past.slice(-Math.min(windowSize, past.length));
+  }
   return GAILS.withCurrentMonth(list);
 };
 

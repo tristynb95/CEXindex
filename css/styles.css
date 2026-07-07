@@ -5465,6 +5465,18 @@ body.table-fullscreen-lock {
   max-height: 500px;
 }
 
+/* The visits table's Action column holds two buttons. Without a floor
+   width the table's auto layout shrinks that column until the flex
+   actions wrap onto separate lines, inflating row height and pushing the
+   buttons out past the visible edge instead of just scrolling into view. */
+.admin-table--visits {
+  min-width: 720px;
+}
+
+.admin-table--visits .admin-table__actions {
+  flex-wrap: nowrap;
+}
+
 .admin-table th,
 .admin-table td {
   padding: 16px 20px;
@@ -6465,7 +6477,17 @@ body.table-fullscreen-lock {
     display: block !important;
   }
 
-  #visitReportModal .drill-modal-header,
+  #visitReportModal .drill-modal-header {
+    background: #fff !important;
+    color: #111 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    flex: none !important;
+    display: block !important;
+    padding: 30px 40px 12px !important;
+  }
+
   #visitReportModal .drill-modal-body {
     background: #fff !important;
     color: #111 !important;
@@ -6474,7 +6496,7 @@ body.table-fullscreen-lock {
     height: auto !important;
     flex: none !important;
     display: block !important;
-    padding: 0 0 16px !important;
+    padding: 12px 40px 30px !important;
   }
 
   #visitReportModal .visit-report-chart-wrap {
