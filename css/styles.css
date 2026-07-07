@@ -6435,6 +6435,10 @@ body.table-fullscreen-lock {
   margin: 4px 0 16px;
 }
 
+.visit-report-section-wrapper {
+  display: contents;
+}
+
 .visit-report-section {
   border: 1px solid var(--card-border-h);
   border-radius: 16px;
@@ -6568,7 +6572,13 @@ body.table-fullscreen-lock {
 }
 
 /* ── Visit Report print ──────────────────────────────────────────────── */
+@page {
+  margin-top: 20mm;
+  margin-bottom: 20mm;
+}
+
 @media print {
+
   /* Reset overflow and height constraints on document structure for printing */
   html, body {
     overflow: visible !important;
@@ -6673,7 +6683,18 @@ body.table-fullscreen-lock {
     display: none !important;
   }
 
-  #visitReportModal .visit-report-section,
+  #visitReportModal .visit-report-section-wrapper {
+    display: block !important;
+    page-break-inside: avoid;
+    padding-top: 24px !important;
+  }
+
+  #visitReportModal .visit-report-section {
+    border: 1px solid #ccc;
+    background: #fff;
+    page-break-inside: avoid;
+  }
+
   #visitReportModal .drill-card {
     border: 1px solid #ccc;
     background: #fff;

@@ -110,21 +110,27 @@ window.GAILS = window.GAILS || {};
       }
     });
 
-    return '<div class="visit-report-section' + (isHs ? ' visit-report-section--hs' : '') + '">' +
-      '<h4>' + escapeHtml(section.title) + (isHs ? ' <span class="visit-report-hs-tag">Health &amp; Safety</span>' : '') + '</h4>' +
-      rows.join('') + comments + photos +
+    return '<div class="visit-report-section-wrapper">' +
+      '<div class="visit-report-section' + (isHs ? ' visit-report-section--hs' : '') + '">' +
+        '<h4>' + escapeHtml(section.title) + (isHs ? ' <span class="visit-report-hs-tag">Health &amp; Safety</span>' : '') + '</h4>' +
+        rows.join('') + comments + photos +
+      '</div>' +
     '</div>';
   }
 
   function buildHsSummaryHtml(hsIssues) {
     if (!hsIssues.length) {
-      return '<div class="visit-report-hs-banner visit-report-hs-banner--ok">' +
-        '&#9989; No Health &amp; Safety issues found on this visit.' +
+      return '<div class="visit-report-section-wrapper">' +
+        '<div class="visit-report-hs-banner visit-report-hs-banner--ok">' +
+          '&#9989; No Health &amp; Safety issues found on this visit.' +
+        '</div>' +
       '</div>';
     }
-    return '<div class="visit-report-hs-banner visit-report-hs-banner--alert">' +
-      '<strong>&#9888; ' + hsIssues.length + ' Health &amp; Safety issue' + (hsIssues.length === 1 ? '' : 's') + ' found:</strong>' +
-      '<ul>' + hsIssues.map(function(label) { return '<li>' + escapeHtml(label) + '</li>'; }).join('') + '</ul>' +
+    return '<div class="visit-report-section-wrapper">' +
+      '<div class="visit-report-hs-banner visit-report-hs-banner--alert">' +
+        '<strong>&#9888; ' + hsIssues.length + ' Health &amp; Safety issue' + (hsIssues.length === 1 ? '' : 's') + ' found:</strong>' +
+        '<ul>' + hsIssues.map(function(label) { return '<li>' + escapeHtml(label) + '</li>'; }).join('') + '</ul>' +
+      '</div>' +
     '</div>';
   }
 
@@ -152,7 +158,7 @@ window.GAILS = window.GAILS || {};
 
     var hasSectionScores = record.sectionScores && Object.keys(record.sectionScores).length > 0;
     var chartHtml = hasSectionScores
-      ? '<div class="visit-report-chart-wrap"><canvas id="' + CHART_ID + '"></canvas></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-chart-wrap"><canvas id="' + CHART_ID + '"></canvas></div></div>'
       : '<p class="visit-report-note">Section-by-section score breakdown isn’t available for this visit (it was recorded before scoring breakdown was added).</p>';
 
     return buildHeaderStatsHtml(record) +
@@ -357,9 +363,11 @@ window.GAILS = window.GAILS || {};
       }).join('') + '</div>';
 
       bodyEl.innerHTML = statsHtml + 
-        '<div class="visit-report-section" style="margin-top:20px; background:rgba(255,255,255,0.01); border:1px solid var(--card-border); border-radius:12px; padding:20px;">' +
-          '<h4 style="margin-top:0; margin-bottom:10px; font-size:0.95rem; font-weight:700; color:var(--accent);">Visit Comments</h4>' +
-          '<p class="visit-report-comment" style="font-size:1rem; line-height:1.6; color:var(--text-2); white-space:pre-wrap; margin:0;">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
+        '<div class="visit-report-section-wrapper">' +
+          '<div class="visit-report-section" style="margin-top:20px; background:rgba(255,255,255,0.01); border:1px solid var(--card-border); border-radius:12px; padding:20px;">' +
+            '<h4 style="margin-top:0; margin-bottom:10px; font-size:0.95rem; font-weight:700; color:var(--accent);">Visit Comments</h4>' +
+            '<p class="visit-report-comment" style="font-size:1rem; line-height:1.6; color:var(--text-2); white-space:pre-wrap; margin:0;">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
+          '</div>' +
         '</div>';
       
       modal.style.display = 'flex';
