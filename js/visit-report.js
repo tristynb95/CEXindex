@@ -198,28 +198,30 @@ window.GAILS = window.GAILS || {};
 
   window.GAILS.openVisitReport = function(bakeryName) {
     var record = window.GAILS.getLastVisitRecord ? window.GAILS.getLastVisitRecord(bakeryName) : null;
+    if (record && record.id) {
+      window.GAILS.openVisitReportById(record.id);
+      return;
+    }
+
     var modal = document.getElementById('visitReportModal');
     var titleEl = document.getElementById('visitReportTitle');
     var subtitleEl = document.getElementById('visitReportSubtitle');
     var bodyEl = document.getElementById('visitReportBody');
     if (!modal || !titleEl || !subtitleEl || !bodyEl) return;
 
-    if (!record) {
-      titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(bakeryName) : bakeryName;
-      subtitleEl.textContent = 'No routine visit has been logged for this bakery yet.';
-      bodyEl.innerHTML = '';
-      modal.style.display = 'flex';
-      lockBackgroundScroll();
-      return;
-    }
+    titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(bakeryName) : bakeryName;
+    subtitleEl.textContent = 'No routine visit has been logged for this bakery yet.';
+    bodyEl.innerHTML = '';
 
-    titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
-    subtitleEl.textContent = 'Visited ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
-    bodyEl.innerHTML = buildReportHtml(record);
+    var actionsEl = modal.querySelector('.visit-report-header-actions');
+    if (actionsEl) {
+      actionsEl.innerHTML =
+        '<button type="button" class="drill-close-btn visit-report-print-btn" onclick="window.print()">&#128438; Print</button>' +
+        '<button class="drill-close-btn" onclick="GAILS.closeVisitReport()">&#10005; Close</button>';
+    }
 
     modal.style.display = 'flex';
     lockBackgroundScroll();
-    requestAnimationFrame(function() { drawScoreChart(record); });
   };
 
   window.GAILS.closeVisitReport = function() {
