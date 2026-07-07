@@ -89,6 +89,8 @@ window.GAILS.renderOverviewCharts = function(data) {
         labels: ['Overall', 'Friendliness', 'Quality', 'Overall Efficiency'], datasets: cxBandSeries
       }, options: { scales: { r: { min: 60, max: 100, ticks: { stepSize: 10 } } }, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
     });
+  } else {
+    G.destroyChart('cxRadar');
   }
 
   // Component drag by selected CEI lens
@@ -324,7 +326,7 @@ window.GAILS.renderTrendCharts = function(data) {
           + '</h3><p class="tracker-table-header__copy">'
           + tableDescription
           + '</p></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th>NPS</th><th>Relative Score</th><th>Absolute Score</th><th>Responses</th>' + (selectedBakeries.length ? '<th>All Bakeries Avg NPS</th>' : '') + '</tr></thead><tbody>' +
-          trackerTableRows.map(function(row) {
+          trackerTableRows.slice().reverse().map(function(row) {
             return '<tr>'
               + '<td>' + row.month + '</td>'
               + '<td>' + formatValue(row.n) + '</td>'

@@ -408,6 +408,41 @@
     updateHeaderSummary(n);
     G.storeDashboardMapData(data);
     if (n === 0) {
+      var dashMetrics = [
+        { eyebrow: 'NPS', title: 'Net Promoter Score', meta: 'Target: 55 NPS.', primary: true },
+        { eyebrow: 'Index', title: 'Relative Score', meta: 'vs bakery peer set.', primary: true },
+        { eyebrow: 'Index', title: 'Absolute Score', meta: 'vs company benchmark.', primary: true },
+        { eyebrow: 'SHINE', title: 'Drink Quality', meta: 'Target: 90%.' },
+        { eyebrow: 'SHINE', title: 'Efficiency', meta: 'Target: 90%.' },
+        { eyebrow: 'SHINE', title: 'Friendliness', meta: 'Target: 90%.' },
+        { eyebrow: 'KV Link', title: 'Coffee Efficiency', meta: 'Target: 80% < 2 min.' },
+        { eyebrow: 'KV Link', title: 'Orders >5 Min', meta: 'Target: < 1%.' }
+      ];
+      dashboardKpiRow.innerHTML = dashMetrics.map(function(metric) {
+        return '<article class="kpi kpi-muted' + (metric.primary ? ' kpi--primary' : '') + '">'
+          + '<div class="kpi__top">'
+          + '<span class="kpi__eyebrow">' + metric.eyebrow + '</span>'
+          + '<span class="kpi__status">No Data</span>'
+          + '</div>'
+          + '<div class="kpi__value">-</div>'
+          + '<div class="kpi__title">' + metric.title + '</div>'
+          + '<div class="kpi__meta">'
+          + '<span class="kpi__meta-text">' + metric.meta + '</span>'
+          + '<span class="kpi__gap">&nbsp;</span>'
+          + '</div>'
+          + '</article>';
+      }).join('');
+      G.renderOverviewCharts([]);
+      G._lastData = [];
+      var trendsPanelEmpty = document.getElementById('tab-trends');
+      if (trendsPanelEmpty && trendsPanelEmpty.classList.contains('active')) {
+        G.renderTrendCharts([]);
+        G._trendsNeedRender = false;
+      } else {
+        G._trendsNeedRender = true;
+      }
+      G.renderSpeedCharts([]);
+      G.renderLeagueTable([]);
       G.renderTargets([]);
       return;
     }

@@ -536,6 +536,13 @@ function _setTargetTrendState(hasData, message) {
     var filterState = (cfg.key === 'network' ? _networkMapVisitState : _targetMapVisitState) || 'all';
     if (filterState === 'all') return list;
     var months = (GAILS.state && GAILS.state.selectedMonths) || [];
+    var rollingEl = document.getElementById('rollingWindow');
+    if (rollingEl && rollingEl.value !== '0' && GAILS.getCurrentMonthLabel) {
+      var current = GAILS.getCurrentMonthLabel();
+      if (months.indexOf(current) === -1) {
+        months = months.concat([current]);
+      }
+    }
     return list.filter(function(item) {
       var visited = GAILS.isBakeryVisitedInPeriod ? GAILS.isBakeryVisitedInPeriod(item.b, months) : false;
       return filterState === 'visited' ? visited : !visited;
