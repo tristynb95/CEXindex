@@ -36,9 +36,28 @@
     return selectedMonths[0] + ' \u2013 ' + selectedMonths[count - 1];
   }
 
+  var tabsWithoutHeaderFilterSummary = {
+    'table': true,
+    'visit-log': true
+  };
+  var lastHeaderBakeryCount = 0;
+
+  function renderHeaderSummary() {
+    var headerSub = document.getElementById('headerSub');
+    if (!headerSub) return;
+    var activePanel = document.querySelector('.tab-content.active');
+    var currentTab = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
+    if (tabsWithoutHeaderFilterSummary[currentTab]) {
+      headerSub.textContent = 'Index v4.1';
+      return;
+    }
+    var bakeryLabel = lastHeaderBakeryCount === 1 ? '1 bakery' : lastHeaderBakeryCount + ' bakeries';
+    headerSub.textContent = formatSelectedPeriod() + ' \u00B7 ' + bakeryLabel + ' \u00B7 Index v4.1';
+  }
+
   function updateHeaderSummary(bakeryCount) {
-    var bakeryLabel = bakeryCount === 1 ? '1 bakery' : bakeryCount + ' bakeries';
-    document.getElementById('headerSub').textContent = formatSelectedPeriod() + ' \u00B7 ' + bakeryLabel + ' \u00B7 Index v4.1';
+    lastHeaderBakeryCount = bakeryCount;
+    renderHeaderSummary();
   }
 
   function rebuildRegionFilter() {
@@ -238,6 +257,7 @@
     });
     updateDashboardActiveView(name);
     syncDashboardKpis(name);
+    renderHeaderSummary();
 
     var filterBar = document.querySelector('.filter-bar');
     if (filterBar) {
