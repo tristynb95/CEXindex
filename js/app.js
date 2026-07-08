@@ -882,7 +882,7 @@
       msSearch.value = '';
       renderList('');
       renderSelected();
-      msSearch.focus();
+      msSearch.focus({ preventScroll: true });
     }
 
     function closeDropdown() {
@@ -1220,7 +1220,7 @@
       msSearch.value = '';
       renderList('');
       renderSelected();
-      msSearch.focus();
+      msSearch.focus({ preventScroll: true });
     }
 
     function closeDropdown() {
