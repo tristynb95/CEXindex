@@ -56,9 +56,19 @@ window.GAILS.resolvePeriodMonths = function(rawValue, months, records) {
   if (val > 0) {
     var currentIsUsable = list.indexOf(current) !== -1;
     if (currentIsUsable && records && records.length) {
-      var totalBakeries = new Set(records.map(function(r) { return r.b; })).size;
       var currentCount = records.filter(function(r) { return r.m === current; }).length;
-      if (currentCount < totalBakeries) currentIsUsable = false;
+      var idx = list.indexOf(current);
+      if (idx > 0) {
+        var prevMonth = list[idx - 1];
+        var prevCount = records.filter(function(r) { return r.m === prevMonth; }).length;
+        if (currentCount < prevCount * 0.9) {
+          currentIsUsable = false;
+        }
+      } else {
+        if (currentCount === 0) {
+          currentIsUsable = false;
+        }
+      }
     }
     if (currentIsUsable) return list.slice(-Math.min(val, list.length));
     var past = list.filter(function(m) { return m !== current; });
