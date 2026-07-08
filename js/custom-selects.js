@@ -15,6 +15,17 @@
     });
   }
 
+  function scrollIntoViewInsideContainer(el, container) {
+    if (!el || !container) return;
+    var elRect = el.getBoundingClientRect();
+    var conRect = container.getBoundingClientRect();
+    if (elRect.top < conRect.top) {
+      container.scrollTop -= (conRect.top - elRect.top);
+    } else if (elRect.bottom > conRect.bottom) {
+      container.scrollTop += (elRect.bottom - conRect.bottom);
+    }
+  }
+
   function buildCustomSelect(select) {
     if (!select || select.dataset.customSelectReady === 'true') return;
 
@@ -130,7 +141,9 @@
       var nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
       if (nextIndex < 0) nextIndex = items.length - 1;
       if (nextIndex >= items.length) nextIndex = 0;
-      items[nextIndex].focus();
+      var nextEl = items[nextIndex];
+      nextEl.focus({ preventScroll: true });
+      scrollIntoViewInsideContainer(nextEl, optionsList);
     }
 
     function selectValue(value) {
@@ -200,10 +213,13 @@
       if (searchable) {
         searchInput.value = '';
         filterOptions('');
-        searchInput.focus();
+        searchInput.focus({ preventScroll: true });
       } else {
         var selected = optionsList.querySelector('.filter-select__option.is-selected') || optionsList.querySelector('.filter-select__option:not(:disabled)');
-        if (selected) selected.focus();
+        if (selected) {
+          selected.focus({ preventScroll: true });
+          scrollIntoViewInsideContainer(selected, optionsList);
+        }
       }
     }
 
@@ -224,7 +240,10 @@
           openMenu();
         } else if (!searchable) {
           var selected = optionsList.querySelector('.filter-select__option.is-selected') || optionsList.querySelector('.filter-select__option:not(:disabled)');
-          if (selected) selected.focus();
+          if (selected) {
+            selected.focus({ preventScroll: true });
+            scrollIntoViewInsideContainer(selected, optionsList);
+          }
         }
       } else if (event.key === 'Escape') {
         closeMenu();
@@ -240,7 +259,10 @@
         if (event.key === 'ArrowDown') {
           event.preventDefault();
           var items = visibleOptions();
-          if (items.length) items[0].focus();
+          if (items.length) {
+            items[0].focus({ preventScroll: true });
+            scrollIntoViewInsideContainer(items[0], optionsList);
+          }
         } else if (event.key === 'Enter') {
           event.preventDefault();
           var items2 = visibleOptions();

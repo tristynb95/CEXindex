@@ -15,6 +15,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 
@@ -400,10 +406,25 @@
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
-                    <h3>Routine Bakery Visits</h3>
-                    <p>Visits are recorded in the field with the Routine Coffee Visit form and sync here automatically. Review a visit, edit a field, or remove a record entirely.</p>
+                    <h3>Bakery Visits</h3>
+                    <p>Routine Coffee Visits sync automatically from the field form. Coffee Quality Visit (CQV) reports are added here by dragging in the PDF exported from GoAudits.</p>
                   </div>
                 </div>
+                <div class="admin-dataset-upload">
+                  <div id="cqvImportZone" class="upload-zone upload-zone--compact admin-cqv-import__zone" tabindex="0" role="button" aria-describedby="cqvImportHelp">
+                    <div class="admin-import-card__content">
+                      <div class="icon">&#9749;</div>
+                      <h3>Add a Coffee Quality Visit (CQV)</h3>
+                      <p>Drag in a CQV PDF exported from GoAudits. It'll be parsed automatically and the original file kept alongside it so anyone can preview or download it.</p>
+                      <p id="cqvImportHelp" class="admin-dataset-upload__hint">Accepts the standard GoAudits CQV PDF export. You'll get a chance to confirm the bakery and date before it's saved.</p>
+                    </div>
+                    <div class="admin-import-card__actions">
+                      <button type="button" id="cqvImportBrowseBtn" class="btn">Choose PDF File</button>
+                    </div>
+                    <input type="file" id="cqvImportInput" accept="application/pdf,.pdf" hidden>
+                  </div>
+                </div>
+                <div id="cqvImportMsg" class="admin-message" style="display:none;"></div>
                 <div class="admin-toolbar">
                   <label class="admin-form-field admin-form-field--search" for="visitSearchInput">
                     <span>Search visits</span>
@@ -476,6 +497,36 @@
                   </div>
                 </div>
 
+                <!-- CQV IMPORT CONFIRM MODAL -->
+                <div id="cqvConfirmModal" class="modal-overlay" style="display:none;">
+                  <div class="visit-detail-panel" style="max-width: 480px; padding: 25px 28px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 18px;">
+                      <div>
+                        <h3 style="font-size:1.3rem;font-weight:700;color:var(--accent);margin:0;">Confirm CQV Details</h3>
+                        <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">Parsed from the PDF &mdash; check these match before saving.</p>
+                      </div>
+                      <button type="button" id="cqvConfirmClose" class="admin-portal__close" style="position:static; margin-top:-5px; font-size:1.5rem; background:none; border:none; color:var(--text); cursor:pointer;">&times;</button>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:14px;">
+                      <div id="cqvConfirmWarning" class="admin-message is-info" style="display:none;"></div>
+                      <label class="admin-form-field">
+                        <span>Bakery</span>
+                        <select id="cqvConfirmBakery"><option value="">Select a bakery&hellip;</option></select>
+                      </label>
+                      <label class="admin-form-field">
+                        <span>Visit date</span>
+                        <input type="date" id="cqvConfirmDate">
+                      </label>
+                      <div id="cqvConfirmSummary" style="font-size:0.85rem; line-height:1.5; color:var(--text-2); background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:10px; padding:12px 14px;"></div>
+                      <div style="display:flex; gap:12px; margin-top: 6px; justify-content: flex-end;">
+                        <button type="button" id="cqvConfirmCancel" class="admin-inline-btn" style="padding: 8px 14px;">Cancel</button>
+                        <button type="button" id="cqvConfirmSubmitBtn" class="btn" style="padding: 8px 16px;">Save CQV</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <section class="admin-portal__panel" data-admin-panel-content="data">
               <div class="admin-section">
                 <div class="admin-section__header">
@@ -526,6 +577,7 @@
   <script src="js/parser.js"></script>
   <script src="js/tables.js"></script>
   <script src="js/visit-schema.js"></script>
+  <script src="js/cqv-parser.js"></script>
   <script type="module" src="js/admin-page.js"></script>
 </body>
 

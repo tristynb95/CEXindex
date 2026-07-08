@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-analytics.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 
 // Your web app's Firebase configuration
 export const firebaseConfig = {
@@ -18,6 +19,7 @@ export const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
+export const storage = getStorage(app);
 
 // Analytics is best-effort — it throws in private browsing, in-app browsers
 // (WKWebView on iOS), and environments where Safari's ITP blocks indexedDB.

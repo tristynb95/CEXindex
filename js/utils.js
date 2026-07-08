@@ -43,11 +43,10 @@ window.GAILS.withCurrentMonth = function(months) {
 // data has been uploaded for it.
 //
 // "Last N months" windows are calendar-based and include the current month
-// by default. If the current month has no data yet, or has data for fewer
-// bakeries than a normal month (i.e. it's still mid-collection), it's
-// dropped from the window and the window shrinks by one so it falls back
-// to the most recent N-1 complete months instead of silently including a
-// half-finished month.
+// by default (except for "Last Month" where N=1, which always represents the
+// previous calendar month). If the current month has no data yet, or is
+// mid-collection, it is excluded and the window falls back to the most recent
+// N complete past months.
 window.GAILS.resolvePeriodMonths = function(rawValue, months, records) {
   var list = months || [];
   var current = GAILS.getCurrentMonthLabel();
@@ -70,10 +69,12 @@ window.GAILS.resolvePeriodMonths = function(rawValue, months, records) {
         }
       }
     }
-    if (currentIsUsable) return list.slice(-Math.min(val, list.length));
     var past = list.filter(function(m) { return m !== current; });
-    var windowSize = Math.max(1, val - 1);
-    return past.slice(-Math.min(windowSize, past.length));
+    if (currentIsUsable && val > 1) {
+      return list.slice(-Math.min(val, list.length));
+    } else {
+      return past.slice(-Math.min(val, past.length));
+    }
   }
   return GAILS.withCurrentMonth(list);
 };

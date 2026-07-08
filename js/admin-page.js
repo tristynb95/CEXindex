@@ -1,5 +1,6 @@
-import { firebaseConfig, db, auth as primaryAuth } from './firebase-config.js';
-import { ref, set, remove, onValue, get, query, limitToLast, orderByKey } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { firebaseConfig, db, storage, auth as primaryAuth } from './firebase-config.js';
+import { ref, set, push, remove, onValue, get, query, limitToLast, orderByKey } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
@@ -76,6 +77,19 @@ const deleteConfirmInput      = document.getElementById('deleteConfirmInput');
 const deleteConfirmSubmitBtn  = document.getElementById('deleteConfirmSubmitBtn');
 const deleteConfirmPromptText = document.getElementById('deleteConfirmPromptText');
 
+const cqvImportZone       = document.getElementById('cqvImportZone');
+const cqvImportBrowseBtn  = document.getElementById('cqvImportBrowseBtn');
+const cqvImportInput      = document.getElementById('cqvImportInput');
+const cqvImportMsg        = document.getElementById('cqvImportMsg');
+const cqvConfirmModal     = document.getElementById('cqvConfirmModal');
+const cqvConfirmClose     = document.getElementById('cqvConfirmClose');
+const cqvConfirmCancel    = document.getElementById('cqvConfirmCancel');
+const cqvConfirmSubmitBtn = document.getElementById('cqvConfirmSubmitBtn');
+const cqvConfirmBakery    = document.getElementById('cqvConfirmBakery');
+const cqvConfirmDate      = document.getElementById('cqvConfirmDate');
+const cqvConfirmWarning   = document.getElementById('cqvConfirmWarning');
+const cqvConfirmSummary   = document.getElementById('cqvConfirmSummary');
+
 // ── Routine visit schema ──
 // Sourced from js/visit-schema.js (shared with index.html's js/visit-report.js)
 // so the form structure can't drift between the editable admin view and the
@@ -98,7 +112,8 @@ const state = {
   siteImportInfo: null,
   visits: [],
   visitSearch: '',
-  visitDetailId: null
+  visitDetailId: null,
+  cqvPending: null // { record, warnings, file } awaiting confirmation in cqvConfirmModal
 };
 
 let usersUnsubscribe = null;
@@ -794,9 +809,12 @@ function renderVisits() {
   visitList.innerHTML = rows.map(function(v) {
     var scoreText = (v.score != null && v.score !== '') ? (v.score + (v.scoreMax ? ' / ' + v.scoreMax : '')) : '—';
     var isSiteVisit = v.type === 'siteVisit';
-    var typeBadge = isSiteVisit
-      ? '<span class="admin-table-badge admin-table-badge--adhoc">Ad-Hoc</span>'
-      : '<span class="admin-table-badge admin-table-badge--routine">Routine</span>';
+    var isCqv = v.type === 'cqv';
+    var typeBadge = isCqv
+      ? '<span class="admin-table-badge admin-table-badge--cqv">' + (v.isFollowUp ? 'CQV Follow-Up' : 'CQV') + '</span>'
+      : isSiteVisit
+        ? '<span class="admin-table-badge admin-table-badge--adhoc">Check-in</span>'
+        : '<span class="admin-table-badge admin-table-badge--routine">Routine</span>';
 
     return '<tr>'
       + '<td>' + escapeHtml(formatVisitDate(v.date)) + '</td>'
@@ -818,6 +836,181 @@ function renderVisits() {
       + '</div></td>'
       + '</tr>';
   }).join('');
+}
+
+// ── CQV (Coffee Quality Visit) PDF import ──
+// admin.html never loads js/app.js/js/state.js (that's what populates
+// window.GAILS.state.BAKERIES from the uploaded Excel dataset), so that list
+// is always empty here. state.siteMetaDraft — the site directory synced from
+// portalData/siteMeta and already used to drive the Sites panel — is the
+// bakery list that's actually available on this page.
+function cqvBakeryList() {
+  return Object.keys(state.siteMetaDraft || {});
+}
+
+function guessBakeryMatch(parsedName) {
+  var bakeries = cqvBakeryList();
+  if (!parsedName || !bakeries.length) return '';
+  var needle = parsedName.trim().toLowerCase();
+  var exact = bakeries.find(function(b) { return b.toLowerCase() === needle; });
+  if (exact) return exact;
+  var contains = bakeries.find(function(b) {
+    return b.toLowerCase().indexOf(needle) !== -1 || needle.indexOf(b.toLowerCase()) !== -1;
+  });
+  return contains || '';
+}
+
+function bakeryOptionsHtml(selected) {
+  var bakeries = cqvBakeryList().sort();
+  return '<option value="">Select a bakery&hellip;</option>' + bakeries.map(function(b) {
+    return '<option value="' + escapeHtml(b) + '" ' + (b === selected ? 'selected' : '') + '>' + escapeHtml(b) + '</option>';
+  }).join('');
+}
+
+function cqvSummaryHtml(record, warnings) {
+  var lines = [];
+  if (record.isFollowUp) {
+    lines.push('<span style="color:var(--gold);">Detected as a follow-up CQV</span> (reissued after a previous visit scored poorly).');
+  }
+  if (record.overallPct != null) {
+    var band = cqvBand(record);
+    var bandColor = cqvBandColor(band);
+    lines.push('<strong>' + escapeHtml(record.overallPct) + '%</strong>'
+      + (band ? ' <span style="color:' + bandColor + '; font-weight:700;">(' + escapeHtml(band) + ')</span>' : '')
+      + (record.score != null ? ' &mdash; ' + escapeHtml(record.score) + ' / ' + escapeHtml(record.scoreMax) : ''));
+  }
+  if (record.criticalFail) {
+    lines.push('<span style="color:#FF4A70;">&#9888; Rated Red: a Critical Point or Allergen Point question failed</span>' +
+      (record.printedBand && record.printedBand !== 'Red' ? ' (overrides the ' + escapeHtml(record.printedBand) + ' shown in the PDF header).' : '.'));
+  }
+  var sectionNames = Object.keys(record.sectionScores || {});
+  if (sectionNames.length) {
+    lines.push('Sections: ' + sectionNames.map(function(s) {
+      return escapeHtml(s) + ' ' + escapeHtml(record.sectionScores[s].pct) + '%';
+    }).join(', '));
+  }
+  lines.push(record.questions.length + ' question' + (record.questions.length === 1 ? '' : 's') + ' parsed, '
+    + record.actionPlan.length + ' action item' + (record.actionPlan.length === 1 ? '' : 's') + '.');
+  if (warnings && warnings.length) {
+    lines.push('<span style="color:var(--gold);">' + warnings.length + ' item' + (warnings.length === 1 ? '' : 's')
+      + ' couldn\'t be fully parsed &mdash; the original PDF stays attached as the source of truth.</span>');
+  }
+  return lines.map(function(l) { return '<div>' + l + '</div>'; }).join('');
+}
+
+function openCqvConfirmModal(record, warnings, file) {
+  state.cqvPending = { record: record, warnings: warnings || [], file: file };
+  cqvConfirmBakery.innerHTML = bakeryOptionsHtml(guessBakeryMatch(record.bakery));
+  cqvConfirmDate.value = record.date || '';
+  cqvConfirmSummary.innerHTML = cqvSummaryHtml(record, warnings);
+  if (warnings && warnings.length) {
+    cqvConfirmWarning.style.display = 'block';
+    cqvConfirmWarning.className = 'admin-message is-info';
+    cqvConfirmWarning.textContent = 'Some rows in this PDF weren\'t fully machine-readable. Scores shown above are still accurate — only a few question labels/notes may be incomplete.';
+  } else {
+    cqvConfirmWarning.style.display = 'none';
+  }
+  cqvConfirmModal.style.display = 'flex';
+}
+
+function closeCqvConfirmModal() {
+  cqvConfirmModal.style.display = 'none';
+  state.cqvPending = null;
+}
+
+async function handleCqvFile(file) {
+  if (!file) return;
+  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
+    setMessage(cqvImportMsg, 'error', 'Please choose a PDF file exported from GoAudits.');
+    return;
+  }
+  setMessage(cqvImportMsg, 'info', 'Reading ' + file.name + '…');
+  if (cqvImportBrowseBtn) cqvImportBrowseBtn.disabled = true;
+  try {
+    var bytes = await readFileAsBytes(file);
+    if (!window.GAILS.CQV || typeof window.GAILS.CQV.buildRecordFromPdf !== 'function') {
+      throw new Error('CQV parser did not load. Refresh the page and try again.');
+    }
+    var result = await window.GAILS.CQV.buildRecordFromPdf(bytes.buffer);
+    if (!result.record.overallPct && !result.record.score && !result.record.questions.length) {
+      throw new Error('Could not find any CQV score data in this PDF. Make sure it\'s the standard GoAudits CQV export.');
+    }
+    clearMessage(cqvImportMsg);
+    openCqvConfirmModal(result.record, result.warnings, file);
+  } catch (err) {
+    console.error('Failed to parse CQV PDF:', err);
+    setMessage(cqvImportMsg, 'error', 'Could not read that PDF: ' + err.message);
+  } finally {
+    if (cqvImportBrowseBtn) cqvImportBrowseBtn.disabled = false;
+    if (cqvImportInput) cqvImportInput.value = '';
+    if (cqvImportZone) cqvImportZone.classList.remove('drag-over');
+  }
+}
+
+async function saveCqvRecord() {
+  var pending = state.cqvPending;
+  if (!pending) return;
+
+  var bakery = cqvConfirmBakery.value;
+  var date = cqvConfirmDate.value;
+  if (!bakery || !date) {
+    cqvConfirmWarning.style.display = 'block';
+    cqvConfirmWarning.className = 'admin-message is-error';
+    cqvConfirmWarning.textContent = 'Choose a bakery and a visit date before saving.';
+    return;
+  }
+
+  var duplicate = state.visits.find(function(v) {
+    return v.type === 'cqv' && v.bakery === bakery && v.date === date;
+  });
+  if (duplicate) {
+    cqvConfirmWarning.style.display = 'block';
+    cqvConfirmWarning.className = 'admin-message is-error';
+    cqvConfirmWarning.textContent = 'A CQV for ' + bakery + ' on ' + formatVisitDate(date) + ' is already saved. Delete that record first if you need to replace it.';
+    return;
+  }
+
+  cqvConfirmSubmitBtn.disabled = true;
+  var originalText = cqvConfirmSubmitBtn.textContent;
+  cqvConfirmSubmitBtn.textContent = 'Saving…';
+
+  try {
+    var newRef = push(ref(db, 'routineVisits'));
+    var pathSafeBakery = bakery.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    var storagePath = 'cqvPdfs/' + pathSafeBakery + '/' + newRef.key + '-' + pending.file.name.replace(/[^a-z0-9.\-]+/gi, '_');
+    var fileRef = storageRef(storage, storagePath);
+
+    var bytes = await readFileAsBytes(pending.file);
+    await uploadBytes(fileRef, bytes, { contentType: 'application/pdf' });
+    var pdfUrl = await getDownloadURL(fileRef);
+
+    var nowIsoStr = nowIso();
+    var record = Object.assign({}, pending.record, {
+      bakery: bakery,
+      date: date,
+      pdfUrl: pdfUrl,
+      pdfPath: storagePath,
+      pdfFileName: pending.file.name,
+      meta: {
+        source: 'pdf-import',
+        createdAt: nowIsoStr,
+        updatedAt: nowIsoStr,
+        updatedBy: currentUserEmail()
+      }
+    });
+
+    await set(newRef, record);
+    closeCqvConfirmModal();
+    setMessage(visitMsg, 'success', 'Saved CQV for ' + bakery + ' on ' + formatVisitDate(date) + '.');
+  } catch (err) {
+    console.error('Failed to save CQV:', err);
+    cqvConfirmWarning.style.display = 'block';
+    cqvConfirmWarning.className = 'admin-message is-error';
+    cqvConfirmWarning.textContent = 'Could not save this CQV: ' + err.message;
+  } finally {
+    cqvConfirmSubmitBtn.disabled = false;
+    cqvConfirmSubmitBtn.textContent = originalText;
+  }
 }
 
 function ynnaOptionsHtml(value) {
@@ -870,18 +1063,144 @@ function fieldInputHtml(sectionKey, field, value) {
   return '<label class="admin-form-field' + wide + '"><span>' + escapeHtml(field.label) + '</span>' + input + '</label>' + photoLinks;
 }
 
+// Recomputed live from categoryScores rather than trusting the stored
+// criticalFail flag, so records saved before this override existed (or with
+// a stale value) still show correctly without needing a re-import.
+function cqvHasCriticalFail(visit) {
+  if (visit.criticalFail) return true;
+  var scores = visit.categoryScores || {};
+  return Object.keys(scores).some(function(name) {
+    var s = scores[name];
+    var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
+    return isCritical && s.actual < s.target;
+  });
+}
+
+// Falls back to deriving the band from overallPct for records saved before
+// band computation existed (see js/cqv-parser.js), rather than showing
+// blank, and re-applies the critical-fail override live in case the stored
+// band predates it.
+function cqvBand(visit) {
+  if (cqvHasCriticalFail(visit)) return 'Red';
+  if (visit.band) return visit.band;
+  if (visit.overallPct == null) return '';
+  return visit.overallPct >= 90 ? 'Green' : visit.overallPct >= 70 ? 'Yellow' : 'Red';
+}
+
+function cqvBandColor(band) {
+  if (band === 'Green') return '#00C875';
+  if (band === 'Yellow') return '#FFB800';
+  if (band === 'Red') return '#FF4A70';
+  return null;
+}
+
+function cqvPriorityColor(priority) {
+  if (/^high$/i.test(priority)) return '#FF4A70';
+  if (/^medium$/i.test(priority)) return '#FFB800';
+  if (/^low$/i.test(priority)) return '#00D4B0';
+  return null;
+}
+
+function buildCqvDetailHtml(visit) {
+  var sectionRows = Object.keys(visit.sectionScores || {}).map(function(name) {
+    var s = visit.sectionScores[name];
+    return '<div class="visit-report-row"><span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
+      + '<span class="visit-report-row__value">' + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
+  }).join('');
+  var categoryRows = Object.keys(visit.categoryScores || {}).map(function(name) {
+    var s = visit.categoryScores[name];
+    return '<div class="visit-report-row"><span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
+      + '<span class="visit-report-row__value">' + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
+  }).join('');
+  var actionItemsHtml = (visit.actionPlan || []).map(function(a) {
+    var label = a.questionLabel || a.sectionPath || 'Action item';
+    var dueDate = a.dueDate;
+    
+    // Clean up embedded due date in label if found
+    var dueMatch = label.match(/\s*DUE\s*DATE\s+(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4})\b/i);
+    if (dueMatch) {
+      if (!dueDate) dueDate = dueMatch[1];
+      label = label.replace(dueMatch[0], '').trim();
+    }
+
+    // Clean up sectionPath to get sub-category only
+    var cleanSection = a.sectionPath || '';
+    if (cleanSection.indexOf('>>') !== -1) {
+      cleanSection = cleanSection.split('>>').pop().trim();
+    }
+
+    var priorityColor = cqvPriorityColor(a.priority);
+    var metaHtml = '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; text-align:right;">'
+      + (a.priority
+          ? '<span style="font-size:0.66rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px;'
+            + (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(255,255,255,0.06);')
+            + '">' + escapeHtml(a.priority) + '</span>'
+          : '')
+      + '<span style="font-size:0.72rem; color:var(--muted-l); white-space:nowrap;">Due ' + escapeHtml(dueDate || '—') + '</span>'
+      + '</div>';
+
+    return '<div class="visit-detail-section" style="margin-top:10px; padding-bottom:10px; border-bottom:1px solid var(--card-border);">'
+      + '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">'
+      +   '<div style="min-width:0; flex:1;">'
+      +     '<h4 style="font-size:0.85rem; margin:0; font-weight:700; color:var(--text);">' + escapeHtml(label) + '</h4>'
+      +     (cleanSection ? '<div style="font-size:0.7rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(cleanSection) + '</div>' : '')
+      +     (a.findings ? '<p style="font-size:0.82rem; color:var(--text-2); margin:8px 0 0;">' + escapeHtml(a.findings) + '</p>' : '')
+      +     (a.actionRequired ? '<div style="font-size:0.82rem; color:var(--text); margin-top:8px; padding:6px 10px; background:var(--accent-light); border-left:3px solid var(--accent); border-radius:4px; line-height:1.4;">'
+            + '<strong style="color:var(--accent);">Action required:</strong> ' + escapeHtml(a.actionRequired) + '</div>' : '')
+      +   '</div>'
+      +   metaHtml
+      + '</div>'
+      + '</div>';
+  }).join('') || '<p class="visit-report-note">No action items were flagged on this visit.</p>';
+
+  var basicFields = [
+    { key: 'bakery', label: 'Bakery', type: 'text' },
+    { key: 'date', label: 'Visit date', type: 'date' }
+  ];
+  var basicHtml = basicFields.map(function(field) {
+    return fieldInputHtml(null, field, visit[field.key]);
+  }).join('');
+
+  var pdfLinkHtml = visit.pdfUrl
+    ? '<a class="btn" href="' + escapeHtml(visit.pdfUrl) + '" target="_blank" rel="noopener" style="text-decoration:none; display:inline-block;">View Original PDF &#8599;</a>'
+    : '<p class="visit-report-note">No PDF is attached to this record.</p>';
+
+  return '<div class="visit-detail-section"><h4>Details</h4><div class="visit-detail-grid">' + basicHtml + '</div></div>'
+    + '<div class="visit-detail-section"><h4>Overall Score</h4>'
+    + '<p style="font-size:1.4rem; font-weight:800; color:var(--text);">' + escapeHtml(visit.overallPct != null ? visit.overallPct + '%' : '—')
+    + (cqvBand(visit) ? ' <span style="font-size:0.9rem; font-weight:700; color:' + cqvBandColor(cqvBand(visit)) + ';">(' + escapeHtml(cqvBand(visit)) + ')</span>' : '') + '</p>'
+    + (cqvHasCriticalFail(visit)
+        ? '<p style="font-size:0.82rem; color:#FF4A70; font-weight:600;">&#9888; A Critical Point was lost.</p>'
+        : '')
+    + (visit.summary ? '<p class="visit-report-comment">' + escapeHtml(visit.summary) + '</p>' : '')
+    + '</div>'
+    + '<div class="visit-detail-section"><h4>Score by Section</h4>' + (sectionRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
+    + '<div class="visit-detail-section"><h4>Score by Category</h4>' + (categoryRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
+    + '<div class="visit-detail-section"><h4>Action Plan (' + (visit.actionPlan || []).length + ')</h4>' + actionItemsHtml + '</div>'
+    + '<div class="visit-detail-section"><h4>Original Report</h4>' + pdfLinkHtml + '</div>'
+    + '<div class="visit-detail-actions">'
+    + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
+    + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Bakery / Date</button>'
+    + '</div>';
+}
+
 function buildVisitDetailHtml(visit) {
   var isSiteVisit = visit.type === 'siteVisit';
-  var badgeHtml = isSiteVisit
-    ? '<span class="admin-badge admin-badge--adhoc">Ad-Hoc Visit Log</span>'
-    : '<span class="admin-badge admin-badge--routine">Routine Coffee Visit</span>';
+  var isCqv = visit.type === 'cqv';
+  var badgeHtml = isCqv
+    ? '<span class="admin-badge admin-badge--cqv">' + (visit.isFollowUp ? 'CQV Follow-Up' : 'Coffee Quality Visit (CQV)') + '</span>'
+    : isSiteVisit
+      ? '<span class="admin-badge admin-badge--adhoc">Check-in</span>'
+      : '<span class="admin-badge admin-badge--routine">Routine Coffee Visit</span>';
 
   var recorderText = '';
   if (visit.meta) {
     var actionWord = isSiteVisit ? 'Logged' : 'Recorded';
     var datePart = formatVisitDate(visit.date);
     var userPart = visit.meta.updatedBy ? ' by ' + visit.meta.updatedBy : '';
-    var sourcePart = (visit.meta.source === 'form') ? ' via the Routine Coffee Visit form.' : ' manually.';
+    var sourcePart = (visit.meta.source === 'form') ? ' via the Routine Coffee Visit form.'
+      : (visit.meta.source === 'pdf-import') ? ' from an imported CQV PDF.'
+      : ' manually.';
     recorderText = actionWord + ' on ' + datePart + userPart + sourcePart;
   } else {
     recorderText = 'Recorded on ' + formatVisitDate(visit.date);
@@ -894,6 +1213,10 @@ function buildVisitDetailHtml(visit) {
     + '  </div>'
     + '  <p>' + escapeHtml(recorderText) + '</p>'
     + '</div>';
+
+  if (isCqv) {
+    return headerHtml + buildCqvDetailHtml(visit);
+  }
 
   if (isSiteVisit) {
     var adhocFields = [
@@ -1003,7 +1326,7 @@ async function saveVisitDetail(id) {
   }
 
   var payload = Object.assign({}, existing, collected.general);
-  if (existing.type !== 'siteVisit') {
+  if (existing.type !== 'siteVisit' && existing.type !== 'cqv') {
     VISIT_SECTIONS.forEach(function(section) {
       payload[section.key] = collected[section.key];
     });
@@ -1697,3 +2020,60 @@ restoreMetaBtn.addEventListener('click', async function() {
     restoreMetaBtn.disabled = false;
   }
 });
+
+// ── CQV import zone + confirm modal ──
+if (cqvImportBrowseBtn) {
+  cqvImportBrowseBtn.addEventListener('click', function(event) {
+    event.stopPropagation();
+    if (cqvImportInput) cqvImportInput.click();
+  });
+}
+
+if (cqvImportInput) {
+  cqvImportInput.addEventListener('change', function(event) {
+    if (event.target.files && event.target.files[0]) {
+      handleCqvFile(event.target.files[0]);
+    }
+  });
+}
+
+if (cqvImportZone) {
+  cqvImportZone.addEventListener('click', function() {
+    if (cqvImportInput) cqvImportInput.click();
+  });
+
+  cqvImportZone.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (cqvImportInput) cqvImportInput.click();
+    }
+  });
+
+  cqvImportZone.addEventListener('dragover', function(event) {
+    event.preventDefault();
+    cqvImportZone.classList.add('drag-over');
+  });
+
+  cqvImportZone.addEventListener('dragleave', function(event) {
+    if (event.target === cqvImportZone) {
+      cqvImportZone.classList.remove('drag-over');
+    }
+  });
+
+  cqvImportZone.addEventListener('drop', function(event) {
+    event.preventDefault();
+    cqvImportZone.classList.remove('drag-over');
+    if (event.dataTransfer.files && event.dataTransfer.files[0]) {
+      handleCqvFile(event.dataTransfer.files[0]);
+    }
+  });
+}
+
+if (cqvConfirmClose) cqvConfirmClose.addEventListener('click', closeCqvConfirmModal);
+if (cqvConfirmCancel) cqvConfirmCancel.addEventListener('click', closeCqvConfirmModal);
+if (cqvConfirmModal) {
+  cqvConfirmModal.addEventListener('click', function(e) {
+    if (e.target === cqvConfirmModal) closeCqvConfirmModal();
+  });
+}
+if (cqvConfirmSubmitBtn) cqvConfirmSubmitBtn.addEventListener('click', saveCqvRecord);

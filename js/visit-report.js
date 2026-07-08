@@ -196,6 +196,190 @@ window.GAILS = window.GAILS || {};
     });
   }
 
+  var CQV_CHART_ID = 'cqvReportScoreChart';
+
+  // Recomputed live from categoryScores rather than trusting the stored
+  // criticalFail flag, so records saved before this override existed (or
+  // with a stale value) still show correctly without needing a re-import.
+  function cqvHasCriticalFail(record) {
+    if (record.criticalFail) return true;
+    var scores = record.categoryScores || {};
+    return Object.keys(scores).some(function(name) {
+      var s = scores[name];
+      var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
+      return isCritical && s.actual < s.target;
+    });
+  }
+
+  // Bands GAIL's uses across every CQV surface: 0-69.99% Red, 70-89.99%
+  // Yellow, 90%+ Green, EXCEPT a failed Critical Point or Allergen Point
+  // question always forces Red regardless of the percentage (see
+  // js/cqv-parser.js). Falls back to deriving the band from overallPct for
+  // records saved before band computation existed, rather than showing a
+  // blank, and re-applies the critical-fail override live in case the
+  // stored band predates it.
+  function cqvBand(record) {
+    if (cqvHasCriticalFail(record)) return 'Red';
+    if (record.band) return record.band;
+    if (record.overallPct == null) return '';
+    return record.overallPct >= 90 ? 'Green' : record.overallPct >= 70 ? 'Yellow' : 'Red';
+  }
+
+  function cqvBandColor(band) {
+    if (band === 'Green') return '#00C875';
+    if (band === 'Yellow') return '#FFB800';
+    if (band === 'Red') return '#FF4A70';
+    return null;
+  }
+
+  function buildCqvHeaderStatsHtml(record) {
+    var scoreText = record.overallPct != null ? record.overallPct + '%' : '—';
+    var band = cqvBand(record);
+    var bandColor = cqvBandColor(band);
+    var cards = [
+      { label: 'Overall Score', value: scoreText },
+      { label: 'Rating', value: band || '—', color: bandColor },
+      { label: 'Points', value: (record.score != null) ? record.score + ' / ' + (record.scoreMax != null ? record.scoreMax : '—') : '—' },
+      { label: 'Auditor', value: record.auditorName || '—' },
+      { label: 'Visit Type', value: record.isFollowUp ? 'Follow-Up' : 'CQV' }
+    ];
+    return '<div class="drill-summary">' + cards.map(function(c) {
+      var colorStyle = c.color ? ' color:' + c.color + ';' : '';
+      return '<div class="drill-card"><div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
+        '<div class="drill-card__value" style="font-size:1.3rem;' + colorStyle + '">' + escapeHtml(c.value) + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  function buildCqvScoreRowsHtml(scores) {
+    return Object.keys(scores || {}).map(function(name) {
+      var s = scores[name];
+      var failing = s.pct < 70;
+      return '<div class="visit-report-row' + (failing ? ' visit-report-row--flag' : '') + '">' +
+        '<span class="visit-report-row__label">' + escapeHtml(name) + '</span>' +
+        '<span class="visit-report-row__value' + (failing ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">' +
+          escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)' +
+        '</span></div>';
+    }).join('');
+  }
+
+  function cqvPriorityColor(priority) {
+    if (/^high$/i.test(priority)) return '#FF4A70';
+    if (/^medium$/i.test(priority)) return '#FFB800';
+    if (/^low$/i.test(priority)) return '#00D4B0';
+    return null;
+  }
+
+  function buildCqvActionPlanHtml(actionPlan) {
+    if (!actionPlan || !actionPlan.length) {
+      return '<p class="visit-report-note">No action items were flagged on this visit.</p>';
+    }
+    return actionPlan.map(function(a) {
+      var label = a.questionLabel || a.sectionPath || 'Action item';
+      var dueDate = a.dueDate;
+      
+      // Clean up embedded due date in label if found
+      var dueMatch = label.match(/\s*DUE\s*DATE\s+(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4})\b/i);
+      if (dueMatch) {
+        if (!dueDate) dueDate = dueMatch[1];
+        label = label.replace(dueMatch[0], '').trim();
+      }
+
+      // Clean up sectionPath to get sub-category only
+      var cleanSection = a.sectionPath || '';
+      if (cleanSection.indexOf('>>') !== -1) {
+        cleanSection = cleanSection.split('>>').pop().trim();
+      }
+
+      var priorityColor = cqvPriorityColor(a.priority);
+      var metaHtml = '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; text-align:right;">' +
+        (a.priority
+          ? '<span style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px;' +
+              (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(255,255,255,0.06);') +
+            '">' + escapeHtml(a.priority) + '</span>'
+          : '') +
+        '<span style="font-size:0.75rem; color:var(--muted-l); white-space:nowrap;">Due ' + escapeHtml(dueDate || '—') + '</span>' +
+      '</div>';
+
+      return '<div class="visit-report-row-wrap" style="padding:14px 0; border-bottom:1px solid var(--card-border);">' +
+        '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">' +
+          '<div style="min-width:0; flex:1;">' +
+            '<div style="font-weight:700; color:var(--text); font-size:0.9rem;">' + escapeHtml(label) + '</div>' +
+            (cleanSection ? '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(cleanSection) + '</div>' : '') +
+            (a.findings ? '<p style="font-size:0.85rem; color:var(--text-2); margin:8px 0 0;">' + escapeHtml(a.findings) + '</p>' : '') +
+            (a.actionRequired ? '<div style="font-size:0.85rem; color:var(--text); margin-top:8px; padding:6px 10px; background:var(--accent-light); border-left:3px solid var(--accent); border-radius:4px; line-height:1.4;">' +
+              '<strong style="color:var(--accent);">Action required:</strong> ' + escapeHtml(a.actionRequired) + '</div>' : '') +
+          '</div>' +
+          metaHtml +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function buildCqvReportHtml(record) {
+    var hasSectionScores = record.sectionScores && Object.keys(record.sectionScores).length > 0;
+    var chartHtml = hasSectionScores
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-chart-wrap"><canvas id="' + CQV_CHART_ID + '"></canvas></div></div>'
+      : '';
+
+    var pdfHtml = record.pdfUrl
+      ? '<div class="visit-report-section-wrapper"><a class="drill-close-btn" style="display:inline-block; text-decoration:none;" href="' + escapeHtml(record.pdfUrl) + '" target="_blank" rel="noopener">&#128196; View Original CQV PDF &#8599;</a></div>'
+      : '';
+
+    var criticalFailHtml = record.criticalFail
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-hs-banner visit-report-hs-banner--alert">' +
+          '<strong>&#9888; A Critical Point was lost.</strong>' +
+        '</div></div>'
+      : '';
+
+    var summaryHtml = record.summary
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Summary</h4><p class="visit-report-comment">' + escapeHtml(record.summary) + '</p></div></div>'
+      : '';
+
+    var categoryHtml = record.categoryScores && Object.keys(record.categoryScores).length
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Score by Category</h4>' + buildCqvScoreRowsHtml(record.categoryScores) + '</div></div>'
+      : '';
+
+    var sectionHtml = hasSectionScores
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Score by Section</h4>' + buildCqvScoreRowsHtml(record.sectionScores) + '</div></div>'
+      : '';
+
+    var actionPlanHtml = '<div class="visit-report-section-wrapper"><div class="visit-report-section">' +
+      '<h4>Action Plan (' + ((record.actionPlan || []).length) + ')</h4>' +
+      buildCqvActionPlanHtml(record.actionPlan) +
+      '</div></div>';
+
+    return buildCqvHeaderStatsHtml(record) + criticalFailHtml + pdfHtml + summaryHtml + chartHtml + sectionHtml + categoryHtml + actionPlanHtml;
+  }
+
+  function drawCqvScoreChart(record) {
+    var G = window.GAILS;
+    if (!record.sectionScores || typeof G.makeChart !== 'function') return;
+    var names = Object.keys(record.sectionScores);
+    if (!names.length) return;
+    var earned = names.map(function(n) { return record.sectionScores[n].actual || 0; });
+    var max = names.map(function(n) { return record.sectionScores[n].target || 0; });
+
+    G.makeChart(CQV_CHART_ID, {
+      type: 'bar',
+      data: {
+        labels: names,
+        datasets: [
+          { label: 'Points Earned', data: earned, backgroundColor: '#00C875', borderRadius: 6 },
+          { label: 'Points Possible', data: max, backgroundColor: 'rgba(150,150,200,0.25)', borderRadius: 6 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { display: false } },
+          y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.06)' } }
+        },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+
   window.GAILS.openVisitReport = function(bakeryName) {
     var record = window.GAILS.getLastVisitRecord ? window.GAILS.getLastVisitRecord(bakeryName) : null;
     if (record && record.id) {
@@ -228,7 +412,10 @@ window.GAILS = window.GAILS || {};
     var modal = document.getElementById('visitReportModal');
     if (!modal || modal.style.display === 'none') return;
     modal.style.display = 'none';
-    if (window.GAILS.destroyChart) window.GAILS.destroyChart(CHART_ID);
+    if (window.GAILS.destroyChart) {
+      window.GAILS.destroyChart(CHART_ID);
+      window.GAILS.destroyChart(CQV_CHART_ID);
+    }
     if (window.GAILS.closeDeleteConfirmModal) window.GAILS.closeDeleteConfirmModal();
     unlockBackgroundScroll();
   };
@@ -258,18 +445,50 @@ window.GAILS = window.GAILS || {};
       var now = new Date();
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     }
-    
+
+    // The previous calendar year (Jan 1 - Dec 31), not a rolling 12-month
+    // window from today — that's what "Last 12 Months" already covers.
+    if (n === 'lastYear') {
+      var d = new Date(dateStr + 'T00:00:00');
+      if (isNaN(d.getTime())) return false;
+      return d.getFullYear() === (new Date()).getFullYear() - 1;
+    }
+
     var num = parseInt(n, 10);
     if (isNaN(num) || num === 0) return true;
-    
+
     var d = new Date(dateStr + 'T00:00:00');
     if (isNaN(d.getTime())) return false;
-    
+
+    // Date#setMonth() overflows into the next month when the current day-of-
+    // month doesn't exist N months back (e.g. May 31 minus 1 month computes
+    // "April 31", which JS normalizes to May 1 — putting the cutoff AFTER
+    // today and silently hiding everything). Zeroing the day first avoids
+    // that entirely and aligns the cutoff to the start of the target month,
+    // which also reads more intuitively for a "Last N Months" filter.
     var limit = new Date();
+    limit.setDate(1);
     limit.setMonth(limit.getMonth() - num);
     limit.setHours(0, 0, 0, 0);
-    
+
     return d >= limit;
+  }
+
+  // The Rating filter (Green/Yellow/Red) only makes sense once the results
+  // are scoped to CQVs, so it stays hidden — and its value is cleared, so a
+  // leftover selection can't silently keep filtering after switching back to
+  // another visit type — until "CQV" or "CQV Follow-Up" is selected.
+  function syncCqvRatingVisibility() {
+    var typeEl = document.getElementById('visitLogType');
+    var ratingControl = document.getElementById('visitLogRatingControl');
+    var ratingEl = document.getElementById('visitLogRating');
+    if (!typeEl || !ratingControl) return;
+    var isCqvType = typeEl.value === 'cqv' || typeEl.value === 'cqvFollowUp';
+    ratingControl.style.display = isCqvType ? '' : 'none';
+    if (!isCqvType && ratingEl && ratingEl.value) {
+      ratingEl.value = '';
+      if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect('visitLogRating');
+    }
   }
 
   window.GAILS.openAddSiteVisitModal = function() {
@@ -349,6 +568,17 @@ window.GAILS = window.GAILS || {};
         '<button class="drill-close-btn" onclick="GAILS.closeVisitReport()">&#10005; Close</button>';
     }
 
+    if (record.type === 'cqv') {
+      titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
+      subtitleEl.textContent = 'Coffee Quality Visit on ' + formatVisitDate(record.date) + (record.title ? ' — ' + record.title : '');
+      bodyEl.innerHTML = buildCqvReportHtml(record);
+
+      modal.style.display = 'flex';
+      lockBackgroundScroll();
+      requestAnimationFrame(function() { drawCqvScoreChart(record); });
+      return;
+    }
+
     if (record.type === 'siteVisit') {
       titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
       subtitleEl.textContent = 'Site Visit on ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
@@ -398,7 +628,7 @@ window.GAILS = window.GAILS || {};
     
     if (!modal || !promptText || !input || !submitBtn) return;
     
-    promptText.textContent = 'Are you sure you want to permanently delete the visit log for ' + bakeryName + (dateText ? ' on ' + dateText : '') + '?';
+    promptText.textContent = 'Are you sure you want to permanently delete the check-in for ' + bakeryName + (dateText ? ' on ' + dateText : '') + '?';
     input.value = '';
     submitBtn.disabled = true;
     
@@ -430,7 +660,7 @@ window.GAILS = window.GAILS || {};
         window.GAILS.closeVisitReport();
       } catch (err) {
         console.error(err);
-        alert(err.message || 'Failed to delete visit log.');
+        alert(err.message || 'Failed to delete check-in.');
         submitBtn.disabled = false;
         submitBtn.textContent = 'Delete';
         if (deleteBtn) {
@@ -510,10 +740,10 @@ window.GAILS = window.GAILS || {};
 
     if (visitIds.length === 0) {
       if (statusEl) {
-        statusEl.textContent = 'Loading visit logs...';
+        statusEl.textContent = 'Loading check-ins...';
         statusEl.style.display = '';
       }
-      container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#128196;</div><p>No visit logs loaded yet.</p></div>';
+      container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#128196;</div><p>No check-ins loaded yet.</p></div>';
       return;
     }
 
@@ -533,6 +763,11 @@ window.GAILS = window.GAILS || {};
       var periodEl = document.getElementById('visitLogPeriod');
       var resetBtn = document.getElementById('visitLogResetBtn');
 
+      var lastYearOption = periodEl ? periodEl.querySelector('option[value="lastYear"]') : null;
+      if (lastYearOption) {
+        lastYearOption.textContent = 'Last Year (' + ((new Date()).getFullYear() - 1) + ')';
+      }
+
       if (searchEl) {
         var searchDebounceId = null;
         searchEl.addEventListener('input', function() {
@@ -549,6 +784,14 @@ window.GAILS = window.GAILS || {};
       });
       if (opsEl) opsEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
       if (periodEl) periodEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
+      var typeEl = document.getElementById('visitLogType');
+      var ratingEl = document.getElementById('visitLogRating');
+      if (typeEl) typeEl.addEventListener('change', function() {
+        syncCqvRatingVisibility();
+        window.GAILS.renderVisitLog();
+      });
+      if (ratingEl) ratingEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
+      syncCqvRatingVisibility();
 
       // Toggle views
       document.querySelectorAll('.visit-log-toggle-btn').forEach(function(btn) {
@@ -600,7 +843,7 @@ window.GAILS = window.GAILS || {};
           } catch (err) {
             console.error(err);
             if (errorEl) {
-              errorEl.textContent = err.message || 'Failed to save visit log.';
+              errorEl.textContent = err.message || 'Failed to save check-in.';
               errorEl.style.display = 'block';
             }
           } finally {
@@ -614,11 +857,16 @@ window.GAILS = window.GAILS || {};
         resetBtn.addEventListener('click', function() {
           if (searchEl) searchEl.value = '';
           if (regionEl) regionEl.value = '';
+          if (typeEl) typeEl.value = '';
+          if (ratingEl) ratingEl.value = '';
           if (periodEl) periodEl.value = '3'; // Default to Last 3 Months
           populateDropdown('visitLogOps', new Set(getVisitLogOps('')), 'All Managers');
+          syncCqvRatingVisibility();
           if (window.GAILS.syncCustomSelect) {
             window.GAILS.syncCustomSelect('visitLogRegion');
             window.GAILS.syncCustomSelect('visitLogOps');
+            window.GAILS.syncCustomSelect('visitLogType');
+            window.GAILS.syncCustomSelect('visitLogRating');
             window.GAILS.syncCustomSelect('visitLogPeriod');
           }
           window.GAILS.renderVisitLog();
@@ -641,6 +889,8 @@ window.GAILS = window.GAILS || {};
     var searchVal = document.getElementById('visitLogSearch') ? document.getElementById('visitLogSearch').value.toLowerCase().trim() : '';
     var regionVal = document.getElementById('visitLogRegion') ? document.getElementById('visitLogRegion').value : '';
     var opsVal = document.getElementById('visitLogOps') ? document.getElementById('visitLogOps').value : '';
+    var typeVal = document.getElementById('visitLogType') ? document.getElementById('visitLogType').value : '';
+    var ratingVal = document.getElementById('visitLogRating') ? document.getElementById('visitLogRating').value : '';
     var periodVal = document.getElementById('visitLogPeriod') ? document.getElementById('visitLogPeriod').value : '3';
 
     // Convert object to array
@@ -656,7 +906,9 @@ window.GAILS = window.GAILS || {};
         if (!v.bakery || !v.date) return false;
 
         if (searchVal) {
-          if (v.bakery.toLowerCase().indexOf(searchVal) === -1) return false;
+          var bakeryMatch = v.bakery.toLowerCase().indexOf(searchVal) !== -1;
+          var partnerMatch = v.coffeePartner && v.coffeePartner.toLowerCase().indexOf(searchVal) !== -1;
+          if (!bakeryMatch && !partnerMatch) return false;
         }
         if (regionVal) {
           var reg = G.getBakeryRegion ? G.getBakeryRegion(v.bakery) : 'Unknown';
@@ -666,6 +918,13 @@ window.GAILS = window.GAILS || {};
           var ops = G.getBakeryOps ? G.getBakeryOps(v.bakery) : 'Unknown';
           if (ops !== opsVal) return false;
         }
+        if (typeVal) {
+          if (typeVal === 'routine' && (v.type === 'siteVisit' || v.type === 'cqv')) return false;
+          if (typeVal === 'siteVisit' && v.type !== 'siteVisit') return false;
+          if (typeVal === 'cqv' && !(v.type === 'cqv' && !v.isFollowUp)) return false;
+          if (typeVal === 'cqvFollowUp' && !(v.type === 'cqv' && v.isFollowUp)) return false;
+        }
+        if (ratingVal && (v.type !== 'cqv' || cqvBand(v) !== ratingVal)) return false;
         if (!isDateWithinMonths(v.date, periodVal)) {
           return false;
         }
@@ -673,7 +932,7 @@ window.GAILS = window.GAILS || {};
       });
 
       if (filtered.length === 0) {
-        container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#128196;</div><p>No visit logs found matching the selected filters.</p></div>';
+        container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#128196;</div><p>No check-ins found matching the selected filters.</p></div>';
         return;
       }
 
@@ -704,11 +963,21 @@ window.GAILS = window.GAILS || {};
           var scoreText = '—';
           var tagsHtml = '';
           var allNotesText = '';
+          var scoreColor = '#ffffff';
 
           if (v.type === 'siteVisit') {
             scoreText = '—';
-            tagsHtml = '<span class="visit-log-row__tag" style="color:var(--gold);background:var(--gold-d);">Visit Log</span>';
+            tagsHtml = '<span class="visit-log-row__tag" style="color:var(--gold);background:var(--gold-d);">Check-in</span>';
             allNotesText = v.comments || '';
+          } else if (v.type === 'cqv') {
+            scoreText = (v.overallPct != null) ? v.overallPct + '%' : '—';
+            tagsHtml = '<span class="visit-log-row__tag" style="color:#FF4A70;background:rgba(255,74,112,0.15);">' + (v.isFollowUp ? 'CQV Follow-Up' : 'CQV') + '</span>';
+            allNotesText = v.summary || '';
+            var band = cqvBand(v);
+            var bandColor = cqvBandColor(band);
+            if (bandColor) {
+              scoreColor = bandColor;
+            }
           } else {
             scoreText = (v.score != null) ? v.score + ' / ' + (v.scoreMax != null ? v.scoreMax : '—') : '—';
             tagsHtml = '<span class="visit-log-row__tag" style="color:var(--teal);background:var(--teal-d);">Routine Coffee Visit</span>';
@@ -736,6 +1005,7 @@ window.GAILS = window.GAILS || {};
           var dateLabel = formatVisitDate(v.date);
           var shortDate = dateLabel.split(', ')[1] || dateLabel;
           var bakeryLabel = G.getBakeryMapLabel ? G.getBakeryMapLabel(v.bakery) : v.bakery;
+          var partnerColText = v.type === 'cqv' ? (v.auditorName || '—') : (v.coffeePartner || '—');
 
           return '<div class="visit-log-row" data-visit-report-id="' + escapeHtml(v.id) + '" aria-label="Visit report for ' + escapeHtml(bakeryLabel) + '">' +
             '<div class="visit-log-row__date-col">' +
@@ -746,8 +1016,8 @@ window.GAILS = window.GAILS || {};
               '<h3 class="visit-log-row__bakery">' + escapeHtml(bakeryLabel) + '</h3>' +
               '<span class="visit-log-row__manager">Ops: ' + escapeHtml(mName) + '</span>' +
             '</div>' +
-            '<div class="visit-log-row__partner" title="' + escapeHtml(v.coffeePartner || '—') + '">' + escapeHtml(v.coffeePartner || '—') + '</div>' +
-            '<div class="visit-log-row__score-col">' + escapeHtml(scoreText) + '</div>' +
+            '<div class="visit-log-row__partner" title="' + escapeHtml(v.type === 'cqv' ? 'Auditor: ' + partnerColText : partnerColText) + '">' + escapeHtml(partnerColText) + '</div>' +
+            '<div class="visit-log-row__score-col" style="color:' + scoreColor + ';">' + escapeHtml(scoreText) + '</div>' +
             '<div class="visit-log-row__notes-col">' +
               '<div class="visit-log-row__tags">' + tagsHtml + '</div>' +
               '<p class="visit-log-row__notes-preview" title="' + escapeHtml(allNotesText) + '">' + escapeHtml(previewText) + '</p>' +

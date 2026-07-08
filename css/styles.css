@@ -542,6 +542,41 @@ h4 {
   overflow-y: auto;
   z-index: 250;
   display: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+/* Custom scrollbars for custom dropdown elements */
+.filter-select__menu::-webkit-scrollbar,
+.filter-select__options::-webkit-scrollbar,
+.bakery-ms__list::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.filter-select__menu::-webkit-scrollbar-track,
+.filter-select__options::-webkit-scrollbar-track,
+.bakery-ms__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* For non-searchable menus, add margin to keep the scrollbar thumb inside the rounded corners */
+.filter-select__menu::-webkit-scrollbar-track {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.filter-select__menu::-webkit-scrollbar-thumb,
+.filter-select__options::-webkit-scrollbar-thumb,
+.bakery-ms__list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+}
+
+.filter-select__menu::-webkit-scrollbar-thumb:hover,
+.filter-select__options::-webkit-scrollbar-thumb:hover,
+.bakery-ms__list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .filter-select.is-open .filter-select__menu {
@@ -626,6 +661,8 @@ h4 {
 .filter-select__options {
   overflow-y: auto;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }
 
 .filter-select__empty {
@@ -778,6 +815,8 @@ h4 {
 .bakery-ms__list {
   max-height: 230px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }
 
 /* Each option row */
@@ -3497,6 +3536,12 @@ body.table-fullscreen-lock {
   border-color: rgba(255, 184, 0, 0.25);
 }
 
+.admin-badge--cqv {
+  background: rgba(255, 74, 112, 0.15);
+  color: #FF4A70;
+  border-color: rgba(255, 74, 112, 0.25);
+}
+
 .admin-table__title-cell {
   display: flex;
   align-items: center;
@@ -3521,6 +3566,11 @@ body.table-fullscreen-lock {
 .admin-table-badge--routine {
   background: rgba(255, 184, 0, 0.12);
   color: #FFB800;
+}
+
+.admin-table-badge--cqv {
+  background: rgba(255, 74, 112, 0.12);
+  color: #FF4A70;
 }
 
 .visit-detail-grid {
@@ -8387,6 +8437,14 @@ a,
   gap: 6px;
   flex: 1;
   min-width: 180px;
+}
+
+/* Without a cap, a control grows to fill the whole row (via flex: 1 above)
+   whenever it wraps onto its own line — noticeable for Period and Rating,
+   which then end up stretched edge-to-edge next to the compact Reset
+   button. */
+.visit-log-filter-control--compact {
+  flex: 0 1 220px;
 }
 
 .visit-log-filter-control label {

@@ -22,7 +22,7 @@
     speed: 'Speed vs NPS',
     cei: 'Coffee Experience Index Methodology',
     feedback: 'Customer Feedback',
-    'visit-log': 'Visit Log'
+    'visit-log': 'Bakery Reports'
   };
   var dashboardTabsWithKpis = {
     overview: true
@@ -48,7 +48,7 @@
       return;
     }
     if (currentTab === 'visit-log') {
-      headerSub.textContent = 'Visit Log';
+      headerSub.textContent = 'Bakery Reports';
       return;
     }
     var bakeryLabel = lastHeaderBakeryCount === 1 ? '1 bakery' : lastHeaderBakeryCount + ' bakeries';

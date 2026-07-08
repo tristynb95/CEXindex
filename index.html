@@ -429,15 +429,15 @@
                 <strong>Feedback</strong>
               </span>
             </button>
-            <button type="button" class="tab dashboard-nav__btn" data-tab="visit-log" aria-label="Visit Log">
+            <button type="button" class="tab dashboard-nav__btn" data-tab="visit-log" aria-label="Bakery Reports">
               <span class="dashboard-nav__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" focusable="false">
                   <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H14V17H7V15Z"></path>
                 </svg>
               </span>
               <span class="dashboard-nav__content">
-                <span class="dashboard-nav__eyebrow">Visits</span>
-                <strong>Visit Log</strong>
+                <span class="dashboard-nav__eyebrow">Site Visits</span>
+                <strong>Bakery Reports</strong>
               </span>
             </button>
           </nav>
@@ -996,13 +996,13 @@
                   </p>
                 </div>
                 <div style="display:flex; gap:10px; align-items:center;">
-                  <button type="button" id="visitLogAddBtn" class="btn" style="padding:8px 16px; font-size:0.85rem; font-weight:700;">+ Log Site Visit</button>
+                  <button type="button" id="visitLogAddBtn" class="btn" style="padding:8px 16px; font-size:0.85rem; font-weight:700;">+ Log Check-in</button>
                   <a href="https://docs.google.com/forms/d/e/1FAIpQLSe8__vBTXGAzmRnPW24mYNr0DoKtzaBmErXS5Xs0wqCxXiF8w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer" class="btn" style="padding:8px 16px; font-size:0.85rem; font-weight:700; text-decoration:none;">Complete Routine Visit Form</a>
                 </div>
               </div>
 
               <!-- VIEW TOGGLE BUTTONS -->
-              <div class="visit-log-toggle" role="group" aria-label="Visit log view" style="margin-bottom:20px; display:flex; gap:8px;">
+              <div class="visit-log-toggle" role="group" aria-label="Check-in view" style="margin-bottom:20px; display:flex; gap:8px;">
                 <button type="button" class="visit-log-toggle-btn active" data-view="history">Visit History</button>
                 <button type="button" class="visit-log-toggle-btn" data-view="unvisited">Unvisited Sites</button>
               </div>
@@ -1010,8 +1010,8 @@
               <!-- STANDALONE VISIT LOG FILTERS -->
               <div class="visit-log-filters">
                 <div class="visit-log-filter-control">
-                  <label for="visitLogSearch">Bakery Search</label>
-                  <input type="text" id="visitLogSearch" placeholder="Search bakery..." class="visit-log-input" autocomplete="off">
+                  <label for="visitLogSearch">Search</label>
+                  <input type="text" id="visitLogSearch" placeholder="Search bakery or coffee partner..." class="visit-log-input" autocomplete="off">
                 </div>
                 <div class="visit-log-filter-control">
                   <label for="visitLogRegion">Region</label>
@@ -1026,6 +1026,25 @@
                   </select>
                 </div>
                 <div class="visit-log-filter-control">
+                  <label for="visitLogType">Visit Type</label>
+                  <select id="visitLogType" class="visit-log-select">
+                    <option value="">All Types</option>
+                    <option value="routine">Routine Coffee Visit</option>
+                    <option value="siteVisit">Check-in</option>
+                    <option value="cqv">CQV</option>
+                    <option value="cqvFollowUp">CQV Follow-Up</option>
+                  </select>
+                </div>
+                <div class="visit-log-filter-control visit-log-filter-control--compact" id="visitLogRatingControl" style="display:none;">
+                  <label for="visitLogRating">Rating</label>
+                  <select id="visitLogRating" class="visit-log-select">
+                    <option value="">All Ratings</option>
+                    <option value="Green">Green</option>
+                    <option value="Yellow">Yellow</option>
+                    <option value="Red">Red</option>
+                  </select>
+                </div>
+                <div class="visit-log-filter-control visit-log-filter-control--compact">
                   <label for="visitLogPeriod">Period</label>
                   <select id="visitLogPeriod" class="visit-log-select">
                     <option value="0">All Time</option>
@@ -1035,6 +1054,7 @@
                     <option value="3" selected>Last 3 Months</option>
                     <option value="6">Last 6 Months</option>
                     <option value="12">Last 12 Months</option>
+                    <option value="lastYear">Last Year</option>
                   </select>
                 </div>
                 <button type="button" id="visitLogResetBtn" class="visit-log-reset-btn">Reset</button>
@@ -1112,11 +1132,11 @@
         </svg>
         <span>Feedback</span>
       </button>
-      <button type="button" class="mobile-bottom-nav__btn tab" data-tab="visit-log" aria-label="Visit Log">
+      <button type="button" class="mobile-bottom-nav__btn tab" data-tab="visit-log" aria-label="Bakery Reports">
         <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H14V17H7V15Z"></path>
         </svg>
-        <span>Visit Log</span>
+        <span>Bakery Reports</span>
       </button>
     </nav>
     </div><!-- end dashboardContent -->
@@ -1157,8 +1177,8 @@
       <div class="drillInner" style="max-width: 550px;">
         <div class="drill-modal-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 15px;">
           <div>
-            <h3 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0;">Log Site Visit</h3>
-            <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">Record a quick site visit with comments.</p>
+            <h3 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0;">Log Check-in</h3>
+            <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">Record a quick check-in with comments.</p>
           </div>
           <button class="drill-close-btn" onclick="GAILS.closeAddSiteVisitModal()">&#10005; Close</button>
         </div>
@@ -1200,7 +1220,7 @@
           
           <div id="addVisitError" style="color:var(--red);font-size:0.8rem;display:none;"></div>
           
-          <button type="submit" id="addVisitSubmitBtn" class="btn" style="padding:12px;font-size:0.95rem;font-weight:700;margin-top:10px;">Save Visit Log</button>
+          <button type="submit" id="addVisitSubmitBtn" class="btn" style="padding:12px;font-size:0.95rem;font-weight:700;margin-top:10px;">Save Check-in</button>
         </form>
       </div>
     </div>
@@ -1210,7 +1230,7 @@
       <div class="drillInner" style="max-width: 460px; height: auto; background: var(--card); border: 1px solid var(--card-border-h); box-shadow: var(--shadow-md);">
         <div class="drill-modal-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
           <div>
-            <h3 style="font-size:1.3rem;font-weight:700;color:#FF4A70;margin:0;">Delete Visit Log</h3>
+            <h3 style="font-size:1.3rem;font-weight:700;color:#FF4A70;margin:0;">Delete Check-in</h3>
             <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">This action is permanent and cannot be undone.</p>
           </div>
           <button class="drill-close-btn" onclick="GAILS.closeDeleteConfirmModal()">&#10005;</button>
