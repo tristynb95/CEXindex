@@ -498,6 +498,12 @@ window.GAILS = window.GAILS || {};
     return SITE_VISIT_KIND_LABELS[v.visitKind] || 'Check-in';
   }
 
+  function siteVisitKindTagColors(v) {
+    return (v.visitKind && v.visitKind !== 'checkin')
+      ? { color: 'var(--purple)', bg: 'var(--purple-d)' }
+      : { color: 'var(--teal)', bg: 'var(--teal-d)' };
+  }
+
   function visitTypeLabel(v) {
     if (v.type === 'siteVisit') return siteVisitKindLabel(v);
     if (v.type === 'cqv') return v.isFollowUp ? 'CQV Follow-Up' : 'CQV';
@@ -1056,7 +1062,8 @@ window.GAILS = window.GAILS || {};
 
           if (v.type === 'siteVisit') {
             scoreText = '—';
-            tagsHtml = '<span class="visit-log-row__tag" style="color:var(--gold);background:var(--gold-d);">' + escapeHtml(siteVisitKindLabel(v)) + '</span>';
+            var kindColors = siteVisitKindTagColors(v);
+            tagsHtml = '<span class="visit-log-row__tag" style="color:' + kindColors.color + ';background:' + kindColors.bg + ';">' + escapeHtml(siteVisitKindLabel(v)) + '</span>';
             allNotesText = v.comments || '';
           } else if (v.type === 'cqv') {
             scoreText = (v.overallPct != null) ? v.overallPct + '%' : '—';
@@ -1069,7 +1076,7 @@ window.GAILS = window.GAILS || {};
             }
           } else {
             scoreText = (v.score != null) ? v.score + ' / ' + (v.scoreMax != null ? v.scoreMax : '—') : '—';
-            tagsHtml = '<span class="visit-log-row__tag" style="color:var(--teal);background:var(--teal-d);">Routine Coffee Visit</span>';
+            tagsHtml = '<span class="visit-log-row__tag" style="color:var(--gold);background:var(--gold-d);">Routine Coffee Visit</span>';
             if (schema && schema.sections) {
               schema.sections.forEach(function(sec) {
                 var secData = v[sec.key] || {};
