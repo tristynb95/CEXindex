@@ -6,11 +6,11 @@ window.GAILS = window.GAILS || {};
 
   // Sentiment colours — mapped to app palette
   var SENTIMENT_COLORS = {
-    positive: '#1E8A5A',  // green
+    positive: '#1D9E5C',  // green
     negative: '#B22A24',  // crimson
     neutral:  '#6B6355'   // muted
   };
-  var SENTIMENT_FALLBACK = '#2B6CB0'; // blue — for any unrecognised value
+  var SENTIMENT_FALLBACK = '#1E70C4'; // blue — for any unrecognised value
 
   var lastWordData = null;        // null = never fetched; [] = fetched, empty; [...] = data
   var lastTargetWordData = null;
@@ -258,7 +258,7 @@ window.GAILS = window.GAILS || {};
       });
     };
 
-    renderCol(posListId, positives, '#1E8A5A', 'rgba(30, 138, 90,0.10)');
+    renderCol(posListId, positives, '#1D9E5C', 'rgba(29, 158, 92,0.10)');
     renderCol(negListId, negatives, '#B22A24', 'rgba(178, 42, 36,0.10)');
   }
 
@@ -424,7 +424,7 @@ window.GAILS = window.GAILS || {};
 
   // Interpolate a hex colour on the red→amber→green gradient at t ∈ [0,1]
   function sentimentColor(score) {
-    if (score >= 61) return '#1E8A5A';  // Positive bands — green
+    if (score >= 61) return '#1D9E5C';  // Positive bands — green
     if (score >= 41) return '#C08A28';  // Mixed — amber
     return '#B22A24';                   // Negative bands — red
   }
@@ -517,7 +517,7 @@ window.GAILS = window.GAILS || {};
     ctx.fillRect(0, 0, cssW, cssH);
 
     var g2 = ctx.createRadialGradient(cssW * 0.82, cssH * 0.76, 0, cssW * 0.82, cssH * 0.76, cssW * 0.5);
-    g2.addColorStop(0, 'rgba(183, 121, 31,0.06)');
+    g2.addColorStop(0, 'rgba(201, 127, 18,0.06)');
     g2.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, cssW, cssH);

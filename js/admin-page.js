@@ -1088,15 +1088,15 @@ function cqvBand(visit) {
 }
 
 function cqvBandColor(band) {
-  if (band === 'Green') return '#1E8A5A';
-  if (band === 'Yellow') return '#B7791F';
+  if (band === 'Green') return '#1D9E5C';
+  if (band === 'Yellow') return '#C97F12';
   if (band === 'Red') return '#B22A24';
   return null;
 }
 
 function cqvPriorityColor(priority) {
   if (/^high$/i.test(priority)) return '#B22A24';
-  if (/^medium$/i.test(priority)) return '#B7791F';
+  if (/^medium$/i.test(priority)) return '#C97F12';
   if (/^low$/i.test(priority)) return '#0E8074';
   return null;
 }

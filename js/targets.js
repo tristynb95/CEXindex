@@ -13,7 +13,7 @@ function _drawSparklines(absolute) {
 
   sparkSorted.forEach(function(t) {
     var canvasId = 'spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_');
-    var lineColor = t.direction === 'up' ? '#1E8A5A' : t.direction === 'down' ? '#B22A24' : '#B7791F';
+    var lineColor = t.direction === 'up' ? '#1D9E5C' : t.direction === 'down' ? '#B22A24' : '#C97F12';
     var yOpts = absolute
       ? { display: true, min: 0, max: 100, ticks: { stepSize: 50, font: { size: 7 }, color: 'rgba(146, 137, 120,0.45)', maxTicksLimit: 3 }, grid: { color: 'rgba(34, 31, 26,0.05)' }, border: { display: false } }
       : { display: false };
@@ -81,16 +81,16 @@ function _setTargetTrendState(hasData, message) {
 
   var NETWORK_LEGEND = {
     relative: [
-      { label: 'Top Performer', color: '#1E8A5A' },
-      { label: 'Above Average', color: '#2B6CB0' },
-      { label: 'Below Average', color: '#B7791F' },
+      { label: 'Top Performer', color: '#1D9E5C' },
+      { label: 'Above Average', color: '#1E70C4' },
+      { label: 'Below Average', color: '#C97F12' },
       { label: 'Needs Support', color: '#B22A24' },
       { label: 'No Data', color: '#B3AA99' }
     ],
     absolute: [
-      { label: 'Exceeding', color: '#1E8A5A' },
-      { label: 'Meeting', color: '#2B6CB0' },
-      { label: 'Approaching', color: '#B7791F' },
+      { label: 'Exceeding', color: '#1D9E5C' },
+      { label: 'Meeting', color: '#1E70C4' },
+      { label: 'Approaching', color: '#C97F12' },
       { label: 'Below Standard', color: '#B22A24' },
       { label: 'No Data', color: '#B3AA99' }
     ]
@@ -104,11 +104,11 @@ function _setTargetTrendState(hasData, message) {
   var TARGET_LEGEND = {
     relative: [
       { label: 'Needs Support', color: '#B22A24' },
-      { label: 'Below Average', color: '#B7791F' }
+      { label: 'Below Average', color: '#C97F12' }
     ],
     absolute: [
       { label: 'Below Standard', color: '#B22A24' },
-      { label: 'Approaching', color: '#B7791F' }
+      { label: 'Approaching', color: '#C97F12' }
     ]
   };
 
@@ -176,9 +176,9 @@ function _setTargetTrendState(hasData, message) {
     });
     if (total === 0) return '#B3AA99';
     var delta = (sum / total) - networkAvg;
-    if (delta >= 5)  return '#1E8A5A';
-    if (delta >= 0)  return '#2B6CB0';
-    if (delta >= -5) return '#B7791F';
+    if (delta >= 5)  return '#1D9E5C';
+    if (delta >= 0)  return '#1E70C4';
+    if (delta >= -5) return '#C97F12';
     return '#B22A24';
   }
 
@@ -1274,7 +1274,7 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
       return { m: m, up: up, down: down, flat: flat };
     });
     G.makeChart('targetMomentumChart', { type: 'bar', data: { labels: momentumData.map(function(d) { return d.m; }), datasets: [
-      { label: 'Improving', data: momentumData.map(function(d) { return d.up; }), backgroundColor: 'rgba(30, 138, 90,0.65)', borderRadius: 3 },
+      { label: 'Improving', data: momentumData.map(function(d) { return d.up; }), backgroundColor: 'rgba(29, 158, 92,0.65)', borderRadius: 3 },
       { label: 'Stable', data: momentumData.map(function(d) { return d.flat; }), backgroundColor: 'rgba(146, 137, 120,0.45)', borderRadius: 3 },
       { label: 'Declining', data: momentumData.map(function(d) { return -d.down; }), backgroundColor: 'rgba(178, 42, 36,0.65)', borderRadius: 3 },
     ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, title: { display: true, text: 'Bakeries' }, ticks: { callback: function(v) { return Math.abs(v); } } } } } });
