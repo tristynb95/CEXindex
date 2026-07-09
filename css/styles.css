@@ -2860,7 +2860,10 @@ body.table-fullscreen-lock {
 
 .auth-spinner-circle {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   border: 4px solid rgba(178, 42, 36, 0.05);
   border-top: 4px solid var(--accent);
   border-radius: 50%;
@@ -2967,7 +2970,10 @@ body.table-fullscreen-lock {
 /* ══════════════════════════════════════ LOGIN / MODALS ══ */
 .overlay-screen {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 9999;
   display: flex;
   align-items: center;
