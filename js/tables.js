@@ -5,56 +5,84 @@ window.GAILS.makeSortable = function(container) {
   if (!container) return;
   var targets = container.tagName === 'TABLE' ? [container] : Array.from(container.querySelectorAll('table'));
 
-  targets.forEach(function(table) {
+  targets.forEach(function(table, tableIdx) {
     var headers = table.querySelectorAll('thead th');
+    
+    var savedColStr = container.dataset['sortCol' + tableIdx];
+    var savedAscStr = container.dataset['sortAsc' + tableIdx];
+    var activeColIdx = savedColStr ? parseInt(savedColStr, 10) : 0;
+    var activeAsc = savedAscStr === "1";
+
+    function doSort(cIdx, isAsc) {
+      var currentTbody = table.querySelector('tbody');
+      if (!currentTbody) return;
+      var rows = Array.from(currentTbody.querySelectorAll('tr'));
+      rows.sort(function(a, b) {
+        var aCell = a.cells[cIdx];
+        var bCell = b.cells[cIdx];
+        if (!aCell || !bCell) return 0;
+
+        var aVal = aCell.textContent.trim().replace(/%|,|pts/g, '').replace(/[\u2191\u2193\u2194]/g, '').trim();
+        var bVal = bCell.textContent.trim().replace(/%|,|pts/g, '').replace(/[\u2191\u2193\u2194]/g, '').trim();
+
+        var isMonth = function(val) {
+          var parts = val.split(' ');
+          return parts.length === 2 &&
+                 window.GAILS.MONTH_SHORT &&
+                 window.GAILS.MONTH_SHORT.indexOf(parts[0]) !== -1 &&
+                 !isNaN(parseInt(parts[1], 10));
+        };
+
+        if (isMonth(aVal) && isMonth(bVal)) {
+          var aKey = window.GAILS.monthSortKey(aVal);
+          var bKey = window.GAILS.monthSortKey(bVal);
+          return isAsc ? aKey - bKey : bKey - aKey;
+        }
+
+        var aNum = parseFloat(aVal);
+        var bNum = parseFloat(bVal);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return isAsc ? aNum - bNum : bNum - aNum;
+        }
+
+        if (aVal === '\u2014' || aVal === '') return isAsc ? -1 : 1;
+        if (bVal === '\u2014' || bVal === '') return isAsc ? 1 : -1;
+
+        return isAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      });
+      rows.forEach(function(r) { currentTbody.appendChild(r); });
+    }
+
+    if (activeColIdx !== 0 && activeColIdx < headers.length) {
+      doSort(activeColIdx, activeAsc);
+      headers[activeColIdx].classList.add(activeAsc ? 'sort-asc' : 'sort-desc');
+    }
+
     headers.forEach(function(th, colIdx) {
       if (th.classList.contains('sortable')) return;
       th.classList.add('sortable');
       th.addEventListener('click', function() {
-        var tbody = table.querySelector('tbody');
-        if (!tbody) return;
-        var rows = Array.from(tbody.querySelectorAll('tr'));
-
         var wasAsc = th.classList.contains('sort-asc');
+        var wasDesc = th.classList.contains('sort-desc');
+        
         headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
-        var asc = !wasAsc;
-        th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+        
+        var isCancel = wasDesc;
+        var asc = !wasAsc && !wasDesc;
+        if (wasAsc) asc = false;
+        
+        var targetColIdx = colIdx;
+        if (isCancel) {
+          targetColIdx = 0;
+          asc = true;
+        } else {
+          th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+        }
+        
+        container.dataset['sortCol' + tableIdx] = targetColIdx;
+        container.dataset['sortAsc' + tableIdx] = asc ? "1" : "0";
 
-        rows.sort(function(a, b) {
-          var aCell = a.cells[colIdx];
-          var bCell = b.cells[colIdx];
-          if (!aCell || !bCell) return 0;
-
-          var aVal = aCell.textContent.trim().replace(/%|,|pts/g, '').replace(/[\u2191\u2193\u2194]/g, '').trim();
-          var bVal = bCell.textContent.trim().replace(/%|,|pts/g, '').replace(/[\u2191\u2193\u2194]/g, '').trim();
-
-          var isMonth = function(val) {
-            var parts = val.split(' ');
-            return parts.length === 2 &&
-                   window.GAILS.MONTH_SHORT &&
-                   window.GAILS.MONTH_SHORT.indexOf(parts[0]) !== -1 &&
-                   !isNaN(parseInt(parts[1], 10));
-          };
-
-          if (isMonth(aVal) && isMonth(bVal)) {
-            var aKey = window.GAILS.monthSortKey(aVal);
-            var bKey = window.GAILS.monthSortKey(bVal);
-            return asc ? aKey - bKey : bKey - aKey;
-          }
-
-          var aNum = parseFloat(aVal);
-          var bNum = parseFloat(bVal);
-          if (!isNaN(aNum) && !isNaN(bNum)) {
-            return asc ? aNum - bNum : bNum - aNum;
-          }
-
-          if (aVal === '\u2014' || aVal === '') return asc ? -1 : 1;
-          if (bVal === '\u2014' || bVal === '') return asc ? 1 : -1;
-
-          return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-        });
-
-        rows.forEach(function(r) { tbody.appendChild(r); });
+        doSort(targetColIdx, asc);
       });
     });
   });
@@ -357,7 +385,7 @@ window.GAILS.makeSortable = function(container) {
 window.GAILS.renderLeagueTable = function(data) {
   var G = GAILS;
   var sortKey = document.getElementById('sortBy').value;
-  var desc = ['n', 'c', 'ac', 'dr', 'ef', 'fr', 'ts'].includes(sortKey);
+  var desc = ['n', 'c', 'ac', 'dr', 'ef', 'fr', 's2'].includes(sortKey);
   var sorted = [].concat(data).sort(function(a, b) { return desc ? b[sortKey] - a[sortKey] : a[sortKey] - b[sortKey]; });
   var absBandClass = function(b) { return b === 'Exceeding' ? 'Top-Performer' : b === 'Meeting' ? 'Above-Average' : b === 'Approaching' ? 'Below-Average' : 'Needs-Support'; };
   document.getElementById('tableBody').innerHTML = sorted.map(function(b, i) { return '<tr>' +
@@ -370,11 +398,11 @@ window.GAILS.renderLeagueTable = function(data) {
     '<td style="font-weight:600">' + b.ac + '</td>' +
     '<td><span class="band ' + absBandClass(b.acb) + '">' + b.acb + '</span></td>' +
     '<td><span class="conf ' + b.co + '">' + b.co + '</span></td>' +
-    '<td>' + b.n + '</td><td>' + b.v + '</td>' +
-    '<td>' + b.dr + '%</td><td>' + b.ef + '%</td><td>' + b.fr + '%</td>' +
-    '<td>' + b.ts + '</td>' +
-    '<td style="color:' + (b.o5 > 1.5 ? 'var(--red)' : b.o5 > 1.0 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
-    '<td>' + b.ov + '%</td><td>' + b.s2 + '%</td>' +
+    '<td style="color:' + (b.n >= 55 ? 'var(--green)' : b.n >= 45 ? 'var(--amber)' : 'var(--red)') + '">' + b.n + '</td><td>' + b.v + '</td>' +
+    '<td style="color:' + (b.dr >= 90 ? 'var(--green)' : b.dr >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.dr + '%</td><td style="color:' + (b.ef >= 90 ? 'var(--green)' : b.ef >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.ef + '%</td><td style="color:' + (b.fr >= 90 ? 'var(--green)' : b.fr >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.fr + '%</td>' +
+    '<td style="color:' + (b.ov >= 90 ? 'var(--green)' : b.ov >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.ov + '%</td>' +
+    '<td style="color:' + (b.s2 >= 75 ? 'var(--green)' : b.s2 >= 60 ? 'var(--amber)' : 'var(--red)') + '">' + b.s2 + '%</td>' +
+    '<td style="color:' + (b.o5 > 1.5 ? 'var(--red)' : b.o5 >= 1.0 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
     '</tr>'; }).join('');
   G.makeSortable(document.getElementById('tableBody').closest('table'));
 };

@@ -8,7 +8,7 @@ window.GAILS = window.GAILS || {};
   var SENTIMENT_COLORS = {
     positive: '#1D9E5C',  // green
     negative: '#B22A24',  // crimson
-    neutral:  '#6B6355'   // muted
+    neutral:  '#757575'   // muted
   };
   var SENTIMENT_FALLBACK = '#1E70C4'; // blue — for any unrecognised value
 
@@ -562,13 +562,7 @@ window.GAILS = window.GAILS || {};
         var tw = metrics.width;
         var th = metrics.height;
 
-        // Keep large-word glow on roomy layouts, but tone it down on mobile.
-        if (!layout.compact && attemptSize > 32) {
-          ctx.shadowColor = color;
-          ctx.shadowBlur  = attemptSize > 44 ? 14 : 8;
-        } else {
-          ctx.shadowBlur = 0;
-        }
+        ctx.shadowBlur = 0;
 
         var boxPadX = layout.compact ? (attemptSize > 24 ? 2 : 1) : (attemptSize > 34 ? 2 : 1);
         var boxPadY = layout.compact ? (attemptSize > 24 ? 3 : 1) : (attemptSize > 34 ? 3 : 2);

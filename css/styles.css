@@ -20,7 +20,7 @@
   --text: #221F1A;
   --text-2: #4D463C;
   --muted: #8C8272;
-  --muted-l: #6B6355;
+  --muted-l: #757575;
 
   /* ── Primary Accent – GAIL's Red ── */
   --accent: #B22A24;
@@ -2849,30 +2849,23 @@ body.table-fullscreen-lock {
 }
 
 /* ══════════════════════════════════════ AUTH LOADING ══ */
-.auth-loading {
+.auth-loading-wrapper {
+  position: relative;
+  width: 260px;
+  height: 260px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 18px;
-  text-align: center;
+  justify-content: center;
 }
 
-/* White logo PNG needs a red plinth on the light theme */
-.auth-loading__logo {
-  width: 108px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #B5312A 0%, #A32520 100%);
-  box-shadow: 0 10px 26px rgba(120, 28, 22, 0.28);
-}
-
-.auth-loading__spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid rgba(34, 31, 26, 0.08);
-  border-top-color: var(--accent);
+.auth-spinner-circle {
+  position: absolute;
+  inset: 0;
+  border: 4px solid rgba(178, 42, 36, 0.05);
+  border-top: 4px solid var(--accent);
   border-radius: 50%;
-  animation: auth-spin 0.75s linear infinite;
+  animation: auth-spin 0.9s linear infinite;
+  z-index: 1;
 }
 
 @keyframes auth-spin {
@@ -2881,11 +2874,76 @@ body.table-fullscreen-lock {
   }
 }
 
+
+.auth-loading-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+/* White logo PNG needs a red plinth on the light theme */
+.auth-loading__logo {
+  width: 105px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #C23A33 0%, #941D19 100%);
+  box-shadow: 0 16px 36px rgba(148, 29, 25, 0.35), inset 0 2px 6px rgba(255, 255, 255, 0.25);
+  display: block;
+  box-sizing: content-box;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+
+.auth-loading__dots {
+  display: inline-flex;
+  margin-left: 2px;
+}
+
+.auth-loading__dots span {
+  animation-duration: 1.6s;
+  animation-iteration-count: infinite;
+  opacity: 0;
+}
+
+.auth-loading__dots span:nth-child(1) {
+  animation-name: dot-blink-1;
+}
+
+.auth-loading__dots span:nth-child(2) {
+  animation-name: dot-blink-2;
+}
+
+.auth-loading__dots span:nth-child(3) {
+  animation-name: dot-blink-3;
+}
+
+@keyframes dot-blink-1 {
+  0%, 20% { opacity: 0; }
+  25%, 100% { opacity: 1; }
+}
+
+@keyframes dot-blink-2 {
+  0%, 45% { opacity: 0; }
+  50%, 100% { opacity: 1; }
+}
+
+@keyframes dot-blink-3 {
+  0%, 70% { opacity: 0; }
+  75%, 100% { opacity: 1; }
+}
+
 .auth-loading__text {
   color: var(--muted-l);
   font-size: 0.88rem;
   font-weight: 500;
   letter-spacing: 0.01em;
+  margin: 0;
 }
 
 /* ══════════════════════════════════════ LOGIN / MODALS ══ */
@@ -6919,7 +6977,7 @@ body.table-fullscreen-lock {
 }
 
 .wc-legend__dot--neutral {
-  background: #6B6355;
+  background: #757575;
 }
 
 .wc-legend__dot--negative {

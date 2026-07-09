@@ -1092,13 +1092,13 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
         '<td style="font-weight:700">' + b[cf] + '</td>' +
         '<td style="font-weight:600">' + b[altCeiField] + '</td>' +
         '<td><span class="band ' + G.bc(b[bf]) + '">' + b[bf] + '</span></td>' +
-        '<td>' + b.n + '</td><td>' + b.v + '</td>' +
+        '<td style="color:' + (b.n >= 55 ? 'var(--green)' : b.n >= 45 ? 'var(--amber)' : 'var(--red)') + '">' + b.n + '</td><td>' + b.v + '</td>' +
         '<td><span class="conf ' + b.co + '">' + b.co + '</span></td>' +
-        '<td style="color:' + (b.dp < 25 ? 'var(--red)' : 'inherit') + '">' + b.dr + '%</td>' +
-        '<td style="color:' + (b.ep < 25 ? 'var(--red)' : 'inherit') + '">' + b.ef + '%</td>' +
-        '<td style="color:' + (b.fp < 25 ? 'var(--red)' : 'inherit') + '">' + b.fr + '%</td>' +
-        '<td style="color:' + (b.ap < 25 ? 'var(--red)' : 'inherit') + '">' + b.ts + '</td>' +
-        '<td style="color:' + (b.o5 > 1.5 ? 'var(--red)' : b.o5 > 1.0 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
+        '<td style="color:' + (b.dr >= 90 ? 'var(--green)' : b.dr >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.dr + '%</td>' +
+        '<td style="color:' + (b.ef >= 90 ? 'var(--green)' : b.ef >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.ef + '%</td>' +
+        '<td style="color:' + (b.fr >= 90 ? 'var(--green)' : b.fr >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.fr + '%</td>' +
+        '<td style="color:' + (b.ts >= 75 ? 'var(--green)' : b.ts >= 60 ? 'var(--amber)' : 'var(--red)') + '">' + b.ts + '</td>' +
+        '<td style="color:' + (b.o5 > 1.5 ? 'var(--red)' : b.o5 >= 1.0 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
         '<td style="font-weight:600;color:' + focusColor + '">' + focus.name + ' &mdash; ' + focusLabel(focus.pct) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   G.makeSortable(document.getElementById('targetTable'));

@@ -31,10 +31,12 @@
 
   <!-- AUTH LOADING SCREEN -->
   <div id="loadingScreen" class="overlay-screen">
-    <div class="auth-loading">
-      <div class="auth-loading__spinner"></div>
-      <p class="auth-loading__text">Verifying access&hellip;</p>
-      <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+    <div class="auth-loading-wrapper">
+      <div class="auth-spinner-circle"></div>
+      <div class="auth-loading-content">
+        <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+        <p class="auth-loading__text">Verifying access<span class="auth-loading__dots"><span>.</span><span>.</span><span>.</span></span></p>
+      </div>
     </div>
   </div>
 
@@ -656,7 +658,7 @@
                     <option value="dr">Quality</option>
                     <option value="ef">Overall Efficiency</option>
                     <option value="fr">Friendliness</option>
-                    <option value="ts">Coffee Efficiency</option>
+                    <option value="s2">&le; 2 Min</option>
                     <option value="o5">Over 5 Min</option>
                   </select></label>
               </div>
@@ -678,10 +680,9 @@
                       <th>Quality</th>
                       <th>Efficiency</th>
                       <th>Friendliness</th>
-                      <th>Coffee Efficiency</th>
-                      <th>&gt;5m</th>
                       <th>Overall</th>
                       <th>&le;2m</th>
+                      <th>&gt;5m</th>
                     </tr>
                   </thead>
                   <tbody id="tableBody"></tbody>

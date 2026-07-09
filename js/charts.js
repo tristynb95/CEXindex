@@ -3,20 +3,48 @@ window.GAILS = window.GAILS || {};
 
 // ── GAIL's light-theme defaults for Chart.js ──
 if (typeof Chart !== 'undefined') {
-  Chart.defaults.color                                = '#6B6355';
-  Chart.defaults.borderColor                         = 'rgba(34, 31, 26,0.07)';
-  Chart.defaults.plugins.legend.labels.color         = '#6B6355';
-  Chart.defaults.plugins.tooltip.backgroundColor     = '#FBF9F3';
-  Chart.defaults.plugins.tooltip.titleColor          = '#221F1A';
-  Chart.defaults.plugins.tooltip.bodyColor           = '#6B6355';
-  Chart.defaults.plugins.tooltip.borderColor         = 'rgba(34, 31, 26,0.13)';
-  Chart.defaults.plugins.tooltip.borderWidth         = 1;
-  Chart.defaults.plugins.tooltip.padding             = 10;
-  Chart.defaults.plugins.tooltip.cornerRadius        = 8;
-  Chart.defaults.scale.grid.color                    = 'rgba(34, 31, 26,0.06)';
-  Chart.defaults.scale.ticks.color                   = '#8C8272';
-  Chart.defaults.scale.ticks.backdropColor           = 'transparent';
-  Chart.defaults.scale.title.color                   = '#6B6355';
+  function setSafe(obj, path, value) {
+    var parts = path.split('.');
+    var curr = obj;
+    for (var i = 0; i < parts.length - 1; i++) {
+      if (!curr[parts[i]]) {
+        curr[parts[i]] = {};
+      }
+      curr = curr[parts[i]];
+    }
+    curr[parts[parts.length - 1]] = value;
+  }
+
+  setSafe(Chart, 'defaults.color', '#757575');
+  setSafe(Chart, 'defaults.borderColor', 'rgba(34, 31, 26,0.07)');
+  setSafe(Chart, 'defaults.font.family', '"Space Grotesk", Inter, system-ui, sans-serif');
+  setSafe(Chart, 'defaults.plugins.legend.labels.color', '#757575');
+  setSafe(Chart, 'defaults.plugins.legend.labels.font.family', '"Space Grotesk", Inter, system-ui, sans-serif');
+  setSafe(Chart, 'defaults.plugins.legend.labels.usePointStyle', true);
+  setSafe(Chart, 'defaults.plugins.tooltip.backgroundColor', '#FFFFFF');
+  setSafe(Chart, 'defaults.plugins.tooltip.titleColor', '#221F1A');
+  setSafe(Chart, 'defaults.plugins.tooltip.bodyColor', '#757575');
+  setSafe(Chart, 'defaults.plugins.tooltip.borderColor', 'rgba(0,0,0,0.1)');
+  setSafe(Chart, 'defaults.plugins.tooltip.borderWidth', 1);
+  setSafe(Chart, 'defaults.plugins.tooltip.padding', 10);
+  setSafe(Chart, 'defaults.plugins.tooltip.cornerRadius', 8);
+  setSafe(Chart, 'defaults.plugins.tooltip.displayColors', false);
+
+  if (Chart.defaults.scale) {
+    setSafe(Chart, 'defaults.scale.grid.color', 'rgba(0,0,0,0.05)');
+    setSafe(Chart, 'defaults.scale.ticks.color', '#8C8272');
+    setSafe(Chart, 'defaults.scale.ticks.backdropColor', 'transparent');
+    setSafe(Chart, 'defaults.scale.title.color', '#757575');
+  }
+
+  if (Chart.defaults.scales) {
+    ['linear', 'category'].forEach(function(scaleType) {
+      setSafe(Chart, 'defaults.scales.' + scaleType + '.grid.color', 'rgba(0,0,0,0.05)');
+      setSafe(Chart, 'defaults.scales.' + scaleType + '.ticks.color', '#8C8272');
+      setSafe(Chart, 'defaults.scales.' + scaleType + '.ticks.backdropColor', 'transparent');
+      setSafe(Chart, 'defaults.scales.' + scaleType + '.title.color', '#757575');
+    });
+  }
 }
 
 var _charts = {};
