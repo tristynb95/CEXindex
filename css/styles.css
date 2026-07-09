@@ -2946,6 +2946,24 @@ body.table-fullscreen-lock {
   margin: 0;
 }
 
+@media (max-width: 480px), (max-height: 480px) {
+  .auth-loading-wrapper {
+    width: 200px;
+    height: 200px;
+  }
+  .auth-loading__logo {
+    width: 80px;
+    padding: 10px 14px;
+    border-radius: 12px;
+  }
+  .auth-loading-content {
+    gap: 10px;
+  }
+  .auth-loading__text {
+    font-size: 0.78rem;
+  }
+}
+
 /* ══════════════════════════════════════ LOGIN / MODALS ══ */
 .overlay-screen {
   position: fixed;
