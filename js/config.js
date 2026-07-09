@@ -407,8 +407,8 @@ window.GAILS.isBakeryVisitedInPeriod = function(b, months) {
 };
 
 // ========== COLOUR MAPS ==========
-window.GAILS.COL = { 'Top Performer': '#00C875', 'Above Average': '#4895FF', 'Below Average': '#FFB800', 'Needs Support': '#FF3B5C' };
-window.GAILS.ABSCOL = { 'Exceeding': '#00C875', 'Meeting': '#4895FF', 'Approaching': '#FFB800', 'Below Standard': '#FF3B5C' };
+window.GAILS.COL = { 'Top Performer': '#1E8A5A', 'Above Average': '#2B6CB0', 'Below Average': '#B7791F', 'Needs Support': '#B22A24' };
+window.GAILS.ABSCOL = { 'Exceeding': '#1E8A5A', 'Meeting': '#2B6CB0', 'Approaching': '#B7791F', 'Below Standard': '#B22A24' };
 
 // ========== BAND NAMES ==========
 window.GAILS.BAND_NAMES = ['Top Performer', 'Above Average', 'Below Average', 'Needs Support'];

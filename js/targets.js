@@ -13,15 +13,15 @@ function _drawSparklines(absolute) {
 
   sparkSorted.forEach(function(t) {
     var canvasId = 'spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_');
-    var lineColor = t.direction === 'up' ? '#00C875' : t.direction === 'down' ? '#FF3B5C' : '#FFB800';
+    var lineColor = t.direction === 'up' ? '#1E8A5A' : t.direction === 'down' ? '#B22A24' : '#B7791F';
     var yOpts = absolute
-      ? { display: true, min: 0, max: 100, ticks: { stepSize: 50, font: { size: 7 }, color: 'rgba(150,150,200,0.45)', maxTicksLimit: 3 }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
+      ? { display: true, min: 0, max: 100, ticks: { stepSize: 50, font: { size: 7 }, color: 'rgba(146, 137, 120,0.45)', maxTicksLimit: 3 }, grid: { color: 'rgba(34, 31, 26,0.05)' }, border: { display: false } }
       : { display: false };
     G.makeChart(canvasId, {
       type: 'line',
       data: { labels: FM, datasets: [
         { data: t.hist.map(function(r) { return r ? r[cf] : null; }), borderColor: lineColor, backgroundColor: lineColor + '18', fill: true, tension: 0.3, pointRadius: 1.5, borderWidth: 2, spanGaps: true },
-        { data: allAvgByMonth, borderColor: 'rgba(150,150,200,0.4)', borderWidth: 1, borderDash: [4, 3], pointRadius: 0, fill: false, tension: 0.3 }
+        { data: allAvgByMonth, borderColor: 'rgba(146, 137, 120,0.4)', borderWidth: 1, borderDash: [4, 3], pointRadius: 0, fill: false, tension: 0.3 }
       ] },
       options: {
         plugins: { legend: { display: false }, tooltip: { callbacks: { title: function(items) { return items[0].label; }, label: function(ctx) { return ctx.datasetIndex === 0 ? 'Index: ' + ctx.raw : 'Avg: ' + (ctx.raw ? ctx.raw.toFixed(1) : ''); } } } },
@@ -81,18 +81,18 @@ function _setTargetTrendState(hasData, message) {
 
   var NETWORK_LEGEND = {
     relative: [
-      { label: 'Top Performer', color: '#00C875' },
-      { label: 'Above Average', color: '#4895FF' },
-      { label: 'Below Average', color: '#FFB800' },
-      { label: 'Needs Support', color: '#FF3B5C' },
-      { label: 'No Data', color: '#a0aec0' }
+      { label: 'Top Performer', color: '#1E8A5A' },
+      { label: 'Above Average', color: '#2B6CB0' },
+      { label: 'Below Average', color: '#B7791F' },
+      { label: 'Needs Support', color: '#B22A24' },
+      { label: 'No Data', color: '#B3AA99' }
     ],
     absolute: [
-      { label: 'Exceeding', color: '#00C875' },
-      { label: 'Meeting', color: '#4895FF' },
-      { label: 'Approaching', color: '#FFB800' },
-      { label: 'Below Standard', color: '#FF3B5C' },
-      { label: 'No Data', color: '#a0aec0' }
+      { label: 'Exceeding', color: '#1E8A5A' },
+      { label: 'Meeting', color: '#2B6CB0' },
+      { label: 'Approaching', color: '#B7791F' },
+      { label: 'Below Standard', color: '#B22A24' },
+      { label: 'No Data', color: '#B3AA99' }
     ]
   };
 
@@ -103,12 +103,12 @@ function _setTargetTrendState(hasData, message) {
 
   var TARGET_LEGEND = {
     relative: [
-      { label: 'Needs Support', color: '#FF3B5C' },
-      { label: 'Below Average', color: '#FFB800' }
+      { label: 'Needs Support', color: '#B22A24' },
+      { label: 'Below Average', color: '#B7791F' }
     ],
     absolute: [
-      { label: 'Below Standard', color: '#FF3B5C' },
-      { label: 'Approaching', color: '#FFB800' }
+      { label: 'Below Standard', color: '#B22A24' },
+      { label: 'Approaching', color: '#B7791F' }
     ]
   };
 
@@ -174,12 +174,12 @@ function _setTargetTrendState(hasData, message) {
       var s = item[scoreField];
       if (s != null && !isNaN(s)) { sum += s; total++; }
     });
-    if (total === 0) return '#a0aec0';
+    if (total === 0) return '#B3AA99';
     var delta = (sum / total) - networkAvg;
-    if (delta >= 5)  return '#00C875';
-    if (delta >= 0)  return '#4895FF';
-    if (delta >= -5) return '#FFB800';
-    return '#FF3B5C';
+    if (delta >= 5)  return '#1E8A5A';
+    if (delta >= 0)  return '#2B6CB0';
+    if (delta >= -5) return '#B7791F';
+    return '#B22A24';
   }
 
   function buildAreaTooltip(mgr, items, bandField, networkAvg) {
@@ -308,13 +308,13 @@ function _setTargetTrendState(hasData, message) {
     }[band] || 0;
   }
 
-  var NO_DATA_COLOR = '#a0aec0';
+  var NO_DATA_COLOR = '#B3AA99';
 
   function getMarkerColor(item, bandField) {
     if (item && item.noData) return NO_DATA_COLOR;
     var band = item && item[bandField || 'cb'];
     var palette = (bandField === 'acb') ? GAILS.ABSCOL : GAILS.COL;
-    return (band && palette && palette[band]) || '#FF3B5C';
+    return (band && palette && palette[band]) || '#B22A24';
   }
 
   function formatLastVisitDate(isoDate) {
@@ -1184,7 +1184,7 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
     { v: improving.length, l: 'Improving', col: 'var(--green)' },
     { v: stable.length, l: 'Stable', col: 'var(--muted-l)' },
     { v: declining.length, l: 'Declining', col: 'var(--red)' },
-    { v: chronic.length, l: 'Declining 3+ Mo', col: '#9B5DFF' },
+    { v: chronic.length, l: 'Declining 3+ Mo', col: '#6B4FA8' },
   ].map(function(k) { return '<div class="target-stat-card"><div class="target-stat-card__value" style="color:' + k.col + '">' + k.v + '</div><div class="target-stat-card__label">' + k.l + '</div></div>'; }).join('');
 
   var ceiLabel = isAbsolute ? 'Avg Abs Score' : 'Avg Score';
@@ -1192,8 +1192,8 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
   var allAvgByMonth = FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m; }); return recs.length ? recs.reduce(function(a, r) { return a + r[cf]; }, 0) / recs.length : null; });
 
   G.makeChart('targetAvgTrend', { type: 'line', data: { labels: FM, datasets: [
-    { label: 'Focus Bakeries ' + ceiLabel, data: targetAvgByMonth, borderColor: '#FF3B5C', backgroundColor: 'rgba(255,59,92,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-    { label: 'All Bakeries ' + ceiLabel, data: allAvgByMonth, borderColor: 'rgba(150,150,200,0.5)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2, borderDash: [6, 4] },
+    { label: 'Focus Bakeries ' + ceiLabel, data: targetAvgByMonth, borderColor: '#B22A24', backgroundColor: 'rgba(178, 42, 36,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+    { label: 'All Bakeries ' + ceiLabel, data: allAvgByMonth, borderColor: 'rgba(146, 137, 120,0.5)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2, borderDash: [6, 4] },
   ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: ceiLabel }, min: 0, max: 100 }, x: { ticks: { font: { size: 10 } } } } } });
 
   G.makeChart('targetBandFlow', { type: 'bar', data: { labels: FM, datasets: allBandNames.map(function(bn) { return { label: bn, data: FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m && targetNames.includes(r.b); }); return recs.length ? recs.filter(function(r) { return r[bf] === bn; }).length : 0; }), backgroundColor: (palette[bn] || '#888') + 'cc', borderColor: palette[bn] || '#888', borderWidth: 1 }; }) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, title: { display: true, text: 'Bakeries' } } } } });
@@ -1274,9 +1274,9 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
       return { m: m, up: up, down: down, flat: flat };
     });
     G.makeChart('targetMomentumChart', { type: 'bar', data: { labels: momentumData.map(function(d) { return d.m; }), datasets: [
-      { label: 'Improving', data: momentumData.map(function(d) { return d.up; }), backgroundColor: 'rgba(0,200,117,0.65)', borderRadius: 3 },
-      { label: 'Stable', data: momentumData.map(function(d) { return d.flat; }), backgroundColor: 'rgba(150,150,200,0.45)', borderRadius: 3 },
-      { label: 'Declining', data: momentumData.map(function(d) { return -d.down; }), backgroundColor: 'rgba(255,59,92,0.65)', borderRadius: 3 },
+      { label: 'Improving', data: momentumData.map(function(d) { return d.up; }), backgroundColor: 'rgba(30, 138, 90,0.65)', borderRadius: 3 },
+      { label: 'Stable', data: momentumData.map(function(d) { return d.flat; }), backgroundColor: 'rgba(146, 137, 120,0.45)', borderRadius: 3 },
+      { label: 'Declining', data: momentumData.map(function(d) { return -d.down; }), backgroundColor: 'rgba(178, 42, 36,0.65)', borderRadius: 3 },
     ] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, title: { display: true, text: 'Bakeries' }, ticks: { callback: function(v) { return Math.abs(v); } } } } } });
   } else {
     G.destroyChart('targetMomentumChart');
@@ -1306,7 +1306,7 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
   var trendCeiHeader = (isAbsolute ? 'Absolute ' : 'Relative ') + 'Score (' + latestMonth + ')';
   document.getElementById('targetTrendTable').innerHTML = '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">Performance Trends \u2014 Table</h3><p class="tracker-table-header__copy"><span style="color:var(--green);font-weight:600">\u2191 Improving</span> = +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">\u2193 Declining</span> = \u22123pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">\u2194 Stable</span> = \u00b13pts &nbsp;&middot;&nbsp; Direction = month-on-month. 3-Month Trend = last 3 months.</p></div></div><div class="table-wrap"><table><thead><tr><th>Bakery</th><th>Ops Manager</th><th>' + trendCeiHeader + '</th><th>' + (isAbsolute ? 'Abs' : 'Rel') + ' Score Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Direction<br><span style="font-weight:400;font-size:0.6rem">Month-on-Month</span></th><th>NPS Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>3-Month Trend<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>3m ' + (isAbsolute ? 'Abs' : 'Rel') + ' Score Change<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>Period Change<br><span style="font-weight:400;font-size:0.6rem">' + firstMonth + ' &rarr; ' + latestMonth + '</span></th><th>Declining Streak</th><th>Best Month</th><th>Worst Month</th><th>Quality &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Friendliness &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Coffee Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th></tr></thead><tbody>' +
   trendData.map(function(t) {
-    var streakWarn = t.streak >= 3 ? 'color:#9B5DFF;font-weight:700' : t.streak >= 2 ? 'color:var(--red);font-weight:600' : '';
+    var streakWarn = t.streak >= 3 ? 'color:#6B4FA8;font-weight:700' : t.streak >= 2 ? 'color:var(--red);font-weight:600' : '';
     return '<tr><td style="font-weight:500">' + t.name + '</td><td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(t.name) + '</td><td style="font-weight:700">' + (t.latest ? t.latest[cf] : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best[cf] + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst[cf] + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';
   }).join('') + '</tbody></table></div>';
   G.makeSortable(document.getElementById('targetTrendTable'));

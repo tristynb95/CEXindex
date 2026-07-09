@@ -62,7 +62,7 @@ window.GAILS = window.GAILS || {};
 
   function colorWithAlpha(hex, alpha) {
     var match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
-    if (!match) return 'rgba(255,59,92,' + alpha + ')';
+    if (!match) return 'rgba(178, 42, 36,' + alpha + ')';
     return 'rgba(' + parseInt(match[1], 16) + ',' + parseInt(match[2], 16) + ',' + parseInt(match[3], 16) + ',' + alpha + ')';
   }
 
@@ -87,12 +87,12 @@ window.GAILS = window.GAILS || {};
       }
       return G.COL['Above Average'];
     }
-    if (type === 'relative') return '#FF3B5C';
-    return '#00D4B0';
+    if (type === 'relative') return '#B22A24';
+    return '#0E8074';
   }
 
   function getHeaderBackground(accent) {
-    return 'linear-gradient(180deg, ' + colorWithAlpha(accent, 0.18) + ' 0%, rgba(255,255,255,0.01) 100%)';
+    return 'linear-gradient(180deg, ' + colorWithAlpha(accent, 0.18) + ' 0%, rgba(34, 31, 26,0.01) 100%)';
   }
 
   function commonColumns() {

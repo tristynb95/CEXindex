@@ -10,14 +10,14 @@
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
   <link rel="icon" href="favicon.ico">
   <link rel="manifest" href="site.webmanifest">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#B5312A">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?v=1.0.4">
+  <link rel="stylesheet" href="css/styles.css?v=2.0.0">
 </head>
 
 <body>
@@ -51,35 +51,35 @@
 
         <div class="login-card__masthead-copy">
           <h1 class="login-card__title">Coffee Experience Dashboard</h1>
-          <p class="login-card__intro">Track sentiment, coffee quality, and priority actions from one secure reporting workspace.</p>
+          <p class="login-card__intro">One workspace for the Coffee Experience Index &mdash; scores, rankings, trends, customer feedback, and bakery visit reports across every GAIL's.</p>
         </div>
 
         <div class="login-hero__scoreboard">
           <div class="login-hero__score">
-            <span class="login-hero__score-label">Track</span>
-            <strong>NPS movement</strong>
-            <p>Follow month-by-month shifts before they become wider performance issues.</p>
+            <span class="login-hero__score-label">Measure</span>
+            <strong>One index, 0&ndash;100</strong>
+            <p>Drink quality, efficiency, friendliness, and speed of service rolled into a single Coffee Experience score.</p>
           </div>
           <div class="login-hero__score">
-            <span class="login-hero__score-label">Prioritise</span>
-            <strong>Focus bakeries</strong>
-            <p>Surface where coaching and operational support will make the biggest difference.</p>
+            <span class="login-hero__score-label">Compare</span>
+            <strong>Relative &amp; Absolute</strong>
+            <p>Rank bakeries against the pack, or measure everyone against GAIL's 90% standard.</p>
           </div>
           <div class="login-hero__score">
-            <span class="login-hero__score-label">Review</span>
-            <strong>Coffee experience</strong>
-            <p>Balance speed, friendliness, quality, and overall efficiency in one index.</p>
+            <span class="login-hero__score-label">Act</span>
+            <strong>Focus bakeries &amp; visits</strong>
+            <p>Surface the bakeries that need support, then log and review routine visits and CQV reports.</p>
           </div>
         </div>
 
         <div class="login-card__highlights">
           <div class="login-card__highlight">
-            <span class="login-card__highlight-label">Live Sync</span>
-            <strong>Shared Firebase dataset for secure internal reporting.</strong>
+            <span class="login-card__highlight-label">Seven Views</span>
+            <strong>Overview, Focus Bakeries, Map, Trends, League Table, Feedback, and Bakery Reports.</strong>
           </div>
           <div class="login-card__highlight">
-            <span class="login-card__highlight-label">Built For</span>
-            <strong>Ops leaders, bakery managers, and customer experience teams.</strong>
+            <span class="login-card__highlight-label">Live Data</span>
+            <strong>Monthly NPS &amp; coffee results synced securely to every approved user.</strong>
           </div>
         </div>
       </section>
@@ -89,12 +89,12 @@
           <div class="login-mobile-brief" aria-hidden="true">
             <img class="login-mobile-brief__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery logo">
             <h3 class="login-mobile-brief__title">Coffee Experience Dashboard</h3>
-            <p class="login-mobile-brief__copy">Track sentiment, coffee quality, and priority actions from one secure reporting workspace.</p>
+            <p class="login-mobile-brief__copy">Coffee Experience scores, rankings, trends, feedback, and bakery visit reports &mdash; all in one workspace.</p>
           </div>
           <div class="login-card__form-head">
             <p class="login-card__form-eyebrow">Secure Sign In</p>
             <h2 class="login-panel__title">Welcome back</h2>
-            <p class="login-card__form-copy">Use your work email and password to access the live dashboard.</p>
+            <p class="login-card__form-copy">Sign in with your GAIL's work email to open the live dashboard.</p>
           </div>
 
           <form id="loginForm" class="login-form">
@@ -538,11 +538,11 @@
               <p style="text-align:center;font-size:0.84rem;color:var(--muted);margin-bottom:16px">We compared every bakery&rsquo;s coffee speed against their NPS. The answer is clear.</p>
               <div class="grid-2">
                 <div style="text-align:center">
-                  <div style="display:inline-block;background:rgba(255,59,92,0.15);color:var(--red);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:700;margin-bottom:8px;border:1px solid rgba(255,59,92,0.3)">&#10007; No meaningful relationship</div>
+                  <div style="display:inline-block;background:rgba(178, 42, 36,0.15);color:var(--red);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:700;margin-bottom:8px;border:1px solid rgba(178, 42, 36,0.3)">&#10007; No meaningful relationship</div>
                   <canvas id="speedVsNps"></canvas>
                 </div>
                 <div style="text-align:center">
-                  <div style="display:inline-block;background:rgba(0,200,117,0.13);color:var(--green);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:700;margin-bottom:8px;border:1px solid rgba(0,200,117,0.28)">&#10003; Strong relationship</div>
+                  <div style="display:inline-block;background:rgba(30, 138, 90,0.13);color:var(--green);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:700;margin-bottom:8px;border:1px solid rgba(30, 138, 90,0.28)">&#10003; Strong relationship</div>
                   <canvas id="effVsNps"></canvas>
                 </div>
               </div>
@@ -1183,7 +1183,7 @@
     <!-- ADD SITE VISIT MODAL -->
     <div id="addSiteVisitModal" class="drill-modal" style="display:none;" onclick="if(event.target===this)GAILS.closeAddSiteVisitModal()">
       <div class="drillInner" style="max-width: 550px;">
-        <div class="drill-modal-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 15px;">
+        <div class="drill-modal-header" style="border-bottom: 1px solid rgba(34, 31, 26, 0.05); padding-bottom: 15px;">
           <div>
             <h3 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0;">Log Check-in</h3>
             <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">Record a quick check-in with comments.</p>
@@ -1238,7 +1238,7 @@
       <div class="drillInner" style="max-width: 460px; height: auto; background: var(--card); border: 1px solid var(--card-border-h); box-shadow: var(--shadow-md);">
         <div class="drill-modal-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
           <div>
-            <h3 style="font-size:1.3rem;font-weight:700;color:#FF4A70;margin:0;">Delete Check-in</h3>
+            <h3 style="font-size:1.3rem;font-weight:700;color:#B22A24;margin:0;">Delete Check-in</h3>
             <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">This action is permanent and cannot be undone.</p>
           </div>
           <button class="drill-close-btn" onclick="GAILS.closeDeleteConfirmModal()">&#10005;</button>
@@ -1255,7 +1255,7 @@
           <div style="display:flex; gap:12px; margin-top: 10px; justify-content: flex-end;">
             <button type="button" class="drill-close-btn" onclick="GAILS.closeDeleteConfirmModal()" style="padding: 9px 15px;">Cancel</button>
             <button type="button" id="deleteConfirmSubmitBtn" class="drill-close-btn" disabled 
-                    style="background:#4A1521; color:#FF4A70; border-color:rgba(255,74,112,0.2); padding: 9px 18px;">Delete</button>
+                    style="background:#F7E4E2; color:#B22A24; border-color:rgba(178, 42, 36,0.2); padding: 9px 18px;">Delete</button>
           </div>
         </div>
       </div>

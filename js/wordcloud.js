@@ -6,11 +6,11 @@ window.GAILS = window.GAILS || {};
 
   // Sentiment colours — mapped to app palette
   var SENTIMENT_COLORS = {
-    positive: '#00C875',  // green
-    negative: '#FF3B5C',  // crimson
-    neutral:  '#9090B8'   // muted
+    positive: '#1E8A5A',  // green
+    negative: '#B22A24',  // crimson
+    neutral:  '#6B6355'   // muted
   };
-  var SENTIMENT_FALLBACK = '#4895FF'; // blue — for any unrecognised value
+  var SENTIMENT_FALLBACK = '#2B6CB0'; // blue — for any unrecognised value
 
   var lastWordData = null;        // null = never fetched; [] = fetched, empty; [...] = data
   var lastTargetWordData = null;
@@ -258,8 +258,8 @@ window.GAILS = window.GAILS || {};
       });
     };
 
-    renderCol(posListId, positives, '#00C875', 'rgba(0,200,117,0.10)');
-    renderCol(negListId, negatives, '#FF3B5C', 'rgba(255,59,92,0.10)');
+    renderCol(posListId, positives, '#1E8A5A', 'rgba(30, 138, 90,0.10)');
+    renderCol(negListId, negatives, '#B22A24', 'rgba(178, 42, 36,0.10)');
   }
 
   function hideDriftPanel(panelId) {
@@ -424,9 +424,9 @@ window.GAILS = window.GAILS || {};
 
   // Interpolate a hex colour on the red→amber→green gradient at t ∈ [0,1]
   function sentimentColor(score) {
-    if (score >= 61) return '#00C875';  // Positive bands — green
-    if (score >= 41) return '#F5C842';  // Mixed — amber
-    return '#FF3B5C';                   // Negative bands — red
+    if (score >= 61) return '#1E8A5A';  // Positive bands — green
+    if (score >= 41) return '#C08A28';  // Mixed — amber
+    return '#B22A24';                   // Negative bands — red
   }
 
   function sentimentLabel(score) {
@@ -511,13 +511,13 @@ window.GAILS = window.GAILS || {};
 
     // Subtle ambient glow background matching app radial palette
     var g1 = ctx.createRadialGradient(cssW * 0.18, cssH * 0.22, 0, cssW * 0.18, cssH * 0.22, cssW * 0.55);
-    g1.addColorStop(0, 'rgba(255,59,92,0.07)');
+    g1.addColorStop(0, 'rgba(178, 42, 36,0.07)');
     g1.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g1;
     ctx.fillRect(0, 0, cssW, cssH);
 
     var g2 = ctx.createRadialGradient(cssW * 0.82, cssH * 0.76, 0, cssW * 0.82, cssH * 0.76, cssW * 0.5);
-    g2.addColorStop(0, 'rgba(155,93,255,0.07)');
+    g2.addColorStop(0, 'rgba(183, 121, 31,0.06)');
     g2.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, cssW, cssH);

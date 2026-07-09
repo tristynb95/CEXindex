@@ -880,7 +880,7 @@ function cqvSummaryHtml(record, warnings) {
       + (record.score != null ? ' &mdash; ' + escapeHtml(record.score) + ' / ' + escapeHtml(record.scoreMax) : ''));
   }
   if (record.criticalFail) {
-    lines.push('<span style="color:#FF4A70;">&#9888; Rated Red: a Critical Point or Allergen Point question failed</span>' +
+    lines.push('<span style="color:#B22A24;">&#9888; Rated Red: a Critical Point or Allergen Point question failed</span>' +
       (record.printedBand && record.printedBand !== 'Red' ? ' (overrides the ' + escapeHtml(record.printedBand) + ' shown in the PDF header).' : '.'));
   }
   var sectionNames = Object.keys(record.sectionScores || {});
@@ -1088,16 +1088,16 @@ function cqvBand(visit) {
 }
 
 function cqvBandColor(band) {
-  if (band === 'Green') return '#00C875';
-  if (band === 'Yellow') return '#FFB800';
-  if (band === 'Red') return '#FF4A70';
+  if (band === 'Green') return '#1E8A5A';
+  if (band === 'Yellow') return '#B7791F';
+  if (band === 'Red') return '#B22A24';
   return null;
 }
 
 function cqvPriorityColor(priority) {
-  if (/^high$/i.test(priority)) return '#FF4A70';
-  if (/^medium$/i.test(priority)) return '#FFB800';
-  if (/^low$/i.test(priority)) return '#00D4B0';
+  if (/^high$/i.test(priority)) return '#B22A24';
+  if (/^medium$/i.test(priority)) return '#B7791F';
+  if (/^low$/i.test(priority)) return '#0E8074';
   return null;
 }
 
@@ -1161,7 +1161,7 @@ function buildCqvDetailHtml(visit) {
     var metaHtml = '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; text-align:right;">'
       + (a.priority
           ? '<span style="font-size:0.66rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px;'
-            + (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(255,255,255,0.06);')
+            + (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(34, 31, 26,0.06);')
             + '">' + escapeHtml(a.priority) + '</span>'
           : '')
       + '<span style="font-size:0.72rem; color:var(--muted-l); white-space:nowrap;">Due ' + escapeHtml(dueDate || '—') + '</span>'
@@ -1198,7 +1198,7 @@ function buildCqvDetailHtml(visit) {
     + '<p style="font-size:1.4rem; font-weight:800; color:var(--text);">' + escapeHtml(visit.overallPct != null ? visit.overallPct + '%' : '—')
     + (cqvBand(visit) ? ' <span style="font-size:0.9rem; font-weight:700; color:' + cqvBandColor(cqvBand(visit)) + ';">(' + escapeHtml(cqvBand(visit)) + ')</span>' : '') + '</p>'
     + (cqvHasCriticalFail(visit)
-        ? '<p style="font-size:0.82rem; color:#FF4A70; font-weight:600;">&#9888; A Critical Point was lost.</p>'
+        ? '<p style="font-size:0.82rem; color:#B22A24; font-weight:600;">&#9888; A Critical Point was lost.</p>'
         : '')
     + (visit.summary ? '<p class="visit-report-comment">' + escapeHtml(visit.summary) + '</p>' : '')
     + '</div>'

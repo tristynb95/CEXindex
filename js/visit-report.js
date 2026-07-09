@@ -180,8 +180,8 @@ window.GAILS = window.GAILS || {};
       data: {
         labels: labels,
         datasets: [
-          { label: 'Points Earned', data: earned, backgroundColor: '#00C875', borderRadius: 6 },
-          { label: 'Points Possible', data: max, backgroundColor: 'rgba(150,150,200,0.25)', borderRadius: 6 }
+          { label: 'Points Earned', data: earned, backgroundColor: '#1E8A5A', borderRadius: 6 },
+          { label: 'Points Possible', data: max, backgroundColor: 'rgba(146, 137, 120,0.25)', borderRadius: 6 }
         ]
       },
       options: {
@@ -189,7 +189,7 @@ window.GAILS = window.GAILS || {};
         maintainAspectRatio: false,
         scales: {
           x: { grid: { display: false } },
-          y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.06)' } }
+          y: { beginAtZero: true, grid: { color: 'rgba(34, 31, 26,0.06)' } }
         },
         plugins: { legend: { position: 'bottom' } }
       }
@@ -226,9 +226,9 @@ window.GAILS = window.GAILS || {};
   }
 
   function cqvBandColor(band) {
-    if (band === 'Green') return '#00C875';
-    if (band === 'Yellow') return '#FFB800';
-    if (band === 'Red') return '#FF4A70';
+    if (band === 'Green') return '#1E8A5A';
+    if (band === 'Yellow') return '#B7791F';
+    if (band === 'Red') return '#B22A24';
     return null;
   }
 
@@ -263,9 +263,9 @@ window.GAILS = window.GAILS || {};
   }
 
   function cqvPriorityColor(priority) {
-    if (/^high$/i.test(priority)) return '#FF4A70';
-    if (/^medium$/i.test(priority)) return '#FFB800';
-    if (/^low$/i.test(priority)) return '#00D4B0';
+    if (/^high$/i.test(priority)) return '#B22A24';
+    if (/^medium$/i.test(priority)) return '#B7791F';
+    if (/^low$/i.test(priority)) return '#0E8074';
     return null;
   }
 
@@ -316,7 +316,7 @@ window.GAILS = window.GAILS || {};
       var metaHtml = '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; text-align:right;">' +
         (a.priority
           ? '<span style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px;' +
-              (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(255,255,255,0.06);') +
+              (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(34, 31, 26,0.06);') +
             '">' + escapeHtml(a.priority) + '</span>'
           : '') +
         '<span style="font-size:0.75rem; color:var(--muted-l); white-space:nowrap;">Due ' + escapeHtml(dueDate || '—') + '</span>' +
@@ -394,8 +394,8 @@ window.GAILS = window.GAILS || {};
       data: {
         labels: names,
         datasets: [
-          { label: 'Points Earned', data: earned, backgroundColor: '#00C875', borderRadius: 6 },
-          { label: 'Points Possible', data: max, backgroundColor: 'rgba(150,150,200,0.25)', borderRadius: 6 }
+          { label: 'Points Earned', data: earned, backgroundColor: '#1E8A5A', borderRadius: 6 },
+          { label: 'Points Possible', data: max, backgroundColor: 'rgba(146, 137, 120,0.25)', borderRadius: 6 }
         ]
       },
       options: {
@@ -403,7 +403,7 @@ window.GAILS = window.GAILS || {};
         maintainAspectRatio: false,
         scales: {
           x: { grid: { display: false } },
-          y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.06)' } }
+          y: { beginAtZero: true, grid: { color: 'rgba(34, 31, 26,0.06)' } }
         },
         plugins: { legend: { position: 'bottom' } }
       }
@@ -639,13 +639,13 @@ window.GAILS = window.GAILS || {};
       ];
       
       var statsHtml = '<div class="drill-summary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:15px; margin-bottom:20px;">' + stats.map(function(c) {
-        return '<div class="drill-card" style="padding:15px; background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:10px;"><div class="drill-card__label" style="font-size:0.72rem; text-transform:uppercase; color:var(--muted-l); margin-bottom:4px;">' + escapeHtml(c.label) + '</div>' +
+        return '<div class="drill-card" style="padding:15px; background:rgba(34, 31, 26,0.02); border:1px solid var(--card-border); border-radius:10px;"><div class="drill-card__label" style="font-size:0.72rem; text-transform:uppercase; color:var(--muted-l); margin-bottom:4px;">' + escapeHtml(c.label) + '</div>' +
           '<div class="drill-card__value" style="font-size:1.05rem; font-weight:700; color:var(--text);">' + escapeHtml(c.value) + '</div></div>';
       }).join('') + '</div>';
 
       bodyEl.innerHTML = statsHtml + 
         '<div class="visit-report-section-wrapper">' +
-          '<div class="visit-report-section" style="margin-top:20px; background:rgba(255,255,255,0.01); border:1px solid var(--card-border); border-radius:12px; padding:20px;">' +
+          '<div class="visit-report-section" style="margin-top:20px; background:rgba(34, 31, 26,0.01); border:1px solid var(--card-border); border-radius:12px; padding:20px;">' +
             '<h4 style="margin-top:0; margin-bottom:10px; font-size:0.95rem; font-weight:700; color:var(--accent);">Visit Comments</h4>' +
             '<p class="visit-report-comment" style="font-size:1rem; line-height:1.6; color:var(--text-2); white-space:pre-wrap; margin:0;">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
           '</div>' +
@@ -1026,7 +1026,7 @@ window.GAILS = window.GAILS || {};
             allNotesText = v.comments || '';
           } else if (v.type === 'cqv') {
             scoreText = (v.overallPct != null) ? v.overallPct + '%' : '—';
-            tagsHtml = '<span class="visit-log-row__tag" style="color:#FF4A70;background:rgba(255,74,112,0.15);">' + (v.isFollowUp ? 'CQV Follow-Up' : 'CQV') + '</span>';
+            tagsHtml = '<span class="visit-log-row__tag" style="color:#B22A24;background:rgba(178, 42, 36,0.15);">' + (v.isFollowUp ? 'CQV Follow-Up' : 'CQV') + '</span>';
             allNotesText = v.summary || '';
             var band = cqvBand(v);
             var bandColor = cqvBandColor(band);
