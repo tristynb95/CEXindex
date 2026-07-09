@@ -189,7 +189,15 @@
     var workspace = document.getElementById('targetTabWorkspace');
     if (!workspace) return;
     workspace.querySelectorAll('.target-subtab').forEach(function(btn) {
-      btn.classList.toggle('active', btn.dataset.targetSubtab === name);
+      var isActive = btn.dataset.targetSubtab === name;
+      btn.classList.toggle('active', isActive);
+      if (isActive) {
+        btn.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }
     });
     workspace.querySelectorAll('.target-subtab-panel').forEach(function(panel) {
       panel.classList.toggle('active', panel.dataset.targetSubtabPanel === name);
