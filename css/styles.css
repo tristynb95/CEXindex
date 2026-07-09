@@ -6388,6 +6388,48 @@ body.table-fullscreen-lock {
   border: 2px solid rgba(34, 31, 26, 0.6);
 }
 
+/* On mobile the corner legend box covers too much of the map — dock it as a
+   centered bar along the bottom instead, so the pins stay visible. */
+@media (max-width: 640px) {
+  .leaflet-container .leaflet-bottom.leaflet-right {
+    left: 0;
+    right: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 0 20px;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+  }
+
+  .map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 4px 10px;
+    width: auto;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 0.68rem;
+    line-height: 1.3;
+  }
+
+  .map-legend > div {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .map-legend__dot {
+    width: 8px;
+    height: 8px;
+    margin-right: 4px;
+  }
+}
+
 /* Popup content */
 .map-popup__name {
   font-weight: 700;
@@ -7482,6 +7524,7 @@ a,
 
   /* Each filter control row */
   .filter-controls-body .filter-control {
+    position: relative;
     padding: 18px 20px;
     border: 1px solid rgba(34, 31, 26, 0.04);
     border-left: 4px solid var(--accent);
@@ -7497,8 +7540,8 @@ a,
   .filter-controls-body .filter-control label {
     display: block;
     margin-bottom: 8px;
-    font: 800 0.68rem/1 "Space Grotesk", Inter, system-ui, sans-serif;
-    letter-spacing: 0.08em;
+    font: 700 0.67rem/1 var(--font);
+    letter-spacing: 0.09em;
     text-transform: uppercase;
     color: var(--muted-l);
   }
@@ -7597,9 +7640,12 @@ a,
 
   /* --- NEW MOBILE FILTER REDESIGN --- */
 
-  /* 1. Active expanded state for filter controls */
+  /* 1. Active expanded state for filter controls — the card itself never
+     grows; it just lifts above its grid siblings so the floating menu
+     (positioned absolutely below) can overlap them without pushing layout. */
   .filter-controls-body .filter-control:has(.filter-select.is-open),
   .filter-controls-body .filter-control:has(.bakery-ms__trigger.is-open) {
+    z-index: 5;
     border-color: rgba(178, 42, 36, 0.45) !important;
     border-left-color: var(--accent) !important;
     background: linear-gradient(135deg, rgba(178, 42, 36, 0.08) 0%, rgba(34, 31, 26, 0.02) 100%) !important;
@@ -7615,31 +7661,35 @@ a,
     transition: color 0.25s ease;
   }
 
-  /* 2. Unify trigger buttons when dropdowns are open */
+  /* 2. Keep trigger buttons fully rounded when open — the menu floats below
+     as its own card rather than fusing with the trigger. */
   .filter-controls .filter-select.is-open .filter-select__trigger,
   .filter-controls .bakery-ms__trigger.is-open {
-    border-bottom-left-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
     border-color: rgba(178, 42, 36, 0.4) !important;
     background: rgba(255, 255, 255, 0.96) !important;
     transition: all 0.2s ease;
   }
 
-  /* 3. Unify dropdown menus to connect directly under trigger buttons */
+  /* 3. Float dropdown menus over the panel instead of expanding the card —
+     matches the desktop filter-select__menu treatment (rounded card, blurred
+     shadow) so the mobile and desktop dropdowns read as the same component. */
   .filter-controls .filter-select__menu,
   .filter-controls .bakery-ms__dropdown {
-    position: static !important;
-    width: 100% !important;
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
     margin-top: 0 !important;
-    border-top: none !important;
-    border-top-left-radius: 0 !important;
-    border-top-right-radius: 0 !important;
-    border-bottom-left-radius: 11px !important;
-    border-bottom-right-radius: 11px !important;
-    background: rgba(255, 255, 255, 0.9) !important;
-    border-color: rgba(178, 42, 36, 0.4) !important;
-    box-shadow: none !important; /* Managed by card container */
+    border: 1px solid rgba(178, 42, 36, 0.25) !important;
+    border-radius: 16px !important;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.99) 100%) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(34, 31, 26, 0.03) !important;
     padding: 8px !important;
+    z-index: 6;
   }
 
   /* 4. Micro-animation for slide-down expand */
