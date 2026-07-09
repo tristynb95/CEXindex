@@ -697,6 +697,15 @@
 
   // ========== INITIALISE DASHBOARD ==========
   function initDashboard(records, months) {
+    // Collapse alias/punctuation variants of a bakery name (e.g.
+    // "Union Street - Bath" vs "Union Street, Bath") to a single canonical name.
+    // Applied here so it also fixes records that were parsed and stored (Firebase /
+    // localStorage cache) before the parser started canonicalizing at upload time.
+    if (G.resolveBakeryMetaKey) {
+      (records || []).forEach(function(r) {
+        if (r && r.b) r.b = G.resolveBakeryMetaKey(r.b) || r.b;
+      });
+    }
     state.ALL = records;
     state.MONTHS = months;
     state.BAKERIES = [...new Set(records.map(function(r) { return r.b; }))].sort();

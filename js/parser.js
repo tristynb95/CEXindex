@@ -53,6 +53,10 @@ window.GAILS.parseExcelFile = function(data) {
       if (!row || !row[colMap.bakery] || typeof row[colMap.bakery] !== 'string') continue;
       var bakery = row[colMap.bakery].trim();
       if (!bakery || bakery === 'Total' || bakery === '') continue;
+      // Collapse alias/punctuation variants (e.g. "Union Street - Bath" vs
+      // "Union Street, Bath") to a single canonical name so all data for a site
+      // is treated as one bakery across the filter, tables, map and drilldowns.
+      if (G.resolveBakeryMetaKey) bakery = G.resolveBakeryMetaKey(bakery) || bakery;
 
       var num = function(idx) {
         var v = row[idx];
