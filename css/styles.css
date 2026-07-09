@@ -1,5 +1,9 @@
 /* ========== GAIL's Bakery Dashboard — GAIL's Brand Light Redesign ========== */
 
+html {
+  scrollbar-gutter: stable;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -2849,26 +2853,63 @@ body.table-fullscreen-lock {
 }
 
 /* ══════════════════════════════════════ AUTH LOADING ══ */
-.auth-loading-wrapper {
-  position: relative;
-  width: 260px;
-  height: 260px;
+.auth-loading-content {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 20px;
+  text-align: center;
 }
 
-.auth-spinner-circle {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border: 4px solid rgba(178, 42, 36, 0.05);
-  border-top: 4px solid var(--accent);
+/* White logo PNG needs a red plinth on the light theme */
+.auth-loading__logo {
+  width: 105px;
+  height: 36px;
+  object-fit: contain;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #C23A33 0%, #941D19 100%);
+  box-shadow: 0 16px 36px rgba(148, 29, 25, 0.35), inset 0 2px 6px rgba(255, 255, 255, 0.25);
+  animation: auth-pulse 2.5s ease-in-out infinite;
+  display: block;
+  box-sizing: content-box;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+@keyframes auth-pulse {
+  0%, 100% {
+    box-shadow: 0 16px 36px rgba(148, 29, 25, 0.35), inset 0 2px 6px rgba(255, 255, 255, 0.25);
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    box-shadow: 0 22px 48px rgba(148, 29, 25, 0.45), inset 0 2px 6px rgba(255, 255, 255, 0.30);
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+
+.auth-loading__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-l);
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+.auth-small-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(140, 130, 114, 0.2);
+  border-top-color: rgba(140, 130, 114, 0.8);
   border-radius: 50%;
-  animation: auth-spin 0.9s linear infinite;
-  z-index: 1;
+  animation: auth-spin 0.8s linear infinite;
+  box-sizing: border-box;
 }
 
 @keyframes auth-spin {
@@ -2877,90 +2918,14 @@ body.table-fullscreen-lock {
   }
 }
 
-
-.auth-loading-content {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  text-align: center;
-}
-
-/* White logo PNG needs a red plinth on the light theme */
-.auth-loading__logo {
-  width: 105px;
-  padding: 14px 18px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #C23A33 0%, #941D19 100%);
-  box-shadow: 0 16px 36px rgba(148, 29, 25, 0.35), inset 0 2px 6px rgba(255, 255, 255, 0.25);
-  display: block;
-  box-sizing: content-box;
-  will-change: transform;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-}
-
-
-.auth-loading__dots {
-  display: inline-flex;
-  margin-left: 2px;
-}
-
-.auth-loading__dots span {
-  animation-duration: 1.6s;
-  animation-iteration-count: infinite;
-  opacity: 0;
-}
-
-.auth-loading__dots span:nth-child(1) {
-  animation-name: dot-blink-1;
-}
-
-.auth-loading__dots span:nth-child(2) {
-  animation-name: dot-blink-2;
-}
-
-.auth-loading__dots span:nth-child(3) {
-  animation-name: dot-blink-3;
-}
-
-@keyframes dot-blink-1 {
-  0%, 20% { opacity: 0; }
-  25%, 100% { opacity: 1; }
-}
-
-@keyframes dot-blink-2 {
-  0%, 45% { opacity: 0; }
-  50%, 100% { opacity: 1; }
-}
-
-@keyframes dot-blink-3 {
-  0%, 70% { opacity: 0; }
-  75%, 100% { opacity: 1; }
-}
-
-.auth-loading__text {
-  color: var(--muted-l);
-  font-size: 0.88rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  margin: 0;
-}
-
 @media (max-width: 480px), (max-height: 480px) {
-  .auth-loading-wrapper {
-    width: 200px;
-    height: 200px;
-  }
   .auth-loading__logo {
     width: 80px;
     padding: 10px 14px;
     border-radius: 12px;
   }
   .auth-loading-content {
-    gap: 10px;
+    gap: 14px;
   }
   .auth-loading__text {
     font-size: 0.78rem;

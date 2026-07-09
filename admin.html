@@ -21,10 +21,11 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=2.0.1">
+  <link rel="stylesheet" href="css/styles.css?v=2.0.5">
 </head>
 
 <body>
+  <!-- ANIMATED BACKGROUND -->
   <div class="glass-bg">
     <div class="glass-bg-blob blob1"></div>
     <div class="glass-bg-blob blob2"></div>
@@ -33,12 +34,9 @@
   </div>
 
   <div id="authGuard" class="admin-page-guard">
-    <div class="auth-loading-wrapper">
-      <div class="auth-spinner-circle"></div>
-      <div class="auth-loading-content">
-        <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
-        <p class="auth-loading__text" style="color: var(--text);">Verifying admin access<span class="auth-loading__dots"><span>.</span><span>.</span><span>.</span></span></p>
-      </div>
+    <div class="auth-loading-content">
+      <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+      <p class="auth-loading__text" style="color: var(--text);">Verifying admin access <span class="auth-small-spinner"></span></p>
     </div>
   </div>
 
