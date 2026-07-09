@@ -407,11 +407,11 @@ window.GAILS.isBakeryVisitedInPeriod = function(b, months) {
 };
 
 // ========== COLOUR MAPS ==========
-window.GAILS.COL = { Excellent: '#00C875', Good: '#4895FF', Developing: '#FFB800', 'Needs Attention': '#FF3B5C' };
+window.GAILS.COL = { 'Top Performer': '#00C875', 'Above Average': '#4895FF', 'Below Average': '#FFB800', 'Needs Support': '#FF3B5C' };
 window.GAILS.ABSCOL = { 'Exceeding': '#00C875', 'Meeting': '#4895FF', 'Approaching': '#FFB800', 'Below Standard': '#FF3B5C' };
 
 // ========== BAND NAMES ==========
-window.GAILS.BAND_NAMES = ['Excellent', 'Good', 'Developing', 'Needs Attention'];
+window.GAILS.BAND_NAMES = ['Top Performer', 'Above Average', 'Below Average', 'Needs Support'];
 window.GAILS.ABS_BAND_NAMES = ['Exceeding', 'Meeting', 'Approaching', 'Below Standard'];
 
 // ========== CEI WEIGHTS & BENCHMARKS ==========

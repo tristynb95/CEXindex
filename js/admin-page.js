@@ -1101,6 +1101,28 @@ function cqvPriorityColor(priority) {
   return null;
 }
 
+// Follow-up CQVs sometimes skip the written "Comments & Action Plan" block
+// entirely (see js/cqv-parser.js's action-plan parsing) even though
+// individual questions still lost points — falling back to those lost
+// questions keeps the Action Plan section useful instead of showing "no
+// action items" on a visit that clearly didn't score 100%.
+function cqvLostPointItems(visit) {
+  return (visit.questions || [])
+    .filter(function(q) { return q.score != null && q.max != null && q.score < q.max; })
+    .map(function(q) {
+      var lost = q.max - q.score;
+      return {
+        sectionPath: q.section + (q.subsection ? ' >> ' + q.subsection : ''),
+        questionLabel: (q.label || ('Question ' + (q.qNum || ''))) + ' (−' + lost + ' pt' + (lost === 1 ? '' : 's') + ')',
+        findings: q.note || '',
+        actionRequired: '',
+        assignee: visit.bakery || '',
+        priority: '',
+        dueDate: ''
+      };
+    });
+}
+
 function buildCqvDetailHtml(visit) {
   var sectionRows = Object.keys(visit.sectionScores || {}).map(function(name) {
     var s = visit.sectionScores[name];
@@ -1112,7 +1134,13 @@ function buildCqvDetailHtml(visit) {
     return '<div class="visit-report-row"><span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
       + '<span class="visit-report-row__value">' + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
   }).join('');
-  var actionItemsHtml = (visit.actionPlan || []).map(function(a) {
+  var actionPlanItems = visit.actionPlan;
+  var actionPlanIsDerived = false;
+  if ((!actionPlanItems || !actionPlanItems.length) && visit.isFollowUp) {
+    actionPlanItems = cqvLostPointItems(visit);
+    actionPlanIsDerived = actionPlanItems.length > 0;
+  }
+  var actionItemsHtml = (actionPlanItems || []).map(function(a) {
     var label = a.questionLabel || a.sectionPath || 'Action item';
     var dueDate = a.dueDate;
     
@@ -1176,7 +1204,9 @@ function buildCqvDetailHtml(visit) {
     + '</div>'
     + '<div class="visit-detail-section"><h4>Score by Section</h4>' + (sectionRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
     + '<div class="visit-detail-section"><h4>Score by Category</h4>' + (categoryRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
-    + '<div class="visit-detail-section"><h4>Action Plan (' + (visit.actionPlan || []).length + ')</h4>' + actionItemsHtml + '</div>'
+    + '<div class="visit-detail-section"><h4>Action Plan (' + (actionPlanItems || []).length + ')</h4>'
+    + (actionPlanIsDerived ? '<p class="visit-report-note" style="margin-bottom:10px;">This follow-up report didn\'t include a written action plan &mdash; showing the questions that lost points instead.</p>' : '')
+    + actionItemsHtml + '</div>'
     + '<div class="visit-detail-section"><h4>Original Report</h4>' + pdfLinkHtml + '</div>'
     + '<div class="visit-detail-actions">'
     + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'

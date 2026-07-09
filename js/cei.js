@@ -73,7 +73,7 @@ window.GAILS.computeCEI = function(monthRecords) {
 
   monthRecords.forEach(function(r) {
     r.c = Math.round(G.confidenceAdjust(r.c_raw, cohortMean, r.v) * 10) / 10;
-    r.cb = r.c >= 75 ? 'Excellent' : r.c >= 50 ? 'Good' : r.c >= 25 ? 'Developing' : 'Needs Attention';
+    r.cb = r.c >= 75 ? 'Top Performer' : r.c >= 50 ? 'Above Average' : r.c >= 25 ? 'Below Average' : 'Needs Support';
 
     var absEf = G.computeAbsoluteComponent(r.ef, G.BENCHMARKS.ef);
     var absDr = G.computeAbsoluteComponent(r.dr, G.BENCHMARKS.dr);

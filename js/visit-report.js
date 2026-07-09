@@ -269,6 +269,28 @@ window.GAILS = window.GAILS || {};
     return null;
   }
 
+  // Follow-up CQVs sometimes skip the written "Comments & Action Plan"
+  // block entirely (see js/cqv-parser.js's action-plan parsing) even though
+  // individual questions still lost points — falling back to those lost
+  // questions keeps the Action Plan section useful instead of showing
+  // "no action items" on a visit that clearly didn't score 100%.
+  function cqvLostPointItems(record) {
+    return (record.questions || [])
+      .filter(function(q) { return q.score != null && q.max != null && q.score < q.max; })
+      .map(function(q) {
+        var lost = q.max - q.score;
+        return {
+          sectionPath: q.section + (q.subsection ? ' >> ' + q.subsection : ''),
+          questionLabel: (q.label || ('Question ' + (q.qNum || ''))) + ' (−' + lost + ' pt' + (lost === 1 ? '' : 's') + ')',
+          findings: q.note || '',
+          actionRequired: '',
+          assignee: record.bakery || '',
+          priority: '',
+          dueDate: ''
+        };
+      });
+  }
+
   function buildCqvActionPlanHtml(actionPlan) {
     if (!actionPlan || !actionPlan.length) {
       return '<p class="visit-report-note">No action items were flagged on this visit.</p>';
@@ -343,9 +365,17 @@ window.GAILS = window.GAILS || {};
       ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Score by Section</h4>' + buildCqvScoreRowsHtml(record.sectionScores) + '</div></div>'
       : '';
 
+    var actionPlanItems = record.actionPlan;
+    var actionPlanIsDerived = false;
+    if ((!actionPlanItems || !actionPlanItems.length) && record.isFollowUp) {
+      actionPlanItems = cqvLostPointItems(record);
+      actionPlanIsDerived = actionPlanItems.length > 0;
+    }
+
     var actionPlanHtml = '<div class="visit-report-section-wrapper"><div class="visit-report-section">' +
-      '<h4>Action Plan (' + ((record.actionPlan || []).length) + ')</h4>' +
-      buildCqvActionPlanHtml(record.actionPlan) +
+      '<h4>Action Plan (' + ((actionPlanItems || []).length) + ')</h4>' +
+      (actionPlanIsDerived ? '<p class="visit-report-note" style="margin-bottom:10px;">This follow-up report didn’t include a written action plan — showing the questions that lost points instead.</p>' : '') +
+      buildCqvActionPlanHtml(actionPlanItems) +
       '</div></div>';
 
     return buildCqvHeaderStatsHtml(record) + criticalFailHtml + pdfHtml + summaryHtml + chartHtml + sectionHtml + categoryHtml + actionPlanHtml;
@@ -437,6 +467,25 @@ window.GAILS = window.GAILS || {};
     if (event.key !== 'Escape') return;
     window.GAILS.closeVisitReport();
   });
+
+  function visitTypeLabel(v) {
+    if (v.type === 'siteVisit') return 'Check-in';
+    if (v.type === 'cqv') return v.isFollowUp ? 'CQV Follow-Up' : 'CQV';
+    return 'Routine Coffee Visit';
+  }
+
+  // Drives the "Group By" filter — Ops Manager (default), Region, or Visit
+  // Type all group the same underlying visit list, just bucketed differently.
+  function getVisitGroupKey(v, groupVal) {
+    var G = window.GAILS;
+    if (groupVal === 'region') {
+      return (G.getBakeryRegion ? G.getBakeryRegion(v.bakery) : '') || 'Unknown';
+    }
+    if (groupVal === 'type') {
+      return visitTypeLabel(v);
+    }
+    return (G.getBakeryOps ? G.getBakeryOps(v.bakery) : '') || 'Unknown';
+  }
 
   function isDateWithinMonths(dateStr, n) {
     if (n === 'currentMonth') {
@@ -792,6 +841,8 @@ window.GAILS = window.GAILS || {};
       });
       if (ratingEl) ratingEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
       syncCqvRatingVisibility();
+      var groupEl = document.getElementById('visitLogGroup');
+      if (groupEl) groupEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
 
       // Toggle views
       document.querySelectorAll('.visit-log-toggle-btn').forEach(function(btn) {
@@ -859,6 +910,7 @@ window.GAILS = window.GAILS || {};
           if (regionEl) regionEl.value = '';
           if (typeEl) typeEl.value = '';
           if (ratingEl) ratingEl.value = '';
+          if (groupEl) groupEl.value = 'ops';
           if (periodEl) periodEl.value = '3'; // Default to Last 3 Months
           populateDropdown('visitLogOps', new Set(getVisitLogOps('')), 'All Managers');
           syncCqvRatingVisibility();
@@ -867,6 +919,7 @@ window.GAILS = window.GAILS || {};
             window.GAILS.syncCustomSelect('visitLogOps');
             window.GAILS.syncCustomSelect('visitLogType');
             window.GAILS.syncCustomSelect('visitLogRating');
+            window.GAILS.syncCustomSelect('visitLogGroup');
             window.GAILS.syncCustomSelect('visitLogPeriod');
           }
           window.GAILS.renderVisitLog();
@@ -891,6 +944,7 @@ window.GAILS = window.GAILS || {};
     var opsVal = document.getElementById('visitLogOps') ? document.getElementById('visitLogOps').value : '';
     var typeVal = document.getElementById('visitLogType') ? document.getElementById('visitLogType').value : '';
     var ratingVal = document.getElementById('visitLogRating') ? document.getElementById('visitLogRating').value : '';
+    var groupVal = document.getElementById('visitLogGroup') ? document.getElementById('visitLogGroup').value : 'ops';
     var periodVal = document.getElementById('visitLogPeriod') ? document.getElementById('visitLogPeriod').value : '3';
 
     // Convert object to array
@@ -936,30 +990,31 @@ window.GAILS = window.GAILS || {};
         return;
       }
 
-      // Group by Ops Manager
+      // Group by whatever's selected in "Group By" (Ops Manager / Region /
+      // Visit Type) — same underlying list, just bucketed differently.
       var grouped = {};
       filtered.forEach(function(v) {
-        var ops = G.getBakeryOps ? G.getBakeryOps(v.bakery) : 'Unknown';
-        if (!grouped[ops]) {
-          grouped[ops] = [];
+        var key = getVisitGroupKey(v, groupVal);
+        if (!grouped[key]) {
+          grouped[key] = [];
         }
-        grouped[ops].push(v);
+        grouped[key].push(v);
       });
 
-      var managersSorted = Object.keys(grouped).sort();
+      var groupsSorted = Object.keys(grouped).sort();
       var schema = window.GAILS_VISIT_SCHEMA;
 
-      var html = managersSorted.map(function(mName) {
-        var managerVisits = grouped[mName];
-        
+      var html = groupsSorted.map(function(groupName) {
+        var groupVisits = grouped[groupName];
+
         // Sort chronologically descending
-        managerVisits.sort(function(a, b) {
+        groupVisits.sort(function(a, b) {
           var dateA = a.date + 'T' + (a.time || '00:00');
           var dateB = b.date + 'T' + (b.time || '00:00');
           return dateB.localeCompare(dateA);
         });
 
-        var visitsHtml = managerVisits.map(function(v) {
+        var visitsHtml = groupVisits.map(function(v) {
           var scoreText = '—';
           var tagsHtml = '';
           var allNotesText = '';
@@ -1006,6 +1061,10 @@ window.GAILS = window.GAILS || {};
           var shortDate = dateLabel.split(', ')[1] || dateLabel;
           var bakeryLabel = G.getBakeryMapLabel ? G.getBakeryMapLabel(v.bakery) : v.bakery;
           var partnerColText = v.type === 'cqv' ? (v.auditorName || '—') : (v.coffeePartner || '—');
+          // The row always shows the actual Ops Manager regardless of the
+          // active grouping — grouping by Region/Visit Type would otherwise
+          // lose that context entirely.
+          var rowOpsLabel = groupVal === 'ops' ? groupName : (G.getBakeryOps ? G.getBakeryOps(v.bakery) : 'Unknown');
 
           return '<div class="visit-log-row" data-visit-report-id="' + escapeHtml(v.id) + '" aria-label="Visit report for ' + escapeHtml(bakeryLabel) + '">' +
             '<div class="visit-log-row__date-col">' +
@@ -1014,7 +1073,7 @@ window.GAILS = window.GAILS || {};
             '</div>' +
             '<div class="visit-log-row__bakery-col">' +
               '<h3 class="visit-log-row__bakery">' + escapeHtml(bakeryLabel) + '</h3>' +
-              '<span class="visit-log-row__manager">Ops: ' + escapeHtml(mName) + '</span>' +
+              '<span class="visit-log-row__manager">Ops: ' + escapeHtml(rowOpsLabel) + '</span>' +
             '</div>' +
             '<div class="visit-log-row__partner" title="' + escapeHtml(v.type === 'cqv' ? 'Auditor: ' + partnerColText : partnerColText) + '">' + escapeHtml(partnerColText) + '</div>' +
             '<div class="visit-log-row__score-col" style="color:' + scoreColor + ';">' + escapeHtml(scoreText) + '</div>' +
@@ -1029,7 +1088,7 @@ window.GAILS = window.GAILS || {};
         }).join('');
 
         return '<div class="unvisited-manager-section">' +
-          '<h3 class="unvisited-manager-title">' + escapeHtml(mName) + ' (' + managerVisits.length + ' visits)</h3>' +
+          '<h3 class="unvisited-manager-title">' + escapeHtml(groupName) + ' (' + groupVisits.length + ' visits)</h3>' +
           '<div style="display:flex; flex-direction:column; gap:10px;">' +
             visitsHtml +
           '</div>' +

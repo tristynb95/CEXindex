@@ -105,7 +105,9 @@
   var globalIndexToggle = document.getElementById('globalIndexToggle');
   var tabsWithoutGlobalIndexToggle = {
     'table': true,
-    'visit-log': true
+    'visit-log': true,
+    'trends': true,
+    'feedback': true
   };
 
   function updateGlobalIndexToggleVisibility(name) {
@@ -211,11 +213,20 @@
   }
 
   function animateScrollToTop() {
-    var startY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    var container = document.querySelector('.container');
+    var isMobileScroll = window.matchMedia && window.matchMedia('(max-width: 980px)').matches;
+    var startY = (isMobileScroll && container) 
+      ? container.scrollTop 
+      : (window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0);
+
     if (startY <= 0) return;
 
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      window.scrollTo(0, 0);
+      if (isMobileScroll && container) {
+        container.scrollTop = 0;
+      } else {
+        window.scrollTo(0, 0);
+      }
       return;
     }
 
@@ -232,7 +243,11 @@
       var progress = Math.min(elapsed / duration, 1);
       var nextY = Math.round(startY * (1 - easeOutCubic(progress)));
 
-      window.scrollTo(0, nextY);
+      if (isMobileScroll && container) {
+        container.scrollTop = nextY;
+      } else {
+        window.scrollTo(0, nextY);
+      }
 
       if (progress < 1) {
         requestAnimationFrame(step);
@@ -258,10 +273,20 @@
     updateDashboardActiveView(name);
     syncDashboardKpis(name);
     renderHeaderSummary();
+    updateBandFilterOptions();
 
     var filterBar = document.querySelector('.filter-bar');
     if (filterBar) {
       filterBar.classList.toggle('filter-bar--hidden', name === 'visit-log');
+    }
+
+    var mobileFilterTab = document.getElementById('filterSideTab');
+    if (mobileFilterTab) {
+      if (name === 'table' || name === 'visit-log') {
+        mobileFilterTab.style.setProperty('display', 'none', 'important');
+      } else {
+        mobileFilterTab.style.display = '';
+      }
     }
 
     if (compactDashboardSidebarMedia.matches) {
@@ -369,9 +394,9 @@
       return gap + ' pts from ' + next;
     }
     if (gapMetric === 'cei') {
-      if (val < 25)      { gap = 25 - r; next = 'Developing'; }
-      else if (val < 50) { gap = 50 - r; next = 'Good'; }
-      else if (val < 75) { gap = 75 - r; next = 'Excellent'; }
+      if (val < 25)      { gap = 25 - r; next = 'Below Average'; }
+      else if (val < 50) { gap = 50 - r; next = 'Above Average'; }
+      else if (val < 75) { gap = 75 - r; next = 'Top Performer'; }
       else return '';
       return gap + ' pts from ' + next;
     }
@@ -932,6 +957,11 @@
     var available = G.getAvailableBands();
     var currentValue = state.bandFilter;
 
+    var activePanel = document.querySelector('.tab-content.active');
+    var currentTab = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
+    var toggleApplies = !tabsWithoutGlobalIndexToggle[currentTab];
+    var wantAbs = state.indexType === 'absolute';
+
     // Rebuild select from original structure, omitting unavailable options
     bandFilterEl.innerHTML = '';
     updateBandFilterOptions._orig.forEach(function(item) {
@@ -940,13 +970,31 @@
         opt.value = item.value;
         opt.textContent = item.text;
         bandFilterEl.appendChild(opt);
-      } else if (item.type === 'optgroup') {
-        var visibleOpts = item.options.filter(function(o) {
-          return o.value.indexOf('abs:') === 0
-            ? available.absolute.has(o.value.slice(4))
-            : available.relative.has(o.value);
+        return;
+      }
+
+      // On pages where the Relative/Absolute toggle applies, only show the
+      // optgroup matching the active mode; elsewhere (Trends, League Table,
+      // Bakery Reports) show both, since either metric can be relevant there.
+      var isAbsGroup = item.options.length > 0 && item.options[0].value.indexOf('abs:') === 0;
+      if (toggleApplies && isAbsGroup !== wantAbs) return;
+
+      var visibleOpts = item.options.filter(function(o) {
+        return o.value.indexOf('abs:') === 0
+          ? available.absolute.has(o.value.slice(4))
+          : available.relative.has(o.value);
+      });
+      if (!visibleOpts.length) return;
+
+      if (toggleApplies) {
+        // Single mode active: flatten, the optgroup label is redundant with the toggle
+        visibleOpts.forEach(function(o) {
+          var opt = document.createElement('option');
+          opt.value = o.value;
+          opt.textContent = o.text;
+          bandFilterEl.appendChild(opt);
         });
-        if (!visibleOpts.length) return;
+      } else {
         var grp = document.createElement('optgroup');
         grp.label = item.label;
         visibleOpts.forEach(function(o) {
@@ -958,6 +1006,11 @@
         bandFilterEl.appendChild(grp);
       }
     });
+
+    var bandFilterLabelEl = document.getElementById('bandFilterLabel');
+    if (bandFilterLabelEl) {
+      bandFilterLabelEl.textContent = toggleApplies ? ('Band (' + (wantAbs ? 'Absolute' : 'Relative') + ')') : 'Band';
+    }
 
     // Reset to "All" only if the current selection is no longer in the available options
     var selectionExists = !currentValue || !!Array.from(bandFilterEl.options).find(function(o) { return o.value === currentValue; });
@@ -1472,6 +1525,7 @@
 
   if (filterSideTab) {
     filterSideTab.addEventListener('pointerdown', function(event) {
+      return; // Disable drag-to-open gesture for top sheet layout
       if (!mobileFilterMedia.matches || filterSidePanelOpen) return;
       if (event.pointerType === 'mouse') return;
       var width = getFilterPanelWidth();
@@ -1527,6 +1581,7 @@
   }
   if (filterControlsPanel) {
     filterControlsPanel.addEventListener('pointerdown', function(event) {
+      return; // Disable drag-to-close gesture for top sheet layout
       if (!mobileFilterMedia.matches || !filterSidePanelOpen) return;
       if (event.pointerType === 'mouse') return;
       var panelRect = filterControlsPanel.getBoundingClientRect();
@@ -1684,5 +1739,17 @@
   updateDashboardActiveView('overview');
   syncDashboardKpis('overview');
   syncDashboardSidebarForViewport();
+
+  // Sync initial mobile filter tab visibility on startup
+  var initialActiveTab = document.querySelector('.tab-content.active') ? document.querySelector('.tab-content.active').id.replace(/^tab-/, '') : 'overview';
+  var initialMobileFilterTab = document.getElementById('filterSideTab');
+  if (initialMobileFilterTab) {
+    if (initialActiveTab === 'table' || initialActiveTab === 'visit-log') {
+      initialMobileFilterTab.style.setProperty('display', 'none', 'important');
+    } else {
+      initialMobileFilterTab.style.display = '';
+    }
+  }
+
   G.initUpload(initDashboard);
 })();

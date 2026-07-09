@@ -81,10 +81,10 @@ function _setTargetTrendState(hasData, message) {
 
   var NETWORK_LEGEND = {
     relative: [
-      { label: 'Excellent', color: '#00C875' },
-      { label: 'Good', color: '#4895FF' },
-      { label: 'Developing', color: '#FFB800' },
-      { label: 'Needs Attention', color: '#FF3B5C' },
+      { label: 'Top Performer', color: '#00C875' },
+      { label: 'Above Average', color: '#4895FF' },
+      { label: 'Below Average', color: '#FFB800' },
+      { label: 'Needs Support', color: '#FF3B5C' },
       { label: 'No Data', color: '#a0aec0' }
     ],
     absolute: [
@@ -97,14 +97,14 @@ function _setTargetTrendState(hasData, message) {
   };
 
   var NETWORK_HINT = {
-    relative: '<span style="color:var(--green);font-weight:600">&#9679; Excellent</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Good</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Developing</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Needs Attention</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.',
+    relative: '<span style="color:var(--green);font-weight:600">&#9679; Top Performer</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Needs Support</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.',
     absolute: '<span style="color:var(--green);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.'
   };
 
   var TARGET_LEGEND = {
     relative: [
-      { label: 'Needs Attention', color: '#FF3B5C' },
-      { label: 'Developing', color: '#FFB800' }
+      { label: 'Needs Support', color: '#FF3B5C' },
+      { label: 'Below Average', color: '#FFB800' }
     ],
     absolute: [
       { label: 'Below Standard', color: '#FF3B5C' },
@@ -113,7 +113,7 @@ function _setTargetTrendState(hasData, message) {
   };
 
   var TARGET_HINT = {
-    relative: '<span style="color:var(--red);font-weight:600">&#9679; Needs Attention</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Developing</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL\'s bakery before plotting.',
+    relative: '<span style="color:var(--red);font-weight:600">&#9679; Needs Support</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL\'s bakery before plotting.',
     absolute: '<span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL\'s bakery before plotting.'
   };
 
@@ -301,10 +301,10 @@ function _setTargetTrendState(hasData, message) {
     var band = item && item[bandField || 'cb'];
     if (!band) return 0;
     return {
-      Excellent: 0, Outstanding: 0,
-      Good: 1, Exceeding: 1,
-      Developing: 2, Approaching: 2,
-      'Needs Attention': 3, 'Below Standard': 3
+      'Top Performer': 0, Outstanding: 0,
+      'Above Average': 1, Exceeding: 1,
+      'Below Average': 2, Approaching: 2,
+      'Needs Support': 3, 'Below Standard': 3
     }[band] || 0;
   }
 
@@ -975,8 +975,8 @@ window.GAILS.renderTargets = function(data) {
   var isAbsolute = state.targetMetric !== 'relative';
   var bf = isAbsolute ? 'acb' : 'cb';
   var cf = isAbsolute ? 'ac' : 'c';
-  var highBand = isAbsolute ? 'Below Standard' : 'Needs Attention';
-  var lowBand = isAbsolute ? 'Approaching' : 'Developing';
+  var highBand = isAbsolute ? 'Below Standard' : 'Needs Support';
+  var lowBand = isAbsolute ? 'Approaching' : 'Below Average';
 
   var targets = [].concat(data).filter(function(b) {
     return b[bf] === highBand || b[bf] === lowBand;
@@ -1032,7 +1032,7 @@ function _renderInsights(targets, bf, cf, highBand, lowBand, isAbsolute) {
   if (quickWins.length > 0) {
     h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' at 70+ ' + (isAbsolute ? 'Abs ' : '') + 'Score &mdash; ' + quickWinsThreshold + '</p><ul>' + quickWins.map(function(b) { return '<li><strong>' + b.b + '</strong> \u2014 ' + b[cf] + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
   } else {
-    h += '<p style="color:var(--muted)">No bakeries close enough to ' + (isAbsolute ? 'Meeting' : 'Good') + ' standard yet.</p>';
+    h += '<p style="color:var(--muted)">No bakeries close enough to ' + (isAbsolute ? 'Meeting' : 'Above Average') + ' standard yet.</p>';
   }
   h += '</div>';
 
@@ -1111,7 +1111,7 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
   var palette = isAbsolute ? G.ABSCOL : G.COL;
   var allBandNames = isAbsolute
     ? ['Below Standard', 'Approaching', 'Meeting', 'Exceeding']
-    : ['Needs Attention', 'Developing', 'Good', 'Excellent'];
+    : ['Needs Support', 'Below Average', 'Above Average', 'Top Performer'];
   var FM = G.getRollingMonths();
   var targetNames = targets.map(function(b) { return b.b; });
   var THRESHOLD = 3;

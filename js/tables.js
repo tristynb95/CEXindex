@@ -359,7 +359,7 @@ window.GAILS.renderLeagueTable = function(data) {
   var sortKey = document.getElementById('sortBy').value;
   var desc = ['n', 'c', 'ac', 'dr', 'ef', 'fr', 'ts'].includes(sortKey);
   var sorted = [].concat(data).sort(function(a, b) { return desc ? b[sortKey] - a[sortKey] : a[sortKey] - b[sortKey]; });
-  var absBandClass = function(b) { return b === 'Exceeding' ? 'Excellent' : b === 'Meeting' ? 'Good' : b === 'Approaching' ? 'Developing' : 'Needs-Attention'; };
+  var absBandClass = function(b) { return b === 'Exceeding' ? 'Top-Performer' : b === 'Meeting' ? 'Above-Average' : b === 'Approaching' ? 'Below-Average' : 'Needs-Support'; };
   document.getElementById('tableBody').innerHTML = sorted.map(function(b, i) { return '<tr>' +
     '<td style="font-weight:600">' + (i + 1) + '</td>' +
     '<td style="font-weight:500">' + b.b + '</td>' +

@@ -162,7 +162,10 @@ window.GAILS.renderTrendCharts = function(data) {
     var scopeParts = [];
     if (state.regionFilter.length) scopeParts.push(state.regionFilter.join(', '));
     if (state.opsFilter.length) scopeParts.push(state.opsFilter.join(', '));
-    if (state.bandFilter) scopeParts.push(state.bandFilter);
+    if (state.bandFilter) {
+      var bf = state.bandFilter;
+      scopeParts.push(bf.indexOf('abs:') === 0 ? bf.slice(4) : bf);
+    }
     trendScopeLabel = scopeParts.join(' \u00b7 ');
   }
   function trendTitle(base) {
@@ -179,7 +182,7 @@ window.GAILS.renderTrendCharts = function(data) {
   el = document.getElementById('trendSpeedTitle');     if (el) el.textContent = trendTitle('Average Speed Metrics by Month');
 
   var trendNPS = RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r.n; }, 0) / mr.length : null; });
-  G.makeChart('trendNPS', { type: 'line', data: { labels: RM, datasets: [{ data: trendNPS, borderColor: G.COL.Excellent, backgroundColor: G.COL.Excellent + '22', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Avg NPS' } } } } });
+  G.makeChart('trendNPS', { type: 'line', data: { labels: RM, datasets: [{ data: trendNPS, borderColor: G.COL['Top Performer'], backgroundColor: G.COL['Top Performer'] + '22', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Avg NPS' } } } } });
 
   var trendKeys = [{ k: 'dr', l: 'Quality', c: '#4895FF' }, { k: 'ef', l: 'Overall Efficiency', c: '#00C875' }, { k: 'fr', l: 'Friendliness', c: '#FFB800' }, { k: 'ov', l: 'Overall', c: '#9B5DFF' }];
   G.makeChart('trendCX', { type: 'line', data: { labels: RM, datasets: trendKeys.map(function(tk) { return { label: tk.l, data: RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r[tk.k]; }, 0) / mr.length : null; }), borderColor: tk.c, tension: 0.3, pointRadius: 3, borderWidth: 2 }; }) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Score %' } } } } });
@@ -343,7 +346,7 @@ window.GAILS.renderTrendCharts = function(data) {
     G.makeChart('bakeryTracker', {
       type: 'line', data: {
         labels: RM, datasets: [
-          { label: scopeLabel + (isSingleBakery ? ' NPS' : ' Avg NPS'), data: trackerNps, borderColor: G.COL.Excellent, tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+          { label: scopeLabel + (isSingleBakery ? ' NPS' : ' Avg NPS'), data: trackerNps, borderColor: G.COL['Top Performer'], tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
           { label: scopeLabel + (isSingleBakery ? ' Relative Score' : ' Avg Relative Score'), data: trackerCei, borderColor: '#4895FF', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
           { label: scopeLabel + (isSingleBakery ? ' Absolute Score' : ' Avg Absolute Score'), data: trackerAbsCei, borderColor: '#9B5DFF', tension: 0.3, pointRadius: 4, borderWidth: 2, borderDash: [6, 3] }
         ].concat(selectedBakeries.length ? [

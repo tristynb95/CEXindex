@@ -81,11 +81,11 @@ window.GAILS = window.GAILS || {};
     if (type === 'nps') {
       var range = parseNpsRange(title);
       if (range) {
-        if (range.min >= 60) return G.COL.Excellent;
-        if (range.min >= 50) return G.COL.Good;
-        return G.COL['Needs Attention'];
+        if (range.min >= 60) return G.COL['Top Performer'];
+        if (range.min >= 50) return G.COL['Above Average'];
+        return G.COL['Needs Support'];
       }
-      return G.COL.Good;
+      return G.COL['Above Average'];
     }
     if (type === 'relative') return '#FF3B5C';
     return '#00D4B0';

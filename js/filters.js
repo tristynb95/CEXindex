@@ -27,7 +27,7 @@ window.GAILS.getAvailableBands = function() {
     Object.values(grouped).forEach(function(rows) {
       var avgC = rows.reduce(function(a, r) { return a + r.c; }, 0) / rows.length;
       var avgAc = rows.reduce(function(a, r) { return a + r.ac; }, 0) / rows.length;
-      relative.add(avgC >= 75 ? 'Excellent' : avgC >= 50 ? 'Good' : avgC >= 25 ? 'Developing' : 'Needs Attention');
+      relative.add(avgC >= 75 ? 'Top Performer' : avgC >= 50 ? 'Above Average' : avgC >= 25 ? 'Below Average' : 'Needs Support');
       absolute.add(avgAc >= 90 ? 'Exceeding' : avgAc >= 75 ? 'Meeting' : avgAc >= 60 ? 'Approaching' : 'Below Standard');
     });
   } else {
@@ -73,7 +73,7 @@ window.GAILS.getData = function() {
         ats: Math.round(avg('ats') * 10) / 10,
         c_raw: Math.round(avg('c_raw') * 10) / 10,
       };
-      a.cb = a.c >= 75 ? 'Excellent' : a.c >= 50 ? 'Good' : a.c >= 25 ? 'Developing' : 'Needs Attention';
+      a.cb = a.c >= 75 ? 'Top Performer' : a.c >= 50 ? 'Above Average' : a.c >= 25 ? 'Below Average' : 'Needs Support';
       a.acb = a.ac >= 90 ? 'Exceeding' : a.ac >= 75 ? 'Meeting' : a.ac >= 60 ? 'Approaching' : 'Below Standard';
       agg.push(a);
     });

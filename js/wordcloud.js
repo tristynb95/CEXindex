@@ -784,15 +784,15 @@ window.GAILS = window.GAILS || {};
     var canvas   = document.getElementById('wcTargetCanvas');
     var emptyEl  = document.getElementById('wcTargetEmpty');
 
-    // Build request body first -- focus bakeries only (Needs Attention + Developing)
+    // Build request body first -- focus bakeries only (Needs Support + Below Average)
     var body = {};
     if (G && typeof G.getData === 'function' && state && state.ALL && state.ALL.length) {
       var filtered = G.getData();
       var bakeries = [];
       var isAbsoluteTarget = state && state.targetMetric !== 'relative';
       var targetBf = isAbsoluteTarget ? 'acb' : 'cb';
-      var targetHigh = isAbsoluteTarget ? 'Below Standard' : 'Needs Attention';
-      var targetLow = isAbsoluteTarget ? 'Approaching' : 'Developing';
+      var targetHigh = isAbsoluteTarget ? 'Below Standard' : 'Needs Support';
+      var targetLow = isAbsoluteTarget ? 'Approaching' : 'Below Average';
       filtered.forEach(function (r) {
         if ((r[targetBf] === targetHigh || r[targetBf] === targetLow) && r.b && bakeries.indexOf(r.b) === -1) {
           bakeries.push(mapBakeryName(r.b));
