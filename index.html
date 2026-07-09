@@ -32,9 +32,9 @@
   <!-- AUTH LOADING SCREEN -->
   <div id="loadingScreen" class="overlay-screen">
     <div class="auth-loading">
-      <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
       <div class="auth-loading__spinner"></div>
       <p class="auth-loading__text">Verifying access&hellip;</p>
+      <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
     </div>
   </div>
 
@@ -299,6 +299,13 @@
               </optgroup>
             </select></div>
           </div>
+
+          <button type="button" class="filter-panel-close-fab" id="filterPanelCloseFab" aria-label="Close filters">
+            <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M1 1l12 12M13 1L1 13"/>
+            </svg>
+            <span>Close</span>
+          </button>
 
         </div>
       </div>
@@ -996,7 +1003,7 @@
                   </p>
                 </div>
                 <div style="display:flex; gap:10px; align-items:center;">
-                  <button type="button" id="visitLogAddBtn" class="btn" style="padding:8px 16px; font-size:0.85rem; font-weight:700;">+ Log Check-in</button>
+                  <button type="button" id="visitLogAddBtn" class="btn" style="padding:8px 16px; font-size:0.85rem; font-weight:700;">+ Log Visit</button>
                   <a href="https://docs.google.com/forms/d/e/1FAIpQLSe8__vBTXGAzmRnPW24mYNr0DoKtzaBmErXS5Xs0wqCxXiF8w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer" class="btn" style="padding:8px 16px; font-size:0.85rem; font-weight:700; text-decoration:none;">Complete Routine Visit Form</a>
                 </div>
               </div>
@@ -1031,6 +1038,9 @@
                     <option value="">All Types</option>
                     <option value="routine">Routine Coffee Visit</option>
                     <option value="siteVisit">Check-in</option>
+                    <option value="nboOpening">NBO: Opening</option>
+                    <option value="nbo2wk">NBO: 2WK Check-in</option>
+                    <option value="nbo4wk">NBO: 4WK Check-in</option>
                     <option value="cqv">CQV</option>
                     <option value="cqvFollowUp">CQV Follow-Up</option>
                   </select>
@@ -1185,8 +1195,8 @@
       <div class="drillInner" style="max-width: 550px;">
         <div class="drill-modal-header" style="border-bottom: 1px solid rgba(34, 31, 26, 0.05); padding-bottom: 15px;">
           <div>
-            <h3 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0;">Log Check-in</h3>
-            <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">Record a quick check-in with comments.</p>
+            <h3 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0;">Log Visit</h3>
+            <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">Record a check-in or NBO visit with comments.</p>
           </div>
           <button class="drill-close-btn" onclick="GAILS.closeAddSiteVisitModal()">&#10005; Close</button>
         </div>
@@ -1198,7 +1208,17 @@
               <option value="">-- Select Bakery --</option>
             </select>
           </div>
-          
+
+          <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Visit Type</label>
+            <select id="addVisitType" required class="visit-log-select">
+              <option value="checkin">Check-in</option>
+              <option value="nboOpening">NBO: Opening</option>
+              <option value="nbo2wk">NBO: 2WK Check-in</option>
+              <option value="nbo4wk">NBO: 4WK Check-in</option>
+            </select>
+          </div>
+
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
             <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
               <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Visit Date</label>
@@ -1228,7 +1248,7 @@
           
           <div id="addVisitError" style="color:var(--red);font-size:0.8rem;display:none;"></div>
           
-          <button type="submit" id="addVisitSubmitBtn" class="btn" style="padding:12px;font-size:0.95rem;font-weight:700;margin-top:10px;">Save Check-in</button>
+          <button type="submit" id="addVisitSubmitBtn" class="btn" style="padding:12px;font-size:0.95rem;font-weight:700;margin-top:10px;">Save Visit</button>
         </form>
       </div>
     </div>

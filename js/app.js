@@ -1412,6 +1412,7 @@
   var filterSideTabBadge  = document.getElementById('filterSideTabBadge');
   var filterSideBackdrop  = document.getElementById('filterSideBackdrop');
   var filterPanelClose    = document.getElementById('filterPanelClose');
+  var filterPanelCloseFab = document.getElementById('filterPanelCloseFab');
   var filterPanelReset    = document.getElementById('filterPanelReset');
   var filterSidePanelOpen = false;
   var mobileFilterMedia   = window.matchMedia('(max-width: 720px)');
@@ -1641,6 +1642,7 @@
     });
   }
   if (filterPanelClose) { filterPanelClose.addEventListener('click', closeFilterSidePanel); }
+  if (filterPanelCloseFab) { filterPanelCloseFab.addEventListener('click', closeFilterSidePanel); }
   if (filterPanelReset) { filterPanelReset.addEventListener('click', resetAllFilters); }
   if (filterSideBackdrop) { filterSideBackdrop.addEventListener('click', closeFilterSidePanel); }
   document.addEventListener('click', function(event) {

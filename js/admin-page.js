@@ -813,7 +813,7 @@ function renderVisits() {
     var typeBadge = isCqv
       ? '<span class="admin-table-badge admin-table-badge--cqv">' + (v.isFollowUp ? 'CQV Follow-Up' : 'CQV') + '</span>'
       : isSiteVisit
-        ? '<span class="admin-table-badge admin-table-badge--adhoc">Check-in</span>'
+        ? '<span class="admin-table-badge admin-table-badge--adhoc">' + escapeHtml(siteVisitKindLabel(v)) + '</span>'
         : '<span class="admin-table-badge admin-table-badge--routine">Routine</span>';
 
     return '<tr>'
@@ -1029,6 +1029,24 @@ function scaleOptionsHtml(value) {
   return out;
 }
 
+var SITE_VISIT_KIND_LABELS = {
+  checkin: 'Check-in',
+  nboOpening: 'NBO: Opening',
+  nbo2wk: 'NBO: 2WK Check-in',
+  nbo4wk: 'NBO: 4WK Check-in'
+};
+
+function siteVisitKindLabel(v) {
+  return SITE_VISIT_KIND_LABELS[v.visitKind] || 'Check-in';
+}
+
+function siteVisitKindOptionsHtml(value) {
+  var kind = SITE_VISIT_KIND_LABELS[value] ? value : 'checkin';
+  return Object.keys(SITE_VISIT_KIND_LABELS).map(function(key) {
+    return '<option value="' + key + '" ' + (kind === key ? 'selected' : '') + '>' + SITE_VISIT_KIND_LABELS[key] + '</option>';
+  }).join('');
+}
+
 function fieldInputHtml(sectionKey, field, value) {
   var dataAttrs = 'data-section="' + escapeHtml(sectionKey || '') + '" data-field="' + escapeHtml(field.key) + '" data-type="' + escapeHtml(field.type) + '"';
   var wide = (field.type === 'textarea' || field.type === 'photos') ? ' admin-form-field--wide' : '';
@@ -1038,6 +1056,8 @@ function fieldInputHtml(sectionKey, field, value) {
     input = '<select ' + dataAttrs + '>' + ynnaOptionsHtml(value) + '</select>';
   } else if (field.type === 'scale') {
     input = '<select ' + dataAttrs + '>' + scaleOptionsHtml(value) + '</select>';
+  } else if (field.type === 'siteVisitKind') {
+    input = '<select ' + dataAttrs + '>' + siteVisitKindOptionsHtml(value) + '</select>';
   } else if (field.type === 'textarea') {
     input = '<textarea rows="2" ' + dataAttrs + '>' + escapeHtml(value || '') + '</textarea>';
   } else if (field.type === 'photos') {
@@ -1063,17 +1083,20 @@ function fieldInputHtml(sectionKey, field, value) {
   return '<label class="admin-form-field' + wide + '"><span>' + escapeHtml(field.label) + '</span>' + input + '</label>' + photoLinks;
 }
 
+function cqvHasLostAllergensOrCritical(scores) {
+  return Object.keys(scores || {}).some(function(name) {
+    var s = scores[name];
+    var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
+    return isCritical && s.actual < s.target;
+  });
+}
+
 // Recomputed live from categoryScores rather than trusting the stored
 // criticalFail flag, so records saved before this override existed (or with
 // a stale value) still show correctly without needing a re-import.
 function cqvHasCriticalFail(visit) {
   if (visit.criticalFail) return true;
-  var scores = visit.categoryScores || {};
-  return Object.keys(scores).some(function(name) {
-    var s = scores[name];
-    var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
-    return isCritical && s.actual < s.target;
-  });
+  return cqvHasLostAllergensOrCritical(visit.categoryScores);
 }
 
 // Falls back to deriving the band from overallPct for records saved before
@@ -1098,6 +1121,17 @@ function cqvPriorityColor(priority) {
   if (/^high$/i.test(priority)) return '#B22A24';
   if (/^medium$/i.test(priority)) return '#C97F12';
   if (/^low$/i.test(priority)) return '#0E8074';
+  return null;
+}
+
+// Questions tagged "(allergen point)" / "(critical point)" are GAIL's
+// zero-tolerance categories — losing a single one forces the whole visit
+// Red — so an action item on one of them gets its own warning flag. An
+// action item only exists because the point was lost, so every match is by
+// definition a failed critical/allergen point.
+function cqvCriticalTag(label) {
+  if (/\ballergen point\b/i.test(label || '')) return 'Allergen Point';
+  if (/\bcritical point\b/i.test(label || '')) return 'Critical Point';
   return null;
 }
 
@@ -1126,13 +1160,21 @@ function cqvLostPointItems(visit) {
 function buildCqvDetailHtml(visit) {
   var sectionRows = Object.keys(visit.sectionScores || {}).map(function(name) {
     var s = visit.sectionScores[name];
-    return '<div class="visit-report-row"><span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
-      + '<span class="visit-report-row__value">' + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
+    var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
+    var failing = s.pct < 70 || (isCritical && s.actual < s.target);
+    return '<div class="visit-report-row' + (failing ? ' visit-report-row--flag' : '') + '">'
+      + '<span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
+      + '<span class="visit-report-row__value' + (failing ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">'
+      + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
   }).join('');
   var categoryRows = Object.keys(visit.categoryScores || {}).map(function(name) {
     var s = visit.categoryScores[name];
-    return '<div class="visit-report-row"><span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
-      + '<span class="visit-report-row__value">' + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
+    var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
+    var failing = s.pct < 70 || (isCritical && s.actual < s.target);
+    return '<div class="visit-report-row' + (failing ? ' visit-report-row--flag' : '') + '">'
+      + '<span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
+      + '<span class="visit-report-row__value' + (failing ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">'
+      + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
   }).join('');
   var actionPlanItems = visit.actionPlan;
   var actionPlanIsDerived = false;
@@ -1158,7 +1200,11 @@ function buildCqvDetailHtml(visit) {
     }
 
     var priorityColor = cqvPriorityColor(a.priority);
+    var criticalTag = cqvCriticalTag(label);
     var metaHtml = '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; text-align:right;">'
+      + (criticalTag
+          ? '<span style="font-size:0.66rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px; color:#fff; background:#B22A24; white-space:nowrap;">&#9888; ' + escapeHtml(criticalTag) + '</span>'
+          : '')
       + (a.priority
           ? '<span style="font-size:0.66rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px;'
             + (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(34, 31, 26,0.06);')
@@ -1167,7 +1213,7 @@ function buildCqvDetailHtml(visit) {
       + '<span style="font-size:0.72rem; color:var(--muted-l); white-space:nowrap;">Due ' + escapeHtml(dueDate || '—') + '</span>'
       + '</div>';
 
-    return '<div class="visit-detail-section" style="margin-top:10px; padding-bottom:10px; border-bottom:1px solid var(--card-border);">'
+    return '<div class="visit-detail-section" style="margin-top:10px; padding-bottom:10px; border-bottom:1px solid var(--card-border);' + (criticalTag ? ' border-left:3px solid #B22A24; padding-left:12px;' : '') + '">'
       + '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">'
       +   '<div style="min-width:0; flex:1;">'
       +     '<h4 style="font-size:0.85rem; margin:0; font-weight:700; color:var(--text);">' + escapeHtml(label) + '</h4>'
@@ -1202,8 +1248,8 @@ function buildCqvDetailHtml(visit) {
         : '')
     + (visit.summary ? '<p class="visit-report-comment">' + escapeHtml(visit.summary) + '</p>' : '')
     + '</div>'
-    + '<div class="visit-detail-section"><h4>Score by Section</h4>' + (sectionRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
-    + '<div class="visit-detail-section"><h4>Score by Category</h4>' + (categoryRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
+    + '<div class="visit-detail-section' + (cqvHasLostAllergensOrCritical(visit.sectionScores) ? ' visit-detail-section--danger' : '') + '"><h4>Score by Section</h4>' + (sectionRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
+    + '<div class="visit-detail-section' + (cqvHasLostAllergensOrCritical(visit.categoryScores) ? ' visit-detail-section--danger' : '') + '"><h4>Score by Category</h4>' + (categoryRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
     + '<div class="visit-detail-section"><h4>Action Plan (' + (actionPlanItems || []).length + ')</h4>'
     + (actionPlanIsDerived ? '<p class="visit-report-note" style="margin-bottom:10px;">This follow-up report didn\'t include a written action plan &mdash; showing the questions that lost points instead.</p>' : '')
     + actionItemsHtml + '</div>'
@@ -1220,7 +1266,7 @@ function buildVisitDetailHtml(visit) {
   var badgeHtml = isCqv
     ? '<span class="admin-badge admin-badge--cqv">' + (visit.isFollowUp ? 'CQV Follow-Up' : 'Coffee Quality Visit (CQV)') + '</span>'
     : isSiteVisit
-      ? '<span class="admin-badge admin-badge--adhoc">Check-in</span>'
+      ? '<span class="admin-badge admin-badge--adhoc">' + escapeHtml(siteVisitKindLabel(visit)) + '</span>'
       : '<span class="admin-badge admin-badge--routine">Routine Coffee Visit</span>';
 
   var recorderText = '';
@@ -1251,6 +1297,7 @@ function buildVisitDetailHtml(visit) {
   if (isSiteVisit) {
     var adhocFields = [
       { key: 'bakery', label: 'Bakery', type: 'text' },
+      { key: 'visitKind', label: 'Visit Type', type: 'siteVisitKind' },
       { key: 'date', label: 'Visit date', type: 'date' },
       { key: 'time', label: 'Visit time', type: 'time' },
       { key: 'coffeePartner', label: 'Coffee Partner', type: 'text' },

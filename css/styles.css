@@ -3503,6 +3503,16 @@ body.table-fullscreen-lock {
   border-color: rgba(34, 31, 26, 0.08);
 }
 
+.visit-detail-section--danger {
+  border-color: rgba(178, 42, 36, 0.35);
+  background: rgba(178, 42, 36, 0.03);
+}
+
+.visit-detail-section--danger:hover {
+  border-color: rgba(178, 42, 36, 0.5);
+  background: rgba(178, 42, 36, 0.05);
+}
+
 .visit-detail-section h4 {
   margin: 0 0 16px;
   font-size: 0.76rem;
@@ -6545,6 +6555,11 @@ body.table-fullscreen-lock {
   border-color: rgba(178, 42, 36, 0.3);
 }
 
+.visit-report-section--danger {
+  border-color: rgba(178, 42, 36, 0.35);
+  background: rgba(178, 42, 36, 0.03);
+}
+
 .visit-report-section h4 {
   margin: 0 0 10px;
   font-size: 1rem;
@@ -7217,6 +7232,11 @@ a,
   display: none;
 }
 
+/* ── Filter panel close FAB (mobile only, hidden on desktop) ── */
+.filter-panel-close-fab {
+  display: none;
+}
+
 /* ── Floating filter tab (fixed to bottom right, mobile only) ── */
 .filter-side-tab {
   display: none;
@@ -7350,31 +7370,28 @@ a,
     overflow: visible;
   }
 
-  /* filter-controls becomes the fixed top drawer sheet */
+  /* filter-controls becomes a fullscreen sheet */
   .filter-controls {
     position: fixed !important;
     top: 0;
     left: 0;
     right: 0;
-    bottom: auto;
+    bottom: 0;
     width: 100vw;
-    height: auto;
-    max-height: 85svh;
+    height: 100dvh;
+    max-height: none;
     display: flex !important;
     flex-direction: column;
     background:
       radial-gradient(ellipse 100% 30% at 50% 0%, rgba(178, 42, 36, 0.08) 0%, transparent 65%),
       linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 100%);
-    border-bottom: 1px solid rgba(34, 31, 26, 0.08);
-    border-right: none;
-    border-radius: 0 0 32px 32px;
+    border: none;
+    border-radius: 0;
     z-index: 46;
     overflow: hidden;
     transform: translateY(-110%);
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow:
-      0 24px 80px rgba(0, 0, 0, 0.32),
-      inset 0 -1px 0 rgba(34, 31, 26, 0.05);
+    box-shadow: none;
     gap: 0;
     touch-action: pan-y;
     will-change: transform;
@@ -7517,20 +7534,17 @@ a,
     overflow-x: hidden;
     flex: 1;
     -webkit-overflow-scrolling: touch;
-    padding: 24px 20px 32px;
-    gap: 18px 22px;
+    padding: 24px 20px calc(96px + env(safe-area-inset-bottom, 0px));
+    gap: 20px 22px;
     background: transparent;
+    align-content: start;
   }
 
-  /* Each filter control row */
+  /* Each filter control row — mirrors the desktop filter-control: no
+     boxed card, no accent border, just a label above the control. */
   .filter-controls-body .filter-control {
     position: relative;
-    padding: 18px 20px;
-    border: 1px solid rgba(34, 31, 26, 0.04);
-    border-left: 4px solid var(--accent);
-    border-radius: 16px;
-    background: rgba(34, 31, 26, 0.02);
-    box-shadow: inset 0 1px 0 rgba(34, 31, 26, 0.02), 0 4px 14px rgba(0, 0, 0, 0.06);
+    min-width: 0;
   }
 
   .filter-controls-body .filter-control br {
@@ -7640,18 +7654,14 @@ a,
 
   /* --- NEW MOBILE FILTER REDESIGN --- */
 
-  /* 1. Active expanded state for filter controls — the card itself never
-     grows; it just lifts above its grid siblings so the floating menu
-     (positioned absolutely below) can overlap them without pushing layout. */
+  /* 1. Active expanded state for filter controls — the control never grows
+     or gets boxed in; it just lifts above its grid siblings so the floating
+     menu (positioned absolutely below) can overlap them without pushing
+     layout. Highlight lives on the trigger itself, matching the desktop
+     select:focus ring treatment rather than a boxed card. */
   .filter-controls-body .filter-control:has(.filter-select.is-open),
   .filter-controls-body .filter-control:has(.bakery-ms__trigger.is-open) {
     z-index: 5;
-    border-color: rgba(178, 42, 36, 0.45) !important;
-    border-left-color: var(--accent) !important;
-    background: linear-gradient(135deg, rgba(178, 42, 36, 0.08) 0%, rgba(34, 31, 26, 0.02) 100%) !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(34, 31, 26, 0.08);
-    transform: translateY(-1px);
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .filter-controls-body .filter-control:has(.filter-select.is-open) label,
@@ -7665,8 +7675,9 @@ a,
      as its own card rather than fusing with the trigger. */
   .filter-controls .filter-select.is-open .filter-select__trigger,
   .filter-controls .bakery-ms__trigger.is-open {
-    border-color: rgba(178, 42, 36, 0.4) !important;
+    border-color: var(--accent) !important;
     background: rgba(255, 255, 255, 0.96) !important;
+    box-shadow: 0 0 0 3px var(--accent-d);
     transition: all 0.2s ease;
   }
 
@@ -7756,6 +7767,43 @@ a,
   .filter-controls .bakery-ms__search:focus {
     border-color: var(--accent) !important;
     box-shadow: 0 0 0 3px rgba(178, 42, 36, 0.2) !important;
+  }
+
+  /* Fullscreen panel close button, pinned bottom-right */
+  .filter-panel-close-fab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: absolute;
+    right: 20px;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    min-height: 48px;
+    padding: 0 22px;
+    border: none;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font: 700 0.86rem/1 var(--font);
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(178, 42, 36, 0.4);
+    z-index: 7;
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .filter-panel-close-fab:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 10px 28px rgba(178, 42, 36, 0.48);
+  }
+
+  .filter-panel-close-fab:active {
+    transform: scale(0.96);
+  }
+
+  .filter-panel-close-fab svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
   }
 }
 

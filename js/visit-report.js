@@ -201,14 +201,17 @@ window.GAILS = window.GAILS || {};
   // Recomputed live from categoryScores rather than trusting the stored
   // criticalFail flag, so records saved before this override existed (or
   // with a stale value) still show correctly without needing a re-import.
-  function cqvHasCriticalFail(record) {
-    if (record.criticalFail) return true;
-    var scores = record.categoryScores || {};
-    return Object.keys(scores).some(function(name) {
+  function cqvHasLostAllergensOrCritical(scores) {
+    return Object.keys(scores || {}).some(function(name) {
       var s = scores[name];
       var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
       return isCritical && s.actual < s.target;
     });
+  }
+
+  function cqvHasCriticalFail(record) {
+    if (record.criticalFail) return true;
+    return cqvHasLostAllergensOrCritical(record.categoryScores);
   }
 
   // Bands GAIL's uses across every CQV surface: 0-69.99% Red, 70-89.99%
@@ -253,7 +256,8 @@ window.GAILS = window.GAILS || {};
   function buildCqvScoreRowsHtml(scores) {
     return Object.keys(scores || {}).map(function(name) {
       var s = scores[name];
-      var failing = s.pct < 70;
+      var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
+      var failing = s.pct < 70 || (isCritical && s.actual < s.target);
       return '<div class="visit-report-row' + (failing ? ' visit-report-row--flag' : '') + '">' +
         '<span class="visit-report-row__label">' + escapeHtml(name) + '</span>' +
         '<span class="visit-report-row__value' + (failing ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">' +
@@ -266,6 +270,17 @@ window.GAILS = window.GAILS || {};
     if (/^high$/i.test(priority)) return '#B22A24';
     if (/^medium$/i.test(priority)) return '#C97F12';
     if (/^low$/i.test(priority)) return '#0E8074';
+    return null;
+  }
+
+  // Questions tagged "(allergen point)" / "(critical point)" are GAIL's
+  // zero-tolerance categories — losing a single one forces the whole visit
+  // Red — so an action item on one of them gets its own warning flag. An
+  // action item only exists because the point was lost, so every match is
+  // by definition a failed critical/allergen point.
+  function cqvCriticalTag(label) {
+    if (/\ballergen point\b/i.test(label || '')) return 'Allergen Point';
+    if (/\bcritical point\b/i.test(label || '')) return 'Critical Point';
     return null;
   }
 
@@ -313,7 +328,11 @@ window.GAILS = window.GAILS || {};
       }
 
       var priorityColor = cqvPriorityColor(a.priority);
+      var criticalTag = cqvCriticalTag(label);
       var metaHtml = '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; text-align:right;">' +
+        (criticalTag
+          ? '<span style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px; color:#fff; background:#B22A24; white-space:nowrap;">&#9888; ' + escapeHtml(criticalTag) + '</span>'
+          : '') +
         (a.priority
           ? '<span style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px;' +
               (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(34, 31, 26,0.06);') +
@@ -322,7 +341,7 @@ window.GAILS = window.GAILS || {};
         '<span style="font-size:0.75rem; color:var(--muted-l); white-space:nowrap;">Due ' + escapeHtml(dueDate || '—') + '</span>' +
       '</div>';
 
-      return '<div class="visit-report-row-wrap" style="padding:14px 0; border-bottom:1px solid var(--card-border);">' +
+      return '<div class="visit-report-row-wrap" style="padding:14px 0; border-bottom:1px solid var(--card-border);' + (criticalTag ? ' border-left:3px solid #B22A24; padding-left:12px;' : '') + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">' +
           '<div style="min-width:0; flex:1;">' +
             '<div style="font-weight:700; color:var(--text); font-size:0.9rem;">' + escapeHtml(label) + '</div>' +
@@ -358,11 +377,11 @@ window.GAILS = window.GAILS || {};
       : '';
 
     var categoryHtml = record.categoryScores && Object.keys(record.categoryScores).length
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Score by Category</h4>' + buildCqvScoreRowsHtml(record.categoryScores) + '</div></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section' + (cqvHasLostAllergensOrCritical(record.categoryScores) ? ' visit-report-section--danger' : '') + '"><h4>Score by Category</h4>' + buildCqvScoreRowsHtml(record.categoryScores) + '</div></div>'
       : '';
 
     var sectionHtml = hasSectionScores
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Score by Section</h4>' + buildCqvScoreRowsHtml(record.sectionScores) + '</div></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section' + (cqvHasLostAllergensOrCritical(record.sectionScores) ? ' visit-report-section--danger' : '') + '"><h4>Score by Section</h4>' + buildCqvScoreRowsHtml(record.sectionScores) + '</div></div>'
       : '';
 
     var actionPlanItems = record.actionPlan;
@@ -468,8 +487,19 @@ window.GAILS = window.GAILS || {};
     window.GAILS.closeVisitReport();
   });
 
+  var SITE_VISIT_KIND_LABELS = {
+    checkin: 'Check-in',
+    nboOpening: 'NBO: Opening',
+    nbo2wk: 'NBO: 2WK Check-in',
+    nbo4wk: 'NBO: 4WK Check-in'
+  };
+
+  function siteVisitKindLabel(v) {
+    return SITE_VISIT_KIND_LABELS[v.visitKind] || 'Check-in';
+  }
+
   function visitTypeLabel(v) {
-    if (v.type === 'siteVisit') return 'Check-in';
+    if (v.type === 'siteVisit') return siteVisitKindLabel(v);
     if (v.type === 'cqv') return v.isFollowUp ? 'CQV Follow-Up' : 'CQV';
     return 'Routine Coffee Visit';
   }
@@ -566,6 +596,7 @@ window.GAILS = window.GAILS || {};
     // Reset custom select trigger label if populated
     if (window.GAILS.syncCustomSelect) {
       window.GAILS.syncCustomSelect('addVisitBakery');
+      window.GAILS.syncCustomSelect('addVisitType');
     }
     
     // Autofill date/time with local values
@@ -630,7 +661,7 @@ window.GAILS = window.GAILS || {};
 
     if (record.type === 'siteVisit') {
       titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
-      subtitleEl.textContent = 'Site Visit on ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
+      subtitleEl.textContent = siteVisitKindLabel(record) + ' on ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
       
       var stats = [
         { label: 'Logged By', value: record.meta && record.meta.updatedBy || '—' },
@@ -638,9 +669,10 @@ window.GAILS = window.GAILS || {};
         { label: 'MOD', value: record.mod || '—' }
       ];
       
-      var statsHtml = '<div class="drill-summary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:15px; margin-bottom:20px;">' + stats.map(function(c) {
-        return '<div class="drill-card" style="padding:15px; background:rgba(34, 31, 26,0.02); border:1px solid var(--card-border); border-radius:10px;"><div class="drill-card__label" style="font-size:0.72rem; text-transform:uppercase; color:var(--muted-l); margin-bottom:4px;">' + escapeHtml(c.label) + '</div>' +
-          '<div class="drill-card__value" style="font-size:1.05rem; font-weight:700; color:var(--text);">' + escapeHtml(c.value) + '</div></div>';
+      var statsHtml = '<div class="drill-summary" style="margin-bottom:20px;">' + stats.map(function(c) {
+        return '<div class="drill-card">' +
+          '<div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
+          '<div class="drill-card__value" style="font-size:1.05rem;">' + escapeHtml(c.value) + '</div></div>';
       }).join('') + '</div>';
 
       bodyEl.innerHTML = statsHtml + 
@@ -878,6 +910,7 @@ window.GAILS = window.GAILS || {};
 
           var record = {
             bakery: document.getElementById('addVisitBakery').value,
+            visitKind: document.getElementById('addVisitType').value || 'checkin',
             date: document.getElementById('addVisitDate').value,
             time: document.getElementById('addVisitTime').value,
             coffeePartner: document.getElementById('addVisitPartner').value || '',
@@ -974,7 +1007,8 @@ window.GAILS = window.GAILS || {};
         }
         if (typeVal) {
           if (typeVal === 'routine' && (v.type === 'siteVisit' || v.type === 'cqv')) return false;
-          if (typeVal === 'siteVisit' && v.type !== 'siteVisit') return false;
+          if (typeVal === 'siteVisit' && !(v.type === 'siteVisit' && (v.visitKind || 'checkin') === 'checkin')) return false;
+          if ((typeVal === 'nboOpening' || typeVal === 'nbo2wk' || typeVal === 'nbo4wk') && !(v.type === 'siteVisit' && v.visitKind === typeVal)) return false;
           if (typeVal === 'cqv' && !(v.type === 'cqv' && !v.isFollowUp)) return false;
           if (typeVal === 'cqvFollowUp' && !(v.type === 'cqv' && v.isFollowUp)) return false;
         }
@@ -1022,7 +1056,7 @@ window.GAILS = window.GAILS || {};
 
           if (v.type === 'siteVisit') {
             scoreText = '—';
-            tagsHtml = '<span class="visit-log-row__tag" style="color:var(--gold);background:var(--gold-d);">Check-in</span>';
+            tagsHtml = '<span class="visit-log-row__tag" style="color:var(--gold);background:var(--gold-d);">' + escapeHtml(siteVisitKindLabel(v)) + '</span>';
             allNotesText = v.comments || '';
           } else if (v.type === 'cqv') {
             scoreText = (v.overallPct != null) ? v.overallPct + '%' : '—';

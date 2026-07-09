@@ -1,10 +1,17 @@
 // ========== CQV (COFFEE QUALITY VISIT) PDF PARSER ==========
-// Turns a GoAudits "CQV" PDF export (see the sample layout this was built
-// against: cover page, score summary, category table, then per-section
-// Q#/QUESTION/SCORE/RESPONSE/PREVIOUS tables, then a Comments & Action Plan
-// block) into the structured record saved to Firebase at routineVisits/{id}
-// with type: 'cqv'. Runs entirely client-side via pdf.js (loaded as a
-// separate <script> in admin.html — see GlobalWorkerOptions.workerSrc there).
+// Turns a GoAudits "CQV" PDF export (cover page, score summary, category
+// table, then per-section Q#/QUESTION/SCORE/RESPONSE/PREVIOUS tables, then a
+// Comments & Action Plan block) into the structured record saved to Firebase
+// at routineVisits/{id} with type: 'cqv'. Runs entirely client-side via
+// pdf.js (loaded as a separate <script> in admin.html — see
+// GlobalWorkerOptions.workerSrc there).
+//
+// Two layout variants exist and both must parse:
+//  - the original CQV: a SUMMARY paragraph, a populated PREVIOUS column on
+//    every score row ("... (0/5) NO 02.Oct" with the previous response on
+//    its own following line), and a Comments & Action Plan section;
+//  - the follow-up CQV ("CQV Q3 FOLLOW UP"): no summary, an empty PREVIOUS
+//    column, and no action plan (the dashboard derives one from lost points).
 //
 // This is a best-effort text-layout parser, not a strict grammar: GoAudits'
 // PDF renderer vertically centers wrapped multi-line question text against
@@ -68,7 +75,10 @@ window.GAILS = window.GAILS || {};
 
   // ---------- shared line patterns ----------
   var RE_PCT_ONLY = /^(\d+(?:\.\d+)?)\s*%$/;
-  var RE_BAND = /^(Red|Yellow|Green)$/i;
+  // The overall band line prints Red/Yellow/Green on some exports and
+  // PASS/FAIL on others — captured as printedBand either way; the band the
+  // dashboard actually uses is recomputed from the percentages at the end.
+  var RE_BAND = /^(Red|Yellow|Green|Pass|Fail)$/i;
   var RE_FRACTION = /^\(([\d.]+)\s*\/\s*([\d.]+)\)$/;
   var RE_ADDRESS = /^(.+?)\s*\|\s*(.+)$/;
   var RE_DATE_LINE = /^([A-Z]+DAY)\s+(\d{1,2})(?:st|nd|rd|th)\s+([A-Za-z]+)\s+(\d{4})$/i;
@@ -78,32 +88,75 @@ window.GAILS = window.GAILS || {};
   var RE_MAJOR_SECTION_HEADER = /^([A-Z][A-Z &\/]+?)\s*\(([\d.]+)\s*\/\s*([\d.]+)\)\s*([\d.]+)\s*%$/;
   var RE_QCOL_HEADER = /^Q#\s*QUESTION\s*SCORE\s*RESPONSE\s*PREVIOUS$/i;
   var RE_Q_START = /^(\d+)\s+(.+)$/;
-  var RE_SCORE_TAIL = /^(.*?)\s*\(([\d.]+)\s*\/\s*([\d.]+)\)\s*([A-Za-z0-9\/.\-]*)\s*$/;
-  var RE_SCORE_ONLY_LINE = /^(?:(\d+)\s+)?\(([\d.]+)\s*\/\s*([\d.]+)\)\s*([A-Za-z0-9\/.\-]*)\s*$/;
+
+  // The original CQV's PREVIOUS column appends the prior visit's date to
+  // each score row ("4 <question> (0/5) NO 02.Oct"), with the prior
+  // response usually on its own following line ("Yes" / "No" / "N/A" / "G")
+  // — and occasionally merged onto the same row. Every score-shaped pattern
+  // therefore tolerates that optional tail; the standalone response line is
+  // consumed via the expectPrevResponse flag in the parse loop. Follow-up
+  // exports leave the column empty, so the tail simply never matches there.
+  var PREV_COL_SRC = '(?:\\s+\\d{1,2}\\.[A-Za-z0-9]{3,9}(?:\\s+(?:Yes|No|N\\/A|G|Good|Inadequate))?)?';
+  var RE_SCORE_TAIL = new RegExp('^(.*?)\\s*\\(([\\d.]+)\\s*\\/\\s*([\\d.]+)\\)\\s*([A-Za-z0-9\\/.\\-]*)' + PREV_COL_SRC + '\\s*$');
+  var RE_SCORE_ONLY_LINE = new RegExp('^(?:(\\d+)\\s+)?\\(([\\d.]+)\\s*\\/\\s*([\\d.]+)\\)\\s*([A-Za-z0-9\\/.\\-]*)' + PREV_COL_SRC + '\\s*$');
   // Some questions (e.g. "Eat-in presentation according to standards N/A")
   // print only a bare response with no (score/max) cell at all — GoAudits
-  // doesn't score N/A-type answers. These fall back patterns for both a
+  // doesn't score N/A-type answers. These fall-back patterns cover both a
   // single-line question ("<label> N/A") and a multi-line question's closing
   // line ("<num> N/A").
   var RESPONSE_TOKENS = 'YES|NO|N\\/A|GOOD|INADEQUATE';
-  var RE_SCORE_TAIL_BARE = new RegExp('^(.+?)\\s+(' + RESPONSE_TOKENS + ')$', 'i');
-  var RE_SCORE_ONLY_BARE = new RegExp('^(?:(\\d+)\\s+)?(' + RESPONSE_TOKENS + ')$', 'i');
+  var RE_SCORE_TAIL_BARE = new RegExp('^(.+?)\\s+(' + RESPONSE_TOKENS + ')' + PREV_COL_SRC + '$', 'i');
+  var RE_SCORE_ONLY_BARE = new RegExp('^(?:(\\d+)\\s+)?(' + RESPONSE_TOKENS + ')' + PREV_COL_SRC + '$', 'i');
+  var RE_PREV_RESPONSE_ONLY = /^(?:Yes|No|N\/A|G|Good|Inadequate)$/i;
+  var RE_ENDS_WITH_PREV_DATE = /\d{1,2}\.[A-Za-z0-9]{3,9}\s*$/;
+
   var RE_ACTION_BLOCK_HEADER = /^([A-Za-z][A-Za-z &]+?)\s*>>\s*([A-Za-z][A-Za-z \/&]+)$/;
-  var RE_GA_REF = /^\(GA(\d+)\)\s*(.+)$/;
   // The Comments & Action Plan block prints Assignee/Priority/Due Date in a
   // sidebar box next to each item. Because that box is vertically centered
   // against the (often wrapped) findings/action text, its values can land on
-  // the SAME reconstructed row as that text rather than their own line —
-  // exactly the row-merging problem the Q&A tables have (see the floatingText
-  // comments above). These are matched as embedded substrings, not whole
-  // lines, so they're found and stripped out wherever they land.
+  // the SAME reconstructed row as that text rather than their own line.
+  // These are matched as embedded substrings, not whole lines, so they're
+  // found and stripped out wherever they land.
   var RE_PRIORITY_EMBED = /\bPRIORITY\s+(Low|Medium|High)\b/i;
   var RE_DUE_DATE_EMBED = /\bDUE\s*DATE\s+(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4})\b/i;
-  var RE_ASSIGNEE_EMBED = /\bASSIGNEE\s+(\S+)\b/i;
-  var RE_FINDINGS_MARK = /^FINDINGS$/i;
-  var RE_ACTION_REQUIRED_START = /^ACTION\s*REQUIRED\s*(.*)$/i;
+  // ASSIGNEE's value is the sidebar's right column and always runs to the
+  // end of whatever row it merged into ("the till ASSIGNEE Welwyn Garden
+  // City") — so capture to end-of-line, not a single word.
+  var RE_ASSIGNEE_EMBED = /\bASSIGNEE\b\s*(.*)$/i;
+  // Sidebar keyword/value pairs can also split across rows, leaving a bare
+  // keyword or a bare value on its own line.
+  var RE_ORPHAN_SIDEBAR_KEYWORD = /^(?:PRIORITY|DUE\s*DATE)$/i;
+  var RE_ORPHAN_DUE_DATE = /^\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}$/;
+  var RE_ORPHAN_PRIORITY = /^(?:Low|Medium|High)$/i;
+
+  // A single reconstructed action-plan row can glue several logical fields
+  // together — a question label's tail, the quoted "'No' - ..." response,
+  // the FINDINGS / ACTION REQUIRED headings, and the paragraph text itself.
+  // Each marker below is found at any position in a row; the parse loop
+  // walks the row left to right, routing the text between markers to
+  // whichever field is active at that point.
+  var ACTION_PLAN_MARKERS = [
+    // "(GA123) <question label>" — starts the label field, carries the ref
+    { re: /\(GA(\d+)\)\s*/, phase: 'label', ref: true },
+    { re: /\bFINDINGS\b:?\s*/, phase: 'findings' },
+    { re: /\bACTION\s*REQUIRED\b:?\s*/i, phase: 'action' },
+    // The quoted response ("'No' - ...") directly introduces the findings
+    // text — only the quote/dash wrapper is stripped, the text after it is
+    // kept as findings.
+    { re: /['’]\s*(?:Yes|No|N\/A)\s*['’]?\s*-\s*/i, phase: 'findings' }
+  ];
+
   var RE_PAGE_FOOTER = /^Page\s+\d+\s+of\s+\d+/i;
   var RE_COLOR_KEY = /^0%[\-–]69\.99%/;
+  // Photo captions print a timestamp under each embedded photo — one per
+  // photo, so a row can carry several back to back.
+  var RE_PHOTO_TIMESTAMP = /^(?:\d{1,2}\s+[A-Za-z]{3}\s+\d{2}\s+\d{1,2}:\d{2}\s*[AP]M\s*)+$/i;
+  // A PREVIOUS-column date ("02.Oct") that landed on its own row.
+  var RE_PREV_DATE_ARTIFACT = /^\d{1,2}\.[A-Za-z0-9]{3,9}$/;
+  // The declaration page embeds a Google map whose labels leak into the
+  // text layer.
+  var RE_MAP_FOOTER = /^(?:Google|Map data\b.*)$/i;
+  var RE_COMMENTS_ROW = /^\d+\s+Comments and photos?$/i;
   var RE_DECLARATION_HEADING = /^D\s*E\s*C\s*L\s*A\s*R\s*A\s*T\s*I\s*O\s*N$/i;
   var RE_ACTION_PLAN_HEADING = /^C\s*O\s*M\s*M\s*E\s*N\s*T\s*S\s*&?\s*A\s*C\s*T\s*I\s*O\s*N\s*P\s*L\s*A\s*N$/i;
   var RE_SUMMARY_HEADING = /^S\s*U\s*M\s*M\s*A\s*R\s*Y$/i;
@@ -112,9 +165,24 @@ window.GAILS = window.GAILS || {};
   var RE_GENERAL_INFO_HEADING = /^GENERAL\s+INFORMATION/i;
   var RE_PREPARED_BY = /^Prepared\s*By$/i;
   var RE_POWERED_BY = /^Powered\s*By$/i;
+  // The running page header ("<SITE NAME> DD MON YY", e.g. "WELWYN GARDEN
+  // CITY 01 JUL 26") can land appended to the END of real content — a
+  // wrapped Summary sentence, a question row — instead of on its own line.
+  // The site-name words are always ALL CAPS in this header (unlike normal
+  // prose), which is what lets this be stripped safely. NOT applied inside
+  // the action plan, where "DUE DATE 16 Jul 26" is exactly the
+  // caps-words-plus-date shape this would eat — the action-plan handler
+  // strips headers itself after extracting the sidebar values.
+  var RE_TRAILING_RUNNING_HEADER = /(?:^|\s+)[A-Z][A-Z']*(?:\s+[A-Z][A-Z']*){0,5}\s+\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}\s*$/;
 
   function isNoiseLine(line) {
-    return RE_PAGE_FOOTER.test(line) || RE_COLOR_KEY.test(line) || RE_POWERED_BY.test(line) || /^GAILS?\s*'?s?$/i.test(line);
+    return RE_PAGE_FOOTER.test(line)
+      || RE_COLOR_KEY.test(line)
+      || RE_POWERED_BY.test(line)
+      || /^GAILS?\s*'?s?$/i.test(line)
+      || RE_PHOTO_TIMESTAMP.test(line)
+      || RE_PREV_DATE_ARTIFACT.test(line)
+      || RE_MAP_FOOTER.test(line);
   }
 
   function isoDateFromParts(day, monthName, year) {
@@ -198,6 +266,30 @@ window.GAILS = window.GAILS || {};
     // so this is worth surfacing as its own status rather than just a title.
     record.isFollowUp = /follow[\s-]*up/i.test(record.title);
 
+    // The Comments & Action Plan running header sometimes reprints only the
+    // tail of the bakery name (e.g. "Garden City" for "Welwyn Garden City"),
+    // merged into a label/findings row without a date attached, so the
+    // full-name+date match alone misses it. Match the full name and any of
+    // its trailing multi-word substrings — skipping any single trailing
+    // word, since on its own that's too generic (e.g. just "City") to
+    // safely strip out of real content. This can theoretically remove a
+    // genuine mention of the bakery from findings prose, but sidebar
+    // leakage is far more common than self-reference.
+    var siteNameFragmentRe = null;
+    if (record.bakery) {
+      var bakeryWords = record.bakery.trim().split(/\s+/).filter(Boolean);
+      var fragments = [];
+      for (var wIdx = 0; wIdx < bakeryWords.length - 1; wIdx++) {
+        fragments.push(escapeRegExp(bakeryWords.slice(wIdx).join(' ')));
+      }
+      if (bakeryWords.length === 1 && bakeryWords[0].length >= 5) {
+        fragments.push(escapeRegExp(bakeryWords[0]));
+      }
+      if (fragments.length) {
+        siteNameFragmentRe = new RegExp('\\b(?:' + fragments.join('|') + ')\\b', 'gi');
+      }
+    }
+
     // ---- scan every remaining line once, driving a small state machine ----
     var section = { name: '', earned: null, max: null, pct: null };
     var subsection = '';
@@ -205,10 +297,12 @@ window.GAILS = window.GAILS || {};
     var lastQuestion = null; // for attaching trailing red "findings" note lines
     var inActionPlan = false;
     var currentBlock = null; // action plan block being built
-    var blockPhase = ''; // '', 'findings', 'action'
+    var blockPhase = ''; // '', 'label', 'findings', 'action'
+    var expectPrevResponse = false; // a score row ended with a PREVIOUS-column date; its response follows on the next row
 
     function flushBlock() {
       if (currentBlock) {
+        currentBlock.questionLabel = cleanLine(currentBlock.questionLabel);
         currentBlock.findings = cleanLine(currentBlock.findings);
         currentBlock.actionRequired = cleanLine(currentBlock.actionRequired);
         record.actionPlan.push(currentBlock);
@@ -239,58 +333,146 @@ window.GAILS = window.GAILS || {};
       floatingText = [];
     }
 
+    // A failed question's note lines and the NEXT question's wrapped label
+    // can land in the same floating buffer with no event between them (the
+    // note has no closing marker; the label has no opening one). The one
+    // structural divider this layout does provide: every note ends with an
+    // "Action: ..." line — possibly wrapping onto lowercase-starting
+    // continuation lines — while a question label always starts uppercase.
+    // Split there; return null when the buffer has no Action line (then the
+    // whole buffer is the label, the common case).
+    function splitNoteFromLabel(buf) {
+      var lastActionIdx = -1;
+      for (var k = 0; k < buf.length; k++) {
+        if (/^Action\s*:/i.test(buf[k])) lastActionIdx = k;
+      }
+      if (lastActionIdx === -1) return null;
+      var end = lastActionIdx + 1;
+      while (end < buf.length && /^[a-z]/.test(buf[end])) end++;
+      if (end >= buf.length) return null; // nothing left to be the label
+      return { note: buf.slice(0, end), label: buf.slice(end) };
+    }
+
+    // Running headers reprint at the top of every interior page: the
+    // "GAILS BAKERY ..." banner, the report title itself ("CQV Q3 FOLLOW
+    // UP" — no dash, so the CQV-code check alone misses it), and short
+    // "CQV - ..." codes.
+    function isRunningHeader(text) {
+      if (/^GAILS BAKERY/i.test(text)) return true;
+      if (record.title && text.toUpperCase() === record.title.toUpperCase()) return true;
+      return /^CQV\s*-/i.test(text) && text.length < 20;
+    }
+
+    // Look past noise/running-header rows to the next real content line —
+    // used to confirm subsection headings (see below).
+    function nextContentLine(idx) {
+      for (var j = idx + 1; j < n; j++) {
+        var t = cleanLine(lines[j].text);
+        if (!t || isNoiseLine(t) || isRunningHeader(t)) continue;
+        return t;
+      }
+      return '';
+    }
+
     for (i = 0; i < n; i++) {
       var raw = lines[i].text;
       var line = cleanLine(raw);
       if (!line) continue;
       if (isNoiseLine(line)) continue;
       if (lines[i].page === 0) continue; // already handled cover page above
+      if (isRunningHeader(line)) continue;
 
-      // Section header lines like "GAILS BAKERY PRESTWICH 07 JUL 26" repeat on
-      // every interior page as a running header — ignore.
-      if (/^GAILS BAKERY/i.test(line) || /^CQV\s*-/i.test(line) && lines[i].page > 0 && line.length < 20) continue;
+      // The PREVIOUS-column response ("Yes" / "No" / "N/A" / "G") prints on
+      // the row after its score line — consume it so it can't pollute notes
+      // or get mistaken for a real response. Only ever the immediately-next
+      // content line; anything else clears the expectation.
+      if (expectPrevResponse) {
+        expectPrevResponse = false;
+        if (RE_PREV_RESPONSE_ONLY.test(line)) continue;
+      }
+
+      // The running header can also land merged onto the end of a real
+      // content line — strip it. Skipped inside the action plan (see the
+      // RE_TRAILING_RUNNING_HEADER comment).
+      if (!inActionPlan && RE_TRAILING_RUNNING_HEADER.test(line)) {
+        line = cleanLine(line.replace(RE_TRAILING_RUNNING_HEADER, ''));
+        if (!line) continue;
+      }
 
       if (RE_ACTION_PLAN_HEADING.test(line.replace(/\s+/g, ''))) { inActionPlan = true; reconcileFloatingText(); continue; }
-      if (RE_DECLARATION_HEADING.test(line)) { flushBlock(); inActionPlan = false; continue; }
+      // DECLARATION is the signature block that closes every report —
+      // nothing after it (auditor name, embedded map labels) is content.
+      if (RE_DECLARATION_HEADING.test(line)) { reconcileFloatingText(); flushBlock(); break; }
 
       if (inActionPlan) {
         var hdr = line.match(RE_ACTION_BLOCK_HEADER);
         if (hdr) {
           flushBlock();
-          // Assignee is always the bakery itself in this layout ("ASSIGNEE
-          // Prestwich") — sourced directly from the already-confirmed
-          // record.bakery rather than re-parsed off a sidebar box that's
-          // prone to landing on the wrong text row (see RE_*_EMBED above).
+          // Assignee is pre-seeded with the bakery itself — in this layout
+          // it always is ("ASSIGNEE Welwyn Garden City") — so a sidebar
+          // parse miss doesn't lose it.
           currentBlock = { sectionPath: cleanLine(hdr[1]) + ' >> ' + cleanLine(hdr[2]), questionRef: '', questionLabel: '', findings: '', actionRequired: '', assignee: record.bakery || '', priority: '', dueDate: '' };
           blockPhase = '';
           continue;
         }
         if (!currentBlock) continue; // stray line before first block header
 
-        // Strip the running page header ("GAILS BAKERY <site> DD MON YY")
-        // and the Assignee/Priority/Due Date sidebar values out of the line
-        // wherever they land, capturing them into currentBlock, before
-        // classifying whatever text remains.
+        // Pull the sidebar values out first, wherever they landed. DUE DATE
+        // must be extracted before any header stripping — "DUE DATE 16 Jul
+        // 26" ends in exactly the caps-words-plus-date shape the stripper
+        // would otherwise eat.
         var cleaned = line;
+        var dueMatch = cleaned.match(RE_DUE_DATE_EMBED);
+        if (dueMatch) { if (!currentBlock.dueDate) currentBlock.dueDate = dueMatch[1]; cleaned = cleanLine(cleaned.replace(dueMatch[0], ' ')); }
+        var priMatch = cleaned.match(RE_PRIORITY_EMBED);
+        if (priMatch) { if (!currentBlock.priority) currentBlock.priority = priMatch[1]; cleaned = cleanLine(cleaned.replace(priMatch[0], ' ')); }
+        var assMatch = cleaned.match(RE_ASSIGNEE_EMBED);
+        if (assMatch) {
+          if (!currentBlock.assignee && cleanLine(assMatch[1])) currentBlock.assignee = cleanLine(assMatch[1]);
+          cleaned = cleanLine(cleaned.slice(0, assMatch.index));
+        }
+        // A keyword/value pair that split across rows leaves a bare keyword
+        // or bare value behind.
+        if (RE_ORPHAN_SIDEBAR_KEYWORD.test(cleaned)) continue;
+        if (RE_ORPHAN_DUE_DATE.test(cleaned)) { if (!currentBlock.dueDate) currentBlock.dueDate = cleaned; continue; }
+        if (RE_ORPHAN_PRIORITY.test(cleaned)) { if (!currentBlock.priority) currentBlock.priority = cleaned; continue; }
+        // Now strip whatever's left of the running page header / bare
+        // site-name fragments merged into the row.
         if (record.bakery) {
           var headerRe = new RegExp('\\b' + escapeRegExp(record.bakery) + '\\s+\\d{1,2}\\s+[A-Z]{3}\\s+\\d{2,4}\\b', 'i');
-          cleaned = cleaned.replace(headerRe, '').trim();
+          cleaned = cleanLine(cleaned.replace(headerRe, ' '));
         }
-        var dueMatch = cleaned.match(RE_DUE_DATE_EMBED);
-        if (dueMatch) { currentBlock.dueDate = dueMatch[1]; cleaned = cleaned.replace(dueMatch[0], '').trim(); }
-        var priMatch = cleaned.match(RE_PRIORITY_EMBED);
-        if (priMatch) { currentBlock.priority = priMatch[1]; cleaned = cleaned.replace(priMatch[0], '').trim(); }
-        var assMatch = cleaned.match(RE_ASSIGNEE_EMBED);
-        if (assMatch) { if (!currentBlock.assignee) currentBlock.assignee = assMatch[1]; cleaned = cleaned.replace(assMatch[0], '').trim(); }
+        cleaned = cleanLine(cleaned.replace(RE_TRAILING_RUNNING_HEADER, ''));
+        if (siteNameFragmentRe) cleaned = cleanLine(cleaned.replace(siteNameFragmentRe, ' '));
         if (!cleaned) continue; // line was pure sidebar/header noise
 
-        if (RE_FINDINGS_MARK.test(cleaned)) { blockPhase = 'findings'; continue; }
-        var actm = cleaned.match(RE_ACTION_REQUIRED_START);
-        if (actm) { blockPhase = 'action'; currentBlock.actionRequired += (actm[1] || '') + ' '; continue; }
-        var gam = cleaned.match(RE_GA_REF);
-        if (gam) { currentBlock.questionRef = 'GA' + gam[1]; currentBlock.questionLabel = cleanLine(gam[2]); blockPhase = ''; continue; }
-        if (blockPhase === 'findings') { currentBlock.findings += cleaned + ' '; continue; }
-        if (blockPhase === 'action') { currentBlock.actionRequired += cleaned + ' '; continue; }
+        // Walk the row left to right, splitting at whichever marker comes
+        // first, and route each piece to whatever field is active when we
+        // reach it — a single merged row can span several fields (see
+        // ACTION_PLAN_MARKERS above).
+        var remaining = cleaned;
+        var guard = 0;
+        while (remaining && guard++ < 20) {
+          var next = null;
+          for (var m = 0; m < ACTION_PLAN_MARKERS.length; m++) {
+            var mm = ACTION_PLAN_MARKERS[m].re.exec(remaining);
+            if (mm && (!next || mm.index < next.index)) {
+              next = { index: mm.index, len: mm[0].length, phase: ACTION_PLAN_MARKERS[m].phase, ref: ACTION_PLAN_MARKERS[m].ref ? mm[1] : null };
+            }
+          }
+          var before = cleanLine(next ? remaining.slice(0, next.index) : remaining);
+          if (before) {
+            if (blockPhase === 'label') currentBlock.questionLabel += before + ' ';
+            else if (blockPhase === 'findings') currentBlock.findings += before + ' ';
+            else if (blockPhase === 'action') currentBlock.actionRequired += before + ' ';
+            // blockPhase === '': text before any field marker has appeared
+            // isn't attachable to anything — dropped.
+          }
+          if (!next) break;
+          if (next.ref) currentBlock.questionRef = 'GA' + next.ref;
+          blockPhase = next.phase;
+          remaining = remaining.slice(next.index + next.len);
+        }
         continue;
       }
 
@@ -347,12 +529,16 @@ window.GAILS = window.GAILS || {};
       // on their OWN line *after* the (un-numbered) wrapped text, e.g.:
       //   "Names taken and orders clearly repeated back to the customer by"
       //   "the person at the till"
-      //   "6 (20/20) YES"
+      //   "6 (0/20) NO 02.Oct"
       // Single-line questions instead carry everything on one row:
       //   "7 Are efficient ways of working embedded? (20/20) YES"
       // `floatingText` buffers un-numbered lines until a score line (with or
       // without a leading number) claims them as its label.
       if (RE_QCOL_HEADER.test(line)) continue;
+      // "NN Comments and photos" rows are photo placeholders, not questions —
+      // but any buffered note text belongs to the previous question, so
+      // reconcile before dropping the row.
+      if (RE_COMMENTS_ROW.test(line)) { reconcileFloatingText(); continue; }
       var majm = line.match(RE_MAJOR_SECTION_HEADER);
       if (majm && majm[1].trim().split(' ').length <= 4) {
         reconcileFloatingText();
@@ -385,6 +571,7 @@ window.GAILS = window.GAILS || {};
                 response: singleBare[2] || '', note: ''
               };
           record.questions.push(lastQuestion);
+          expectPrevResponse = RE_ENDS_WITH_PREV_DATE.test(line);
           continue;
         }
       }
@@ -396,32 +583,48 @@ window.GAILS = window.GAILS || {};
         var scoreOnly = line.match(RE_SCORE_ONLY_LINE);
         var scoreOnlyBare = !scoreOnly ? line.match(RE_SCORE_ONLY_BARE) : null;
         if (scoreOnly || scoreOnlyBare) {
+          // If the previous question failed and hasn't got its note yet, the
+          // buffer may hold that note followed by this question's wrapped
+          // label — carve the note off before claiming the rest as label.
+          var labelLines = floatingText;
+          if (lastQuestion && !lastQuestion.note
+              && (lastQuestion.score === 0 || /^(no|inadequate)$/i.test(lastQuestion.response))) {
+            var noteSplit = splitNoteFromLabel(floatingText);
+            if (noteSplit) {
+              lastQuestion.note = cleanLine(noteSplit.note.join(' '));
+              labelLines = noteSplit.label;
+            }
+          }
           lastQuestion = scoreOnly
             ? {
                 qNum: scoreOnly[1] ? parseInt(scoreOnly[1], 10) : null,
                 section: section.name, subsection: subsection,
-                label: cleanLine(floatingText.join(' ')),
+                label: cleanLine(labelLines.join(' ')),
                 score: parseFloat(scoreOnly[2]), max: parseFloat(scoreOnly[3]),
                 response: scoreOnly[4] || '', note: ''
               }
             : {
                 qNum: scoreOnlyBare[1] ? parseInt(scoreOnlyBare[1], 10) : null,
                 section: section.name, subsection: subsection,
-                label: cleanLine(floatingText.join(' ')),
+                label: cleanLine(labelLines.join(' ')),
                 score: null, max: null,
                 response: scoreOnlyBare[2] || '', note: ''
               };
           record.questions.push(lastQuestion);
           floatingText = [];
+          expectPrevResponse = RE_ENDS_WITH_PREV_DATE.test(line);
           continue;
         }
       }
 
-      // A short line with no digits is a subsection heading like "Barista
-      // Skills" — reconcile any buffered text first (it wasn't a wrapped
-      // question fragment, since those are always closed by a scoreOnly line
-      // above before a subsection heading could appear).
-      if (/^[A-Z][A-Za-z \/&']*$/.test(line) && line.length < 48 && !RE_SCORE_ONLY_BARE.test(line)) {
+      // A short title-case line is only a subsection heading (e.g. "Barista
+      // Skills") if the next content row is the Q#/QUESTION/... column
+      // header that always follows one — otherwise it's a finding/note
+      // sentence that happens to look like a heading (e.g. "Few names not
+      // taken on visit"), which belongs in floatingText, not in the
+      // subsection state.
+      if (/^[A-Z][A-Za-z \/&']*$/.test(line) && line.length < 48 && !RE_SCORE_ONLY_BARE.test(line)
+          && RE_QCOL_HEADER.test(nextContentLine(i))) {
         reconcileFloatingText();
         subsection = line;
         continue;
