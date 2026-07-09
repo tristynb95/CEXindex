@@ -1,6 +1,20 @@
 // ========== CEI CALCULATION MODULE ==========
 window.GAILS = window.GAILS || {};
 
+// Derives cb/acb (index band labels) fresh from c/ac scores, always
+// overwriting whatever is already on the record. Records loaded from
+// storage can carry a stale or missing band (e.g. saved before banding
+// existed, or under an old naming scheme) — trusting a stored value that
+// doesn't match a key in G.COL/G.ABSCOL is what makes chart color lookups
+// (G.COL[r.cb] / G.ABSCOL[r.acb]) come back undefined and render points/
+// slices black, so we never trust the stored band, only the score.
+window.GAILS.ensureBands = function(r) {
+  if (!r) return r;
+  r.cb = r.c >= 75 ? 'Top Performer' : r.c >= 50 ? 'Above Average' : r.c >= 25 ? 'Below Average' : 'Needs Support';
+  r.acb = r.ac >= 90 ? 'Exceeding' : r.ac >= 75 ? 'Meeting' : r.ac >= 60 ? 'Approaching' : 'Below Standard';
+  return r;
+};
+
 // Coffee Efficiency score = % of drinks delivered under 2 min (company standard: 80%)
 // Re-rank ts and ap from raw s2 values — use after multi-month aggregation
 window.GAILS.recomputeTimelinessRanks = function(records) {

@@ -73,8 +73,7 @@ window.GAILS.getData = function() {
         ats: Math.round(avg('ats') * 10) / 10,
         c_raw: Math.round(avg('c_raw') * 10) / 10,
       };
-      a.cb = a.c >= 75 ? 'Top Performer' : a.c >= 50 ? 'Above Average' : a.c >= 25 ? 'Below Average' : 'Needs Support';
-      a.acb = a.ac >= 90 ? 'Exceeding' : a.ac >= 75 ? 'Meeting' : a.ac >= 60 ? 'Approaching' : 'Below Standard';
+      G.ensureBands(a);
       agg.push(a);
     });
     G.recomputeTimelinessRanks(agg);
@@ -87,6 +86,7 @@ window.GAILS.getData = function() {
     agg.forEach(function(a, i) { a.cr = i + 1; a.nr = 0; });
     return agg;
   }
+  recs.forEach(G.ensureBands);
   if (state.bandFilter) {
     var bf = state.bandFilter;
     if (bf.indexOf('abs:') === 0) { var abv = bf.slice(4); recs = recs.filter(function(r) { return r.acb === abv; }); }

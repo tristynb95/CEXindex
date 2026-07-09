@@ -42,6 +42,7 @@ window.GAILS.resizeChartsIn = function(container) {
 window.GAILS.renderOverviewCharts = function(data) {
   var G = GAILS;
   var avg = G.avg;
+  data.forEach(G.ensureBands);
   var n = data.length;
   var rankingsMetric = G.state.rankingsMetric === 'absolute' ? 'absolute' : 'relative';
   var isAbsolute = rankingsMetric === 'absolute';
