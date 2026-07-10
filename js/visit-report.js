@@ -1061,7 +1061,7 @@ window.GAILS = window.GAILS || {};
           var scoreColor = '#ffffff';
 
           if (v.type === 'siteVisit') {
-            scoreText = '—';
+            scoreText = '';
             var kindColors = siteVisitKindTagColors(v);
             tagsHtml = '<span class="visit-log-row__tag" style="color:' + kindColors.color + ';background:' + kindColors.bg + ';">' + escapeHtml(siteVisitKindLabel(v)) + '</span>';
             allNotesText = v.comments || '';
@@ -1076,6 +1076,7 @@ window.GAILS = window.GAILS || {};
             }
           } else {
             scoreText = (v.score != null) ? v.score + ' / ' + (v.scoreMax != null ? v.scoreMax : '—') : '—';
+            scoreColor = 'var(--text)';
             tagsHtml = '<span class="visit-log-row__tag" style="color:var(--gold);background:var(--gold-d);">Routine Coffee Visit</span>';
             if (schema && schema.sections) {
               schema.sections.forEach(function(sec) {

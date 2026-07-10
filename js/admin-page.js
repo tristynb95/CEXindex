@@ -807,7 +807,14 @@ function renderVisits() {
   }
 
   visitList.innerHTML = rows.map(function(v) {
-    var scoreText = (v.score != null && v.score !== '') ? (v.score + (v.scoreMax ? ' / ' + v.scoreMax : '')) : '—';
+    var scoreText = '—';
+    if (v.type === 'siteVisit') {
+      scoreText = '';
+    } else if (v.type === 'cqv') {
+      scoreText = (v.overallPct != null) ? v.overallPct + '%' : '—';
+    } else {
+      scoreText = (v.score != null && v.score !== '') ? (v.score + (v.scoreMax ? ' / ' + v.scoreMax : '')) : '—';
+    }
     var isSiteVisit = v.type === 'siteVisit';
     var isCqv = v.type === 'cqv';
     var typeBadge = isCqv
