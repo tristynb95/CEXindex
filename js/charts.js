@@ -173,6 +173,10 @@ window.GAILS.renderTrendCharts = function(data) {
   var state = G.state;
   var RM = G.getRollingMonths();
 
+  if (state.ALL && G.ensureBands) {
+    state.ALL.forEach(G.ensureBands);
+  }
+
   // Build scoped dataset matching the same filters as the bakery tracker
   var trendSelectedBakeries = Array.isArray(state.searchBakery) ? state.searchBakery.slice() : [];
   var trendScopedAll = state.ALL.filter(function(r) {

@@ -7429,6 +7429,7 @@ a,
     max-height: none;
     display: flex !important;
     flex-direction: column;
+    align-items: stretch;
     background:
       radial-gradient(ellipse 100% 30% at 50% 0%, rgba(178, 42, 36, 0.08) 0%, transparent 65%),
       linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 100%);
@@ -8330,6 +8331,76 @@ a,
     width: 14px;
     height: 14px;
     flex: 0 0 14px;
+  }
+
+  /* Relative/absolute index toggle: a stylish notch that extends down from
+     the banner's top-right corner as a seamless continuation of the red
+     band, overlaying the content below. Absolutely positioned (relative to
+     the sticky header), so it's out of flow — pages without the toggle
+     don't reflow when it appears/disappears, and it stays pinned with the
+     banner while scrolling. */
+  .header-index-toggle {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    gap: 0;
+    margin: 0;
+    padding: 7px 16px 9px 14px;
+    /* Same bright red as the banner's lower edge — kept flat so the notch
+       stays as vivid as the band it hangs from, not darkened. */
+    background: #A32520;
+    border-radius: 0 0 0 18px;
+    /* Only a soft drop shadow to lift it over the content — no inner
+       shadow that would dull the surface. */
+    box-shadow: -8px 10px 20px rgba(120, 28, 22, 0.24);
+  }
+
+  /* Concave fillet on the left so the notch sweeps out of the banner
+     instead of reading as a box tacked onto it. A quarter-circle is carved
+     away at the bottom-left, leaving the curve tangent to both the banner
+     underside and the notch's left edge. */
+  .header-index-toggle::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -18px;
+    width: 18px;
+    height: 18px;
+    background: radial-gradient(circle at bottom left,
+      transparent 17.5px, #A32520 18px);
+    pointer-events: none;
+  }
+
+  /* Just the pills in the notch — the "Index" caption is redundant here */
+  .header-index-toggle__label {
+    display: none;
+  }
+
+  /* Light, airy track — a translucent white well rather than a dark recess */
+  .header-index-toggle .overview-rankings-toggle {
+    padding: 3px;
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: none;
+  }
+
+  .header-index-toggle .overview-rankings-toggle__btn {
+    min-height: auto;
+    padding: 5px 15px;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    color: rgba(255, 244, 238, 0.82);
+  }
+
+  .header-index-toggle .overview-rankings-toggle__btn:hover {
+    color: #fff;
+  }
+
+  /* Crisp white active pill with just a whisper of lift */
+  .header-index-toggle .overview-rankings-toggle__btn.active {
+    background: #fff;
+    color: var(--accent);
+    box-shadow: 0 1px 4px rgba(70, 14, 11, 0.2);
   }
 }
 

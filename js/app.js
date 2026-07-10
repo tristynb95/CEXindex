@@ -714,6 +714,9 @@
         if (r && r.b) r.b = G.resolveBakeryMetaKey(r.b) || r.b;
       });
     }
+    if (records && G.ensureBands) {
+      records.forEach(G.ensureBands);
+    }
     state.ALL = records;
     state.MONTHS = months;
     state.BAKERIES = [...new Set(records.map(function(r) { return r.b; }))].sort();
