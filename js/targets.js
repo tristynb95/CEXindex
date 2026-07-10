@@ -97,8 +97,8 @@ function _setTargetTrendState(hasData, message) {
   };
 
   var NETWORK_HINT = {
-    relative: '<span style="color:var(--green);font-weight:600">&#9679; Top Performer</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Needs Support</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.',
-    absolute: '<span style="color:var(--green);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.'
+    relative: '<span style="color:var(--green);font-weight:600">&#9679; Top Performer</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Needs Support</span>',
+    absolute: '<span style="color:var(--green);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span>'
   };
 
   var TARGET_LEGEND = {
@@ -132,6 +132,7 @@ function _setTargetTrendState(hasData, message) {
       emptyMessage: 'No bakeries match the current filters.',
       bandField: 'cb',
       legendItems: NETWORK_LEGEND.relative,
+      statusNote: 'Locations update automatically from the filters above.',
       noDataFallback: true,
       items: [],
       missingItems: [],
@@ -174,12 +175,12 @@ function _setTargetTrendState(hasData, message) {
       var s = item[scoreField];
       if (s != null && !isNaN(s)) { sum += s; total++; }
     });
-    if (total === 0) return '#B3AA99';
+    if (total === 0) return '#8d8d8d';
     var delta = (sum / total) - networkAvg;
-    if (delta >= 5)  return '#1D9E5C';
-    if (delta >= 0)  return '#1E70C4';
-    if (delta >= -5) return '#C97F12';
-    return '#B22A24';
+    if (delta >= 5)  return '#00b853';
+    if (delta >= 0)  return '#1976d2';
+    if (delta >= -5) return '#f57c00';
+    return '#d32f2f';
   }
 
   function buildAreaTooltip(mgr, items, bandField, networkAvg) {
@@ -288,7 +289,7 @@ function _setTargetTrendState(hasData, message) {
       if (!stillInside) {
         active.polygons.forEach(function(p) {
           p.closeTooltip();
-          p.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: active.dashArray });
+          p.setStyle({ fillOpacity: 0.22, weight: 3.5, dashArray: active.dashArray });
         });
         cfg._hoveredArea = null;
       }
@@ -308,13 +309,23 @@ function _setTargetTrendState(hasData, message) {
     }[band] || 0;
   }
 
-  var NO_DATA_COLOR = '#B3AA99';
+  var VIBRANT_MAP_COLORS = {
+    'Top Performer': '#00b853',
+    'Above Average': '#1976d2',
+    'Below Average': '#f57c00',
+    'Needs Support': '#d32f2f',
+    'Exceeding': '#00b853',
+    'Meeting': '#1976d2',
+    'Approaching': '#f57c00',
+    'Below Standard': '#d32f2f',
+    'No Data': '#8d8d8d',
+    'Default': '#d32f2f'
+  };
 
   function getMarkerColor(item, bandField) {
-    if (item && item.noData) return NO_DATA_COLOR;
+    if (item && item.noData) return VIBRANT_MAP_COLORS['No Data'];
     var band = item && item[bandField || 'cb'];
-    var palette = (bandField === 'acb') ? GAILS.ABSCOL : GAILS.COL;
-    return (band && palette && palette[band]) || '#B22A24';
+    return VIBRANT_MAP_COLORS[band] || VIBRANT_MAP_COLORS['Default'];
   }
 
   function formatLastVisitDate(isoDate) {
@@ -639,11 +650,11 @@ function _setTargetTrendState(hasData, message) {
         var polygons = polyList.map(function(poly) {
           var polygon = L.polygon(poly, {
             color: color,
-            weight: 2,
-            opacity: 0.85,
+            weight: 3.5,
+            opacity: 1.0,
             dashArray: dashArray,
             fillColor: color,
-            fillOpacity: 0.1,
+            fillOpacity: 0.22,
             lineJoin: 'round',
             pane: 'areaPane'
           });
@@ -656,12 +667,12 @@ function _setTargetTrendState(hasData, message) {
         polygons.forEach(function(polygon) {
           polygon.on('mouseover', function() {
             cfg._areaTooltipLayers.forEach(function(p) { if (p !== polygon) p.closeTooltip(); });
-            polygons.forEach(function(p) { p.setStyle({ fillOpacity: 0.28, weight: 3, dashArray: null }); p.bringToFront(); });
+            polygons.forEach(function(p) { p.setStyle({ fillOpacity: 0.4, weight: 4.5, dashArray: null }); p.bringToFront(); });
             cfg._hoveredArea = { polygons: polygons, dashArray: dashArray };
           });
           polygon.on('mouseout', function() {
             polygon.closeTooltip();
-            polygons.forEach(function(p) { p.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: dashArray }); });
+            polygons.forEach(function(p) { p.setStyle({ fillOpacity: 0.22, weight: 3.5, dashArray: dashArray }); });
             if (cfg._hoveredArea && cfg._hoveredArea.polygons === polygons) cfg._hoveredArea = null;
           });
           cfg.areaLayer.addLayer(polygon);
@@ -756,10 +767,11 @@ function _setTargetTrendState(hasData, message) {
       msg += ' ' + noDataCount + ' site' + (noDataCount === 1 ? '' : 's') + ' with no data yet this period.';
     }
     if (statusEl) {
+      var note = cfg.statusNote ? ' <span class="target-map-status__note">&middot; ' + cfg.statusNote + '</span>' : '';
       if (missing.length) {
-        statusEl.innerHTML = msg + ' <button type="button" class="target-map-status__link" data-unmapped-trigger="' + cfg.key + '">' + missing.length + ' site' + (missing.length === 1 ? '' : 's') + ' not mapped</button>.';
+        statusEl.innerHTML = escapeHtml(msg) + ' <button type="button" class="target-map-status__link" data-unmapped-trigger="' + cfg.key + '">' + missing.length + ' site' + (missing.length === 1 ? '' : 's') + ' not mapped</button>.' + note;
       } else {
-        statusEl.textContent = msg;
+        statusEl.innerHTML = escapeHtml(msg) + note;
       }
     }
   }
@@ -891,6 +903,18 @@ function _setTargetTrendState(hasData, message) {
         placeMarkers(cfg);
       }
     });
+  };
+
+  // Recomputes a map's tile layout after its container is resized (e.g. when it
+  // is toggled into or out of full-screen). Fires a couple of delayed passes so
+  // Leaflet settles once any CSS transition on the container has finished.
+  window.GAILS.invalidateMapSize = function(key) {
+    var cfg = MAPS[key];
+    if (!cfg || !cfg.instance) return;
+    var run = function() { cfg.instance.invalidateSize(); };
+    run();
+    setTimeout(run, 60);
+    setTimeout(run, 260);
   };
 
   function lockBackgroundScroll() {

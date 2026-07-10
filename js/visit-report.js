@@ -950,7 +950,7 @@ window.GAILS = window.GAILS || {};
           if (typeEl) typeEl.value = '';
           if (ratingEl) ratingEl.value = '';
           if (groupEl) groupEl.value = 'ops';
-          if (periodEl) periodEl.value = '3'; // Default to Last 3 Months
+          if (periodEl) periodEl.value = '1'; // Default to Last Month
           populateDropdown('visitLogOps', new Set(getVisitLogOps('')), 'All Managers');
           syncCqvRatingVisibility();
           if (window.GAILS.syncCustomSelect) {
@@ -984,7 +984,7 @@ window.GAILS = window.GAILS || {};
     var typeVal = document.getElementById('visitLogType') ? document.getElementById('visitLogType').value : '';
     var ratingVal = document.getElementById('visitLogRating') ? document.getElementById('visitLogRating').value : '';
     var groupVal = document.getElementById('visitLogGroup') ? document.getElementById('visitLogGroup').value : 'ops';
-    var periodVal = document.getElementById('visitLogPeriod') ? document.getElementById('visitLogPeriod').value : '3';
+    var periodVal = document.getElementById('visitLogPeriod') ? document.getElementById('visitLogPeriod').value : '1';
 
     // Convert object to array
     var visitsList = visitIds.map(function(id) {

@@ -207,8 +207,8 @@
             <div class="filter-control"><label>Period</label><br><select id="rollingWindow">
               <option value="0">All Months</option>
               <option value="current">This Month</option>
-              <option value="1">Last Month</option>
-              <option value="3" selected>Last 3 Months</option>
+              <option value="1" selected>Last Month</option>
+              <option value="3">Last 3 Months</option>
               <option value="5">Last 5 Months</option>
               <option value="6">Last 6 Months</option>
               <option value="9">Last 9 Months</option>
@@ -554,12 +554,6 @@
                   <canvas id="effVsNps"></canvas>
                 </div>
               </div>
-              <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:20px">
-                <h3 style="font-size:0.98rem;text-align:center;margin-bottom:4px">Coffee Efficiency vs Customer-Rated Efficiency</h3>
-                <p style="text-align:center;font-size:0.84rem;color:var(--muted);margin-bottom:16px">Does making coffee quickly (our operational Coffee Efficiency score) match how efficient the experience <em>feels</em> to customers?</p>
-                <canvas id="effVsCustEff" style="max-height:340px"></canvas>
-                <div id="effVsCustEffExplain"></div>
-              </div>
             </div>
             <div class="section hero-section">
               <h2 style="text-align:center">NPS by Efficiency Quartile vs Overall Efficiency Quartile</h2>
@@ -707,28 +701,40 @@
           <!-- MAP -->
           <div class="tab-content" id="tab-map">
             <div class="section">
-              <div class="map-section-header" style="margin-bottom:16px;">
-                <div class="map-control-bar">
-                  <div class="map-toggle-group">
-                    <span class="map-toggle-label">Area Boundaries</span>
-                    <div class="overview-rankings-toggle" role="group" aria-label="Toggle map area boundaries" id="networkMapAreaToggle">
-                      <button type="button" class="overview-rankings-toggle__btn active" data-map-area="off">Off</button>
-                      <button type="button" class="overview-rankings-toggle__btn" data-map-area="on">On</button>
+              <div class="map-panel" id="networkMapPanel" data-map-key="network">
+                <div class="map-section-header" style="margin-bottom:12px;">
+                  <div class="map-control-bar">
+                    <div class="map-toggle-group">
+                      <span class="map-toggle-label">Area Boundaries</span>
+                      <div class="overview-rankings-toggle" role="group" aria-label="Toggle map area boundaries" id="networkMapAreaToggle">
+                        <button type="button" class="overview-rankings-toggle__btn active" data-map-area="off">Off</button>
+                        <button type="button" class="overview-rankings-toggle__btn" data-map-area="on">On</button>
+                      </div>
                     </div>
-                  </div>
-                  <div class="map-toggle-group">
-                    <span class="map-toggle-label">Visited</span>
-                    <div class="overview-rankings-toggle" role="group" aria-label="Filter map by visited status" id="networkMapVisitToggle">
-                      <button type="button" class="overview-rankings-toggle__btn active" data-map-visit="all">All</button>
-                      <button type="button" class="overview-rankings-toggle__btn" data-map-visit="visited">Visited</button>
-                      <button type="button" class="overview-rankings-toggle__btn" data-map-visit="unvisited">Unvisited</button>
+                    <div class="map-toggle-group">
+                      <span class="map-toggle-label">Visited</span>
+                      <div class="overview-rankings-toggle" role="group" aria-label="Filter map by visited status" id="networkMapVisitToggle">
+                        <button type="button" class="overview-rankings-toggle__btn active" data-map-visit="all">All</button>
+                        <button type="button" class="overview-rankings-toggle__btn" data-map-visit="visited">Visited</button>
+                        <button type="button" class="overview-rankings-toggle__btn" data-map-visit="unvisited">Unvisited</button>
+                      </div>
                     </div>
+                    <p class="map-legend-key" id="networkMapLegendHint"><span style="color:var(--green);font-weight:600">&#9679; Top Performer</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Needs Support</span></p>
+                    <button type="button" class="map-fullscreen-btn" data-map-fullscreen="network" title="Full screen">
+                      <svg class="map-fullscreen-btn__icon map-fullscreen-btn__expand" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path></svg>
+                      <svg class="map-fullscreen-btn__icon map-fullscreen-btn__collapse" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path></svg>
+                      <span class="map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open full screen</span><span class="map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit full screen</span>
+                    </button>
                   </div>
                 </div>
+                <div class="map-body">
+                  <div class="map-canvas-wrap">
+                    <div id="networkMap"></div>
+                  </div>
+                  <div class="map-filter-summary" id="networkMapFilterSummary" aria-hidden="true"></div>
+                </div>
+                <div id="networkMapStatus" class="target-map-status"></div>
               </div>
-              <p class="target-hint" id="networkMapLegendHint"><span style="color:var(--green);font-weight:600">&#9679; Top Performer</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Needs Support</span> &nbsp;&middot;&nbsp; Locations update automatically from the filters above.</p>
-              <div id="networkMap"></div>
-              <div id="networkMapStatus" class="target-map-status"></div>
             </div>
           </div>
 
@@ -860,28 +866,40 @@
               </div>
               <div class="target-subtab-panel" data-target-subtab-panel="map">
                 <div class="section">
-                  <div class="map-section-header" style="margin-bottom:16px;">
-                    <div class="map-control-bar">
-                      <div class="map-toggle-group">
-                        <span class="map-toggle-label">Area Boundaries</span>
-                        <div class="overview-rankings-toggle" role="group" aria-label="Toggle map area boundaries" id="targetMapAreaToggle">
-                          <button type="button" class="overview-rankings-toggle__btn active" data-target-map-area="off">Off</button>
-                          <button type="button" class="overview-rankings-toggle__btn" data-target-map-area="on">On</button>
+                  <div class="map-panel" id="targetMapPanel" data-map-key="target">
+                    <div class="map-section-header" style="margin-bottom:16px;">
+                      <div class="map-control-bar">
+                        <div class="map-toggle-group">
+                          <span class="map-toggle-label">Area Boundaries</span>
+                          <div class="overview-rankings-toggle" role="group" aria-label="Toggle map area boundaries" id="targetMapAreaToggle">
+                            <button type="button" class="overview-rankings-toggle__btn active" data-target-map-area="off">Off</button>
+                            <button type="button" class="overview-rankings-toggle__btn" data-target-map-area="on">On</button>
+                          </div>
                         </div>
-                      </div>
-                      <div class="map-toggle-group">
-                        <span class="map-toggle-label">Visited</span>
-                        <div class="overview-rankings-toggle" role="group" aria-label="Filter map by visited status" id="targetMapVisitToggle">
-                          <button type="button" class="overview-rankings-toggle__btn active" data-target-map-visit="all">All</button>
-                          <button type="button" class="overview-rankings-toggle__btn" data-target-map-visit="visited">Visited</button>
-                          <button type="button" class="overview-rankings-toggle__btn" data-target-map-visit="unvisited">Unvisited</button>
+                        <div class="map-toggle-group">
+                          <span class="map-toggle-label">Visited</span>
+                          <div class="overview-rankings-toggle" role="group" aria-label="Filter map by visited status" id="targetMapVisitToggle">
+                            <button type="button" class="overview-rankings-toggle__btn active" data-target-map-visit="all">All</button>
+                            <button type="button" class="overview-rankings-toggle__btn" data-target-map-visit="visited">Visited</button>
+                            <button type="button" class="overview-rankings-toggle__btn" data-target-map-visit="unvisited">Unvisited</button>
+                          </div>
                         </div>
+                        <button type="button" class="map-fullscreen-btn" data-map-fullscreen="target" title="Full screen">
+                          <svg class="map-fullscreen-btn__icon map-fullscreen-btn__expand" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path></svg>
+                          <svg class="map-fullscreen-btn__icon map-fullscreen-btn__collapse" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path></svg>
+                          <span class="map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open full screen</span><span class="map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit full screen</span>
+                        </button>
                       </div>
                     </div>
+                    <p class="target-hint" id="targetMapLegendHint"><span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL's bakery before plotting.</p>
+                    <div class="map-body">
+                      <div class="map-canvas-wrap">
+                        <div id="targetMap"></div>
+                      </div>
+                      <div class="map-filter-summary" id="targetMapFilterSummary" aria-hidden="true"></div>
+                    </div>
+                    <div id="targetMapStatus" class="target-map-status"></div>
                   </div>
-                  <p class="target-hint" id="targetMapLegendHint"><span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL's bakery before plotting.</p>
-                  <div id="targetMap"></div>
-                  <div id="targetMapStatus" class="target-map-status"></div>
                 </div>
               </div>
 
@@ -1081,9 +1099,9 @@
                   <select id="visitLogPeriod" class="visit-log-select">
                     <option value="0">All Time</option>
                     <option value="currentMonth">This Month</option>
-                    <option value="1">Last Month</option>
+                    <option value="1" selected>Last Month</option>
                     <option value="2">Last 2 Months</option>
-                    <option value="3" selected>Last 3 Months</option>
+                    <option value="3">Last 3 Months</option>
                     <option value="6">Last 6 Months</option>
                     <option value="12">Last 12 Months</option>
                     <option value="lastYear">Last Year</option>

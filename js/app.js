@@ -820,6 +820,78 @@
     });
   });
 
+  // ========== MAP FULLSCREEN TOGGLE ==========
+  (function() {
+    function invalidate(key) {
+      if (G.invalidateMapSize) G.invalidateMapSize(key);
+    }
+
+    // Relocate the real global filter bar into the full-screen map's side panel so
+    // its controls stay fully wired to dashboard state (changes flow through the
+    // existing handlers → refresh() → the map re-renders live). Moved home on exit.
+    var filterBar = document.querySelector('.filter-bar');
+    var filterHome = filterBar ? { parent: filterBar.parentNode, next: filterBar.nextSibling } : null;
+
+    function hostFor(mapKey) {
+      return document.getElementById(mapKey === 'target' ? 'targetMapFilterSummary' : 'networkMapFilterSummary');
+    }
+    function mountFilters(mapKey) {
+      if (!filterBar) return;
+      var host = hostFor(mapKey);
+      if (!host) return;
+      host.innerHTML = '<div class="map-filter-summary__title">Filters</div>';
+      host.appendChild(filterBar);
+      filterBar.classList.add('filter-bar--in-map');
+    }
+    function unmountFilters() {
+      if (!filterBar || !filterHome) return;
+      filterBar.classList.remove('filter-bar--in-map');
+      if (filterHome.next && filterHome.next.parentNode === filterHome.parent) {
+        filterHome.parent.insertBefore(filterBar, filterHome.next);
+      } else {
+        filterHome.parent.appendChild(filterBar);
+      }
+      ['networkMapFilterSummary', 'targetMapFilterSummary'].forEach(function(id) {
+        var host = document.getElementById(id);
+        if (host) host.innerHTML = '';
+      });
+    }
+
+    function enterFullscreen(panel) {
+      mountFilters(panel.dataset.mapKey);
+      panel.classList.add('is-fullscreen');
+      document.body.classList.add('map-fullscreen-active');
+      invalidate(panel.dataset.mapKey);
+    }
+    function exitFullscreen(panel) {
+      panel.classList.remove('is-fullscreen');
+      if (!document.querySelector('.map-panel.is-fullscreen')) {
+        document.body.classList.remove('map-fullscreen-active');
+      }
+      unmountFilters();
+      invalidate(panel.dataset.mapKey);
+    }
+
+    Array.from(document.querySelectorAll('[data-map-fullscreen]')).forEach(function(btn) {
+      var panelId = btn.dataset.mapFullscreen === 'network' ? 'networkMapPanel' : 'targetMapPanel';
+      var panel = document.getElementById(panelId);
+      if (!panel) return;
+      btn.addEventListener('click', function() {
+        if (panel.classList.contains('is-fullscreen')) {
+          exitFullscreen(panel);
+        } else {
+          enterFullscreen(panel);
+        }
+      });
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape') return;
+      var open = document.querySelector('.map-panel.is-fullscreen');
+      if (open) exitFullscreen(open);
+    });
+  })();
+
   // ========== BAKERY MULTI-SELECT ==========
   (function() {
     var selected = state.searchBakery;
@@ -1465,7 +1537,7 @@
     state.bandFilter = '';
 
     if (rollingWindow) {
-      rollingWindow.value = '3';
+      rollingWindow.value = '1';
       G.syncCustomSelect(rollingWindow);
     }
 
@@ -1480,7 +1552,7 @@
     }
 
     state.selectedMonths = (state.MONTHS && state.MONTHS.length)
-      ? G.resolvePeriodMonths(rollingWindow ? rollingWindow.value : '3', state.MONTHS, state.ALL)
+      ? G.resolvePeriodMonths(rollingWindow ? rollingWindow.value : '1', state.MONTHS, state.ALL)
       : [];
 
     if (G.rebuildRegionMultiselect) G.rebuildRegionMultiselect();
