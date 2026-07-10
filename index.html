@@ -579,24 +579,30 @@
 
           <!-- COFFEE EXPERIENCE INDEX METHODOLOGY -->
           <div class="tab-content" id="tab-cei">
-            <div class="section">
+            <div class="section methodology-section">
               <h2>Coffee Experience Index v4 &mdash; Methodology</h2>
-              <div class="explain">
-                <h3>How Do We Measure Success?</h3>
-                <p>The <strong>Coffee Experience Index</strong> uses a 0 to 100 score to tell us how well we're doing. We look at this in two ways: <strong>Relative Score</strong> (how you compare to other bakeries this selected period) and <strong>Absolute Score</strong> (how you compare to GAIL's overall strict standards, regardless of everyone else).</p>
+              <div class="explain methodology">
+                <p class="methodology__lead">The <strong>Coffee Experience Index</strong> uses a 0 to 100 score to tell us how well we're doing. We look at it in two ways.</p>
 
-                <h3>Relative vs Absolute Explainer</h3>
-                <p><strong>Relative Score</strong> is like a race. Every selected period, all bakeries line up and we rank them against each other. If you finish 1st out of 20 bakeries, your score is near 100. If you finish last, it's near 0. It doesn't matter what the actual numbers are &mdash; only where you finished in the group that selected period.</p>
-                <p><strong>Absolute Score</strong> is like a test with a pass mark. The pass mark is 90%. Whether every other bakery is above or below 90% doesn't change your result &mdash; you either hit the standard or you didn't.</p>
-                <p style="font-size:0.8rem;color:var(--muted);margin-bottom:4px;">Use <strong>Relative</strong> to see who's leading the pack. Use <strong>Absolute</strong> to see if the whole network is genuinely hitting the standard.</p>
+                <div class="method-pair">
+                  <div class="method-pair__card">
+                    <div class="method-pair__tag">Relative Score</div>
+                    <p>Like a race. Every selected period, all bakeries line up and we rank them against each other. Finish 1st out of 20 and your score is near 100; finish last and it's near 0. It doesn't matter what the actual numbers are &mdash; only where you finished in the group.</p>
+                  </div>
+                  <div class="method-pair__card">
+                    <div class="method-pair__tag">Absolute Score</div>
+                    <p>Like a test with a pass mark of 90%. Whether every other bakery is above or below 90% doesn't change your result &mdash; you either hit the standard or you didn't.</p>
+                  </div>
+                </div>
+                <p class="method-note">Use <strong>Relative</strong> to see who's leading the pack. Use <strong>Absolute</strong> to see if the whole network is genuinely hitting the standard.</p>
 
                 <h3>The Recipe: What Makes Up the Score?</h3>
                 <p>We believe what the customer tells us matters most. That's why 95% of your score comes directly from customer feedback:</p>
-                <ul style="margin-left: 20px; margin-bottom: 20px;">
-                  <li style="margin-bottom: 6px;"><strong>Efficiency (35%)</strong> &mdash; Did the customer feel they were served quickly?</li>
-                  <li style="margin-bottom: 6px;"><strong>Drink Quality (35%)</strong> &mdash; Did the customer love their coffee?</li>
-                  <li style="margin-bottom: 6px;"><strong>Friendliness (25%)</strong> &mdash; Did the customer feel welcome?</li>
-                  <li style="margin-bottom: 6px;"><strong>Coffee Efficiency (5%)</strong> &mdash; How fast the order was completed. We display the % under 2 mins (Target: 80% &lt; 2 min) in the KPI cards and tables, but the index score uses a progressive 5-tier scale: <strong>1.0x</strong> for under 2 mins, <strong>0.5x</strong> for 2–3 mins, <strong>0.25x</strong> for 3–4 mins, <strong>0.1x</strong> for 4–5 mins, and a <strong>-5.0x</strong> penalty for orders over 5 mins.</li>
+                <ul class="method-list">
+                  <li><strong>Efficiency (35%)</strong> &mdash; Did the customer feel they were served quickly?</li>
+                  <li><strong>Drink Quality (35%)</strong> &mdash; Did the customer love their coffee?</li>
+                  <li><strong>Friendliness (25%)</strong> &mdash; Did the customer feel welcome?</li>
+                  <li><strong>Coffee Efficiency (5%)</strong> &mdash; How fast the order was completed. We display the % under 2 mins (Target: 80% &lt; 2 min) in the KPI cards and tables, but the index score uses a progressive 5-tier scale: <strong>1.0x</strong> for under 2 mins, <strong>0.5x</strong> for 2–3 mins, <strong>0.25x</strong> for 3–4 mins, <strong>0.1x</strong> for 4–5 mins, and a <strong>-5.0x</strong> penalty for orders over 5 mins.</li>
                 </ul>
 
                 <h3>Keeping It Fair</h3>
@@ -605,16 +611,16 @@
                 <h3>Our Standards (Gap-Based Penalties)</h3>
                 <p>Our standards are built on hitting specific benchmarks: <strong>90% or higher</strong> for customer feedback (Drink Quality, Efficiency, Friendliness), and <strong>80% or higher</strong> for Coffee Efficiency. If a bakery meets or exceeds its benchmark, it receives full marks (100 points).</p>
                 <p>However, if a score drops below the benchmark, we apply progressive point deductions based on the <strong>gap from the benchmark</strong>, rather than absolute values:</p>
-                <ul style="margin-left: 20px; margin-bottom: 12px;">
-                  <li style="margin-bottom: 4px;"><strong>0% to 5% gap:</strong> Deducts <strong>4 points</strong> for every 1% below benchmark (up to 20 points lost).</li>
-                  <li style="margin-bottom: 4px;"><strong>5% to 15% gap:</strong> Deducts <strong>6 points</strong> for every 1% below benchmark (up to an additional 60 points lost).</li>
-                  <li style="margin-bottom: 4px;"><strong>15% to 20% gap:</strong> Deducts <strong>4 points</strong> for every 1% below benchmark, reaching <strong>0 points</strong> at a 20% gap.</li>
+                <ul class="method-list">
+                  <li><strong>0% to 5% gap:</strong> Deducts <strong>4 points</strong> for every 1% below benchmark (up to 20 points lost).</li>
+                  <li><strong>5% to 15% gap:</strong> Deducts <strong>6 points</strong> for every 1% below benchmark (up to an additional 60 points lost).</li>
+                  <li><strong>15% to 20% gap:</strong> Deducts <strong>4 points</strong> for every 1% below benchmark, reaching <strong>0 points</strong> at a 20% gap.</li>
                 </ul>
-                <p style="font-size:0.78rem;color:var(--muted);margin-bottom:12px;">
-                  <strong>Example (90% Benchmark):</strong> Hitting 90% gives 100. A score of 80% (10% gap) loses half its points (50). Any score of 70% or lower (20%+ gap) gets 0. <br>
-                  <strong>Example (80% Benchmark):</strong> Hitting 80% gives 100. A score of 70% (10% gap) loses half its points (50). Any score of 60% or lower (20%+ gap) gets 0.
-                </p>
-                <div class="benchmarks" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+                <div class="method-example">
+                  <p><strong>Example (90% Benchmark):</strong> Hitting 90% gives 100. A score of 80% (10% gap) loses half its points (50). Any score of 70% or lower (20%+ gap) gets 0.</p>
+                  <p><strong>Example (80% Benchmark):</strong> Hitting 80% gives 100. A score of 70% (10% gap) loses half its points (50). Any score of 60% or lower (20%+ gap) gets 0.</p>
+                </div>
+                <div class="benchmarks benchmarks--quad">
                   <div class="benchmark exc"><div class="bval">90+</div><div class="blabel">Exceeding</div></div>
                   <div class="benchmark gd"><div class="bval">75&ndash;89</div><div class="blabel">Meeting</div></div>
                   <div class="benchmark dev"><div class="bval">60&ndash;74</div><div class="blabel">Approaching</div></div>
@@ -622,7 +628,7 @@
                 </div>
 
                 <h3>How We Group Bakeries (Bands)</h3>
-                <div class="benchmarks" style="margin-bottom:20px">
+                <div class="benchmarks benchmarks--quad">
                   <div class="benchmark exc"><div class="bval">75&ndash;100</div><div class="blabel">Top Performer</div></div>
                   <div class="benchmark gd"><div class="bval">50&ndash;74</div><div class="blabel">Above Average</div></div>
                   <div class="benchmark dev"><div class="bval">25&ndash;49</div><div class="blabel">Below Average</div></div>
@@ -631,17 +637,19 @@
 
                 <h3>KPI Card Status Thresholds</h3>
                 <p>To help scan the dashboard quickly, each KPI card displays a color-coded status tag (<strong>Exceeding</strong>, <strong>On Target</strong>, <strong>Watch</strong>, or <strong>Below</strong>) based on specific performance bands for the selected period:</p>
-                <ul style="margin-left: 20px; margin-bottom: 20px;">
-                  <li style="margin-bottom: 6px;"><strong>Net Promoter Score (NPS)</strong>: Exceeding (&gt;60), On Target (55–60), Watch (45–54), Below (&lt;45).</li>
-                  <li style="margin-bottom: 6px;"><strong>SHINE Cards (Drink Quality, Efficiency, Friendliness)</strong>: Exceeding (&ge;93%), On Target (90–92%), Watch (80–89%), Below (&lt;80%).</li>
-                  <li style="margin-bottom: 6px;"><strong>Coffee Efficiency</strong>: Exceeding (&gt;80%), On Target (70–80%), Watch (60–69%), Below (&lt;60%).</li>
-                  <li style="margin-bottom: 6px;"><strong>Orders &gt;5 Min</strong>: Exceeding (&lt;0.5%), On Target (0.5–0.9%), Watch (1.0–1.4%), Below (&ge;1.5%).</li>
+                <ul class="method-list">
+                  <li><strong>Net Promoter Score (NPS)</strong>: Exceeding (&gt;60), On Target (55–60), Watch (45–54), Below (&lt;45).</li>
+                  <li><strong>SHINE Cards (Drink Quality, Efficiency, Friendliness)</strong>: Exceeding (&ge;93%), On Target (90–92%), Watch (80–89%), Below (&lt;80%).</li>
+                  <li><strong>Coffee Efficiency</strong>: Exceeding (&gt;80%), On Target (70–80%), Watch (60–69%), Below (&lt;60%).</li>
+                  <li><strong>Orders &gt;5 Min</strong>: Exceeding (&lt;0.5%), On Target (0.5–0.9%), Watch (1.0–1.4%), Below (&ge;1.5%).</li>
                 </ul>
 
-                <h3 style="margin-top:20px">What's New in v4?</h3>
-                <p><strong>1. Listening to the customer:</strong> We reduced the score for Coffee Efficiency from 20% down to 5%, and instead put that focus strictly on how the customer rated their speed and quality.</p>
-                <p><strong>2. Fairer rankings for everyone:</strong> We added the fairness adjustment for bakeries with very few reviews, so rankings aren't thrown off by just a few responses.</p>
-                <p><strong>3. A true standard to aim for:</strong> We added the <strong>Absolute Score</strong> to make sure we are not just trying to beat each other week-over-week, but genuinely improving our service and meeting our company targets.</p>
+                <h3>What's New in v4?</h3>
+                <ol class="method-list method-list--num">
+                  <li><strong>Listening to the customer:</strong> We reduced the score for Coffee Efficiency from 20% down to 5%, and instead put that focus strictly on how the customer rated their speed and quality.</li>
+                  <li><strong>Fairer rankings for everyone:</strong> We added the fairness adjustment for bakeries with very few reviews, so rankings aren't thrown off by just a few responses.</li>
+                  <li><strong>A true standard to aim for:</strong> We added the <strong>Absolute Score</strong> to make sure we are not just trying to beat each other week-over-week, but genuinely improving our service and meeting our company targets.</li>
+                </ol>
               </div>
             </div>
           </div>

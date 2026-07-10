@@ -82,16 +82,15 @@ body {
    never reflowing the page layout or jumping fixed elements ── */
 @media (max-width: 980px) {
   html, body {
-    height: 100%;
-    overflow: hidden;
+    height: auto;
+    overflow-y: visible;
   }
 
   .container {
-    height: 100%;
-    overflow-y: auto;
+    height: auto;
+    overflow-y: visible;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
   }
 }
 
@@ -385,7 +384,7 @@ h4 {
   }
 
   .header-brand {
-    align-items: flex-start;
+    align-items: center;
     gap: 14px;
   }
 
@@ -2850,6 +2849,156 @@ body.table-fullscreen-lock {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+/* Responsive 4-band benchmark grid: 4 across on desktop, 2 on phones */
+.benchmarks--quad {
+  grid-template-columns: repeat(4, 1fr);
+  margin: 12px 0 20px;
+}
+
+/* ══════════════════════════════════════ METHODOLOGY PAGE ══ */
+.methodology {
+  padding: 22px 26px;
+}
+
+.methodology__lead {
+  font-size: 1rem !important;
+  color: var(--text) !important;
+  line-height: 1.65 !important;
+  margin-bottom: 18px !important;
+}
+
+/* Section headings act as anchors down the page */
+.methodology h3 {
+  font-size: 1rem;
+  margin: 28px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.methodology h3::before {
+  content: '';
+  width: 4px;
+  height: 15px;
+  background: var(--gold);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Relative vs Absolute — side-by-side highlight cards */
+.method-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 4px 0 12px;
+}
+
+.method-pair__card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-top: 3px solid var(--gold);
+  border-radius: var(--r);
+  padding: 14px 16px;
+}
+
+.method-pair__card:last-child {
+  border-top-color: var(--teal);
+}
+
+.method-pair__tag {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.method-pair__card p {
+  margin: 0 !important;
+  font-size: 0.84rem;
+}
+
+/* Inline tip note */
+.method-note {
+  font-size: 0.82rem !important;
+  color: var(--muted) !important;
+  margin-bottom: 4px !important;
+}
+
+/* Worked-example callout */
+.method-example {
+  background: var(--gold-d);
+  border: 1px solid rgba(201, 127, 18, 0.22);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--r);
+  padding: 12px 16px;
+  margin: 0 0 16px;
+}
+
+.method-example p {
+  font-size: 0.8rem !important;
+  margin: 0 0 6px !important;
+  line-height: 1.6 !important;
+}
+
+.method-example p:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Styled lists with custom markers */
+.method-list {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+}
+
+.method-list li {
+  position: relative;
+  padding-left: 22px;
+  margin-bottom: 10px;
+  font-size: 0.88rem;
+  color: var(--muted-l);
+  line-height: 1.65;
+}
+
+.method-list li::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0.62em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.method-list--num {
+  counter-reset: method-item;
+}
+
+.method-list--num li::before {
+  counter-increment: method-item;
+  content: counter(method-item);
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.method-list--num li {
+  padding-left: 30px;
+  min-height: 20px;
 }
 
 /* ══════════════════════════════════════ AUTH LOADING ══ */
@@ -7961,6 +8110,11 @@ a,
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Spacing to keep the reference footer visible and clickable above the bottom nav */
+  .dashboard-footer {
+    margin-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
   /* Reduce the "open menu" button clutter — bottom nav handles tab switching */
   .dashboard-workspace__menu-btn {
     font-size: 0.76rem;
@@ -8004,6 +8158,58 @@ a,
   /* Section padding */
   .section {
     padding: 16px 18px;
+  }
+
+  /* Keep-clear zone: the Relative/Absolute toggle notch hangs ~47px down
+     from the header's top-right corner and overlays the content. On the
+     methodology tab the long page title wraps to two lines and slid under
+     it, so drop the title below the notch's underside — it then uses the
+     full width cleanly. Scoped to this tab so short titles on other tabs
+     (Overview, Map…) keep their normal position. */
+  body[data-dash-tab="cei"] .section-page-title {
+    margin-top: 34px;
+  }
+
+  /* ── Methodology: flatten the box-in-box, give text room to breathe ── */
+  .methodology-section {
+    padding: 18px 16px;
+  }
+
+  .methodology {
+    background: transparent;
+    border: none;
+    border-left: none;
+    padding: 0;
+    margin-bottom: 0;
+  }
+
+  .methodology__lead {
+    font-size: 0.95rem !important;
+  }
+
+  .methodology h3 {
+    margin-top: 24px;
+    font-size: 0.95rem;
+  }
+
+  /* Relative vs Absolute cards stack */
+  .method-pair {
+    grid-template-columns: 1fr;
+  }
+
+  /* Benchmark bands: 2 across instead of a cramped 4 */
+  .benchmarks--quad {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .bval {
+    font-size: 1rem;
+  }
+
+  .method-list li,
+  .method-pair__card p {
+    font-size: 0.9rem;
   }
 
   /* KPI row value size */
@@ -8452,6 +8658,15 @@ a,
     flex: 0 0 14px;
   }
 
+  /* The banner's crisp 1px bottom border would otherwise cut straight across
+     the notch's concave carve — the carve is transparent, so the dark border
+     (and the drop shadow) showed through and broke the "seamless extension"
+     look. Drop the hard edge here; the header's soft drop shadow still
+     separates the banner from the content below. */
+  .header {
+    border-bottom: none;
+  }
+
   /* Relative/absolute index toggle: a stylish notch that extends down from
      the banner's top-right corner as a seamless continuation of the red
      band, overlaying the content below. Absolutely positioned (relative to
@@ -8460,11 +8675,14 @@ a,
      banner while scrolling. */
   .header-index-toggle {
     position: absolute;
-    top: 100%;
+    /* Overlap 1px up into the banner so no sub-pixel hairline appears at the
+       join — the notch red matches the banner's lower edge, so the overlap
+       is invisible. */
+    top: calc(100% - 1px);
     right: 0;
     gap: 0;
     margin: 0;
-    padding: 7px 16px 9px 14px;
+    padding: 4px 16px 8px 14px;
     /* Same bright red as the banner's lower edge — kept flat so the notch
        stays as vivid as the band it hangs from, not darkened. */
     background: #A32520;
@@ -8474,20 +8692,11 @@ a,
     box-shadow: -8px 10px 20px rgba(120, 28, 22, 0.24);
   }
 
-  /* Concave fillet on the left so the notch sweeps out of the banner
-     instead of reading as a box tacked onto it. A quarter-circle is carved
-     away at the bottom-left, leaving the curve tangent to both the banner
-     underside and the notch's left edge. */
+  /* Top-left concave fillet removed by request — the notch now meets the
+     banner with a straight left edge, keeping only the rounded bottom-left
+     corner (border-radius above). */
   .header-index-toggle::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -18px;
-    width: 18px;
-    height: 18px;
-    background: radial-gradient(circle at bottom left,
-      transparent 17.5px, #A32520 18px);
-    pointer-events: none;
+    content: none;
   }
 
   /* Just the pills in the notch — the "Index" caption is redundant here */
@@ -8505,7 +8714,7 @@ a,
 
   .header-index-toggle .overview-rankings-toggle__btn {
     min-height: auto;
-    padding: 5px 15px;
+    padding: 3px 15px;
     font-size: 0.72rem;
     letter-spacing: 0.02em;
     color: rgba(255, 244, 238, 0.82);

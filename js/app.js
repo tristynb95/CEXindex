@@ -124,6 +124,9 @@
     }
     updateDashboardActiveIndex(name);
     updateGlobalIndexToggleVisibility(name);
+    // Expose the active tab so tab-specific layout tweaks (e.g. the mobile
+    // methodology title clearing the index-toggle notch) can be scoped in CSS.
+    document.body.dataset.dashTab = name;
   }
 
   function syncDashboardKpis(name) {
@@ -221,20 +224,12 @@
   }
 
   function animateScrollToTop() {
-    var container = document.querySelector('.container');
-    var isMobileScroll = window.matchMedia && window.matchMedia('(max-width: 980px)').matches;
-    var startY = (isMobileScroll && container) 
-      ? container.scrollTop 
-      : (window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0);
+    var startY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
 
     if (startY <= 0) return;
 
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      if (isMobileScroll && container) {
-        container.scrollTop = 0;
-      } else {
-        window.scrollTo(0, 0);
-      }
+      window.scrollTo(0, 0);
       return;
     }
 
@@ -251,11 +246,7 @@
       var progress = Math.min(elapsed / duration, 1);
       var nextY = Math.round(startY * (1 - easeOutCubic(progress)));
 
-      if (isMobileScroll && container) {
-        container.scrollTop = nextY;
-      } else {
-        window.scrollTo(0, nextY);
-      }
+      window.scrollTo(0, nextY);
 
       if (progress < 1) {
         requestAnimationFrame(step);
