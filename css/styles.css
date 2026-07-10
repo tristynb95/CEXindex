@@ -5878,6 +5878,14 @@ body.table-fullscreen-lock {
 }
 
 @media (max-width: 980px) {
+  .admin-page {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
   .admin-workspace__shell {
     flex-direction: column;
     min-height: 0;
@@ -7582,7 +7590,7 @@ a,
     overflow-x: hidden;
     flex: 1;
     -webkit-overflow-scrolling: touch;
-    padding: 24px 20px calc(96px + env(safe-area-inset-bottom, 0px));
+    padding: 90px 20px calc(96px + env(safe-area-inset-bottom, 0px));
     gap: 20px 22px;
     background: transparent;
     align-content: start;
@@ -8088,6 +8096,117 @@ a,
 
   #drillBody {
     padding: 16px 18px 20px;
+  }
+
+  /* ── Visit report modal: the report modal uses the .drill-modal-*
+     classes (not the #drill* IDs the analytics drilldown uses), so it
+     needs its own mobile treatment — otherwise the title renders at the
+     full 1.85rem and the header stat cards fall back to a ragged
+     flex-wrap that reads as an untidy stack on a phone. ── */
+  #visitReportModal .drill-modal-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px 16px 14px;
+  }
+
+  #visitReportModal .drill-modal-title {
+    font-size: 1.3rem;
+    line-height: 1.2;
+  }
+
+  #visitReportModal .drill-modal-subtitle {
+    font-size: 0.85rem;
+    margin-top: 6px;
+  }
+
+  /* Actions sit as a compact row above the title so Close/Print stay in
+     easy thumb reach at the top of the sheet. */
+  #visitReportModal .visit-report-header-actions {
+    order: -1;
+    justify-content: flex-end;
+  }
+
+  #visitReportModal .visit-report-print-btn,
+  #visitReportModal .drill-close-btn {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  #visitReportModal .drill-modal-body {
+    padding: 14px 14px 24px;
+    gap: 10px;
+  }
+
+  /* Even 2-up grid replaces the ragged wrap — every card the same width,
+     and a lone final card spans the full row instead of hanging half-width. */
+  #visitReportModal .drill-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  #visitReportModal .drill-card {
+    min-width: 0;
+    padding: 12px 12px;
+    border-radius: 12px;
+  }
+
+  #visitReportModal .drill-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  #visitReportModal .drill-card__label {
+    font-size: 0.62rem;
+    letter-spacing: 0.05em;
+  }
+
+  #visitReportModal .drill-card__value {
+    font-size: 1.1rem !important; /* beats the inline 1.3rem set in JS */
+    margin-top: 5px;
+    overflow-wrap: anywhere;
+  }
+
+  #visitReportModal .visit-report-section {
+    padding: 14px 14px;
+    border-radius: 14px;
+    margin-bottom: 10px;
+  }
+
+  #visitReportModal .visit-report-hs-banner {
+    padding: 12px 14px;
+    font-size: 0.85rem;
+  }
+
+  #visitReportModal .visit-report-row {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    font-size: 0.82rem;
+  }
+
+  #visitReportModal .visit-report-row__label {
+    flex: 1 1 60%;
+    min-width: 0;
+  }
+
+  #visitReportModal .visit-report-row__value,
+  #visitReportModal .visit-report-row .visit-pill {
+    flex-shrink: 0;
+    margin-left: auto;
+    text-align: right;
+  }
+
+  #visitReportModal .visit-report-chart-wrap {
+    height: 220px;
+  }
+
+  /* Full-width tap target for the "View Original CQV PDF" link (rendered
+     with an inline display:inline-block, hence the override). */
+  #visitReportModal a.drill-close-btn[href] {
+    display: block !important;
+    text-align: center;
   }
 }
 
@@ -8904,6 +9023,41 @@ a,
     text-align: center;
   }
 }
+
+/* ── Visit Log primary actions ──────────────────────────────────────────
+   Sits above the card (just under the "Bakery Reports" page title) so the
+   card can lead with its own intro text rather than being crowded by two
+   heavy buttons at its top edge. Equal-height buttons on one row. */
+.visit-log-actions {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 14px;
+}
+
+.visit-log-actions__btn {
+  padding: 9px 18px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* On phones, let the two buttons share the full width on a single line
+   each — the shortened "Complete Visit Form" label keeps them from
+   wrapping, so they stay compact and evenly balanced. */
+@media (max-width: 640px) {
+  .visit-log-actions {
+    gap: 8px;
+  }
+
+  .visit-log-actions__btn {
+    flex: 1 1 0;
+    white-space: nowrap;
+    padding: 9px 12px;
+    font-size: 0.8rem;
+  }
+}
+
 /* ── Visit Log Toggle buttons ── */
 .visit-log-toggle-btn {
   background: rgba(34, 31, 26, 0.03);
