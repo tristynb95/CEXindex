@@ -2165,6 +2165,15 @@ canvas {
   box-shadow: 0 4px 14px rgba(178, 42, 36, 0.3);
 }
 
+/* On desktop the six tabs stretch to share the bar equally, like a segmented
+   control; on mobile they keep their natural width and scroll horizontally. */
+@media (min-width: 981px) {
+  .target-subtab {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+}
+
 .target-subtab-panel {
   display: none;
   min-width: 0;
@@ -6716,8 +6725,12 @@ body.table-fullscreen-lock {
 }
 
 .visit-report-chart-wrap {
-  height: 260px;
+  height: 300px;
   margin-bottom: 20px;
+  /* Direct flex item of the column-flex modal body (its wrapper is
+     display: contents) — without this the body compresses the declared
+     height and the chart renders squashed. */
+  flex-shrink: 0;
 }
 
 .visit-report-note {
@@ -8387,8 +8400,10 @@ a,
     text-align: right;
   }
 
+  /* The rotated x-axis labels eat ~110px on a phone, so the bars need real
+     headroom to stay readable. */
   #visitReportModal .visit-report-chart-wrap {
-    height: 220px;
+    height: 340px;
   }
 
   /* Full-width tap target for the "View Original CQV PDF" link (rendered

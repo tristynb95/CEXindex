@@ -181,7 +181,7 @@ window.GAILS = window.GAILS || {};
         labels: labels,
         datasets: [
           { label: 'Points Earned', data: earned, backgroundColor: '#1D9E5C', borderRadius: 6 },
-          { label: 'Points Possible', data: max, backgroundColor: 'rgba(146, 137, 120,0.25)', borderRadius: 6 }
+          { label: 'Points Available', data: max, backgroundColor: 'rgba(146, 137, 120,0.25)', borderRadius: 6 }
         ]
       },
       options: {
@@ -414,7 +414,7 @@ window.GAILS = window.GAILS || {};
         labels: names,
         datasets: [
           { label: 'Points Earned', data: earned, backgroundColor: '#1D9E5C', borderRadius: 6 },
-          { label: 'Points Possible', data: max, backgroundColor: 'rgba(146, 137, 120,0.25)', borderRadius: 6 }
+          { label: 'Points Available', data: max, backgroundColor: 'rgba(146, 137, 120,0.25)', borderRadius: 6 }
         ]
       },
       options: {
@@ -454,6 +454,7 @@ window.GAILS = window.GAILS || {};
     }
 
     modal.style.display = 'flex';
+    bodyEl.scrollTop = 0;
     lockBackgroundScroll();
   };
 
@@ -643,6 +644,7 @@ window.GAILS = window.GAILS || {};
       subtitleEl.textContent = 'Visit record not found.';
       bodyEl.innerHTML = '';
       modal.style.display = 'flex';
+      bodyEl.scrollTop = 0;
       lockBackgroundScroll();
       return;
     }
@@ -660,6 +662,7 @@ window.GAILS = window.GAILS || {};
       bodyEl.innerHTML = buildCqvReportHtml(record);
 
       modal.style.display = 'flex';
+      bodyEl.scrollTop = 0;
       lockBackgroundScroll();
       requestAnimationFrame(function() { drawCqvScoreChart(record); });
       return;
@@ -688,8 +691,9 @@ window.GAILS = window.GAILS || {};
             '<p class="visit-report-comment" style="font-size:1rem; line-height:1.6; color:var(--text-2); white-space:pre-wrap; margin:0;">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
           '</div>' +
         '</div>';
-      
+
       modal.style.display = 'flex';
+      bodyEl.scrollTop = 0;
       lockBackgroundScroll();
       return;
     }
@@ -699,6 +703,7 @@ window.GAILS = window.GAILS || {};
     bodyEl.innerHTML = buildReportHtml(record);
 
     modal.style.display = 'flex';
+    bodyEl.scrollTop = 0;
     lockBackgroundScroll();
     requestAnimationFrame(function() { drawScoreChart(record); });
   };
