@@ -32,6 +32,26 @@ window.GAILS = window.GAILS || {};
     return '<span class="conf ' + escapeHtml(confidence) + '">' + escapeHtml(confidence) + '</span>';
   }
 
+  // RAG thresholds matched to the league table (window.GAILS.renderLeagueTable)
+  function stdRagColor(value) { return value >= 90 ? 'var(--green)' : value >= 80 ? 'var(--amber)' : 'var(--red)'; }
+  function s2RagColor(value) { return value >= 75 ? 'var(--green)' : value >= 60 ? 'var(--amber)' : 'var(--red)'; }
+  function o5RagColor(value) { return value > 1.5 ? 'var(--red)' : value >= 1.0 ? 'var(--amber)' : 'var(--green)'; }
+
+  function renderRagMetric(value, suffix, colorFn) {
+    return '<span style="color:' + colorFn(value) + '">' + metricText(value, suffix) + '</span>';
+  }
+
+  function ragMetricColumns() {
+    return [
+      { label: 'Quality', render: function(row) { return renderRagMetric(row.dr, '%', stdRagColor); } },
+      { label: 'Efficiency', render: function(row) { return renderRagMetric(row.ef, '%', stdRagColor); } },
+      { label: 'Friendliness', render: function(row) { return renderRagMetric(row.fr, '%', stdRagColor); } },
+      { label: 'Overall', render: function(row) { return renderRagMetric(row.ov, '%', stdRagColor); } },
+      { label: '≤2m', render: function(row) { return renderRagMetric(row.s2, '%', s2RagColor); } },
+      { label: '>5m', render: function(row) { return renderRagMetric(row.o5, '%', o5RagColor); } }
+    ];
+  }
+
   function renderRows(G, rows, columns) {
     return rows.map(function(row, index) {
       return '<tr>' + columns.map(function(column) {
@@ -209,28 +229,13 @@ window.GAILS = window.GAILS || {};
         {
           label: 'Peer Band',
           render: function(row) { return renderBandPill(G, row.cb); }
-        },
-        {
-          label: 'Quality',
-          render: function(row) { return metricText(row.dr, '%'); }
-        },
-        {
-          label: 'Efficiency',
-          render: function(row) { return metricText(row.ef, '%'); }
-        },
-        {
-          label: 'Friendliness',
-          render: function(row) { return metricText(row.fr, '%'); }
-        },
-        {
-          label: 'Coffee Efficiency',
-          render: function(row) { return metricText(row.ts); }
-        },
+        }
+      ].concat(ragMetricColumns()).concat([
         {
           label: 'Conf',
           render: function(row) { return renderConfidence(row.co); }
         }
-      ]);
+      ]));
 
       content += '<div class="drill-topbar" data-table-fullscreen-anchor="true">' +
         '<div class="drill-summary">' +
@@ -252,30 +257,8 @@ window.GAILS = window.GAILS || {};
         {
           label: 'NPS',
           render: function(row) { return metricText(row.n); }
-        },
-        {
-          label: 'Quality',
-          render: function(row) { return metricText(row.dr, '%'); }
-        },
-        {
-          label: 'Efficiency',
-          render: function(row) { return metricText(row.ef, '%'); }
-        },
-        {
-          label: 'Friendliness',
-          render: function(row) { return metricText(row.fr, '%'); }
-        },
-        {
-          label: 'Coffee Efficiency',
-          render: function(row) { return metricText(row.ts); }
-        },
-        {
-          label: '>5m',
-          render: function(row) {
-            var color = row.o5 > 1.5 ? 'var(--red)' : row.o5 > 1.0 ? 'var(--amber)' : 'var(--green)';
-            return '<span style="color:' + color + '">' + metricText(row.o5, '%') + '</span>';
-          }
-        },
+        }
+      ]).concat(ragMetricColumns()).concat([
         {
           label: 'Conf',
           render: function(row) { return renderConfidence(row.co); }
@@ -295,32 +278,8 @@ window.GAILS = window.GAILS || {};
         {
           label: 'NPS',
           render: function(row) { return metricText(row.n); }
-        },
-        {
-          label: 'Quality',
-          render: function(row) {
-            var color = row.dr < 90 ? (row.dr < 80 ? 'var(--red)' : 'var(--amber)') : 'inherit';
-            return '<span style="color:' + color + '">' + metricText(row.dr, '%') + '</span>';
-          }
-        },
-        {
-          label: 'Efficiency',
-          render: function(row) {
-            var color = row.ef < 90 ? (row.ef < 80 ? 'var(--red)' : 'var(--amber)') : 'inherit';
-            return '<span style="color:' + color + '">' + metricText(row.ef, '%') + '</span>';
-          }
-        },
-        {
-          label: 'Friendliness',
-          render: function(row) {
-            var color = row.fr < 90 ? (row.fr < 80 ? 'var(--red)' : 'var(--amber)') : 'inherit';
-            return '<span style="color:' + color + '">' + metricText(row.fr, '%') + '</span>';
-          }
-        },
-        {
-          label: 'Coffee Efficiency',
-          render: function(row) { return metricText(row.ts); }
-        },
+        }
+      ]).concat(ragMetricColumns()).concat([
         {
           label: 'Conf',
           render: function(row) { return renderConfidence(row.co); }
