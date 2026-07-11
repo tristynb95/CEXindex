@@ -2,6 +2,9 @@
 
 html {
   scrollbar-gutter: stable;
+  /* Keep mobile browsers from auto-inflating text (Android font boosting) */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 * {
@@ -9247,21 +9250,22 @@ body.map-fullscreen-active .dashboard-workspace__main {
     border-bottom: 1px solid rgba(34, 31, 26, 0.07);
   }
 
-  /* Both toggles share one line as a single centred cluster, labels centred
-     above their pills; slimmed type/padding so the pair fits side by side on
-     narrow phones (the card leaves the bar only ~290px at a 390px viewport). */
+  /* Both toggles share one line as a single left-aligned cluster, labels
+     centred above their pills; slimmed type/padding so the pair fits side by
+     side on narrow phones (the card leaves the bar ~290px at a 390px viewport). */
   .map-control-bar {
-    gap: 10px 12px;
-    justify-content: center;
+    gap: 10px 14px;
+    justify-content: flex-start;
   }
 
+  /* Label above its pill, left-aligned to the pill's left edge */
   .map-toggle-group {
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: 6px;
   }
 
-  .map-toggle-label {
+  .map-toggle-group .map-toggle-label {
     font-size: 0.58rem;
   }
 
@@ -9273,7 +9277,7 @@ body.map-fullscreen-active .dashboard-workspace__main {
   .map-legend-key {
     margin: 2px 0 0;
     width: 100%;
-    text-align: center;
+    text-align: left;
     font-size: 0.7rem;
   }
 
@@ -9540,6 +9544,61 @@ body.map-fullscreen-active .dashboard-workspace__main {
 .visit-log-empty__icon {
   font-size: 2.5rem;
   margin-bottom: 12px;
+}
+
+/* Small screens: the stacked full-width filters formed a ~1000px wall before
+   any content. Pack them into a compact two-column grid — Search on its own
+   row, selects paired up, Reset as a slim full-width action at the foot. */
+@media (max-width: 640px) {
+  .visit-log-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px 14px 14px;
+    margin-bottom: 16px;
+  }
+
+  .visit-log-filter-control,
+  .visit-log-filter-control--compact {
+    min-width: 0;
+    gap: 4px;
+  }
+
+  /* Search leads on its own full-width row */
+  .visit-log-filter-control:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .visit-log-filter-control label {
+    font-size: 0.62rem;
+  }
+
+  .visit-log-input,
+  .visit-log-select {
+    padding: 7px 10px;
+    font-size: 0.8rem;
+  }
+
+  .visit-log-select {
+    padding-right: 28px;
+    background-position: right 8px center;
+  }
+
+  /* Reset flows into the grid like a control, pairing with the odd select
+     out (Period) instead of leaving an empty cell. */
+  .visit-log-reset-btn {
+    height: 34px;
+    padding: 0 16px;
+    font-size: 0.76rem;
+    align-self: end;
+  }
+
+  /* View switcher becomes an even 50/50 pair */
+  .visit-log-toggle-btn {
+    flex: 1 1 0;
+    padding: 8px 10px;
+    font-size: 0.78rem;
+  }
 }
 
 /* Mobile responsive styles */
