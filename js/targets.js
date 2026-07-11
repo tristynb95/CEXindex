@@ -1136,18 +1136,9 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
   var allBandNames = isAbsolute
     ? ['Below Standard', 'Approaching', 'Meeting', 'Exceeding']
     : ['Needs Support', 'Below Average', 'Above Average', 'Top Performer'];
-  var FM = G.getRollingMonths();
+  var FM = state.selectedMonths || [];
   var targetNames = targets.map(function(b) { return b.b; });
   var THRESHOLD = 3;
-
-  if (targets.length === 0) {
-    _clearTargetTrendCharts();
-    document.getElementById('trendSummaryCards').innerHTML = '';
-    document.getElementById('sparklineGrid').innerHTML = '';
-    document.getElementById('targetTrendTable').innerHTML = '';
-    _setTargetTrendState(false, 'No focus bakeries are in the ' + highBand + ' or ' + lowBand + ' bands for the current selection.');
-    return;
-  }
 
   if (FM.length < 2) {
     _clearTargetTrendCharts();
@@ -1155,6 +1146,15 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
     document.getElementById('sparklineGrid').innerHTML = '';
     document.getElementById('targetTrendTable').innerHTML = '';
     _setTargetTrendState(false, 'Select at least two months to view focus bakery trend graphs and tables.');
+    return;
+  }
+
+  if (targets.length === 0) {
+    _clearTargetTrendCharts();
+    document.getElementById('trendSummaryCards').innerHTML = '';
+    document.getElementById('sparklineGrid').innerHTML = '';
+    document.getElementById('targetTrendTable').innerHTML = '';
+    _setTargetTrendState(false, 'No focus bakeries are in the ' + highBand + ' or ' + lowBand + ' bands for the current selection.');
     return;
   }
 
