@@ -1014,7 +1014,7 @@ window.GAILS.renderTargets = function(data) {
     { v: needsAttn.length, l: highBand, col: 'var(--red)' },
     { v: developing.length, l: lowBand, col: 'var(--amber)' },
     { v: targets.length, l: 'Total Targeted', col: 'var(--accent)' },
-    { v: targets.length ? avg(targets, cf).toFixed(1) : '\u2014', l: (isAbsolute ? 'Avg Abs Score' : 'Avg Score') + ' (Targeted)', col: 'var(--accent)' },
+    { v: targets.length ? avg(targets, cf).toFixed(1) : '\u2014', l: (isAbsolute ? 'Avg Benchmark Score' : 'Avg Score') + ' (Targeted)', col: 'var(--accent)' },
   ].map(function(k) { return '<div class="target-stat-card"><div class="target-stat-card__value" style="color:' + k.col + '">' + k.v + '</div><div class="target-stat-card__label">' + k.l + '</div></div>'; }).join('');
 
   _renderInsights(targets, bf, cf, highBand, lowBand, isAbsolute);
@@ -1054,7 +1054,7 @@ function _renderInsights(targets, bf, cf, highBand, lowBand, isAbsolute) {
 
   h += '<div class="insight-card"><h4>\u2B50 Quick Wins</h4>';
   if (quickWins.length > 0) {
-    h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' at 70+ ' + (isAbsolute ? 'Abs ' : '') + 'Score &mdash; ' + quickWinsThreshold + '</p><ul>' + quickWins.map(function(b) { return '<li><strong>' + b.b + '</strong> \u2014 ' + b[cf] + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
+    h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' at 70+ ' + (isAbsolute ? 'Benchmark ' : '') + 'Score &mdash; ' + quickWinsThreshold + '</p><ul>' + quickWins.map(function(b) { return '<li><strong>' + b.b + '</strong> \u2014 ' + b[cf] + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
   } else {
     h += '<p style="color:var(--muted)">No bakeries close enough to ' + (isAbsolute ? 'Meeting' : 'Above Average') + ' standard yet.</p>';
   }
@@ -1096,10 +1096,10 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
     if (pct <= 25) return 'well below most bakeries';
     return 'below the bakery average';
   };
-  var ceiHeader = isAbsolute ? 'Absolute Score' : 'Relative Score';
-  var altCeiHeader = isAbsolute ? 'Relative Score' : 'Absolute Score';
+  var ceiHeader = isAbsolute ? 'Benchmark Score' : 'Peer Score';
+  var altCeiHeader = isAbsolute ? 'Peer Score' : 'Benchmark Score';
   var altCeiField = isAbsolute ? 'c' : 'ac';
-  var bandHeader = isAbsolute ? 'Absolute Band' : 'Relative Band';
+  var bandHeader = isAbsolute ? 'Benchmark Band' : 'Peer Band';
 
   document.getElementById('targetTable').innerHTML = targets.length === 0
     ? '<p style="text-align:center;color:var(--muted);padding:32px 0">No bakeries in ' + highBand + ' or adjacent bands for this period.</p>'
@@ -1211,7 +1211,7 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
     { v: chronic.length, l: 'Declining 3+ Mo', col: '#6B4FA8' },
   ].map(function(k) { return '<div class="target-stat-card"><div class="target-stat-card__value" style="color:' + k.col + '">' + k.v + '</div><div class="target-stat-card__label">' + k.l + '</div></div>'; }).join('');
 
-  var ceiLabel = isAbsolute ? 'Avg Abs Score' : 'Avg Score';
+  var ceiLabel = isAbsolute ? 'Avg Benchmark Score' : 'Avg Score';
   var targetAvgByMonth = FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m && targetNames.includes(r.b); }); return recs.length ? recs.reduce(function(a, r) { return a + r[cf]; }, 0) / recs.length : null; });
   var allAvgByMonth = FM.map(function(m) { var recs = state.ALL.filter(function(r) { return r.m === m; }); return recs.length ? recs.reduce(function(a, r) { return a + r[cf]; }, 0) / recs.length : null; });
 
@@ -1327,8 +1327,8 @@ function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolut
   var threeAgoMonth = FM.length > 2 ? FM[FM.length - 3] : (FM.length > 1 ? FM[FM.length - 2] : '—');
   var firstMonth = FM.length > 0 ? FM[0] : '—';
 
-  var trendCeiHeader = (isAbsolute ? 'Absolute ' : 'Relative ') + 'Score (' + latestMonth + ')';
-  document.getElementById('targetTrendTable').innerHTML = '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">Performance Trends \u2014 Table</h3><p class="tracker-table-header__copy"><span style="color:var(--green);font-weight:600">\u2191 Improving</span> = +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">\u2193 Declining</span> = \u22123pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">\u2194 Stable</span> = \u00b13pts &nbsp;&middot;&nbsp; Direction = month-on-month. 3-Month Trend = last 3 months.</p></div></div><div class="table-wrap"><table><thead><tr><th>Bakery</th><th>Ops Manager</th><th>' + trendCeiHeader + '</th><th>' + (isAbsolute ? 'Abs' : 'Rel') + ' Score Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Direction<br><span style="font-weight:400;font-size:0.6rem">Month-on-Month</span></th><th>NPS Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>3-Month Trend<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>3m ' + (isAbsolute ? 'Abs' : 'Rel') + ' Score Change<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>Period Change<br><span style="font-weight:400;font-size:0.6rem">' + firstMonth + ' &rarr; ' + latestMonth + '</span></th><th>Declining Streak</th><th>Best Month</th><th>Worst Month</th><th>Quality &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Friendliness &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Coffee Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th></tr></thead><tbody>' +
+  var trendCeiHeader = (isAbsolute ? 'Benchmark ' : 'Peer ') + 'Score (' + latestMonth + ')';
+  document.getElementById('targetTrendTable').innerHTML = '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">Performance Trends \u2014 Table</h3><p class="tracker-table-header__copy"><span style="color:var(--green);font-weight:600">\u2191 Improving</span> = +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">\u2193 Declining</span> = \u22123pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">\u2194 Stable</span> = \u00b13pts &nbsp;&middot;&nbsp; Direction = month-on-month. 3-Month Trend = last 3 months.</p></div></div><div class="table-wrap"><table><thead><tr><th>Bakery</th><th>Ops Manager</th><th>' + trendCeiHeader + '</th><th>' + (isAbsolute ? 'Benchmark' : 'Peer') + ' Score Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Direction<br><span style="font-weight:400;font-size:0.6rem">Month-on-Month</span></th><th>NPS Change<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>3-Month Trend<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>3m ' + (isAbsolute ? 'Benchmark' : 'Peer') + ' Score Change<br><span style="font-weight:400;font-size:0.6rem">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>Period Change<br><span style="font-weight:400;font-size:0.6rem">' + firstMonth + ' &rarr; ' + latestMonth + '</span></th><th>Declining Streak</th><th>Best Month</th><th>Worst Month</th><th>Quality &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Friendliness &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Coffee Efficiency &Delta;<br><span style="font-weight:400;font-size:0.6rem">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th></tr></thead><tbody>' +
   trendData.map(function(t) {
     var streakWarn = t.streak >= 3 ? 'color:#6B4FA8;font-weight:700' : t.streak >= 2 ? 'color:var(--red);font-weight:600' : '';
     return '<tr><td style="font-weight:500">' + t.name + '</td><td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(t.name) + '</td><td style="font-weight:700">' + (t.latest ? t.latest[cf] : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best[cf] + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst[cf] + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';

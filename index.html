@@ -61,7 +61,7 @@
           </div>
           <div class="login-hero__score">
             <span class="login-hero__score-label">Compare</span>
-            <strong>Relative &amp; Absolute</strong>
+            <strong>Peer &amp; Benchmark</strong>
             <p>Rank bakeries against the pack, or measure everyone against GAIL's 90% standard.</p>
           </div>
           <div class="login-hero__score">
@@ -138,8 +138,8 @@
       <div id="globalIndexToggle" class="header-index-toggle" style="display:none;">
         <span class="header-index-toggle__label">Index</span>
         <div class="overview-rankings-toggle" role="group" aria-label="Index type">
-          <button type="button" class="overview-rankings-toggle__btn active" data-global-index="relative">Relative</button>
-          <button type="button" class="overview-rankings-toggle__btn" data-global-index="absolute">Absolute</button>
+          <button type="button" class="overview-rankings-toggle__btn active" data-global-index="relative">Peer</button>
+          <button type="button" class="overview-rankings-toggle__btn" data-global-index="absolute">Benchmark</button>
         </div>
       </div>
       <button id="adminBtn" title="Admin Portal" style="display:none;">
@@ -284,13 +284,13 @@
             </div>
             <div class="filter-control"><label id="bandFilterLabel">Band</label><br><select id="bandFilter">
               <option value="">All</option>
-              <optgroup label="— Relative Score Band">
+              <optgroup label="— Peer Score Band">
                 <option value="Top Performer">Top Performer</option>
                 <option value="Above Average">Above Average</option>
                 <option value="Below Average">Below Average</option>
                 <option value="Needs Support">Needs Support</option>
               </optgroup>
-              <optgroup label="— Absolute Score Band">
+              <optgroup label="— Benchmark Score Band">
                 <option value="abs:Exceeding">Exceeding</option>
                 <option value="abs:Meeting">Meeting</option>
                 <option value="abs:Approaching">Approaching</option>
@@ -474,28 +474,28 @@
             </div>
             <div class="grid-2 overview-secondary-charts">
               <div class="section overview-card overview-card--scatter">
-                <h2 id="npsScatterTitle">NPS vs Relative Score</h2><canvas id="npsVsCei"></canvas>
+                <h2 id="npsScatterTitle">NPS vs Peer Score</h2><canvas id="npsVsCei"></canvas>
               </div>
               <div class="section overview-card overview-card--pie">
-                <h2 id="overviewBandSplitTitle">Score Band Split (Relative Score)</h2><canvas id="overviewBandSplit"></canvas>
+                <h2 id="overviewBandSplitTitle">Score Band Split (Peer Score)</h2><canvas id="overviewBandSplit"></canvas>
               </div>
             </div>
             <div class="grid-2 overview-cei-pies">
               <div class="section overview-card overview-card--experience">
-                <h2 id="overviewRadarTitle">Customer Experience by Relative Score Band</h2><canvas id="cxRadar" style="max-height:340px"></canvas>
+                <h2 id="overviewRadarTitle">Customer Experience by Peer Score Band</h2><canvas id="cxRadar" style="max-height:340px"></canvas>
               </div>
               <div class="section overview-card overview-card--drags">
-                <h2 id="overviewDragTitle">Biggest Drags on Relative Score</h2>
+                <h2 id="overviewDragTitle">Biggest Drags on Peer Score</h2>
                 <p id="overviewDragText" style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Average peer-relative component score across all bakeries &mdash; shows which area is pulling the network down most versus the rest of the cohort.</p>
                 <canvas id="absComponentDrag"></canvas>
               </div>
             </div>
             <div class="grid-2 overview-rankings-grid">
               <div class="section overview-card overview-card--top">
-                <h2 id="top10Title" style="color:var(--green)">Top 10 Bakeries by Relative Score</h2><canvas id="top10Chart" style="max-height:360px"></canvas>
+                <h2 id="top10Title" style="color:var(--green)">Top 10 Bakeries by Peer Score</h2><canvas id="top10Chart" style="max-height:360px"></canvas>
               </div>
               <div class="section overview-card overview-card--bottom">
-                <h2 id="bot10Title" style="color:var(--red)">Bottom 10 Bakeries by Relative Score</h2><canvas id="bot10Chart" style="max-height:360px"></canvas>
+                <h2 id="bot10Title" style="color:var(--red)">Bottom 10 Bakeries by Peer Score</h2><canvas id="bot10Chart" style="max-height:360px"></canvas>
               </div>
             </div>
           </div>
@@ -512,12 +512,12 @@
             </div>
             <div class="grid-2">
               <div class="section">
-                <h2 id="trendAbsBandsTitle">Absolute Score Bands by Month</h2>
+                <h2 id="trendAbsBandsTitle">Benchmark Score Bands by Month</h2>
                 <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Network progress against company benchmarks over time &mdash; unlike the relative bands, this will shift as bakeries genuinely improve.</p>
                 <canvas id="trendAbsBands"></canvas>
               </div>
               <div class="section">
-                <h2 id="trendBandsTitle">Relative Score Bands by Month</h2>
+                <h2 id="trendBandsTitle">Peer Score Bands by Month</h2>
                 <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">How bakeries rank against each other each month &mdash; because the bands are set by quartile, the proportions stay broadly fixed even as the whole network improves.</p>
                 <canvas id="trendBands"></canvas>
               </div>
@@ -586,15 +586,15 @@
 
                 <div class="method-pair">
                   <div class="method-pair__card">
-                    <div class="method-pair__tag">Relative Score</div>
+                    <div class="method-pair__tag">Peer Score</div>
                     <p>Like a race. Every selected period, all bakeries line up and we rank them against each other. Finish 1st out of 20 and your score is near 100; finish last and it's near 0. It doesn't matter what the actual numbers are &mdash; only where you finished in the group.</p>
                   </div>
                   <div class="method-pair__card">
-                    <div class="method-pair__tag">Absolute Score</div>
+                    <div class="method-pair__tag">Benchmark Score</div>
                     <p>Like a test with a pass mark of 90%. Whether every other bakery is above or below 90% doesn't change your result &mdash; you either hit the standard or you didn't.</p>
                   </div>
                 </div>
-                <p class="method-note">Use <strong>Relative</strong> to see who's leading the pack. Use <strong>Absolute</strong> to see if the whole network is genuinely hitting the standard.</p>
+                <p class="method-note">Use <strong>Peer</strong> to see who's leading the pack. Use <strong>Benchmark</strong> to see if the whole network is genuinely hitting the standard.</p>
 
                 <h3>The Recipe: What Makes Up the Score?</h3>
                 <p>We believe what the customer tells us matters most. That's why 95% of your score comes directly from customer feedback:</p>
@@ -648,7 +648,7 @@
                 <ol class="method-list method-list--num">
                   <li><strong>Listening to the customer:</strong> We reduced the score for Coffee Efficiency from 20% down to 5%, and instead put that focus strictly on how the customer rated their speed and quality.</li>
                   <li><strong>Fairer rankings for everyone:</strong> We added the fairness adjustment for bakeries with very few reviews, so rankings aren't thrown off by just a few responses.</li>
-                  <li><strong>A true standard to aim for:</strong> We added the <strong>Absolute Score</strong> to make sure we are not just trying to beat each other week-over-week, but genuinely improving our service and meeting our company targets.</li>
+                  <li><strong>A true standard to aim for:</strong> We added the <strong>Benchmark Score</strong> to make sure we are not just trying to beat each other week-over-week, but genuinely improving our service and meeting our company targets.</li>
                 </ol>
               </div>
             </div>
@@ -659,8 +659,8 @@
             <div class="section">
               <div class="league-table-toolbar" data-table-fullscreen-anchor="true">
                 <label class="league-table-toolbar__label">Sort by: <select id="sortBy" class="league-table-toolbar__select">
-                    <option value="c">Score (Relative)</option>
-                    <option value="ac">Score (Absolute)</option>
+                    <option value="c">Score (Peer)</option>
+                    <option value="ac">Score (Benchmark)</option>
                     <option value="n">NPS</option>
                     <option value="dr">Quality</option>
                     <option value="ef">Overall Efficiency</option>
@@ -677,10 +677,10 @@
                       <th>Bakery</th>
                       <th>Region</th>
                       <th>Ops Manager</th>
-                      <th>Relative Score</th>
-                      <th>Relative Band</th>
-                      <th>Absolute Score</th>
-                      <th>Absolute Band</th>
+                      <th>Peer Score</th>
+                      <th>Peer Band</th>
+                      <th>Benchmark Score</th>
+                      <th>Benchmark Band</th>
                       <th>Conf</th>
                       <th>NPS</th>
                       <th>Vol</th>

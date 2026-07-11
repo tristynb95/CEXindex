@@ -1876,6 +1876,16 @@ canvas {
   gap: 12px;
 }
 
+/* Map view: the single map card can be shorter than the sidebar column, and the
+   workspace grid's default align-content: stretch then shares the leftover
+   height across the title and card rows, pushing both down compared with the
+   other views. Pack the rows to the top on desktop instead. */
+@media (min-width: 981px) {
+  body[data-dash-tab="map"] .dashboard-workspace__main {
+    align-content: start;
+  }
+}
+
 .section-page-title {
   margin: 0 0 18px;
   font-size: 1.6rem;
@@ -6413,7 +6423,7 @@ body.table-fullscreen-lock {
 /* ========== MAP TAB ========== */
 #targetMap,
 #networkMap {
-  height: clamp(360px, calc(100vh - 340px), 520px);
+  height: clamp(400px, calc(100vh - 300px), 600px);
   border-radius: 12px;
   overflow: hidden;
   background: var(--card);
@@ -8891,6 +8901,7 @@ a,
   align-items: center;
   gap: 10px 18px;
   flex-wrap: wrap;
+  flex: 1 1 auto;
 }
 
 .map-toggle-group {
@@ -8913,6 +8924,7 @@ a,
 /* Slimmer toggle pills for the map control bar */
 .map-control-bar .overview-rankings-toggle {
   padding: 2px;
+  margin-left: 0;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(34, 31, 26, 0.06);
 }
 
@@ -8921,9 +8933,9 @@ a,
   font-size: 0.71rem;
 }
 
-/* Colour key sits inline with the toggles, pushed to the right */
+/* Colour key floats centred between the toggles and the full-screen button */
 .map-legend-key {
-  margin: 0 0 0 auto;
+  margin: 0 auto;
   font-size: 0.72rem;
   line-height: 1.5;
   color: var(--muted-l);
@@ -9016,17 +9028,17 @@ a,
 }
 
 .map-panel.is-fullscreen .map-filter-summary {
+  grid-area: filters;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  order: -1;
-  flex: 0 0 268px;
-  align-self: stretch;
+  min-height: 0;
   margin: 0;
-  padding: 18px;
-  border: 1px solid rgba(34, 31, 26, 0.09);
-  border-radius: 14px;
-  background: rgba(34, 31, 26, 0.015);
+  padding: 16px 16px 18px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
   /* visible so the multiselect dropdowns can overflow the panel onto the map */
   overflow: visible;
 }
@@ -9044,16 +9056,48 @@ a,
 
 .filter-bar--in-map .filter-controls {
   grid-template-columns: 1fr;
-  gap: 14px;
+  gap: 11px;
+}
+
+/* The inline markup separates each label from its control with a literal <br>;
+   in the condensed side panel that empty line is pure wasted height. */
+.filter-bar--in-map br {
+  display: none;
+}
+
+.filter-bar--in-map label {
+  margin-bottom: 5px;
+  font-size: 0.6rem;
+}
+
+/* Compact triggers: shorter, tighter, and without the heavy floating shadows
+   that look bulky when six of them stack in a narrow column. */
+.filter-bar--in-map select,
+.filter-bar--in-map .filter-select__trigger,
+.filter-bar--in-map .bakery-ms__trigger {
+  min-height: 36px;
+  padding: 7px 11px;
+  font-size: 0.8rem;
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(34, 31, 26, 0.03), 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Keep open dropdowns comfortably inside the viewport */
+.filter-bar--in-map .bakery-ms__list,
+.filter-bar--in-map .filter-select__options,
+.filter-bar--in-map .filter-select__menu {
+  max-height: min(32vh, 230px);
 }
 
 .map-filter-summary__title {
   font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted-l);
-  margin: 2px 0 6px;
+  color: rgba(178, 42, 36, 0.78);
+  margin: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(34, 31, 26, 0.07);
 }
 
 /* Stacked filter rows inside the side panel */
@@ -9092,33 +9136,42 @@ a,
   position: relative;
 }
 
-/* Wraps the map (and, in full screen, the filter side panel). In the compact
-   view it is a plain block; in full screen it becomes a horizontal row. */
+/* In full screen the wrapper dissolves so the filter panel and map canvas
+   become direct grid items of the panel (the filter card needs to span the
+   header row too, which flex nesting can't express). */
 .map-panel.is-fullscreen .map-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  gap: 18px;
+  display: contents;
 }
 
-/* Maximised (full-window) map */
+/* Maximised (full-window) map — sits on the site's cream canvas with the
+   filter panel and map reading as white cards, matching the dashboard.
+   The filter card spans the full height on the left; the header, map, and
+   status line stack in the right column so their edges align with the map. */
 .map-panel.is-fullscreen {
   position: fixed;
   inset: 0;
   z-index: 3000;
   margin: 0;
-  padding: 24px 34px 20px;
-  background: var(--card);
-  display: flex;
-  flex-direction: column;
+  padding: 16px 28px 16px;
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "filters header"
+    "filters map"
+    "filters status";
+  column-gap: 18px;
   border-radius: 0;
 }
 
-/* Roomier, cleaner header: toggles left, colour key right, a hairline divider
-   before the map, and the close button floated to the very top-right corner. */
+/* Header row sits above the map only: toggles align to the map's left edge,
+   colour key centres over the map, close button hugs the map's right edge. */
 .map-panel.is-fullscreen .map-section-header {
-  margin-bottom: 16px !important;
-  padding: 0 60px 16px 0;
+  grid-area: header;
+  position: relative;
+  margin-bottom: 12px !important;
+  padding: 4px 56px 12px 0;
   border-bottom: 1px solid rgba(34, 31, 26, 0.08);
 }
 
@@ -9137,17 +9190,19 @@ a,
   font-size: 0.76rem;
 }
 
-/* Close button floats in the very top-right corner, out of the header flow */
+/* Close button pins to the header's top-right corner — flush with the map's
+   right edge, and immune to the control bar wrapping on narrower screens. */
 .map-panel.is-fullscreen .map-fullscreen-btn {
   position: absolute;
-  top: 22px;
-  right: 26px;
+  top: 0;
+  right: 0;
   margin: 0;
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: rgba(34, 31, 26, 0.05);
-  border-color: rgba(34, 31, 26, 0.12);
+  background: var(--card);
+  border-color: var(--card-border);
+  box-shadow: var(--shadow-sm);
   color: rgba(34, 31, 26, 0.6);
   z-index: 6;
 }
@@ -9164,18 +9219,26 @@ a,
 }
 
 .map-panel.is-fullscreen .target-map-status {
-  padding-top: 16px;
+  grid-area: status;
+  padding: 12px 0 0;
+  font-size: 0.78rem;
 }
 
 .map-panel.is-fullscreen .map-canvas-wrap {
-  flex: 1 1 auto;
+  grid-area: map;
   min-height: 0;
   min-width: 0;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
 }
 
 .map-panel.is-fullscreen #networkMap,
 .map-panel.is-fullscreen #targetMap {
   height: 100%;
+  border-radius: 0;
 }
 
 body.map-fullscreen-active {

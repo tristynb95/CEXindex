@@ -87,16 +87,16 @@
 
     if (currentTab === 'overview') {
       container.style.display = '';
-      label.textContent = state.rankingsMetric === 'absolute' ? 'Absolute Score' : 'Relative Score';
+      label.textContent = state.rankingsMetric === 'absolute' ? 'Benchmark Score' : 'Peer Score';
     } else if (currentTab === 'target') {
       container.style.display = '';
-      label.textContent = state.targetMetric === 'absolute' ? 'Absolute Score' : 'Relative Score';
+      label.textContent = state.targetMetric === 'absolute' ? 'Benchmark Score' : 'Peer Score';
     } else if (currentTab === 'map') {
       container.style.display = '';
-      label.textContent = _networkMapMetric === 'absolute' ? 'Absolute Score' : 'Relative Score';
+      label.textContent = _networkMapMetric === 'absolute' ? 'Benchmark Score' : 'Peer Score';
     } else if (currentTab === 'table' || currentTab === 'trends' || currentTab === 'speed') {
       container.style.display = '';
-      label.textContent = 'Relative & Absolute';
+      label.textContent = 'Peer & Benchmark';
     } else {
       container.style.display = 'none';
     }
@@ -434,8 +434,8 @@
     if (n === 0) {
       var dashMetrics = [
         { eyebrow: 'NPS', title: 'Net Promoter Score', meta: 'Target: 55 NPS.', primary: true },
-        { eyebrow: 'Index', title: 'Relative Score', meta: 'vs bakery peer set.', primary: true },
-        { eyebrow: 'Index', title: 'Absolute Score', meta: 'vs company benchmark.', primary: true },
+        { eyebrow: 'Index', title: 'Peer Score', meta: 'vs bakery peer set.', primary: true },
+        { eyebrow: 'Index', title: 'Benchmark Score', meta: 'vs company benchmark.', primary: true },
         { eyebrow: 'SHINE', title: 'Drink Quality', meta: 'Target: 90%.' },
         { eyebrow: 'SHINE', title: 'Efficiency', meta: 'Target: 90%.' },
         { eyebrow: 'SHINE', title: 'Friendliness', meta: 'Target: 90%.' },
@@ -535,7 +535,7 @@
         compare: Math.round(cei),
         display: Math.round(cei).toString(),
         eyebrow: 'Index',
-        title: 'Relative Score',
+        title: 'Peer Score',
         meta: 'vs bakery peer set.',
         priorKey: 'c',
         gapMetric: 'cei',
@@ -549,7 +549,7 @@
         compare: Math.round(acei),
         display: Math.round(acei).toString(),
         eyebrow: 'Index',
-        title: 'Absolute Score',
+        title: 'Benchmark Score',
         meta: 'vs company benchmark.',
         priorKey: 'ac',
         gapMetric: 'acei',
@@ -1092,7 +1092,7 @@
 
     var bandFilterLabelEl = document.getElementById('bandFilterLabel');
     if (bandFilterLabelEl) {
-      bandFilterLabelEl.textContent = toggleApplies ? ('Band (' + (wantAbs ? 'Absolute' : 'Relative') + ')') : 'Band';
+      bandFilterLabelEl.textContent = toggleApplies ? ('Band (' + (wantAbs ? 'Benchmark' : 'Peer') + ')') : 'Band';
     }
 
     // Reset to "All" only if the current selection is no longer in the available options

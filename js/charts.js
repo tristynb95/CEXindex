@@ -79,8 +79,8 @@ window.GAILS.renderOverviewCharts = function(data) {
   var bandKey = isAbsolute ? 'acb' : 'cb';
   var colorMap = isAbsolute ? G.ABSCOL : G.COL;
   var bandNames = isAbsolute ? G.ABS_BAND_NAMES : G.BAND_NAMES;
-  var metricLabel = isAbsolute ? 'Absolute Score' : 'Relative Score';
-  var altMetricLabel = isAbsolute ? 'Relative Score' : 'Absolute Score';
+  var metricLabel = isAbsolute ? 'Benchmark Score' : 'Peer Score';
+  var altMetricLabel = isAbsolute ? 'Peer Score' : 'Benchmark Score';
 
   // NPS Histogram
   var bins = []; for (var i = -10; i <= 100; i += 10) bins.push({ min: i, max: i + 10, count: 0 });
@@ -128,8 +128,8 @@ window.GAILS.renderOverviewCharts = function(data) {
   if (dragTitle) dragTitle.textContent = 'Biggest Drags on ' + metricLabel;
   if (dragText) {
     dragText.innerHTML = isAbsolute
-      ? 'Average absolute component score across all bakeries &mdash; shows which area is pulling the network down most versus the 90% benchmark.'
-      : 'Average peer-relative component score across all bakeries &mdash; shows which area is pulling the network down most versus the rest of the cohort.';
+      ? 'Average benchmark component score across all bakeries &mdash; shows which area is pulling the network down most versus the 90% benchmark.'
+      : 'Average peer component score across all bakeries &mdash; shows which area is pulling the network down most versus the rest of the cohort.';
   }
   var componentAvgs = isAbsolute
     ? [
@@ -147,8 +147,8 @@ window.GAILS.renderOverviewCharts = function(data) {
   componentAvgs.sort(function(a, b) { return a.avg - b.avg; });
   G.makeChart('absComponentDrag', {
     type: 'bar',
-    data: { labels: componentAvgs.map(function(c) { return c.name; }), datasets: [{ label: isAbsolute ? 'Avg Absolute Score' : 'Avg Relative Score', data: componentAvgs.map(function(c) { return Math.round(c.avg * 10) / 10; }), backgroundColor: componentAvgs.map(function(c) { return c.avg >= (isAbsolute ? 90 : 75) ? 'rgba(29, 158, 92,0.55)' : c.avg >= (isAbsolute ? 60 : 50) ? 'rgba(201, 127, 18,0.55)' : 'rgba(178, 42, 36,0.55)'; }), borderColor: componentAvgs.map(function(c) { return c.avg >= (isAbsolute ? 90 : 75) ? '#1D9E5C' : c.avg >= (isAbsolute ? 60 : 50) ? '#C97F12' : '#B22A24'; }), borderWidth: 2, borderRadius: 6 }] },
-    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { var c = componentAvgs[ctx.dataIndex]; return (isAbsolute ? 'Abs score: ' : 'Relative score: ') + ctx.raw + ' (raw avg: ' + c.raw.toFixed(1) + ')'; } } } }, scales: { x: { min: 0, max: 100, title: { display: true, text: isAbsolute ? 'Absolute Component Score (100 = at target)' : 'Relative Component Score (100 = top of cohort)' }, grid: { color: function(ctx) { return isAbsolute && ctx.tick.value === 100 ? 'rgba(29, 158, 92,0.3)' : 'rgba(34, 31, 26,0.06)'; } } }, y: { ticks: { font: { size: 12, weight: 'bold' } } } } }
+    data: { labels: componentAvgs.map(function(c) { return c.name; }), datasets: [{ label: isAbsolute ? 'Avg Benchmark Score' : 'Avg Peer Score', data: componentAvgs.map(function(c) { return Math.round(c.avg * 10) / 10; }), backgroundColor: componentAvgs.map(function(c) { return c.avg >= (isAbsolute ? 90 : 75) ? 'rgba(29, 158, 92,0.55)' : c.avg >= (isAbsolute ? 60 : 50) ? 'rgba(201, 127, 18,0.55)' : 'rgba(178, 42, 36,0.55)'; }), borderColor: componentAvgs.map(function(c) { return c.avg >= (isAbsolute ? 90 : 75) ? '#1D9E5C' : c.avg >= (isAbsolute ? 60 : 50) ? '#C97F12' : '#B22A24'; }), borderWidth: 2, borderRadius: 6 }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { var c = componentAvgs[ctx.dataIndex]; return (isAbsolute ? 'Benchmark score: ' : 'Peer score: ') + ctx.raw + ' (raw avg: ' + c.raw.toFixed(1) + ')'; } } } }, scales: { x: { min: 0, max: 100, title: { display: true, text: isAbsolute ? 'Benchmark Component Score (100 = at target)' : 'Peer Component Score (100 = top of cohort)' }, grid: { color: function(ctx) { return isAbsolute && ctx.tick.value === 100 ? 'rgba(29, 158, 92,0.3)' : 'rgba(34, 31, 26,0.06)'; } } }, y: { ticks: { font: { size: 12, weight: 'bold' } } } } }
   });
 
   // Top 10 & Bottom 10
@@ -209,9 +209,9 @@ window.GAILS.renderTrendCharts = function(data) {
   var el;
   el = document.getElementById('trendNPSTitle');       if (el) el.textContent = trendTitle('Average NPS by Month');
   el = document.getElementById('trendCXTitle');        if (el) el.textContent = trendTitle('Average CX Scores by Month');
-  el = document.getElementById('trendAbsBandsTitle');  if (el) el.textContent = trendTitle('Absolute Score Bands by Month');
+  el = document.getElementById('trendAbsBandsTitle');  if (el) el.textContent = trendTitle('Benchmark Score Bands by Month');
   el = document.getElementById('trendTimelinessTitle');if (el) el.textContent = trendTitle('Average Coffee Efficiency by Month');
-  el = document.getElementById('trendBandsTitle');     if (el) el.textContent = trendTitle('Relative Score Bands by Month');
+  el = document.getElementById('trendBandsTitle');     if (el) el.textContent = trendTitle('Peer Score Bands by Month');
   el = document.getElementById('trendSpeedTitle');     if (el) el.textContent = trendTitle('Average Speed Metrics by Month');
 
   var trendNPS = RM.map(function(m) { var mr = trendScopedAll.filter(function(r) { return r.m === m; }); return mr.length ? mr.reduce(function(a, r) { return a + r.n; }, 0) / mr.length : null; });
@@ -361,7 +361,7 @@ window.GAILS.renderTrendCharts = function(data) {
           + tableTitle
           + '</h3><p class="tracker-table-header__copy">'
           + tableDescription
-          + '</p></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th>NPS</th><th>Relative Score</th><th>Absolute Score</th><th>Responses</th>' + (selectedBakeries.length ? '<th>All Bakeries Avg NPS</th>' : '') + '</tr></thead><tbody>' +
+          + '</p></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th>NPS</th><th>Peer Score</th><th>Benchmark Score</th><th>Responses</th>' + (selectedBakeries.length ? '<th>All Bakeries Avg NPS</th>' : '') + '</tr></thead><tbody>' +
           trackerTableRows.slice().reverse().map(function(row) {
             return '<tr>'
               + '<td>' + row.month + '</td>'
@@ -380,8 +380,8 @@ window.GAILS.renderTrendCharts = function(data) {
       type: 'line', data: {
         labels: RM, datasets: [
           { label: scopeLabel + (isSingleBakery ? ' NPS' : ' Avg NPS'), data: trackerNps, borderColor: G.COL['Top Performer'], tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-          { label: scopeLabel + (isSingleBakery ? ' Relative Score' : ' Avg Relative Score'), data: trackerCei, borderColor: '#1E70C4', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
-          { label: scopeLabel + (isSingleBakery ? ' Absolute Score' : ' Avg Absolute Score'), data: trackerAbsCei, borderColor: '#6B4FA8', tension: 0.3, pointRadius: 4, borderWidth: 2, borderDash: [6, 3] }
+          { label: scopeLabel + (isSingleBakery ? ' Peer Score' : ' Avg Peer Score'), data: trackerCei, borderColor: '#1E70C4', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+          { label: scopeLabel + (isSingleBakery ? ' Benchmark Score' : ' Avg Benchmark Score'), data: trackerAbsCei, borderColor: '#6B4FA8', tension: 0.3, pointRadius: 4, borderWidth: 2, borderDash: [6, 3] }
         ].concat(selectedBakeries.length ? [
           { label: 'All Bakeries Avg NPS', data: benchmarkNps, borderColor: 'rgba(146, 137, 120,0.5)', borderDash: [5, 5], tension: 0.3, pointRadius: 0, borderWidth: 1.5 }
         ] : [])
