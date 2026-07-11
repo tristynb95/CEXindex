@@ -5174,6 +5174,16 @@ body.table-fullscreen-lock {
   min-width: 0;
 }
 
+.admin-workspace__brandbar .login-card__logo-wrap {
+  background: linear-gradient(135deg, #B5312A 0%, #96201B 100%);
+  padding: 8px 16px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(178, 42, 36, 0.15);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .admin-workspace__intro {
   max-width: 780px;
   padding-right: 0;
