@@ -5176,7 +5176,7 @@ body.table-fullscreen-lock {
 
 .admin-workspace__brandbar .login-card__logo-wrap {
   background: linear-gradient(135deg, #B5312A 0%, #96201B 100%);
-  padding: 8px 16px;
+  padding: 14px 20px;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(178, 42, 36, 0.15);
   display: inline-flex;
