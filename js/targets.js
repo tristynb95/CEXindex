@@ -183,19 +183,24 @@ function _setTargetTrendState(hasData, message) {
     return '#d32f2f';
   }
 
-  function buildAreaTooltip(mgr, items, bandField, networkAvg) {
+  function buildAreaTooltip(mgr, items, bandField, networkAvg, areaTotal, areaVisited) {
     var scoreField = bandField === 'acb' ? 'ac' : 'c';
-    var sum = 0, total = 0;
+    var sum = 0, scored = 0;
     items.forEach(function(item) {
       var s = item[scoreField];
-      if (s != null && !isNaN(s)) { sum += s; total++; }
+      if (s != null && !isNaN(s)) { sum += s; scored++; }
     });
-    if (total === 0) return '<strong>' + escapeHtml(mgr) + '’s Area</strong>';
-    var areaAvg = Math.round(sum / total * 10) / 10;
+    var coverageLine = '<br><span style="font-size:0.82em;opacity:0.85">' +
+      areaTotal + ' baker' + (areaTotal === 1 ? 'y' : 'ies') + ' &nbsp;&middot;&nbsp; ' +
+      areaVisited + ' visited this period</span>';
+    var header = '<strong>' + escapeHtml(mgr) + '’s Area</strong>';
+    if (scored === 0) return header + coverageLine;
+    var areaAvg = Math.round(sum / scored * 10) / 10;
     var diff = Math.round((areaAvg - networkAvg) * 10) / 10;
     var diffStr = diff >= 0 ? '+' + diff : '' + diff;
-    return '<strong>' + escapeHtml(mgr) + '’s Area</strong>' +
-      '<br><span style="font-size:0.82em;opacity:0.85">' + areaAvg + ' &nbsp;&middot;&nbsp; ' + diffStr + ' vs avg</span>';
+    return header +
+      '<br><span style="font-size:0.82em;opacity:0.85">' + areaAvg + ' &nbsp;&middot;&nbsp; ' + diffStr + ' vs avg</span>' +
+      coverageLine;
   }
 
   function pointInLatLngRing(latlng, ring) {
@@ -376,6 +381,25 @@ function _setTargetTrendState(hasData, message) {
     '</div>';
   }
 
+  // Hover-intent delay before the at-a-glance marker tooltip appears.
+  var GLANCE_TOOLTIP_DELAY_MS = 350;
+
+  // Compact hover tooltip: bakery name plus the headline score, so users can
+  // scan sites without clicking. The click popup remains the full detail view.
+  function getGlanceHtml(item, color, bandField) {
+    var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b;
+    var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px"></span>';
+    var scoreStr;
+    if (item.noData) {
+      scoreStr = 'No data';
+    } else {
+      var s = bandField === 'acb' ? item.ac : item.c;
+      scoreStr = s != null ? '' + s : '—';
+    }
+    return dot + '<strong>' + escapeHtml(siteLabel) + '</strong>' +
+      '<span style="opacity:0.7;margin-left:7px">' + escapeHtml(scoreStr) + '</span>';
+  }
+
   function computeVoronoiTerritories(managerGroups) {
     var SENTINEL = '__SENTINEL__';
     var realPts = [];
@@ -542,10 +566,10 @@ function _setTargetTrendState(hasData, message) {
     return result;
   }
 
-  function getVisitFilteredItems(cfg, items) {
-    var list = items || cfg.items;
-    var filterState = (cfg.key === 'network' ? _networkMapVisitState : _targetMapVisitState) || 'all';
-    if (filterState === 'all') return list;
+  // Months that count as "this period" for visit tracking, including the current
+  // month when a rolling window is active. Shared by the visit filter and the
+  // area coverage counts so both agree on what "visited in period" means.
+  function getPeriodMonths() {
     var months = (GAILS.state && GAILS.state.selectedMonths) || [];
     var rollingEl = document.getElementById('rollingWindow');
     if (rollingEl && rollingEl.value !== '0' && GAILS.getCurrentMonthLabel) {
@@ -554,6 +578,14 @@ function _setTargetTrendState(hasData, message) {
         months = months.concat([current]);
       }
     }
+    return months;
+  }
+
+  function getVisitFilteredItems(cfg, items) {
+    var list = items || cfg.items;
+    var filterState = (cfg.key === 'network' ? _networkMapVisitState : _targetMapVisitState) || 'all';
+    if (filterState === 'all') return list;
+    var months = getPeriodMonths();
     return list.filter(function(item) {
       var visited = GAILS.isBakeryVisitedInPeriod ? GAILS.isBakeryVisitedInPeriod(item.b, months) : false;
       return filterState === 'visited' ? visited : !visited;
@@ -636,11 +668,26 @@ function _setTargetTrendState(hasData, message) {
       });
       var networkAvg = _netCount > 0 ? _netSum / _netCount : 0;
 
+      // Coverage per area from the full source set (before the visit filter) so the
+      // tooltip reports the true area size and how many were visited this period,
+      // regardless of which visit filter is active.
+      var _periodMonths = getPeriodMonths();
+      var areaTotals = {}, areaVisited = {};
+      sourceItems.forEach(function(item) {
+        var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
+        if (areaTotals[ops] == null) { areaTotals[ops] = 0; areaVisited[ops] = 0; }
+        areaTotals[ops]++;
+        var v = GAILS.isBakeryVisitedInPeriod ? GAILS.isBakeryVisitedInPeriod(item.b, _periodMonths) : false;
+        if (v) areaVisited[ops]++;
+      });
+
       Object.keys(managerGroups).forEach(function(mgr) {
         if (mgr === 'Unknown' || mgr === 'Other') return;
         var group = managerGroups[mgr];
+        var total = areaTotals[mgr] != null ? areaTotals[mgr] : group.items.length;
+        var visited = areaVisited[mgr] != null ? areaVisited[mgr] : 0;
         var color = getAreaPerformanceColor(group.items, cfg.bandField, networkAvg);
-        var tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField, networkAvg);
+        var tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField, networkAvg, total, visited);
         var dashArray = AREA_DASH_PATTERNS[mgrIndex % AREA_DASH_PATTERNS.length] || null;
         mgrIndex++;
 
@@ -712,10 +759,29 @@ function _setTargetTrendState(hasData, message) {
         fillOpacity: 0.88
       });
       marker.bindPopup(getPopupHtml(item, color, bf));
+      var glanceHtml = getGlanceHtml(item, color, bf);
       (function(ops) {
         marker.on('mouseover', function() {
           (cfg._areaTooltipLayers || []).forEach(function(p) { p.closeTooltip(); });
           cfg._hoveredArea = null;
+          // At-a-glance tooltip after a short hover-intent delay; click opens
+          // the full popup. Bound lazily with permanent:true so Leaflet's own
+          // instant open-on-hover behaviour never kicks in.
+          clearTimeout(marker._glanceTimer);
+          marker._glanceTimer = setTimeout(function() {
+            if (!marker._map || marker.isPopupOpen()) return;
+            if (marker.getTooltip()) {
+              marker.openTooltip();
+            } else {
+              marker.bindTooltip(glanceHtml, {
+                permanent: true,
+                direction: 'top',
+                offset: [0, -10],
+                className: 'map-name-tooltip',
+                interactive: false
+              });
+            }
+          }, GLANCE_TOOLTIP_DELAY_MS);
           var areas = cfg.areaPolygons && cfg.areaPolygons[ops];
           if (!areas) return;
           (Array.isArray(areas) ? areas : [areas]).forEach(function(area) {
@@ -728,11 +794,17 @@ function _setTargetTrendState(hasData, message) {
           });
         });
         marker.on('mouseout', function() {
+          clearTimeout(marker._glanceTimer);
+          marker.closeTooltip();
           var areas = cfg.areaPolygons && cfg.areaPolygons[ops];
           if (!areas) return;
           (Array.isArray(areas) ? areas : [areas]).forEach(function(area) {
             area.setStyle({ fillOpacity: 0.1, weight: 2, dashArray: area._origDash });
           });
+        });
+        marker.on('click', function() {
+          clearTimeout(marker._glanceTimer);
+          marker.closeTooltip();
         });
       }(GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown'));
       cfg.markerLayer.addLayer(marker);
