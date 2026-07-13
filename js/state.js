@@ -12,6 +12,8 @@ window.GAILS.state = {
   regionFilter: [],
   opsFilter: [],
   indexType: 'relative',
+  dataLastUpdated: null, // ISO timestamp from the workbook's "Last Updated" tab
+
   rankingsMetric: 'relative',
   targetMetric: 'relative',
   PERIODS: {},

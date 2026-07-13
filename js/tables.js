@@ -39,6 +39,12 @@ window.GAILS.makeSortable = function(container) {
           return isAsc ? aKey - bKey : bKey - aKey;
         }
 
+        var aDuration = window.GAILS.parseDurationSeconds ? window.GAILS.parseDurationSeconds(aVal) : null;
+        var bDuration = window.GAILS.parseDurationSeconds ? window.GAILS.parseDurationSeconds(bVal) : null;
+        if (aDuration !== null && bDuration !== null && !isNaN(aDuration) && !isNaN(bDuration) && (aVal.indexOf(':') !== -1 || bVal.indexOf(':') !== -1)) {
+          return isAsc ? aDuration - bDuration : bDuration - aDuration;
+        }
+
         var aNum = parseFloat(aVal);
         var bNum = parseFloat(bVal);
         if (!isNaN(aNum) && !isNaN(bNum)) {
@@ -382,12 +388,70 @@ window.GAILS.makeSortable = function(container) {
   });
 })();
 
+// ========== NPS SPLIT COLUMNS TOGGLE ==========
+// The NPS Coffee / NPS Meal / NPS (All) columns sit next to the headline
+// NPS (Drink + Meal) column in the league table and the priority list, but are
+// collapsed by default behind a compact +/- button in the NPS header so the
+// tables don't overwhelm. One shared flag drives both tables; the columns are
+// hidden with CSS (not removed) so sort column indices stay stable.
+window.GAILS.npsSplitsExpanded = false;
+
+window.GAILS.npsSplitToggleHtml = function() {
+  var expanded = window.GAILS.npsSplitsExpanded;
+  return '<button type="button" class="nps-split-toggle" data-nps-split-toggle aria-expanded="' + expanded + '"'
+    + ' aria-label="' + (expanded ? 'Hide' : 'Show') + ' the NPS Coffee / Meal / All columns"'
+    + ' title="' + (expanded ? 'Hide' : 'Show') + ' the NPS Coffee / Meal / All columns">'
+    + (expanded ? '-' : '+') + '</button>';
+};
+
+window.GAILS.syncNpsSplitTables = function() {
+  var expanded = window.GAILS.npsSplitsExpanded;
+  Array.from(document.querySelectorAll('table[data-nps-splits]')).forEach(function(table) {
+    table.classList.toggle('nps-splits-collapsed', !expanded);
+  });
+  Array.from(document.querySelectorAll('[data-nps-split-toggle]')).forEach(function(btn) {
+    btn.textContent = expanded ? '-' : '+';
+    btn.title = (expanded ? 'Hide' : 'Show') + ' the NPS Coffee / Meal / All columns';
+    btn.setAttribute('aria-label', (expanded ? 'Hide' : 'Show') + ' the NPS Coffee / Meal / All columns');
+    btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  });
+};
+
+// Capture phase so the click never reaches the header cell's sort handler.
+document.addEventListener('click', function(e) {
+  var btn = e.target && e.target.closest ? e.target.closest('[data-nps-split-toggle]') : null;
+  if (!btn) return;
+  e.stopPropagation();
+  e.preventDefault();
+  window.GAILS.npsSplitsExpanded = !window.GAILS.npsSplitsExpanded;
+  window.GAILS.syncNpsSplitTables();
+}, true);
+
 window.GAILS.renderLeagueTable = function(data) {
   var G = GAILS;
   var sortKey = document.getElementById('sortBy').value;
-  var desc = ['n', 'c', 'ac', 'dr', 'ef', 'fr', 's2'].includes(sortKey);
-  var sorted = [].concat(data).sort(function(a, b) { return desc ? b[sortKey] - a[sortKey] : a[sortKey] - b[sortKey]; });
+  var desc = ['n', 'c', 'ac', 'dr', 'ef', 'fr', 's2', 's30', 'td', 'nc', 'nm', 'na'].includes(sortKey);
+  // Sparse metrics (avg times, NPS splits) can be null — always sink them to the bottom.
+  var sortVal = function(r) {
+    var v = r[sortKey];
+    if (v === null || v === undefined || isNaN(v)) return desc ? -Infinity : Infinity;
+    return v;
+  };
+  var sorted = [].concat(data).sort(function(a, b) { return desc ? sortVal(b) - sortVal(a) : sortVal(a) - sortVal(b); });
   var absBandClass = function(b) { return b === 'Exceeding' ? 'Top-Performer' : b === 'Meeting' ? 'Above-Average' : b === 'Approaching' ? 'Below-Average' : 'Needs-Support'; };
+  var hasVal = function(v) { return v !== null && v !== undefined && !isNaN(v); };
+  var numOrDash = function(v) { return hasVal(v) ? v : '—'; };
+  var pctOrDash = function(v) { return hasVal(v) ? v + '%' : '—'; };
+  // Same RAG thresholds as the headline NPS column; sparse splits stay uncoloured when absent.
+  var npsSplitStyle = function(v) {
+    if (!hasVal(v)) return '';
+    return ' style="color:' + (v >= 55 ? 'var(--green)' : v >= 45 ? 'var(--amber)' : 'var(--red)') + '"';
+  };
+  // Same thresholds as the Avg Wait Time KPI card: ≤1:55 green, 1:55–2:05 amber, >2:05 red.
+  var atRagStyle = function(v) {
+    if (!hasVal(v)) return '';
+    return ' style="color:' + (v <= 115 ? 'var(--green)' : v <= 125 ? 'var(--amber)' : 'var(--red)') + '"';
+  };
   document.getElementById('tableBody').innerHTML = sorted.map(function(b, i) { return '<tr>' +
     '<td style="font-weight:600">' + (i + 1) + '</td>' +
     '<td style="font-weight:500">' + b.b + '</td>' +
@@ -398,11 +462,19 @@ window.GAILS.renderLeagueTable = function(data) {
     '<td style="font-weight:600">' + b.ac + '</td>' +
     '<td><span class="band ' + absBandClass(b.acb) + '">' + b.acb + '</span></td>' +
     '<td><span class="conf ' + b.co + '">' + b.co + '</span></td>' +
-    '<td style="color:' + (b.n >= 55 ? 'var(--green)' : b.n >= 45 ? 'var(--amber)' : 'var(--red)') + '">' + b.n + '</td><td>' + b.v + '</td>' +
+    '<td style="color:' + (b.n >= 55 ? 'var(--green)' : b.n >= 45 ? 'var(--amber)' : 'var(--red)') + '">' + b.n + '</td>' +
+    '<td class="nps-split-col"' + npsSplitStyle(b.nc) + '>' + numOrDash(b.nc) + '</td>' +
+    '<td class="nps-split-col"' + npsSplitStyle(b.nm) + '>' + numOrDash(b.nm) + '</td>' +
+    '<td class="nps-split-col"' + npsSplitStyle(b.na) + '>' + numOrDash(b.na) + '</td>' +
+    '<td>' + b.v + '</td>' +
     '<td style="color:' + (b.dr >= 90 ? 'var(--green)' : b.dr >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.dr + '%</td><td style="color:' + (b.ef >= 90 ? 'var(--green)' : b.ef >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.ef + '%</td><td style="color:' + (b.fr >= 90 ? 'var(--green)' : b.fr >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.fr + '%</td>' +
     '<td style="color:' + (b.ov >= 90 ? 'var(--green)' : b.ov >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.ov + '%</td>' +
+    '<td>' + pctOrDash(b.s30) + '</td>' +
     '<td style="color:' + (b.s2 >= 75 ? 'var(--green)' : b.s2 >= 60 ? 'var(--amber)' : 'var(--red)') + '">' + b.s2 + '%</td>' +
     '<td style="color:' + (b.o5 > 1.5 ? 'var(--red)' : b.o5 >= 1.0 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
+    '<td' + atRagStyle(b.at) + '>' + G.formatSecs(b.at) + '</td>' +
+    '<td>' + numOrDash(b.td) + '</td>' +
     '</tr>'; }).join('');
   G.makeSortable(document.getElementById('tableBody').closest('table'));
+  G.syncNpsSplitTables();
 };

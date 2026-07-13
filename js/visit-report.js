@@ -6,7 +6,7 @@ window.GAILS = window.GAILS || {};
 (function() {
   var lockedScrollY = 0;
   var CHART_ID = 'visitReportScoreChart';
-  var WAIT_TIME_TARGET_SECONDS = 120;
+  var WAIT_TIME_TARGET_SECONDS = 115;
 
   function escapeHtml(value) {
     return String(value == null ? '' : value)

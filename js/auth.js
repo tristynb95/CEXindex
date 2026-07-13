@@ -39,7 +39,7 @@ function buildSiteMetaPayload(meta, sourceInfo) {
 }
 
 window.GAILS_Firebase = {
-  saveData: async function(records, months, sourceName) {
+  saveData: async function(records, months, sourceName, sourceLastUpdated) {
     if (!auth.currentUser) return;
     try {
       var ts = nowIso();
@@ -47,6 +47,7 @@ window.GAILS_Firebase = {
         recordCount: records.length,
         monthCount: months.length,
         sourceName: sourceName || '',
+        sourceLastUpdated: sourceLastUpdated || null,
         updatedAt: ts,
         updatedBy: auth.currentUser.email || auth.currentUser.uid
       };
@@ -58,7 +59,7 @@ window.GAILS_Firebase = {
       await set(ref(db, 'dashboardMeta'), meta);
       try {
         localStorage.setItem('gails_firebase_cache_ts', ts);
-        localStorage.setItem('gails_firebase_cache', JSON.stringify({ records: records, months: months }));
+        localStorage.setItem('gails_firebase_cache', JSON.stringify({ records: records, months: months, sourceLastUpdated: sourceLastUpdated || null }));
       } catch (cacheErr) {
         console.warn('Could not update local cache:', cacheErr);
       }
@@ -283,10 +284,14 @@ async function loadSharedDashboardData(isAdmin) {
       data = dbSnap.val();
       try {
         localStorage.setItem('gails_firebase_cache_ts', meta.updatedAt);
-        localStorage.setItem('gails_firebase_cache', JSON.stringify({ records: data.records || [], months: data.months || [] }));
+        localStorage.setItem('gails_firebase_cache', JSON.stringify({ records: data.records || [], months: data.months || [], sourceLastUpdated: data.sourceLastUpdated || null }));
       } catch (cacheErr) {
         console.warn('Could not cache Firebase data locally:', cacheErr);
       }
+    }
+
+    if (window.GAILS && window.GAILS.state) {
+      window.GAILS.state.dataLastUpdated = data.sourceLastUpdated || meta.sourceLastUpdated || null;
     }
 
     // Set up real-time listener so the month filter updates automatically when new data is uploaded
@@ -302,8 +307,11 @@ async function loadSharedDashboardData(isAdmin) {
         var freshData = dbSnap.val();
         try {
           localStorage.setItem('gails_firebase_cache_ts', freshMeta.updatedAt);
-          localStorage.setItem('gails_firebase_cache', JSON.stringify({ records: freshData.records || [], months: freshData.months || [] }));
+          localStorage.setItem('gails_firebase_cache', JSON.stringify({ records: freshData.records || [], months: freshData.months || [], sourceLastUpdated: freshData.sourceLastUpdated || null }));
         } catch (cacheErr) {}
+        if (window.GAILS && window.GAILS.state) {
+          window.GAILS.state.dataLastUpdated = freshData.sourceLastUpdated || null;
+        }
         window.GAILS_initDashboard(freshData.records || [], freshData.months || []);
       });
     });

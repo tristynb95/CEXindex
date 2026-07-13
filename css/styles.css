@@ -2030,6 +2030,14 @@ canvas {
   flex-wrap: wrap;
 }
 
+.dashboard-footer__stamp {
+  margin: 0 auto 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(77, 70, 60, 0.58);
+}
+
 .dashboard-footer__label {
   margin: 0;
   font-size: 0.62rem;
@@ -2077,6 +2085,10 @@ canvas {
   .dashboard-footer__inner {
     justify-content: flex-start;
     align-items: flex-start;
+  }
+
+  .dashboard-footer__stamp {
+    width: 100%;
   }
 
   .dashboard-footer__links {
@@ -9775,4 +9787,50 @@ body.map-fullscreen-active .dashboard-workspace__main {
 .admin-table th .table-fullscreen-btn__icon {
   width: 12px;
   height: 12px;
+}
+
+/* NPS split columns (Coffee / Meal / All): collapsed behind a compact
+   +/- toggle in the NPS header on the league table & priority list. */
+table.nps-splits-collapsed .nps-split-col {
+  display: none;
+}
+
+.nps-split-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 0 5px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid rgba(34, 31, 26, 0.18);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: none;
+  color: var(--text-2);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  vertical-align: baseline;
+  transform: translateY(-1px);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.nps-split-toggle:hover {
+  background: rgba(34, 31, 26, 0.04);
+  color: var(--accent);
+  border-color: rgba(181, 49, 42, 0.24);
+}
+
+.nps-split-toggle:focus-visible {
+  outline: 1px solid rgba(181, 49, 42, 0.34);
+  outline-offset: 2px;
+}
+
+.nps-split-toggle[aria-expanded="true"] {
+  background: rgba(181, 49, 42, 0.06);
+  border-color: rgba(181, 49, 42, 0.22);
+  color: var(--accent);
 }

@@ -59,6 +59,13 @@ window.GAILS.getData = function() {
       var bakery = entry[0], rows = entry[1];
       var avg = function(key) { return rows.reduce(function(a, r) { return a + r[key]; }, 0) / rows.length; };
       var avgDefined = function(key) { var vs = rows.filter(function(r) { return typeof r[key] === 'number' && !isNaN(r[key]); }); return vs.length ? vs.reduce(function(a, r) { return a + r[key]; }, 0) / vs.length : null; };
+      // Round-to-0.1 for nullable metrics: months without the metric (old-format
+      // uploads, blank cells) are excluded from the mean rather than counted as 0.
+      var r1 = function(v) { return v === null ? null : Math.round(v * 10) / 10; };
+      var sum = function(key) {
+        var vs = rows.filter(function(r) { return typeof r[key] === 'number' && !isNaN(r[key]); });
+        return vs.length ? Math.round(vs.reduce(function(a, r) { return a + r[key]; }, 0)) : null;
+      };
       var a = {
         b: bakery, m: state.selectedMonths.join(', '),
         n: Math.round(avg('n') * 10) / 10, v: Math.round(rows.reduce(function(a, r) { return a + r.v; }, 0)),
@@ -71,7 +78,20 @@ window.GAILS.getData = function() {
         c: Math.round(avg('c') * 10) / 10, co: rows[0].co, s2w: Math.round(avg('s2w') * 10) / 10,
         ac: Math.round(avg('ac') * 10) / 10,
         ats: Math.round(avg('ats') * 10) / 10,
+        a_at: r1(avgDefined('a_at')),
         c_raw: Math.round(avg('c_raw') * 10) / 10,
+        s30: r1(avgDefined('s30')),
+        td: sum('td'),
+        at: r1(avgDefined('at')),
+        at12: r1(avgDefined('at12')),
+        at9: r1(avgDefined('at9')),
+        nc: r1(avgDefined('nc')),
+        nm: r1(avgDefined('nm')),
+        nd: r1(avgDefined('nd')),
+        vc: sum('vc'),
+        vf: sum('vf'),
+        na: r1(avgDefined('na')),
+        va: sum('va'),
       };
       G.ensureBands(a);
       agg.push(a);
@@ -86,6 +106,7 @@ window.GAILS.getData = function() {
     agg.forEach(function(a, i) { a.cr = i + 1; a.nr = 0; });
     return agg;
   }
+  G.recomputeTimelinessRanks(recs);
   recs.forEach(G.ensureBands);
   if (state.bandFilter) {
     var bf = state.bandFilter;

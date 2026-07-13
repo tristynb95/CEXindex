@@ -23,8 +23,25 @@ window.GAILS.recomputeTimelinessRanks = function(records) {
     r.ts = Math.round((r.s2 || 0) * 10) / 10;
   });
   var tsVals = records.map(function(r) { return r.ts; });
+  var atVals = records
+    .map(function(r) { return r.at; })
+    .filter(function(v) { return v !== null && v !== undefined && !isNaN(v); });
+
   records.forEach(function(r) {
     r.ap = Math.round(G.percentileRank(tsVals, r.ts, false) * 10) / 10;
+    if (r.at !== null && r.at !== undefined && !isNaN(r.at)) {
+      r.atp = Math.round(G.percentileRank(atVals, r.at, true) * 10) / 10;
+    } else {
+      r.atp = 50.0;
+    }
+    var rawCEI = r.ep * 0.25 + r.dp * 0.35 + r.fp * 0.30 + r.ap * 0.05 + r.atp * 0.05;
+    r.c_raw = Math.round(rawCEI * 10) / 10;
+  });
+
+  var cohortMean = records.length ? (records.reduce(function(a, r) { return a + r.c_raw; }, 0) / records.length) : 0;
+  records.forEach(function(r) {
+    r.c = Math.round(G.confidenceAdjust(r.c_raw, cohortMean, r.v) * 10) / 10;
+    r.cb = r.c >= 75 ? 'Top Performer' : r.c >= 50 ? 'Above Average' : r.c >= 25 ? 'Below Average' : 'Needs Support';
   });
 };
 
@@ -71,14 +88,22 @@ window.GAILS.computeCEI = function(monthRecords) {
   var drVals = monthRecords.map(function(r) { return r.dr; });
   var frVals = monthRecords.map(function(r) { return r.fr; });
   var tsVals = monthRecords.map(function(r) { return r.ts; });
+  var atVals = monthRecords
+    .map(function(r) { return r.at; })
+    .filter(function(v) { return v !== null && v !== undefined && !isNaN(v); });
 
   monthRecords.forEach(function(r) {
     r.ep = Math.round(G.percentileRank(efVals, r.ef, false) * 10) / 10;
     r.dp = Math.round(G.percentileRank(drVals, r.dr, false) * 10) / 10;
     r.fp = Math.round(G.percentileRank(frVals, r.fr, false) * 10) / 10;
     r.ap = Math.round(G.percentileRank(tsVals, r.ts, false) * 10) / 10;
+    if (r.at !== null && r.at !== undefined && !isNaN(r.at)) {
+      r.atp = Math.round(G.percentileRank(atVals, r.at, true) * 10) / 10;
+    } else {
+      r.atp = 50.0;
+    }
 
-    var rawCEI = r.ep * 0.35 + r.dp * 0.35 + r.fp * 0.25 + r.ap * 0.05;
+    var rawCEI = r.ep * 0.25 + r.dp * 0.35 + r.fp * 0.30 + r.ap * 0.05 + r.atp * 0.05;
     r.c_raw = Math.round(rawCEI * 10) / 10;
     r.co = r.v >= 15 ? 'High' : r.v >= 8 ? 'Medium' : 'Low';
   });
@@ -104,7 +129,22 @@ window.GAILS.computeCEI = function(monthRecords) {
               - o5Val * 5.0;
     var absTs = Math.max(0, Math.min(100, Math.round(rawTs * 10) / 10));
     r.ats = absTs;
-    r.ac = Math.round((absEf * 0.35 + absDr * 0.35 + absFr * 0.25 + absTs * 0.05) * 10) / 10;
+
+    var absAt;
+    if (r.at !== null && r.at !== undefined && !isNaN(r.at)) {
+      if (r.at <= 115) {
+        absAt = 100;
+      } else {
+        var secondsOver = r.at - 115;
+        var seconds = Math.ceil(secondsOver);
+        absAt = Math.max(0, 100 - seconds * 10);
+      }
+    } else {
+      absAt = 100;
+    }
+    r.a_at = Math.round(absAt * 10) / 10;
+
+    r.ac = Math.round((absEf * 0.25 + absDr * 0.35 + absFr * 0.30 + absTs * 0.05 + absAt * 0.05) * 10) / 10;
     r.acb = r.ac >= 90 ? 'Exceeding' : r.ac >= 75 ? 'Meeting' : r.ac >= 60 ? 'Approaching' : 'Below Standard';
   });
 

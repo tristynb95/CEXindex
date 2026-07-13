@@ -208,13 +208,14 @@ function currentUserEmail() {
   return primaryAuth.currentUser ? (primaryAuth.currentUser.email || primaryAuth.currentUser.uid) : 'Unknown';
 }
 
-function buildDashboardDataPayload(records, months, sourceName) {
+function buildDashboardDataPayload(records, months, sourceName, sourceLastUpdated) {
   return {
     records: records,
     months: months,
     recordCount: records.length,
     monthCount: months.length,
     sourceName: sourceName || '',
+    sourceLastUpdated: sourceLastUpdated || null,
     updatedAt: nowIso(),
     updatedBy: currentUserEmail()
   };
@@ -539,12 +540,13 @@ async function importDatasetWorkbook(file) {
       throw new Error('No data rows were found. Check that the workbook matches the expected monthly layout.');
     }
 
-    var payload = buildDashboardDataPayload(parsed.records, parsed.months || [], file.name);
+    var payload = buildDashboardDataPayload(parsed.records, parsed.months || [], file.name, parsed.lastUpdated);
     await set(ref(db, 'dashboardData'), payload);
     var meta = {
       recordCount: payload.recordCount,
       monthCount: payload.monthCount,
       sourceName: payload.sourceName,
+      sourceLastUpdated: payload.sourceLastUpdated,
       updatedAt: payload.updatedAt,
       updatedBy: payload.updatedBy
     };

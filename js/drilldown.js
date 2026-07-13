@@ -87,7 +87,8 @@ window.GAILS = window.GAILS || {};
   }
 
   function parseNpsRange(title) {
-    var match = /^NPS\s+(-?\d+)(?:\s*[–-]\s*(-?\d+))?$/i.exec(title || '');
+    // Titles arrive as "NPS 60–70" or, since the Drink + Meal relabel, "NPS (D+M) 60–70".
+    var match = /^NPS(?:\s*\(D\+M\))?\s+(-?\d+)(?:\s*[–-]\s*(-?\d+))?$/i.exec(title || '');
     if (!match) return null;
     return {
       min: parseFloat(match[1]),
@@ -219,7 +220,7 @@ window.GAILS = window.GAILS || {};
 
       var npsColumns = baseColumns.concat([
         {
-          label: 'NPS',
+          label: 'NPS (D+M)',
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.n) + '</span>'; }
         },
         {
@@ -239,7 +240,7 @@ window.GAILS = window.GAILS || {};
 
       content += '<div class="drill-topbar" data-table-fullscreen-anchor="true">' +
         '<div class="drill-summary">' +
-        renderSummaryCard('Avg NPS', npsAvg) +
+        renderSummaryCard('Avg NPS (D+M)', npsAvg) +
         renderSummaryCard('Avg Score', ceiAvg) +
         renderSummaryCard('Bakeries', npsSorted.length) +
         '</div>' +
@@ -255,7 +256,7 @@ window.GAILS = window.GAILS || {};
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.c) + '</span>'; }
         },
         {
-          label: 'NPS',
+          label: 'NPS (D+M)',
           render: function(row) { return metricText(row.n); }
         }
       ]).concat(ragMetricColumns()).concat([
@@ -276,7 +277,7 @@ window.GAILS = window.GAILS || {};
           render: function(row) { return metricText(row.c); }
         },
         {
-          label: 'NPS',
+          label: 'NPS (D+M)',
           render: function(row) { return metricText(row.n); }
         }
       ]).concat(ragMetricColumns()).concat([

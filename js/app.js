@@ -9,6 +9,7 @@
   var dashboardSidebarBackdrop = document.getElementById('dashboardSidebarBackdrop');
   var dashboardActiveViewLabel = document.getElementById('dashboardActiveViewLabel');
   var dashboardKpiRow = document.getElementById('kpis');
+  var dashboardFooterStamp = document.getElementById('dashboardFooterStamp');
   var sectionPageTitle = document.getElementById('sectionPageTitle');
   var compactDashboardSidebarMedia = window.matchMedia('(max-width: 980px)');
   var desktopDashboardSidebarCollapsed = false;
@@ -38,7 +39,16 @@
 
   var lastHeaderBakeryCount = 0;
 
+  function renderDataUpdatedStamp() {
+    if (!dashboardFooterStamp) return;
+    dashboardFooterStamp.textContent = state.dataLastUpdated
+      ? 'Last updated ' + G.formatUpdatedStamp(state.dataLastUpdated)
+      : '';
+    dashboardFooterStamp.hidden = !state.dataLastUpdated;
+  }
+
   function renderHeaderSummary() {
+    renderDataUpdatedStamp();
     var headerSub = document.getElementById('headerSub');
     if (!headerSub) return;
     var activePanel = document.querySelector('.tab-content.active');
@@ -358,17 +368,30 @@
     });
     if (recs.length === 0) return null;
     var avg = function(key) { return recs.reduce(function(a, r) { return a + (r[key] || 0); }, 0) / recs.length; };
+    // Sparse metrics (e.g. avg wait) may be absent on older records — average only
+    // the rows that have them; NaN when none do, so kpiDeltaHtml skips the delta.
+    var avgDef = function(key) {
+      var vs = recs.filter(function(r) { return typeof r[key] === 'number' && !isNaN(r[key]); });
+      return vs.length ? vs.reduce(function(a, r) { return a + r[key]; }, 0) / vs.length : NaN;
+    };
     var label = n === 1 ? priorMonths[0] : 'prior ' + n + 'm';
     return {
       n: avg('n'), c: avg('c'), ac: avg('ac'),
       dr: avg('dr'), ef: avg('ef'), fr: avg('fr'),
       ts: avg('ts'),
       o5: avg('o5'),
+      at: avgDef('at'),
+      // Total drinks is compared as a period sum, not a mean; NaN when the
+      // prior period predates the KV drinks column so the delta is skipped.
+      td: (function() {
+        var vs = recs.filter(function(r) { return typeof r.td === 'number' && !isNaN(r.td) && r.td > 0; });
+        return vs.length ? vs.reduce(function(a, r) { return a + r.td; }, 0) : NaN;
+      })(),
       label: label
     };
   }
 
-  function kpiDeltaHtml(current, priorObj, key, invert) {
+  function kpiDeltaHtml(current, priorObj, key, invert, formatFn) {
     if (!priorObj || priorObj[key] === undefined || isNaN(priorObj[key])) return '';
     var prior = priorObj[key];
     var raw = current - prior;
@@ -378,7 +401,8 @@
     if (abs < 0.3) return '<span class="kpi__delta kpi__delta--flat">— flat ' + ref + '</span>';
     var arrow = raw > 0 ? '↑' : '↓';
     var cls = effective > 0 ? 'kpi__delta--up' : 'kpi__delta--down';
-    return '<span class="kpi__delta ' + cls + '">' + arrow + ' ' + abs.toFixed(1) + ' ' + ref + '</span>';
+    var display = formatFn ? formatFn(abs) : abs.toFixed(1);
+    return '<span class="kpi__delta ' + cls + '">' + arrow + ' ' + display + ' ' + ref + '</span>';
   }
 
   function kpiGapText(val, gapMetric) {
@@ -419,7 +443,41 @@
       if (disp > 1) return '+' + (disp - 1).toFixed(1) + '% above target';
       return '';
     }
+    if (gapMetric === 'at') {
+      if (val > 115) return '+' + Math.round(val - 115) + 's over target';
+      return '';
+    }
     return '';
+  }
+
+  // ========== KPI VALUE FIT ==========
+  // Long values (e.g. "2,129,172" on Total Drinks) overflow the card at the
+  // stylesheet font size. Shrink each value just enough to fit its card,
+  // re-fitting whenever the row's width changes (viewport resize, sidebar
+  // collapse). Clearing the inline size first restores the stylesheet size as
+  // the measuring baseline so cards regain full size when space allows.
+  var KPI_VALUE_MIN_PX = 14;
+  function fitKpiValues() {
+    if (!dashboardKpiRow) return;
+    Array.from(dashboardKpiRow.querySelectorAll('.kpi__value')).forEach(function(el) {
+      el.style.fontSize = '';
+      el.style.whiteSpace = 'nowrap';
+      var available = el.clientWidth;
+      if (!available || el.scrollWidth <= available) return;
+      var base = parseFloat(window.getComputedStyle(el).fontSize);
+      var size = Math.max(KPI_VALUE_MIN_PX, Math.floor(base * available / el.scrollWidth));
+      el.style.fontSize = size + 'px';
+      while (el.scrollWidth > el.clientWidth && size > KPI_VALUE_MIN_PX) {
+        size -= 1;
+        el.style.fontSize = size + 'px';
+      }
+    });
+  }
+
+  if (dashboardKpiRow && window.ResizeObserver) {
+    new ResizeObserver(function() { fitKpiValues(); }).observe(dashboardKpiRow);
+  } else {
+    window.addEventListener('resize', fitKpiValues);
   }
 
   // ========== REFRESH ==========
@@ -432,16 +490,23 @@
     updateHeaderSummary(n);
     G.storeDashboardMapData(data);
     if (n === 0) {
+      var wantAbs = state.indexType === 'absolute';
       var dashMetrics = [
-        { eyebrow: 'NPS', title: 'Net Promoter Score', meta: 'Target: 55 NPS.', primary: true },
-        { eyebrow: 'Index', title: 'Peer Score', meta: 'vs bakery peer set.', primary: true },
-        { eyebrow: 'Index', title: 'Benchmark Score', meta: 'vs company benchmark.', primary: true },
+        { eyebrow: 'NPS', title: 'NPS (Drink & Meal)', meta: 'Target: 55', primary: true }
+      ];
+      if (wantAbs) {
+        dashMetrics.push({ eyebrow: 'Index', title: 'Benchmark Score', meta: 'vs company benchmark.', primary: true });
+      } else {
+        dashMetrics.push({ eyebrow: 'Index', title: 'Peer Score', meta: 'vs bakery peer set.', primary: true });
+      }
+      dashMetrics.push(
         { eyebrow: 'SHINE', title: 'Drink Quality', meta: 'Target: 90%.' },
         { eyebrow: 'SHINE', title: 'Efficiency', meta: 'Target: 90%.' },
         { eyebrow: 'SHINE', title: 'Friendliness', meta: 'Target: 90%.' },
         { eyebrow: 'KV Link', title: 'Coffee Efficiency', meta: 'Target: 80% < 2 min.' },
+        { eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 1:55.' },
         { eyebrow: 'KV Link', title: 'Orders >5 Min', meta: 'Target: < 1%.' }
-      ];
+      );
       dashboardKpiRow.innerHTML = dashMetrics.map(function(metric) {
         return '<article class="kpi kpi-muted' + (metric.primary ? ' kpi--primary' : '') + '">'
           + '<div class="kpi__top">'
@@ -456,6 +521,7 @@
           + '</div>'
           + '</article>';
       }).join('');
+      fitKpiValues();
       G.renderOverviewCharts([]);
       G._lastData = [];
       var trendsPanelEmpty = document.getElementById('tab-trends');
@@ -496,7 +562,7 @@
         eyebrow: config.eyebrow,
         title: config.title,
         meta: config.meta,
-        delta: kpiDeltaHtml(config.value, prior, config.priorKey, config.invert),
+        delta: kpiDeltaHtml(config.value, prior, config.priorKey, config.invert, config.deltaFormat),
         gap: kpiGapText(config.value, config.gapMetric),
         tone: status.tone,
         status: status.status,
@@ -511,14 +577,41 @@
     var fr   = G.avg(data, 'fr');
     var ts   = G.avg(data, 'ts');
     var o5   = G.avg(data, 'o5');
-    dashboardKpiRow.innerHTML = [
+    // Avg wait is null on records that predate the KV avg-time columns, so
+    // average only the bakeries that have it.
+    var atRows = data.filter(function(r) { return typeof r.at === 'number' && !isNaN(r.at); });
+    var at = atRows.length ? atRows.reduce(function(a, r) { return a + r.at; }, 0) / atRows.length : null;
+    var atCard = at === null
+      ? { value: '—', eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 1:55.',
+          delta: '', gap: '', tone: 'kpi-muted', status: 'No Data', primary: false }
+      : buildMetricCard({
+          value: at,
+          display: G.formatSecs(at),
+          eyebrow: 'KV Link',
+          title: 'Avg Wait Time',
+          meta: 'Target: ≤ 1:55.',
+          priorKey: 'at',
+          gapMetric: 'at',
+          deltaFormat: G.formatSecs,
+          invert: true,
+          good: 115,
+          warn: 125,
+          bands: [
+            { test: function(v) { return v <= 115; }, tone: 'kpi-green', status: 'On Target' },
+            { test: function(v) { return v <= 125; }, tone: 'kpi-amber', status: 'Watch' },
+            { test: function(v) { return v > 125; }, tone: 'kpi-red', status: 'Below' }
+          ],
+          labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
+        });
+    var wantAbs = state.indexType === 'absolute';
+    var cards = [
       buildMetricCard({
         value: nps,
         compare: Math.round(nps),
         display: Math.round(nps).toString(),
         eyebrow: 'NPS',
-        title: 'Net Promoter Score',
-        meta: 'Target: 55 NPS.',
+        title: 'NPS (Drink & Meal)',
+        meta: 'Target: 55',
         priorKey: 'n',
         gapMetric: 'nps',
         bands: [
@@ -529,22 +622,11 @@
         ],
         labels: { good: 'Exceeding', warn: 'Watch', bad: 'Below' },
         primary: true
-      }),
-      buildMetricCard({
-        value: cei,
-        compare: Math.round(cei),
-        display: Math.round(cei).toString(),
-        eyebrow: 'Index',
-        title: 'Peer Score',
-        meta: 'vs bakery peer set.',
-        priorKey: 'c',
-        gapMetric: 'cei',
-        good: 62.5,
-        warn: 37.5,
-        labels: { good: 'Leading', warn: 'Mid-Pack', bad: 'Lagging' },
-        primary: true
-      }),
-      buildMetricCard({
+      })
+    ];
+
+    if (wantAbs) {
+      cards.push(buildMetricCard({
         value: acei,
         compare: Math.round(acei),
         display: Math.round(acei).toString(),
@@ -557,7 +639,25 @@
         warn: 60,
         labels: { good: 'On Target', warn: 'Near', bad: 'Below' },
         primary: true
-      }),
+      }));
+    } else {
+      cards.push(buildMetricCard({
+        value: cei,
+        compare: Math.round(cei),
+        display: Math.round(cei).toString(),
+        eyebrow: 'Index',
+        title: 'Peer Score',
+        meta: 'vs bakery peer set.',
+        priorKey: 'c',
+        gapMetric: 'cei',
+        good: 62.5,
+        warn: 37.5,
+        labels: { good: 'Leading', warn: 'Mid-Pack', bad: 'Lagging' },
+        primary: true
+      }));
+    }
+
+    cards.push(
       buildMetricCard({
         value: dr,
         compare: Math.round(dr),
@@ -634,6 +734,7 @@
           { test: function(v) { return v < 60; }, tone: 'kpi-red', status: 'Below' }
         ]
       }),
+      atCard,
       buildMetricCard({
         value: o5,
         display: o5.toFixed(1) + '%',
@@ -653,7 +754,9 @@
         invert: true,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       })
-    ].map(function(metric) {
+    );
+
+    dashboardKpiRow.innerHTML = cards.map(function(metric) {
       return '<article class="kpi ' + metric.tone + (metric.primary ? ' kpi--primary' : '') + '">'
         + '<div class="kpi__top">'
         + '<span class="kpi__eyebrow">' + metric.eyebrow + '</span>'
@@ -668,6 +771,7 @@
         + '</div>'
         + '</article>';
     }).join('');
+    fitKpiValues();
 
     G.renderOverviewCharts(data);
     G._lastData = data;
@@ -705,6 +809,19 @@
         if (r && r.b) r.b = G.resolveBakeryMetaKey(r.b) || r.b;
       });
     }
+    // Records stored (Firebase/localStorage cache) before the Drink + Meal NPS
+    // policy have no na/va — their headline n/v ARE the all-sources values,
+    // with the splits on nd/vf when the upload carried them. Migrate them here
+    // so stored data matches freshly parsed data: keep the all-sources values
+    // as na/va, then switch the headline to the D+M score and net volume.
+    // Freshly parsed records already have na and are left untouched.
+    (records || []).forEach(function(r) {
+      if (!r || typeof r.na === 'number') return;
+      r.na = typeof r.n === 'number' ? r.n : null;
+      r.va = typeof r.v === 'number' ? r.v : null;
+      if (typeof r.nd === 'number') r.n = r.nd;
+      if (typeof r.vf === 'number' && typeof r.v === 'number') r.v = Math.max(0, r.v - r.vf);
+    });
     if (records && G.ensureBands) {
       records.forEach(G.ensureBands);
     }

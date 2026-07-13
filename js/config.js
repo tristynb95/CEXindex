@@ -415,8 +415,8 @@ window.GAILS.BAND_NAMES = ['Top Performer', 'Above Average', 'Below Average', 'N
 window.GAILS.ABS_BAND_NAMES = ['Exceeding', 'Meeting', 'Approaching', 'Below Standard'];
 
 // ========== CEI WEIGHTS & BENCHMARKS ==========
-window.GAILS.CEI_WEIGHTS = { ef: 0.35, dr: 0.35, fr: 0.25, time: 0.05 };
-window.GAILS.BENCHMARKS = { ef: 90, dr: 90, fr: 90, time: 80 };
+window.GAILS.CEI_WEIGHTS = { ef: 0.25, dr: 0.35, fr: 0.30, time: 0.05, at: 0.05 };
+window.GAILS.BENCHMARKS = { ef: 90, dr: 90, fr: 90, time: 80, at: 115 };
 
 // ========== UTILITY ==========
 window.GAILS.bc = function(b) { return b.replace(/\s/g, '-'); };

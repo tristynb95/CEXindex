@@ -512,6 +512,18 @@
             </div>
             <div class="grid-2">
               <div class="section">
+                <h2 id="trendNpsSplitTitle">NPS Split by Month</h2>
+                <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Compares the headline Drink + Meal NPS against Coffee-only, Meal-only, and all-response NPS where the source file provides those splits.</p>
+                <canvas id="trendNpsSplit"></canvas>
+              </div>
+              <div class="section">
+                <h2 id="trendWaitPressureTitle">Coffee Timing Mix by Month</h2>
+                <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Shows where coffee orders land across timing bands, with customer-rated efficiency overlaid to connect operational speed with the guest experience.</p>
+                <canvas id="trendWaitPressure"></canvas>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="section">
                 <h2 id="trendAbsBandsTitle">Benchmark Score Bands by Month</h2>
                 <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Network progress against company benchmarks over time &mdash; unlike the relative bands, this will shift as bakeries genuinely improve.</p>
                 <canvas id="trendAbsBands"></canvas>
@@ -597,11 +609,12 @@
                 <p class="method-note">Use <strong>Peer</strong> to see who's leading the pack. Use <strong>Benchmark</strong> to see if the whole network is genuinely hitting the standard.</p>
 
                 <h3>The Recipe: What Makes Up the Score?</h3>
-                <p>We believe what the customer tells us matters most. That's why 95% of your score comes directly from customer feedback:</p>
+                <p>We believe what the customer tells us matters most. That's why 90% of your score comes directly from customer feedback:</p>
                 <ul class="method-list">
-                  <li><strong>Efficiency (35%)</strong> &mdash; Did the customer feel they were served quickly?</li>
                   <li><strong>Drink Quality (35%)</strong> &mdash; Did the customer love their coffee?</li>
-                  <li><strong>Friendliness (25%)</strong> &mdash; Did the customer feel welcome?</li>
+                  <li><strong>Friendliness (30%)</strong> &mdash; Did the customer feel welcome?</li>
+                  <li><strong>Efficiency (25%)</strong> &mdash; Did the customer feel they were served quickly?</li>
+                  <li><strong>Avg Wait Time (5%)</strong> &mdash; Average wait time for drinks. Full marks (100 points) for 1:55 (115s) or less, with a step-wise penalty of 10 points for every second over 1:55 (e.g. 115.1s &ndash; 116s = 90 points, 116.1s &ndash; 117s = 80 points, etc.).</li>
                   <li><strong>Coffee Efficiency (5%)</strong> &mdash; How fast the order was completed. We display the % under 2 mins (Target: 80% &lt; 2 min) in the KPI cards and tables, but the index score uses a progressive 5-tier scale: <strong>1.0x</strong> for under 2 mins, <strong>0.5x</strong> for 2–3 mins, <strong>0.25x</strong> for 3–4 mins, <strong>0.1x</strong> for 4–5 mins, and a <strong>-5.0x</strong> penalty for orders over 5 mins.</li>
                 </ul>
 
@@ -609,7 +622,7 @@
                 <p>If a bakery only gets 2 or 3 reviews in a selected period, one bad review could unfairly ruin their score, or one perfect review could push them to the very top. To be fair, if you don't have many reviews, we gently blend your score with the average to keep things balanced and fair for everyone.</p>
 
                 <h3>Our Standards (Gap-Based Penalties)</h3>
-                <p>Our standards are built on hitting specific benchmarks: <strong>90% or higher</strong> for customer feedback (Drink Quality, Efficiency, Friendliness), and <strong>80% or higher</strong> for Coffee Efficiency. If a bakery meets or exceeds its benchmark, it receives full marks (100 points).</p>
+                <p>Our standards are built on hitting specific benchmarks: <strong>90% or higher</strong> for customer feedback (Drink Quality, Efficiency, Friendliness), <strong>80% or higher</strong> for Coffee Efficiency, and a hard limit of <strong>1:55 (115 seconds) or lower</strong> for Avg Wait Time. If a bakery meets or exceeds its benchmark, it receives full marks (100 points).</p>
                 <p>However, if a score drops below the benchmark, we apply progressive point deductions based on the <strong>gap from the benchmark</strong>, rather than absolute values:</p>
                 <ul class="method-list">
                   <li><strong>0% to 5% gap:</strong> Deducts <strong>4 points</strong> for every 1% below benchmark (up to 20 points lost).</li>
@@ -661,16 +674,22 @@
                 <label class="league-table-toolbar__label">Sort by: <select id="sortBy" class="league-table-toolbar__select">
                     <option value="c">Score (Peer)</option>
                     <option value="ac">Score (Benchmark)</option>
-                    <option value="n">NPS</option>
+                    <option value="n">NPS (Drink + Meal)</option>
                     <option value="dr">Quality</option>
                     <option value="ef">Overall Efficiency</option>
                     <option value="fr">Friendliness</option>
+                    <option value="s30">&le; 30 Sec</option>
                     <option value="s2">&le; 2 Min</option>
                     <option value="o5">Over 5 Min</option>
+                    <option value="at">Avg Wait</option>
+                    <option value="td">Total Drinks</option>
+                    <option value="nc">NPS Coffee Only</option>
+                    <option value="nm">NPS Meal</option>
+                    <option value="na">NPS (All)</option>
                   </select></label>
               </div>
               <div class="table-wrap table-wrap--league">
-                <table class="league-table">
+                <table class="league-table nps-splits-collapsed" data-nps-splits>
                   <thead>
                     <tr>
                       <th>#</th>
@@ -682,14 +701,20 @@
                       <th>Benchmark Score</th>
                       <th>Benchmark Band</th>
                       <th>Conf</th>
-                      <th>NPS</th>
+                      <th>NPS (Drink &amp; Meal) <button type="button" class="nps-split-toggle" data-nps-split-toggle aria-expanded="false" aria-label="Show the NPS Coffee / Meal / All columns" title="Show the NPS Coffee / Meal / All columns">+</button></th>
+                      <th class="nps-split-col">NPS Coffee</th>
+                      <th class="nps-split-col">NPS Meal</th>
+                      <th class="nps-split-col">NPS (All)</th>
                       <th>Vol</th>
                       <th>Quality</th>
                       <th>Efficiency</th>
                       <th>Friendliness</th>
                       <th>Overall</th>
+                      <th>&le;30s</th>
                       <th>&le;2m</th>
                       <th>&gt;5m</th>
+                      <th>Avg Wait</th>
+                      <th>Drinks</th>
                     </tr>
                   </thead>
                   <tbody id="tableBody"></tbody>
@@ -1120,6 +1145,7 @@
 
           <footer class="dashboard-footer" aria-label="Dashboard footer">
             <div class="dashboard-footer__inner">
+              <p class="dashboard-footer__stamp" id="dashboardFooterStamp" hidden></p>
               <p class="dashboard-footer__label">Reference pages</p>
               <div class="dashboard-footer__links">
                 <button type="button" class="dashboard-footer__link" data-footer-tab="speed">Speed vs NPS</button>

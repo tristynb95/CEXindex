@@ -90,4 +90,58 @@ window.GAILS.percentileRank = function(values, value, invert) {
 };
 
 // ========== GENERIC HELPERS ==========
-window.GAILS.avg = function(arr, k) { return arr.reduce((a, r) => a + r[k], 0) / arr.length; };
+window.GAILS.avg = function(arr, k) {
+  if (!arr || !arr.length) return 0;
+  var vs = arr.map(function(r) { return r ? r[k] : undefined; }).filter(function(v) { return typeof v === 'number' && !isNaN(v); });
+  return vs.length ? vs.reduce(function(a, v) { return a + v; }, 0) / vs.length : 0;
+};
+
+// Parses duration values into seconds. Supports workbook time fractions,
+// Date/time cells, numeric seconds, and display strings like "2:13".
+window.GAILS.parseDurationSeconds = function(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (value instanceof Date && !isNaN(value)) {
+    return value.getHours() * 3600 + value.getMinutes() * 60 + value.getSeconds();
+  }
+  if (typeof value === 'number') {
+    return value > 0 && value < 1 ? value * 86400 : value;
+  }
+
+  var text = String(value).trim();
+  if (!text || text === '\u2014') return null;
+  var colon = /^(\d+):([0-5]?\d)(?::([0-5]?\d))?$/.exec(text);
+  if (colon) {
+    var first = parseInt(colon[1], 10);
+    var second = parseInt(colon[2], 10);
+    var third = colon[3] !== undefined ? parseInt(colon[3], 10) : null;
+    return third === null ? (first * 60 + second) : (first * 3600 + second * 60 + third);
+  }
+
+  var cleaned = text.toLowerCase().replace(/,/g, '');
+  var minSec = /(?:(\d+(?:\.\d+)?)\s*(?:m|min|mins|minute|minutes))?\s*(?:(\d+(?:\.\d+)?)\s*(?:s|sec|secs|second|seconds))?/.exec(cleaned);
+  if (minSec && (minSec[1] || minSec[2])) {
+    return (parseFloat(minSec[1] || '0') * 60) + parseFloat(minSec[2] || '0');
+  }
+
+  var n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
+};
+
+// Formats the workbook's "Last Updated" ISO timestamp for display, e.g. "12 Jul 2026, 09:30"
+window.GAILS.formatUpdatedStamp = function(iso) {
+  var d = new Date(iso);
+  if (isNaN(d)) return String(iso);
+  var hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
+  var datePart = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  if (!hasTime) return datePart;
+  return datePart + ', ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+};
+
+// Formats an average wait in seconds as m:ss (e.g. 132.9 -> "2:13"); null-safe.
+window.GAILS.formatSecs = function(secs) {
+  if (secs === null || secs === undefined || isNaN(secs)) return '—';
+  var m = Math.floor(secs / 60);
+  var s = Math.round(secs % 60);
+  if (s === 60) { m += 1; s = 0; }
+  return m + ':' + (s < 10 ? '0' : '') + s;
+};

@@ -1158,10 +1158,14 @@ function _renderInsights(targets, bf, cf, highBand, lowBand, isAbsolute) {
 function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
   var G = GAILS;
   var getFocus = function(b) {
-    return [
+    var list = [
       { name: 'Overall Efficiency', pct: b.ep }, { name: 'Drink Quality', pct: b.dp },
-      { name: 'Friendliness', pct: b.fp }, { name: 'Coffee Efficiency', pct: b.ap },
-    ].sort(function(a, x) { return a.pct - x.pct; })[0];
+      { name: 'Friendliness', pct: b.fp }, { name: 'Coffee Efficiency', pct: b.ap }
+    ];
+    if (b.at !== null && b.at !== undefined && !isNaN(b.at)) {
+      list.push({ name: 'Avg Wait Time', pct: b.atp });
+    }
+    return list.sort(function(a, x) { return a.pct - x.pct; })[0];
   };
   var focusLabel = function(pct) {
     if (pct <= 10) return 'amongst the lowest of all bakeries';
@@ -1173,9 +1177,23 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
   var altCeiField = isAbsolute ? 'c' : 'ac';
   var bandHeader = isAbsolute ? 'Benchmark Band' : 'Peer Band';
 
+  // Null-safe rendering + RAG thresholds for the KV/NPS-split columns,
+  // matching the league table (js/tables.js) so the two views never disagree.
+  var hasVal = function(v) { return v !== null && v !== undefined && !isNaN(v); };
+  var numOrDash = function(v) { return hasVal(v) ? v : '—'; };
+  var pctOrDash = function(v) { return hasVal(v) ? v + '%' : '—'; };
+  var npsSplitStyle = function(v) {
+    if (!hasVal(v)) return '';
+    return ' style="color:' + (v >= 55 ? 'var(--green)' : v >= 45 ? 'var(--amber)' : 'var(--red)') + '"';
+  };
+  var atRagStyle = function(v) {
+    if (!hasVal(v)) return '';
+    return ' style="color:' + (v <= 115 ? 'var(--green)' : v <= 125 ? 'var(--amber)' : 'var(--red)') + '"';
+  };
+
   document.getElementById('targetTable').innerHTML = targets.length === 0
     ? '<p style="text-align:center;color:var(--muted);padding:32px 0">No bakeries in ' + highBand + ' or adjacent bands for this period.</p>'
-    : '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">\ud83c\udfaf Priority Support List</h3><p class="tracker-table-header__copy">Ranked lowest Score first. <strong>Where to Focus</strong> = the single area dragging each bakery down most. <span style="color:var(--red)">Red</span> scores = bottom quarter of all bakeries.</p></div></div><div class="table-wrap"><table><thead><tr><th>Priority</th><th>Bakery</th><th>Region</th><th>Ops Manager</th><th>' + ceiHeader + '</th><th>' + altCeiHeader + '</th><th>' + bandHeader + '</th><th>NPS</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>Coffee Efficiency</th><th>&gt;5m</th><th>Where to Focus</th></tr></thead><tbody>' +
+    : '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">\ud83c\udfaf Priority Support List</h3><p class="tracker-table-header__copy">Ranked lowest Score first. <strong>Where to Focus</strong> = the single area dragging each bakery down most. <span style="color:var(--red)">Red</span> scores = bottom quarter of all bakeries.</p></div></div><div class="table-wrap"><table data-nps-splits class="' + (G.npsSplitsExpanded ? '' : 'nps-splits-collapsed') + '"><thead><tr><th>Priority</th><th>Bakery</th><th>Region</th><th>Ops Manager</th><th>' + ceiHeader + '</th><th>' + altCeiHeader + '</th><th>' + bandHeader + '</th><th>NPS (DRINK &amp; MEAL) ' + G.npsSplitToggleHtml() + '</th><th class="nps-split-col">NPS Coffee</th><th class="nps-split-col">NPS Meal</th><th class="nps-split-col">NPS (All)</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>&le;30s</th><th>&le;2m</th><th>&gt;5m</th><th>Avg Wait</th><th>Drinks</th><th>Where to Focus</th></tr></thead><tbody>' +
     targets.map(function(b, i) {
       var focus = getFocus(b);
       var focusColor = focus.pct <= 10 ? 'var(--red)' : 'var(--amber)';
@@ -1188,16 +1206,24 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
         '<td style="font-weight:700">' + b[cf] + '</td>' +
         '<td style="font-weight:600">' + b[altCeiField] + '</td>' +
         '<td><span class="band ' + G.bc(b[bf]) + '">' + b[bf] + '</span></td>' +
-        '<td style="color:' + (b.n >= 55 ? 'var(--green)' : b.n >= 45 ? 'var(--amber)' : 'var(--red)') + '">' + b.n + '</td><td>' + b.v + '</td>' +
+        '<td style="color:' + (b.n >= 55 ? 'var(--green)' : b.n >= 45 ? 'var(--amber)' : 'var(--red)') + '">' + b.n + '</td>' +
+        '<td class="nps-split-col"' + npsSplitStyle(b.nc) + '>' + numOrDash(b.nc) + '</td>' +
+        '<td class="nps-split-col"' + npsSplitStyle(b.nm) + '>' + numOrDash(b.nm) + '</td>' +
+        '<td class="nps-split-col"' + npsSplitStyle(b.na) + '>' + numOrDash(b.na) + '</td>' +
+        '<td>' + b.v + '</td>' +
         '<td><span class="conf ' + b.co + '">' + b.co + '</span></td>' +
         '<td style="color:' + (b.dr >= 90 ? 'var(--green)' : b.dr >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.dr + '%</td>' +
         '<td style="color:' + (b.ef >= 90 ? 'var(--green)' : b.ef >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.ef + '%</td>' +
         '<td style="color:' + (b.fr >= 90 ? 'var(--green)' : b.fr >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.fr + '%</td>' +
-        '<td style="color:' + (b.ts >= 75 ? 'var(--green)' : b.ts >= 60 ? 'var(--amber)' : 'var(--red)') + '">' + b.ts + '</td>' +
+        '<td>' + pctOrDash(b.s30) + '</td>' +
+        '<td style="color:' + (b.ts >= 75 ? 'var(--green)' : b.ts >= 60 ? 'var(--amber)' : 'var(--red)') + '">' + b.ts + '%</td>' +
         '<td style="color:' + (b.o5 > 1.5 ? 'var(--red)' : b.o5 >= 1.0 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
+        '<td' + atRagStyle(b.at) + '>' + G.formatSecs(b.at) + '</td>' +
+        '<td>' + numOrDash(b.td) + '</td>' +
         '<td style="font-weight:600;color:' + focusColor + '">' + focus.name + ' &mdash; ' + focusLabel(focus.pct) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   G.makeSortable(document.getElementById('targetTable'));
+  G.syncNpsSplitTables();
 }
 
 function _renderTargetTrends(targets, data, bf, cf, highBand, lowBand, isAbsolute) {

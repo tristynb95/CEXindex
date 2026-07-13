@@ -39,6 +39,7 @@ window.GAILS.initUpload = function(initDashboard) {
       for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       var result = G.parseExcelFile(bytes);
       if (result.records.length > 0) {
+        G.state.dataLastUpdated = result.lastUpdated || null;
         uploadStatus.textContent = 'Restored ' + result.records.length + ' records from session (' + (savedName || 'saved file') + ')';
         uploadStatus.className = 'status success';
         setTimeout(function() { initDashboard(result.records, result.months); }, 200);
@@ -70,6 +71,7 @@ window.GAILS.initUpload = function(initDashboard) {
           uploadStatus.className = 'status error';
           return;
         }
+        G.state.dataLastUpdated = result.lastUpdated || null;
         try {
           var bin = '';
           for (var i = 0; i < data.length; i++) bin += String.fromCharCode(data[i]);
@@ -77,7 +79,7 @@ window.GAILS.initUpload = function(initDashboard) {
           localStorage.setItem('gails_excel_name', file.name);
           
           if (window.GAILS_Firebase) {
-             window.GAILS_Firebase.saveData(result.records, result.months, file.name);
+             window.GAILS_Firebase.saveData(result.records, result.months, file.name, result.lastUpdated);
           }
         } catch (storageErr) {
           console.warn('Could not save to localStorage:', storageErr);
