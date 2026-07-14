@@ -6310,6 +6310,13 @@ body.table-fullscreen-lock {
   color: var(--text-2);
 }
 
+.chart-caption {
+  font-size: 0.78rem;
+  color: var(--muted-l);
+  margin: 2px 0 14px;
+  line-height: 1.5;
+}
+
 .insight-grid {
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 10px;

@@ -81,16 +81,16 @@ function _setTargetTrendState(hasData, message) {
 
   var NETWORK_LEGEND = {
     relative: [
-      { label: 'Top Performer', color: '#1D9E5C' },
-      { label: 'Above Average', color: '#1E70C4' },
+      { label: 'Top Performer', color: '#1E70C4' },
+      { label: 'Above Average', color: '#1D9E5C' },
       { label: 'Below Average', color: '#C97F12' },
       { label: 'Needs Support', color: '#B22A24' },
       { label: 'Incomplete', color: '#B3AA99' },
       { label: 'No Data', color: '#B3AA99' }
     ],
     absolute: [
-      { label: 'Exceeding', color: '#1D9E5C' },
-      { label: 'Meeting', color: '#1E70C4' },
+      { label: 'Exceeding', color: '#1E70C4' },
+      { label: 'Meeting', color: '#1D9E5C' },
       { label: 'Approaching', color: '#C97F12' },
       { label: 'Below Standard', color: '#B22A24' },
       { label: 'Incomplete', color: '#B3AA99' },
@@ -170,18 +170,24 @@ function _setTargetTrendState(hasData, message) {
       .replace(/'/g, '&#39;');
   }
 
-  function getAreaPerformanceColor(items, bandField, networkAvg) {
-    var scoreField = bandField === 'acb' ? 'ac' : 'c';
-    var sum = 0, total = 0;
-    items.forEach(function(item) {
-      var s = item[scoreField];
-      if (s != null && !isNaN(s)) { sum += s; total++; }
-    });
-    if (total === 0) return '#8d8d8d';
-    var delta = (sum / total) - networkAvg;
-    if (delta >= 5)  return '#00b853';
-    if (delta >= 0)  return '#1976d2';
-    if (delta >= -5) return '#f57c00';
+  // Colour for an ops-area boundary from its average score. Peer mode ranks each
+  // area against the *other ops areas* (percentile of the area averages) so the four
+  // bands stay populated relatively — mirroring the bakery-level peer bands in
+  // cei.js — rather than measuring every area against the single network average,
+  // which pushed most areas into the top band. Absolute mode bands the area average
+  // against the fixed company thresholds. Palette: blue = top, green = above average.
+  function getAreaBandColor(areaAvg, bandField, areaAvgVals) {
+    if (areaAvg == null || isNaN(areaAvg)) return '#8d8d8d';
+    if (bandField === 'acb') {
+      if (areaAvg >= 90) return '#1976d2';
+      if (areaAvg >= 75) return '#00b853';
+      if (areaAvg >= 60) return '#f57c00';
+      return '#d32f2f';
+    }
+    var pct = GAILS.percentileRank(areaAvgVals, areaAvg, false);
+    if (pct >= 75) return '#1976d2';
+    if (pct >= 50) return '#00b853';
+    if (pct >= 25) return '#f57c00';
     return '#d32f2f';
   }
 
@@ -317,12 +323,12 @@ function _setTargetTrendState(hasData, message) {
   }
 
   var VIBRANT_MAP_COLORS = {
-    'Top Performer': '#00b853',
-    'Above Average': '#1976d2',
+    'Top Performer': '#1976d2',
+    'Above Average': '#00b853',
     'Below Average': '#f57c00',
     'Needs Support': '#d32f2f',
-    'Exceeding': '#00b853',
-    'Meeting': '#1976d2',
+    'Exceeding': '#1976d2',
+    'Meeting': '#00b853',
     'Approaching': '#f57c00',
     'Below Standard': '#d32f2f',
     'Incomplete': '#8d8d8d',
@@ -676,6 +682,25 @@ function _setTargetTrendState(hasData, message) {
       });
       var networkAvg = _netCount > 0 ? _netSum / _netCount : 0;
 
+      // Average score per ops area, plus the spread of those averages, so peer mode
+      // can band each area against the other areas (see getAreaBandColor).
+      function _areaAverage(items) {
+        var sum = 0, n = 0;
+        items.forEach(function(item) {
+          var s = item[_areaScoreField];
+          if (s != null && !isNaN(s)) { sum += s; n++; }
+        });
+        return n > 0 ? sum / n : null;
+      }
+      var _areaAvgByMgr = {};
+      Object.keys(managerGroups).forEach(function(mgr) {
+        if (mgr === 'Unknown' || mgr === 'Other') return;
+        _areaAvgByMgr[mgr] = _areaAverage(managerGroups[mgr].items);
+      });
+      var _areaAvgVals = Object.keys(_areaAvgByMgr)
+        .map(function(m) { return _areaAvgByMgr[m]; })
+        .filter(function(v) { return v != null; });
+
       // Coverage per area from the full source set (before the visit filter) so the
       // tooltip reports the true area size and how many were visited this period,
       // regardless of which visit filter is active.
@@ -694,7 +719,7 @@ function _setTargetTrendState(hasData, message) {
         var group = managerGroups[mgr];
         var total = areaTotals[mgr] != null ? areaTotals[mgr] : group.items.length;
         var visited = areaVisited[mgr] != null ? areaVisited[mgr] : 0;
-        var color = getAreaPerformanceColor(group.items, cfg.bandField, networkAvg);
+        var color = getAreaBandColor(_areaAvgByMgr[mgr], cfg.bandField, _areaAvgVals);
         var tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField, networkAvg, total, visited);
         var dashArray = AREA_DASH_PATTERNS[mgrIndex % AREA_DASH_PATTERNS.length] || null;
         mgrIndex++;

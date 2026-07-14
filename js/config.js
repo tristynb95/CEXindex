@@ -407,8 +407,8 @@ window.GAILS.isBakeryVisitedInPeriod = function(b, months) {
 };
 
 // ========== COLOUR MAPS ==========
-window.GAILS.COL = { 'Top Performer': '#1D9E5C', 'Above Average': '#1E70C4', 'Below Average': '#C97F12', 'Needs Support': '#B22A24', 'No Data': '#B3AA99', 'Incomplete': '#B3AA99' };
-window.GAILS.ABSCOL = { 'Exceeding': '#1D9E5C', 'Meeting': '#1E70C4', 'Approaching': '#C97F12', 'Below Standard': '#B22A24', 'No Data': '#B3AA99', 'Incomplete': '#B3AA99' };
+window.GAILS.COL = { 'Top Performer': '#1E70C4', 'Above Average': '#1D9E5C', 'Below Average': '#C97F12', 'Needs Support': '#B22A24', 'No Data': '#B3AA99', 'Incomplete': '#B3AA99' };
+window.GAILS.ABSCOL = { 'Exceeding': '#1E70C4', 'Meeting': '#1D9E5C', 'Approaching': '#C97F12', 'Below Standard': '#B22A24', 'No Data': '#B3AA99', 'Incomplete': '#B3AA99' };
 
 // ========== BAND NAMES ==========
 window.GAILS.BAND_NAMES = ['Top Performer', 'Above Average', 'Below Average', 'Needs Support', 'Incomplete', 'No Data'];
