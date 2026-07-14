@@ -37,6 +37,31 @@ window.GAILS = window.GAILS || {};
     window.scrollTo(0, lockedScrollY);
   }
 
+  function preserveScrollPosition(callback) {
+    var scrollX = window.scrollX || window.pageXOffset || 0;
+    var scrollY = window.scrollY || window.pageYOffset || 0;
+    // Clear any padding from a previous restore so the list re-measures at
+    // its natural height before this render.
+    var list = document.getElementById('visitLogList');
+    if (list) list.style.minHeight = '';
+
+    callback();
+
+    window.scrollTo(scrollX, scrollY);
+    // If the re-render shrank the page (e.g. filtering down to one visit),
+    // the restore above clamps short of the old position and the page still
+    // jumps. Pad the list by exactly the shortfall so the document stays
+    // tall enough for the viewport to remain where it was.
+    var deficit = scrollY - (window.scrollY || window.pageYOffset || 0);
+    if (deficit > 0 && list) {
+      list.style.minHeight = (list.offsetHeight + deficit) + 'px';
+      window.scrollTo(scrollX, scrollY);
+    }
+    window.requestAnimationFrame(function() {
+      window.scrollTo(scrollX, scrollY);
+    });
+  }
+
   function formatVisitDate(isoDate) {
     if (!isoDate) return 'Unknown date';
     var d = new Date(isoDate + 'T00:00:00');
@@ -461,6 +486,11 @@ window.GAILS = window.GAILS || {};
     unlockBackgroundScroll();
   };
 
+  function toggleVisitLogRow(row) {
+    row.classList.toggle('expanded');
+    row.setAttribute('aria-expanded', row.classList.contains('expanded') ? 'true' : 'false');
+  }
+
   document.addEventListener('click', function(event) {
     var trigger = event.target && event.target.closest ? event.target.closest('[data-visit-report]') : null;
     if (trigger) {
@@ -468,13 +498,27 @@ window.GAILS = window.GAILS || {};
       return;
     }
 
-    var logTrigger = event.target && event.target.closest ? event.target.closest('[data-visit-report-id]') : null;
-    if (logTrigger) {
-      window.GAILS.openVisitReportById(logTrigger.getAttribute('data-visit-report-id'));
+    var logRow = event.target && event.target.closest ? event.target.closest('[data-visit-report-id]') : null;
+    if (logRow) {
+      // Only the View Report button opens the full report; clicking anywhere
+      // else on the row expands/collapses the notes inline.
+      if (event.target.closest('.visit-log-row__btn')) {
+        window.GAILS.openVisitReportById(logRow.getAttribute('data-visit-report-id'));
+        return;
+      }
+      toggleVisitLogRow(logRow);
     }
   });
 
   document.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      var focused = event.target;
+      if (focused && focused.classList && focused.classList.contains('visit-log-row')) {
+        event.preventDefault();
+        toggleVisitLogRow(focused);
+      }
+      return;
+    }
     if (event.key !== 'Escape') return;
     window.GAILS.closeVisitReport();
   });
@@ -500,6 +544,87 @@ window.GAILS = window.GAILS || {};
     if (v.type === 'siteVisit') return siteVisitKindLabel(v);
     if (v.type === 'cqv') return v.isFollowUp ? 'CQV Follow-Up' : 'CQV';
     return 'Routine Coffee Visit';
+  }
+
+  // Keys deliberately mirror the #visitLogType <option> values so a summary
+  // chip can drive the same dropdown filter directly.
+  var VISIT_TYPE_META = [
+    { key: 'routine', label: 'Routine Coffee Visit', color: 'var(--gold)', bg: 'var(--gold-d)' },
+    { key: 'cqv', label: 'CQV', color: 'var(--accent)', bg: 'var(--accent-light)' },
+    { key: 'cqvFollowUp', label: 'CQV Follow-Up', color: 'var(--accent)', bg: 'var(--accent-light)' },
+    { key: 'siteVisit', label: 'Check-in', color: 'var(--teal)', bg: 'var(--teal-d)' },
+    { key: 'nboOpening', label: 'NBO: Opening', color: 'var(--purple)', bg: 'var(--purple-d)' },
+    { key: 'nbo2wk', label: 'NBO: 2WK Check-in', color: 'var(--purple)', bg: 'var(--purple-d)' },
+    { key: 'nbo4wk', label: 'NBO: 4WK Check-in', color: 'var(--purple)', bg: 'var(--purple-d)' }
+  ];
+
+  function visitTypeKey(v) {
+    if (v.type === 'cqv') return v.isFollowUp ? 'cqvFollowUp' : 'cqv';
+    if (v.type === 'siteVisit') {
+      var kind = v.visitKind || 'checkin';
+      return kind === 'checkin' ? 'siteVisit' : kind;
+    }
+    return 'routine';
+  }
+
+  // Assembles a visit's notes once for the row preview, the expanded inline
+  // view, and the CSV export. Routine visits keep their per-section labels in
+  // the expanded HTML; the flat text joins sections for preview/export.
+  function buildVisitNotes(v, schema) {
+    if (v.type === 'siteVisit' || v.type === 'cqv') {
+      var t = (v.type === 'cqv' ? v.summary : v.comments) || '';
+      return {
+        text: t,
+        fullHtml: t ? '<p class="visit-log-row__note-item">' + escapeHtml(t) + '</p>' : ''
+      };
+    }
+    var text = '';
+    var fullHtml = '';
+    if (schema && schema.sections) {
+      schema.sections.forEach(function(sec) {
+        var secData = v[sec.key] || {};
+        var comment = secData.comments;
+        if (comment && comment.trim()) {
+          if (text) text += ' | ';
+          text += comment.trim();
+          fullHtml += '<p class="visit-log-row__note-item">' +
+            '<span class="visit-log-row__note-label">' + escapeHtml(sec.title) + '</span>' +
+            escapeHtml(comment.trim()) +
+          '</p>';
+        }
+      });
+    }
+    return { text: text, fullHtml: fullHtml };
+  }
+
+  function daysSince(isoDate) {
+    var d = new Date(isoDate + 'T00:00:00');
+    if (isNaN(d.getTime())) return null;
+    var now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return Math.max(0, Math.round((now - d) / 86400000));
+  }
+
+  // Downloads whatever the last render put in _visitLogExport — i.e. exactly
+  // the rows the active filters produced, not just the ones rendered so far.
+  function exportVisitLogCsv() {
+    var data = window.GAILS._visitLogExport;
+    if (!data || !data.rows || data.rows.length < 2) return;
+    var csv = data.rows.map(function(row) {
+      return row.map(function(cell) {
+        var s = cell == null ? '' : String(cell);
+        return '"' + s.replace(/"/g, '""') + '"';
+      }).join(',');
+    }).join('\r\n');
+    // BOM so Excel opens it as UTF-8
+    var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = data.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
   }
 
   // Drives the "Group By" filter — Ops Area (default), Region, or Visit
@@ -571,7 +696,7 @@ window.GAILS = window.GAILS || {};
     }
   }
 
-  window.GAILS.openAddSiteVisitModal = function() {
+  window.GAILS.openAddSiteVisitModal = function(presetBakery) {
     var modal = document.getElementById('addSiteVisitModal');
     var select = document.getElementById('addVisitBakery');
     if (!modal || !select) return;
@@ -593,7 +718,13 @@ window.GAILS = window.GAILS || {};
     // Reset form
     var form = document.getElementById('addSiteVisitForm');
     if (form) form.reset();
-    
+
+    // Pre-select the bakery when launched from an unvisited-site card
+    if (presetBakery) {
+      var hasOption = Array.prototype.some.call(select.options, function(o) { return o.value === presetBakery; });
+      if (hasOption) select.value = presetBakery;
+    }
+
     // Reset custom select trigger label if populated
     if (window.GAILS.syncCustomSelect) {
       window.GAILS.syncCustomSelect('addVisitBakery');
@@ -669,7 +800,7 @@ window.GAILS = window.GAILS || {};
       var stats = [
         { label: 'Logged By', value: record.meta && record.meta.updatedBy || '—' },
         { label: 'Coffee Partner', value: record.coffeePartner || '—' },
-        { label: 'MOD', value: record.mod || '—' }
+        { label: 'Barista', value: record.mod || '—' }
       ];
       
       var statsHtml = '<div class="drill-summary" style="margin-bottom:20px;">' + stats.map(function(c) {
@@ -1000,6 +1131,105 @@ window.GAILS = window.GAILS || {};
     }, 180);
   }
 
+  var VISIT_LOG_FILTER_STORAGE_KEY = 'gails.visitLogFilters';
+
+  // Rows rendered per page of the history list; "Show more" adds another
+  // chunk. Keeps the innerHTML rebuild cheap when "All Time" is selected.
+  var VISIT_LOG_RENDER_CHUNK = 150;
+
+  function saveVisitLogFilters(state) {
+    try { localStorage.setItem(VISIT_LOG_FILTER_STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
+  }
+
+  function setSelectValueIfPresent(el, val) {
+    if (!el || typeof val !== 'string' || !val) return;
+    var has = Array.prototype.some.call(el.options, function(o) { return o.value === val; });
+    if (has) el.value = val;
+  }
+
+  // Restores the last-used filters (saved on every render) so the page opens
+  // in the state the user last worked in. Runs once, right after the filter
+  // dropdowns are populated and before the first filtered render reads them.
+  function restoreVisitLogFilters() {
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(VISIT_LOG_FILTER_STORAGE_KEY) || 'null'); } catch (e) { /* corrupt/unavailable */ }
+    if (!saved || typeof saved !== 'object') return;
+
+    var searchEl = document.getElementById('visitLogSearch');
+    var regionEl = document.getElementById('visitLogRegion');
+
+    if (searchEl && typeof saved.search === 'string') searchEl.value = saved.search;
+    setSelectValueIfPresent(regionEl, saved.region);
+    // Ops options depend on the selected region, so rebuild them first
+    if (regionEl && regionEl.value) {
+      populateDropdown('visitLogOps', new Set(getVisitLogOps(regionEl.value)), 'All Areas');
+    }
+    setSelectValueIfPresent(document.getElementById('visitLogOps'), saved.ops);
+    setSelectValueIfPresent(document.getElementById('visitLogType'), saved.type);
+    setSelectValueIfPresent(document.getElementById('visitLogRating'), saved.rating);
+    setSelectValueIfPresent(document.getElementById('visitLogGroup'), saved.group);
+    setSelectValueIfPresent(document.getElementById('visitLogSort'), saved.sort);
+    setSelectValueIfPresent(document.getElementById('visitLogPeriod'), saved.period);
+    syncCqvRatingVisibility();
+
+    if (saved.view === 'unvisited' || saved.view === 'history') {
+      window.GAILS._activeVisitLogView = saved.view;
+      document.querySelectorAll('.visit-log-toggle-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.view === saved.view);
+      });
+    }
+  }
+
+  // At-a-glance bar above the list: how many visits the filters produced and
+  // how many of each type. The total mirrors the rendered list; chip counts
+  // come from the list BEFORE the type/rating filter so every type stays
+  // visible while one is selected — the active chip highlights, the rest dim
+  // but remain one-click switches (clicking the active chip clears it).
+  function renderVisitLogSummary(baseFiltered, shownCount, typeVal) {
+    var summaryEl = document.getElementById('visitLogSummary');
+    if (!summaryEl) return;
+
+    var counts = {};
+    baseFiltered.forEach(function(v) {
+      var k = visitTypeKey(v);
+      counts[k] = (counts[k] || 0) + 1;
+    });
+
+    var chipsHtml = VISIT_TYPE_META.filter(function(m) { return counts[m.key]; }).map(function(m) {
+      var active = typeVal === m.key;
+      var stateClass = active ? ' active' : (typeVal ? ' dimmed' : '');
+      return '<button type="button" class="visit-log-summary__chip' + stateClass + '"' +
+        ' data-type="' + m.key + '"' +
+        ' style="--chip-color:' + m.color + ';--chip-bg:' + m.bg + ';"' +
+        ' aria-pressed="' + active + '"' +
+        ' title="' + (active ? 'Clear visit type filter' : 'Show only: ' + escapeHtml(m.label)) + '">' +
+        escapeHtml(m.label) +
+        '<span class="visit-log-summary__chip-count">' + counts[m.key] + '</span>' +
+      '</button>';
+    }).join('');
+
+    var exportHtml = '<button type="button" class="visit-log-summary__export" title="Download the filtered list as CSV">' +
+      'Export CSV</button>';
+
+    summaryEl.innerHTML =
+      '<span class="visit-log-summary__total"><strong>' + shownCount + '</strong> visit' + (shownCount === 1 ? '' : 's') + '</span>' +
+      chipsHtml +
+      exportHtml;
+    summaryEl.hidden = false;
+  }
+
+  function renderUnvisitedSummary(unvisitedCount, matchingSites) {
+    var summaryEl = document.getElementById('visitLogSummary');
+    if (!summaryEl) return;
+    var visited = matchingSites - unvisitedCount;
+    var coverage = matchingSites > 0 ? Math.round((visited / matchingSites) * 100) : 0;
+    summaryEl.innerHTML =
+      '<span class="visit-log-summary__total"><strong>' + unvisitedCount + '</strong> of ' + matchingSites + ' sites unvisited</span>' +
+      '<span class="visit-log-summary__coverage">' + coverage + '% coverage this period</span>' +
+      '<button type="button" class="visit-log-summary__export" title="Download the unvisited list as CSV">Export CSV</button>';
+    summaryEl.hidden = false;
+  }
+
   window.GAILS.renderVisitLog = function() {
     var container = document.getElementById('visitLogList');
     var statusEl = document.getElementById('visitLogStatus');
@@ -1013,6 +1243,8 @@ window.GAILS = window.GAILS || {};
         statusEl.textContent = 'Loading check-ins...';
         statusEl.style.display = '';
       }
+      var emptySummaryEl = document.getElementById('visitLogSummary');
+      if (emptySummaryEl) emptySummaryEl.hidden = true;
       container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#128196;</div><p>No check-ins loaded yet.</p></div>';
       return;
     }
@@ -1112,6 +1344,65 @@ window.GAILS = window.GAILS || {};
         });
       });
 
+      // Summary bar: chips filter by visit type (clicking the active chip
+      // clears it), export downloads the currently filtered list as CSV
+      var summaryBarEl = document.getElementById('visitLogSummary');
+      if (summaryBarEl) {
+        summaryBarEl.addEventListener('click', function(e) {
+          if (e.target.closest && e.target.closest('.visit-log-summary__export')) {
+            exportVisitLogCsv();
+            return;
+          }
+          var chip = e.target.closest ? e.target.closest('.visit-log-summary__chip') : null;
+          if (!chip) return;
+          var typeSelect = document.getElementById('visitLogType');
+          if (!typeSelect) return;
+          var key = chip.dataset.type;
+          preserveScrollPosition(function() {
+            typeSelect.value = (typeSelect.value === key) ? '' : key;
+            if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect('visitLogType');
+            syncCqvRatingVisibility();
+            syncVisitLogMobileFilterButton();
+            window.GAILS.renderVisitLog();
+          });
+        });
+      }
+
+      // List-level delegation: collapsible group headers, per-site "Log
+      // Visit" quick action on unvisited cards, and the "Show more" pager.
+      // (Row expansion/report opening is handled by the document-level
+      // [data-visit-report-id] listener.)
+      var listEl = document.getElementById('visitLogList');
+      if (listEl) {
+        listEl.addEventListener('click', function(e) {
+          var closest = e.target.closest ? function(sel) { return e.target.closest(sel); } : function() { return null; };
+
+          var groupBtn = closest('.unvisited-manager-title');
+          if (groupBtn) {
+            var section = groupBtn.closest('.unvisited-manager-section');
+            if (!section) return;
+            var name = section.getAttribute('data-group-name') || '';
+            var collapsedGroups = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
+            if (collapsedGroups[name]) delete collapsedGroups[name];
+            else collapsedGroups[name] = true;
+            section.classList.toggle('collapsed');
+            groupBtn.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
+            return;
+          }
+
+          var logVisitBtn = closest('.unvisited-log-btn');
+          if (logVisitBtn) {
+            window.GAILS.openAddSiteVisitModal(logVisitBtn.getAttribute('data-bakery'));
+            return;
+          }
+
+          if (closest('.visit-log-show-more')) {
+            window.GAILS._visitLogRenderLimit = (window.GAILS._visitLogRenderLimit || VISIT_LOG_RENDER_CHUNK) + VISIT_LOG_RENDER_CHUNK;
+            window.GAILS.renderVisitLog();
+          }
+        });
+      }
+
       // Add Site Visit click
       var addBtn = document.getElementById('visitLogAddBtn');
       if (addBtn) {
@@ -1165,6 +1456,7 @@ window.GAILS = window.GAILS || {};
 
       if (resetBtn) {
         resetBtn.addEventListener('click', function() {
+          try { localStorage.removeItem(VISIT_LOG_FILTER_STORAGE_KEY); } catch (e) { /* storage unavailable */ }
           if (searchEl) searchEl.value = '';
           if (regionEl) regionEl.value = '';
           if (typeEl) typeEl.value = '';
@@ -1194,6 +1486,7 @@ window.GAILS = window.GAILS || {};
     if (!window.GAILS._visitLogFiltersPopulated) {
       window.GAILS._visitLogFiltersPopulated = true;
       populateVisitLogFilterOptions();
+      restoreVisitLogFilters();
 
       // Theme newly built dropdown options
       if (window.GAILS.initCustomSelects) {
@@ -1219,6 +1512,35 @@ window.GAILS = window.GAILS || {};
     }
     syncVisitLogMobileFilterButton();
 
+    saveVisitLogFilters({
+      search: document.getElementById('visitLogSearch') ? document.getElementById('visitLogSearch').value : '',
+      region: regionVal,
+      ops: opsVal,
+      type: typeVal,
+      rating: ratingVal,
+      group: groupVal,
+      sort: sortVal,
+      period: periodVal,
+      view: view
+    });
+
+    // "Show more" pagination: any filter/view change resets the row limit
+    // back to the first chunk; the Show more button re-renders with the same
+    // signature, so the raised limit survives.
+    var renderSig = [view, searchVal, regionVal, opsVal, typeVal, ratingVal, groupVal, sortVal, periodVal].join('|');
+    if (window.GAILS._visitLogRenderSig !== renderSig) {
+      window.GAILS._visitLogRenderSig = renderSig;
+      window.GAILS._visitLogRenderLimit = VISIT_LOG_RENDER_CHUNK;
+    }
+    var renderLimit = window.GAILS._visitLogRenderLimit || VISIT_LOG_RENDER_CHUNK;
+
+    // Sticky group headers pin just below the app header, whose height
+    // varies with viewport — measure it rather than hard-coding.
+    var appHeader = document.querySelector('.header');
+    if (appHeader) {
+      document.documentElement.style.setProperty('--visit-sticky-top', appHeader.offsetHeight + 'px');
+    }
+
     var headerSub = document.getElementById('headerSub');
     if (headerSub && window.GAILS.getVisitLogHeaderSummary) {
       headerSub.innerHTML = window.GAILS.getVisitLogHeaderSummary();
@@ -1232,8 +1554,11 @@ window.GAILS = window.GAILS || {};
     var view = window.GAILS._activeVisitLogView || 'history';
 
     if (view === 'history') {
-      // Filter history
-      var filtered = visitsList.filter(function(v) {
+      // Filter history in two stages: everything except visit type/rating
+      // first, so the summary bar can keep showing every type's count while
+      // one type is selected (unselected chips render dimmed), then the
+      // type/rating filter on top for the list itself.
+      var baseFiltered = visitsList.filter(function(v) {
         if (!v.bakery || !v.date) return false;
 
         if (searchVal) {
@@ -1249,21 +1574,24 @@ window.GAILS = window.GAILS || {};
           var ops = G.getBakeryOps ? G.getBakeryOps(v.bakery) : 'Unknown';
           if (ops !== opsVal) return false;
         }
-        if (typeVal) {
-          if (typeVal === 'routine' && (v.type === 'siteVisit' || v.type === 'cqv')) return false;
-          if (typeVal === 'siteVisit' && !(v.type === 'siteVisit' && (v.visitKind || 'checkin') === 'checkin')) return false;
-          if ((typeVal === 'nboOpening' || typeVal === 'nbo2wk' || typeVal === 'nbo4wk') && !(v.type === 'siteVisit' && v.visitKind === typeVal)) return false;
-          if (typeVal === 'cqv' && !(v.type === 'cqv' && !v.isFollowUp)) return false;
-          if (typeVal === 'cqvFollowUp' && !(v.type === 'cqv' && v.isFollowUp)) return false;
-        }
-        if (ratingVal && (v.type !== 'cqv' || cqvBand(v) !== ratingVal)) return false;
         if (!isDateWithinMonths(v.date, periodVal)) {
           return false;
         }
         return true;
       });
 
+      var filtered = baseFiltered.filter(function(v) {
+        if (typeVal && visitTypeKey(v) !== typeVal) return false;
+        if (ratingVal && (v.type !== 'cqv' || cqvBand(v) !== ratingVal)) return false;
+        return true;
+      });
+
+      renderVisitLogSummary(baseFiltered, filtered.length, typeVal);
+
       if (filtered.length === 0) {
+        // Clear stale export data so the still-visible Export button can't
+        // download the previous filter's rows.
+        window.GAILS._visitLogExport = null;
         container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#128196;</div><p>No check-ins found matching the selected filters.</p></div>';
         return;
       }
@@ -1281,6 +1609,31 @@ window.GAILS = window.GAILS || {};
 
       var groupsSorted = Object.keys(grouped).sort();
       var schema = window.GAILS_VISIT_SCHEMA;
+      var collapsedGroups = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
+
+      // CSV export always mirrors the full filtered list, even when the
+      // rendered rows are capped by the Show more pager.
+      window.GAILS._visitLogExport = {
+        filename: 'gails-visits-' + new Date().toISOString().slice(0, 10) + '.csv',
+        rows: [['Date', 'Time', 'Bakery', 'Region', 'Ops Area', 'Visit Type', 'Coffee Partner / Auditor', 'Score', 'Notes']].concat(filtered.map(function(v) {
+          var score = '';
+          if (v.type === 'cqv') score = v.overallPct != null ? v.overallPct + '%' : '';
+          else if (v.type !== 'siteVisit') score = v.score != null ? v.score + ' / ' + (v.scoreMax != null ? v.scoreMax : '') : '';
+          return [
+            v.date,
+            v.time || '',
+            G.getBakeryMapLabel ? G.getBakeryMapLabel(v.bakery) : v.bakery,
+            G.getBakeryRegion ? G.getBakeryRegion(v.bakery) : '',
+            G.getBakeryOps ? G.getBakeryOps(v.bakery) : '',
+            visitTypeLabel(v),
+            v.type === 'cqv' ? (v.auditorName || '') : (v.coffeePartner || ''),
+            score,
+            buildVisitNotes(v, schema).text
+          ];
+        }))
+      };
+
+      var remaining = renderLimit;
 
       var html = groupsSorted.map(function(groupName) {
         var groupVisits = grouped[groupName];
@@ -1308,21 +1661,24 @@ window.GAILS = window.GAILS || {};
           return dateB.localeCompare(dateA);
         });
 
-        var visitsHtml = groupVisits.map(function(v) {
+        // Pagination: spend the remaining row budget on this group; anything
+        // beyond it stays reachable via the Show more button after the list.
+        if (remaining <= 0) return '';
+        var visibleVisits = groupVisits.length > remaining ? groupVisits.slice(0, remaining) : groupVisits;
+        remaining -= visibleVisits.length;
+
+        var visitsHtml = visibleVisits.map(function(v) {
           var scoreText = '—';
           var tagsHtml = '';
-          var allNotesText = '';
           var scoreColor = '#ffffff';
 
           if (v.type === 'siteVisit') {
             scoreText = '';
             var kindColors = siteVisitKindTagColors(v);
             tagsHtml = '<span class="visit-log-row__tag" style="color:' + kindColors.color + ';background:' + kindColors.bg + ';">' + escapeHtml(siteVisitKindLabel(v)) + '</span>';
-            allNotesText = v.comments || '';
           } else if (v.type === 'cqv') {
             scoreText = (v.overallPct != null) ? v.overallPct + '%' : '—';
             tagsHtml = '<span class="visit-log-row__tag" style="color:#B22A24;background:rgba(178, 42, 36,0.15);">' + (v.isFollowUp ? 'CQV Follow-Up' : 'CQV') + '</span>';
-            allNotesText = v.summary || '';
             var band = cqvBand(v);
             var bandColor = cqvBandColor(band);
             if (bandColor) {
@@ -1332,21 +1688,11 @@ window.GAILS = window.GAILS || {};
             scoreText = (v.score != null) ? v.score + ' / ' + (v.scoreMax != null ? v.scoreMax : '—') : '—';
             scoreColor = 'var(--text)';
             tagsHtml = '<span class="visit-log-row__tag" style="color:var(--gold);background:var(--gold-d);">Routine Coffee Visit</span>';
-            if (schema && schema.sections) {
-              schema.sections.forEach(function(sec) {
-                var secData = v[sec.key] || {};
-                var comment = secData.comments;
-                if (comment && comment.trim()) {
-                  if (allNotesText) allNotesText += ' | ';
-                  allNotesText += comment.trim();
-                }
-              });
-            }
           }
 
-          if (!allNotesText) {
-            allNotesText = 'No notes recorded.';
-          }
+          var notes = buildVisitNotes(v, schema);
+          var allNotesText = notes.text || 'No notes recorded.';
+          var notesFullHtml = notes.fullHtml || '<p class="visit-log-row__note-item">No notes recorded.</p>';
 
           var previewText = allNotesText;
           if (previewText.length > 120) {
@@ -1362,7 +1708,7 @@ window.GAILS = window.GAILS || {};
           // lose that context entirely.
           var rowOpsLabel = groupVal === 'ops' ? groupName : (G.getBakeryOps ? G.getBakeryOps(v.bakery) : 'Unknown');
 
-          return '<div class="visit-log-row" data-visit-report-id="' + escapeHtml(v.id) + '" aria-label="Visit report for ' + escapeHtml(bakeryLabel) + '">' +
+          return '<div class="visit-log-row" data-visit-report-id="' + escapeHtml(v.id) + '" tabindex="0" role="button" aria-expanded="false" aria-label="Visit report for ' + escapeHtml(bakeryLabel) + '">' +
             '<div class="visit-log-row__date-col">' +
               '<span class="visit-log-row__date">' + escapeHtml(shortDate) + '</span>' +
               '<span class="visit-log-row__time">' + escapeHtml(v.time || '—') + '</span>' +
@@ -1375,27 +1721,41 @@ window.GAILS = window.GAILS || {};
             '<div class="visit-log-row__score-col" style="color:' + scoreColor + ';">' + escapeHtml(scoreText) + '</div>' +
             '<div class="visit-log-row__notes-col">' +
               '<div class="visit-log-row__tags">' + tagsHtml + '</div>' +
-              '<p class="visit-log-row__notes-preview" title="' + escapeHtml(allNotesText) + '">' + escapeHtml(previewText) + '</p>' +
+              '<p class="visit-log-row__notes-preview">' + escapeHtml(previewText) + '</p>' +
             '</div>' +
             '<div class="visit-log-row__action-col">' +
               '<button type="button" class="visit-log-row__btn">View Report</button>' +
+              '<span class="visit-log-row__chevron" aria-hidden="true">' +
+                '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
+              '</span>' +
             '</div>' +
+            // Direct grid child spanning all columns, so expanding adds a
+            // panel BELOW the summary line instead of stretching the row.
+            '<div class="visit-log-row__notes-full">' + notesFullHtml + '</div>' +
           '</div>';
         }).join('');
 
         if (groupVal === 'none') {
-          return '<div style="display:flex; flex-direction:column; gap:10px;">' +
+          return '<div class="unvisited-manager-body">' +
             visitsHtml +
           '</div>';
         }
 
-        return '<div class="unvisited-manager-section">' +
-          '<h3 class="unvisited-manager-title">' + escapeHtml(groupName) + ' (' + groupVisits.length + ' visits)</h3>' +
-          '<div style="display:flex; flex-direction:column; gap:10px;">' +
+        var isCollapsed = !!collapsedGroups[groupName];
+        return '<div class="unvisited-manager-section' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
+          '<button type="button" class="unvisited-manager-title" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
+            '<svg class="unvisited-manager-title__chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
+            '<span>' + escapeHtml(groupName) + ' (' + groupVisits.length + ' visits)</span>' +
+          '</button>' +
+          '<div class="unvisited-manager-body">' +
             visitsHtml +
           '</div>' +
         '</div>';
       }).join('');
+
+      if (filtered.length > renderLimit) {
+        html += '<button type="button" class="visit-log-show-more">Show more (' + (filtered.length - renderLimit) + ' remaining)</button>';
+      }
 
       container.innerHTML = html;
     } else if (view === 'unvisited') {
@@ -1410,6 +1770,7 @@ window.GAILS = window.GAILS || {};
       var allBakeries = G.state && G.state.BAKERIES || [];
       var unvisitedMap = {};
       var totalUnvisited = 0;
+      var matchingSites = 0;
 
       allBakeries.forEach(function(bName) {
         if (searchVal) {
@@ -1423,6 +1784,7 @@ window.GAILS = window.GAILS || {};
           var ops = G.getBakeryOps ? G.getBakeryOps(bName) : 'Unknown';
           if (ops !== opsVal) return;
         }
+        matchingSites++;
 
         if (!visitedBakeries.has(bName)) {
           var manager = G.getBakeryOps ? G.getBakeryOps(bName) : 'Unknown';
@@ -1434,28 +1796,79 @@ window.GAILS = window.GAILS || {};
         }
       });
 
+      renderUnvisitedSummary(totalUnvisited, matchingSites);
+
+      // Most recent visit per bakery across ALL history (not just the
+      // selected period) so each unvisited card can say how stale it is.
+      var lastVisitMap = {};
+      visitsList.forEach(function(v) {
+        if (!v.bakery || !v.date) return;
+        var stamp = v.date + 'T' + (v.time || '00:00');
+        if (!lastVisitMap[v.bakery] || stamp > lastVisitMap[v.bakery]) {
+          lastVisitMap[v.bakery] = stamp;
+        }
+      });
+
+      function lastVisitedLabel(bName) {
+        var stamp = lastVisitMap[bName];
+        if (!stamp) return 'Never visited';
+        var isoDate = stamp.split('T')[0];
+        var days = daysSince(isoDate);
+        var dateLabel = formatVisitDate(isoDate);
+        dateLabel = dateLabel.split(', ')[1] || dateLabel;
+        return 'Last visited ' + dateLabel + (days != null ? ' · ' + days + 'd ago' : '');
+      }
+
       if (totalUnvisited === 0) {
+        window.GAILS._visitLogExport = null;
         container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#127881;</div><p>All bakeries have been visited in this period!</p></div>';
         return;
       }
 
       var managersSorted = Object.keys(unvisitedMap).sort();
+
+      window.GAILS._visitLogExport = {
+        filename: 'gails-unvisited-sites-' + new Date().toISOString().slice(0, 10) + '.csv',
+        rows: [['Bakery', 'Region', 'Ops Area', 'Last Visited']].concat(managersSorted.reduce(function(rows, mName) {
+          unvisitedMap[mName].slice().sort().forEach(function(bName) {
+            rows.push([
+              bName,
+              G.getBakeryRegion ? G.getBakeryRegion(bName) : '',
+              mName,
+              lastVisitMap[bName] ? lastVisitMap[bName].split('T')[0] : 'Never visited'
+            ]);
+          });
+          return rows;
+        }, []))
+      };
+
+      var collapsedUnvisited = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
       var html = managersSorted.map(function(mName) {
         var bakeries = unvisitedMap[mName].sort();
         var count = bakeries.length;
-        
+
         var bakeryCardsHtml = bakeries.map(function(bName) {
           var reg = G.getBakeryRegion ? G.getBakeryRegion(bName) : '—';
           return '<div class="unvisited-bakery-item">' +
-            '<div style="font-weight:700; color:var(--text);">' + escapeHtml(bName) + '</div>' +
-            '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(reg) + '</div>' +
+            '<div class="unvisited-bakery-item__info">' +
+              '<div style="font-weight:700; color:var(--text);">' + escapeHtml(bName) + '</div>' +
+              '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(reg) + '</div>' +
+              '<div class="unvisited-bakery-item__last">' + escapeHtml(lastVisitedLabel(bName)) + '</div>' +
+            '</div>' +
+            '<button type="button" class="unvisited-log-btn" data-bakery="' + escapeHtml(bName) + '">+ Log Visit</button>' +
           '</div>';
         }).join('');
 
-        return '<div class="unvisited-manager-section">' +
-          '<h3 class="unvisited-manager-title">' + escapeHtml(mName) + ' (' + count + ' unvisited)</h3>' +
-          '<div class="unvisited-bakeries-grid">' +
-            bakeryCardsHtml +
+        var isCollapsed = !!collapsedUnvisited[mName];
+        return '<div class="unvisited-manager-section' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(mName) + '">' +
+          '<button type="button" class="unvisited-manager-title" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
+            '<svg class="unvisited-manager-title__chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
+            '<span>' + escapeHtml(mName) + ' (' + count + ' unvisited)</span>' +
+          '</button>' +
+          '<div class="unvisited-manager-body">' +
+            '<div class="unvisited-bakeries-grid">' +
+              bakeryCardsHtml +
+            '</div>' +
           '</div>' +
         '</div>';
       }).join('');

@@ -1879,13 +1879,14 @@ canvas {
   gap: 12px;
 }
 
-/* Map view: the single map card can be shorter than the sidebar column, and the
+/* Short views can be shorter than the sidebar column, and the
    workspace grid's default align-content: stretch then shares the leftover
    height across the title and card rows, pushing both down compared with the
    other views. Pack the rows to the top on desktop instead. */
 @media (min-width: 981px) {
   body[data-dash-tab="map"] .dashboard-workspace__main,
-  body[data-dash-tab="target"] .dashboard-workspace__main {
+  body[data-dash-tab="target"] .dashboard-workspace__main,
+  body[data-dash-tab="visit-log"] .dashboard-workspace__main {
     align-content: start;
   }
 }
@@ -6923,6 +6924,24 @@ body.table-fullscreen-lock {
   flex-shrink: 0;
 }
 
+#visitReportModal .visit-report-header-actions .drill-close-btn {
+  background: #fff;
+  border-color: rgba(34, 31, 26, 0.18);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(34, 31, 26, 0.06);
+}
+
+#visitReportModal .visit-report-header-actions .drill-close-btn:hover {
+  background: #f7f7f5;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(178, 42, 36, 0.12), 0 2px 6px rgba(34, 31, 26, 0.08);
+}
+
+#visitReportModal .visit-report-header-actions .drill-close-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* â”€â”€ Visit Report print â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @page {
   margin-top: 20mm;
@@ -9412,6 +9431,18 @@ body.visit-log-filter-open .mobile-bottom-nav {
   flex: 0 1 220px;
 }
 
+/* Desktop: hard-cap the second-row controls (Group By / Sort By / Rating /
+   Period) so all four plus Reset always share one row — without the cap,
+   the Rating control appearing for CQV pushed Reset onto a new row. The
+   extra selector specificity guarantees this wins over the flex: 1 above. */
+@media (min-width: 721px) {
+  .visit-log-filters .visit-log-filter-control--compact {
+    flex: 0 1 200px;
+    min-width: 150px;
+    max-width: 220px;
+  }
+}
+
 .visit-log-filter-control label {
   font-size: 0.72rem;
   font-weight: 700;
@@ -9468,6 +9499,16 @@ body.visit-log-filter-open .mobile-bottom-nav {
   border-color: var(--accent);
 }
 
+/* Desktop: Reset anchors to the right edge of the bottom row (auto margin
+   absorbs the free space), so the CQV Rating control appearing/disappearing
+   fills the middle gap instead of shoving Reset around. Mobile keeps its own
+   grid placement. */
+@media (min-width: 721px) {
+  .visit-log-reset-btn {
+    margin-left: auto;
+  }
+}
+
 /* â”€â”€ Visit Log Rows (Table-like layout) â”€â”€
    Fixed height + internal scroll so the card's overall size stays put as the
    result count changes (filtering/search no longer pushes the page around). */
@@ -9476,6 +9517,10 @@ body.visit-log-filter-open .mobile-bottom-nav {
   flex-direction: column;
   gap: 10px;
   margin-top: 15px;
+  /* Content is swapped wholesale on every filter change; scroll position is
+     restored manually (preserveScrollPosition), so keep the browser's own
+     scroll anchoring from also adjusting and causing a double correction. */
+  overflow-anchor: none;
 }
 
 
@@ -10040,6 +10085,275 @@ body.visit-log-filter-open .mobile-bottom-nav {
   border-color: var(--accent);
 }
 
+/* ── Visit log at-a-glance summary bar ── */
+.visit-log-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 15px;
+  background: rgba(34, 31, 26, 0.02);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+}
+
+.visit-log-summary__total {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+.visit-log-summary__total strong {
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.visit-log-summary__coverage {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted-l);
+}
+
+.visit-log-summary__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--chip-color);
+  background: var(--chip-bg);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.visit-log-summary__chip:hover {
+  border-color: var(--chip-color);
+}
+
+.visit-log-summary__chip.active {
+  border-color: var(--chip-color);
+  box-shadow: inset 0 0 0 1px var(--chip-color);
+}
+
+/* While a type filter is active, the other chips stay visible (with their
+   counts) but recede; hovering restores them to signal they're clickable. */
+.visit-log-summary__chip.dimmed {
+  opacity: 0.4;
+  filter: grayscale(0.5);
+}
+
+.visit-log-summary__chip.dimmed:hover {
+  opacity: 1;
+  filter: none;
+}
+
+.visit-log-summary__chip-count {
+  background: rgba(255, 255, 255, 0.85);
+  color: inherit;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.66rem;
+}
+
+.visit-log-summary__export {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-2);
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.visit-log-summary__export:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+/* ── Expandable visit rows ──
+   The notes panel is a direct grid child spanning every column, so expanding
+   opens a full-width drawer under the summary line — the date/bakery/score
+   cells keep their compact single-line height. */
+.visit-log-row__notes-full {
+  display: none;
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--card-border);
+  /* Long routine-visit notes flow into up to 3 readable columns */
+  columns: 300px 3;
+  column-gap: 36px;
+}
+
+.visit-log-row.expanded .visit-log-row__notes-preview {
+  display: none;
+}
+
+.visit-log-row.expanded .visit-log-row__notes-full {
+  display: block;
+}
+
+.visit-log-row__note-item {
+  break-inside: avoid;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-2);
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+}
+
+.visit-log-row__note-item:last-child {
+  margin-bottom: 0;
+}
+
+.visit-log-row__note-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  margin-bottom: 2px;
+}
+
+.visit-log-row__action-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.visit-log-row__chevron {
+  display: flex;
+  flex: 0 0 auto;
+  color: var(--muted-l);
+}
+
+.visit-log-row__chevron svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s ease;
+}
+
+.visit-log-row.expanded .visit-log-row__chevron svg {
+  transform: rotate(180deg);
+}
+
+/* ── Collapsible, sticky group headers (history + unvisited views) ── */
+.unvisited-manager-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold);
+  border: none;
+  background: var(--card, #fff);
+  cursor: pointer;
+  padding: 8px 0;
+  margin: 0 0 8px;
+  position: sticky;
+  top: var(--visit-sticky-top, 64px);
+  z-index: 5;
+}
+
+.unvisited-manager-title:hover {
+  color: var(--accent);
+}
+
+.unvisited-manager-title__chevron {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  transition: transform 0.2s ease;
+}
+
+.unvisited-manager-section.collapsed .unvisited-manager-title__chevron {
+  transform: rotate(-90deg);
+}
+
+.unvisited-manager-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.unvisited-manager-section.collapsed .unvisited-manager-body {
+  display: none;
+}
+
+/* ── Unvisited site cards: last-visited stamp + quick action ── */
+.unvisited-bakery-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.unvisited-bakery-item__info {
+  flex: 1 1 auto;
+}
+
+.unvisited-bakery-item__last {
+  font-size: 0.68rem;
+  color: var(--muted-l);
+  margin-top: 6px;
+}
+
+.unvisited-log-btn {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-2);
+  border: 1px solid var(--card-border);
+  background: rgba(34, 31, 26, 0.02);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.unvisited-log-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+/* ── "Show more" pager at the end of a capped history list ── */
+.visit-log-show-more {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-2);
+  background: rgba(34, 31, 26, 0.03);
+  border: 1px dashed var(--card-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.visit-log-show-more:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
 /* â”€â”€ Unvisited list grouping styles â”€â”€ */
 .unvisited-manager-section {
   background: transparent;
@@ -10177,37 +10491,31 @@ table.nps-splits-collapsed .nps-split-col {
 }
 
 
-/* Desktop filter reset button style */
+/* Desktop filter reset button — same design as the visit page's
+   .visit-log-reset-btn (neutral grey resting state, red on hover), keeping
+   the grid-layout sizing this bar needs. */
 .filter-reset-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 36px;
-  padding: 8px 14px;
+  min-height: 38px;
+  padding: 9px 16px;
   border-radius: 8px;
   font-family: var(--font);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(181, 49, 42, 0.04);
-  color: var(--accent);
-  border: 1px solid rgba(181, 49, 42, 0.25);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 4px rgba(181, 49, 42, 0.05);
+  transition: all 0.2s ease;
+  background: rgba(34, 31, 26, 0.05);
+  color: var(--text);
+  border: 1px solid var(--card-border);
 }
 
 .filter-reset-btn:hover {
-  background: rgba(181, 49, 42, 0.08);
+  background: var(--accent-light);
+  color: var(--accent);
   border-color: var(--accent);
-  color: var(--accent-hover, #a32520);
-  transform: translateY(-1px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 4px 8px rgba(181, 49, 42, 0.1);
-}
-
-.filter-reset-btn:active {
-  transform: translateY(0);
-  box-shadow: inset 0 1px 2px rgba(181, 49, 42, 0.1);
 }
 
 .filter-control--reset {

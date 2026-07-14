@@ -1335,6 +1335,9 @@
 
               <div id="visitLogStatus" class="status" style="margin-bottom:15px"></div>
 
+              <!-- AT-A-GLANCE SUMMARY BAR (total + per-type counts, chips filter on click) -->
+              <div id="visitLogSummary" class="visit-log-summary" hidden></div>
+
               <div id="visitLogList" class="visit-log-list">
                 <!-- Rows will be dynamically rendered here -->
               </div>
@@ -1509,7 +1512,7 @@
             </div>
             <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
               <label
-                style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">MOD</label>
+                style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Barista</label>
               <input type="text" id="addVisitMod" placeholder="Enter name..." class="visit-log-input">
             </div>
           </div>
