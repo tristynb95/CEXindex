@@ -67,7 +67,8 @@ window.GAILS.buildPeriodButtons = function(periods, refresh) {
 
   btns.forEach(function(btn) {
     var div = document.createElement('div');
-    var rollingActive = parseInt(document.getElementById('rollingWindow').value, 10) > 0;
+    var rollingValue = document.getElementById('rollingWindow').value;
+    var rollingActive = rollingValue !== '0' && rollingValue !== '';
     div.className = 'period-btn' + (btn.key === 'latest' && !rollingActive ? ' active' : '');
     div.dataset.period = btn.key;
     div.textContent = btn.label;

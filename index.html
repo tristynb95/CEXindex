@@ -209,10 +209,10 @@
               <option value="current">This Month</option>
               <option value="1" selected>Last Month</option>
               <option value="3">Last 3 Months</option>
-              <option value="5">Last 5 Months</option>
               <option value="6">Last 6 Months</option>
-              <option value="9">Last 9 Months</option>
               <option value="12">Last 12 Months</option>
+              <option value="thisQuarter">This Quarter</option>
+              <option value="lastQuarter">Last Quarter</option>
             </select></div>
             <div class="filter-control">
               <label>Region</label><br>
@@ -1108,6 +1108,16 @@
                   <select id="visitLogGroup" class="visit-log-select">
                     <option value="ops">Ops Manager</option>
                     <option value="region">Region</option>
+                    <option value="type">Visit Type</option>
+                    <option value="none">None</option>
+                  </select>
+                </div>
+                <div class="visit-log-filter-control visit-log-filter-control--compact">
+                  <label for="visitLogSort">Sort By</label>
+                  <select id="visitLogSort" class="visit-log-select">
+                    <option value="date">Date</option>
+                    <option value="nameAsc">Alphabetical (A-Z)</option>
+                    <option value="nameDesc">Alphabetical (Z-A)</option>
                     <option value="type">Visit Type</option>
                   </select>
                 </div>

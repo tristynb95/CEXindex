@@ -12,8 +12,8 @@ window.GAILS.hasScoredData = function(r) {
 window.GAILS.markDataCoverage = function(r) {
   if (!r) return r;
   var volume = typeof r.v === 'number' && !isNaN(r.v) ? r.v : 0;
-  r.noData = volume < GAILS.NO_DATA_VOLUME_THRESHOLD;
-  r.co = r.noData ? 'No Data' : volume >= 15 ? 'High' : volume >= 8 ? 'Medium' : 'Low';
+  r.noData = !!r.incompletePeriod || volume < GAILS.NO_DATA_VOLUME_THRESHOLD;
+  r.co = r.incompletePeriod ? 'Incomplete' : r.noData ? 'No Data' : volume >= 15 ? 'High' : volume >= 8 ? 'Medium' : 'Low';
   return r;
 };
 
@@ -26,12 +26,16 @@ window.GAILS.markDataCoverage = function(r) {
 // slices black, so we never trust the stored band, only the score.
 window.GAILS.ensureBands = function(r) {
   if (!r) return r;
-  if (r.noData || r.c === null || r.c === undefined || isNaN(r.c)) {
+  if (r.incompletePeriod) {
+    r.cb = 'Incomplete';
+  } else if (r.noData || r.c === null || r.c === undefined || isNaN(r.c)) {
     r.cb = 'No Data';
   } else {
     r.cb = r.c >= 75 ? 'Top Performer' : r.c >= 50 ? 'Above Average' : r.c >= 25 ? 'Below Average' : 'Needs Support';
   }
-  if (r.noData || r.ac === null || r.ac === undefined || isNaN(r.ac)) {
+  if (r.incompletePeriod) {
+    r.acb = 'Incomplete';
+  } else if (r.noData || r.ac === null || r.ac === undefined || isNaN(r.ac)) {
     r.acb = 'No Data';
   } else {
     r.acb = r.ac >= 90 ? 'Exceeding' : r.ac >= 75 ? 'Meeting' : r.ac >= 60 ? 'Approaching' : 'Below Standard';

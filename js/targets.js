@@ -85,6 +85,7 @@ function _setTargetTrendState(hasData, message) {
       { label: 'Above Average', color: '#1E70C4' },
       { label: 'Below Average', color: '#C97F12' },
       { label: 'Needs Support', color: '#B22A24' },
+      { label: 'Incomplete', color: '#B3AA99' },
       { label: 'No Data', color: '#B3AA99' }
     ],
     absolute: [
@@ -92,6 +93,7 @@ function _setTargetTrendState(hasData, message) {
       { label: 'Meeting', color: '#1E70C4' },
       { label: 'Approaching', color: '#C97F12' },
       { label: 'Below Standard', color: '#B22A24' },
+      { label: 'Incomplete', color: '#B3AA99' },
       { label: 'No Data', color: '#B3AA99' }
     ]
   };
@@ -323,11 +325,13 @@ function _setTargetTrendState(hasData, message) {
     'Meeting': '#1976d2',
     'Approaching': '#f57c00',
     'Below Standard': '#d32f2f',
+    'Incomplete': '#8d8d8d',
     'No Data': '#8d8d8d',
     'Default': '#d32f2f'
   };
 
   function getMarkerColor(item, bandField) {
+    if (item && item.incompletePeriod) return VIBRANT_MAP_COLORS['Incomplete'];
     if (item && item.noData) return VIBRANT_MAP_COLORS['No Data'];
     var band = item && item[bandField || 'cb'];
     return VIBRANT_MAP_COLORS[band] || VIBRANT_MAP_COLORS['Default'];
@@ -347,13 +351,17 @@ function _setTargetTrendState(hasData, message) {
     var lastVisit = GAILS.getLastVisitDate ? GAILS.getLastVisitDate(item.b) : null;
 
     if (item.noData) {
+      var statusLabel = item.incompletePeriod ? 'Incomplete' : 'No Data';
+      var statusCopy = item.incompletePeriod
+        ? 'Incomplete data for this selected period'
+        : 'No performance data for this period';
       var noDataVisitLine = lastVisit
         ? '<button type="button" class="map-popup__visit map-popup__visit--link" data-visit-report="' + escapeHtml(item.b) + '">' + escapeHtml(formatLastVisitDate(lastVisit)) + ' &rarr;</button>'
         : '<div class="map-popup__visit">' + escapeHtml(formatLastVisitDate(lastVisit)) + '</div>';
       return '<div class="map-popup">' +
         '<div class="map-popup__name">' + escapeHtml(siteLabel) + '</div>' +
-        '<span class="map-popup__band" style="background:' + color + '">No Data</span>' +
-        '<div class="map-popup__stats">No performance data for this period</div>' +
+        '<span class="map-popup__band" style="background:' + color + '">' + escapeHtml(statusLabel) + '</span>' +
+        '<div class="map-popup__stats">' + escapeHtml(statusCopy) + '</div>' +
         '<div class="map-popup__mgr">' + escapeHtml(ops) + '</div>' +
         '<div class="map-popup__meta">' + escapeHtml(region) + '</div>' +
         noDataVisitLine +

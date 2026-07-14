@@ -3,7 +3,11 @@ window.GAILS = window.GAILS || {};
 
 window.GAILS.getRollingMonths = function() {
   var state = GAILS.state;
-  var val = parseInt(document.getElementById('rollingWindow').value, 10);
+  var raw = document.getElementById('rollingWindow').value;
+  if (raw === 'current' || raw === 'thisQuarter' || raw === 'lastQuarter') {
+    return [].concat(state.selectedMonths || []);
+  }
+  var val = parseInt(raw, 10);
   if (!val || val <= 0 || val >= state.MONTHS.length) return [].concat(state.MONTHS);
   return state.MONTHS.slice(-val);
 };
@@ -24,11 +28,21 @@ window.GAILS.getAvailableBands = function() {
   if (state.selectedMonths.length > 1) {
     var grouped = {};
     recs.forEach(function(r) { if (!grouped[r.b]) grouped[r.b] = []; grouped[r.b].push(r); });
+    var expectedPeriodMonths = state.selectedMonths.filter(function(m) {
+      return recs.some(function(r) { return r.m === m; });
+    });
+    var expectedMonths = expectedPeriodMonths.length || state.selectedMonths.length;
     Object.values(grouped).forEach(function(rows) {
       var scoredRows = rows.filter(function(r) { return r && !r.noData; });
       if (!scoredRows.length) {
         relative.add('No Data');
         absolute.add('No Data');
+        return;
+      }
+      var covered = new Set(scoredRows.map(function(r) { return r.m; })).size;
+      if (covered < expectedMonths) {
+        relative.add('Incomplete');
+        absolute.add('Incomplete');
         return;
       }
       var avgC = scoredRows.reduce(function(a, r) { return a + r.c; }, 0) / scoredRows.length;
@@ -61,6 +75,10 @@ window.GAILS.getData = function() {
       grouped[r.b].push(r);
     });
     var agg = [];
+    var expectedPeriodMonths = state.selectedMonths.filter(function(m) {
+      return recs.some(function(r) { return r.m === m; });
+    });
+    var expectedMonths = expectedPeriodMonths.length || state.selectedMonths.length;
     Object.entries(grouped).forEach(function(entry) {
       var bakery = entry[0], rows = entry[1];
       var avg = function(key) { return rows.reduce(function(a, r) { return a + r[key]; }, 0) / rows.length; };
@@ -73,8 +91,14 @@ window.GAILS.getData = function() {
         return vs.length ? Math.round(vs.reduce(function(a, r) { return a + r[key]; }, 0)) : null;
       };
       var totalVolume = Math.round(rows.reduce(function(a, r) { return a + r.v; }, 0));
+      var scoredMonthCount = new Set(rows
+        .filter(function(r) { return G.hasScoredData ? G.hasScoredData(r) : r && !r.noData; })
+        .map(function(r) { return r.m; })).size;
       var a = {
         b: bakery, m: state.selectedMonths.join(', '),
+        monthsExpected: expectedMonths,
+        monthsCovered: scoredMonthCount,
+        incompletePeriod: scoredMonthCount < expectedMonths,
         n: Math.round(avg('n') * 10) / 10, v: totalVolume,
         s2: Math.round(avg('s2') * 10) / 10, s3: Math.round(avg('s3') * 10) / 10,
         s4: (function() { var v = avgDefined('s4'); return v !== null ? Math.round(v * 10) / 10 : null; })(), o5: Math.round(avg('o5') * 10) / 10,

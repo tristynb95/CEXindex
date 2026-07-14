@@ -438,7 +438,7 @@ window.GAILS.renderLeagueTable = function(data) {
     return v;
   };
   var sorted = [].concat(data).sort(function(a, b) { return desc ? sortVal(b) - sortVal(a) : sortVal(a) - sortVal(b); });
-  var absBandClass = function(b) { return b === 'Exceeding' ? 'Top-Performer' : b === 'Meeting' ? 'Above-Average' : b === 'Approaching' ? 'Below-Average' : b === 'No Data' ? 'No-Data' : 'Needs-Support'; };
+  var absBandClass = function(b) { return G.bc(b); };
   var hasVal = function(v) { return v !== null && v !== undefined && !isNaN(v); };
   var numOrDash = function(v) { return hasVal(v) ? v : '—'; };
   var pctOrDash = function(v) { return hasVal(v) ? v + '%' : '—'; };

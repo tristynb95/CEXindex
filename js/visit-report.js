@@ -521,6 +521,9 @@ window.GAILS = window.GAILS || {};
     if (groupVal === 'type') {
       return visitTypeLabel(v);
     }
+    if (groupVal === 'none') {
+      return 'All Visits';
+    }
     return (G.getBakeryOps ? G.getBakeryOps(v.bakery) : '') || 'Unknown';
   }
 
@@ -886,6 +889,8 @@ window.GAILS = window.GAILS || {};
       syncCqvRatingVisibility();
       var groupEl = document.getElementById('visitLogGroup');
       if (groupEl) groupEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
+      var sortEl = document.getElementById('visitLogSort');
+      if (sortEl) sortEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
 
       // Toggle views
       document.querySelectorAll('.visit-log-toggle-btn').forEach(function(btn) {
@@ -955,6 +960,7 @@ window.GAILS = window.GAILS || {};
           if (typeEl) typeEl.value = '';
           if (ratingEl) ratingEl.value = '';
           if (groupEl) groupEl.value = 'ops';
+          if (sortEl) sortEl.value = 'date';
           if (periodEl) periodEl.value = '1'; // Default to Last Month
           populateDropdown('visitLogOps', new Set(getVisitLogOps('')), 'All Managers');
           syncCqvRatingVisibility();
@@ -964,6 +970,7 @@ window.GAILS = window.GAILS || {};
             window.GAILS.syncCustomSelect('visitLogType');
             window.GAILS.syncCustomSelect('visitLogRating');
             window.GAILS.syncCustomSelect('visitLogGroup');
+            window.GAILS.syncCustomSelect('visitLogSort');
             window.GAILS.syncCustomSelect('visitLogPeriod');
           }
           window.GAILS.renderVisitLog();
@@ -989,7 +996,14 @@ window.GAILS = window.GAILS || {};
     var typeVal = document.getElementById('visitLogType') ? document.getElementById('visitLogType').value : '';
     var ratingVal = document.getElementById('visitLogRating') ? document.getElementById('visitLogRating').value : '';
     var groupVal = document.getElementById('visitLogGroup') ? document.getElementById('visitLogGroup').value : 'ops';
+    var sortVal = document.getElementById('visitLogSort') ? document.getElementById('visitLogSort').value : 'date';
     var periodVal = document.getElementById('visitLogPeriod') ? document.getElementById('visitLogPeriod').value : '1';
+
+    var sortControl = document.getElementById('visitLogSort') ? document.getElementById('visitLogSort').closest('.visit-log-filter-control') : null;
+    var view = window.GAILS._activeVisitLogView || 'history';
+    if (sortControl) {
+      sortControl.style.display = (view === 'history') ? '' : 'none';
+    }
 
     // Convert object to array
     var visitsList = visitIds.map(function(id) {
@@ -1052,8 +1066,24 @@ window.GAILS = window.GAILS || {};
       var html = groupsSorted.map(function(groupName) {
         var groupVisits = grouped[groupName];
 
-        // Sort chronologically descending
+        // Sort based on selected option within the group
         groupVisits.sort(function(a, b) {
+          if (sortVal === 'nameAsc') {
+            var labelA = (G.getBakeryMapLabel ? G.getBakeryMapLabel(a.bakery) : a.bakery) || '';
+            var labelB = (G.getBakeryMapLabel ? G.getBakeryMapLabel(b.bakery) : b.bakery) || '';
+            return labelA.localeCompare(labelB);
+          }
+          if (sortVal === 'nameDesc') {
+            var labelA = (G.getBakeryMapLabel ? G.getBakeryMapLabel(a.bakery) : a.bakery) || '';
+            var labelB = (G.getBakeryMapLabel ? G.getBakeryMapLabel(b.bakery) : b.bakery) || '';
+            return labelB.localeCompare(labelA);
+          }
+          if (sortVal === 'type') {
+            var labelA = visitTypeLabel(a);
+            var labelB = visitTypeLabel(b);
+            return labelA.localeCompare(labelB);
+          }
+          // Default: date descending
           var dateA = a.date + 'T' + (a.time || '00:00');
           var dateB = b.date + 'T' + (b.time || '00:00');
           return dateB.localeCompare(dateA);
@@ -1133,6 +1163,12 @@ window.GAILS = window.GAILS || {};
             '</div>' +
           '</div>';
         }).join('');
+
+        if (groupVal === 'none') {
+          return '<div style="display:flex; flex-direction:column; gap:10px;">' +
+            visitsHtml +
+          '</div>';
+        }
 
         return '<div class="unvisited-manager-section">' +
           '<h3 class="unvisited-manager-title">' + escapeHtml(groupName) + ' (' + groupVisits.length + ' visits)</h3>' +

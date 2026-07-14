@@ -2249,7 +2249,7 @@ canvas {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 
 .league-table-toolbar__label {
@@ -2631,7 +2631,8 @@ body.table-fullscreen-lock {
   border-color: rgba(178, 42, 36, 0.28);
 }
 
-.band.No-Data {
+.band.No-Data,
+.band.Incomplete {
   background: rgba(146, 137, 120, 0.14);
   color: var(--muted);
   border-color: rgba(146, 137, 120, 0.28);
@@ -2661,7 +2662,8 @@ body.table-fullscreen-lock {
   color: var(--red);
 }
 
-.conf.No-Data {
+.conf.No-Data,
+.conf.Incomplete {
   background: rgba(146, 137, 120, 0.14);
   color: var(--muted);
 }
@@ -8497,6 +8499,7 @@ a,
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    margin-bottom: 16px;
     width: 100%;
     flex-wrap: nowrap;
   }
