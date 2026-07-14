@@ -9431,8 +9431,8 @@ body.visit-log-filter-open .mobile-bottom-nav {
   flex: 0 1 220px;
 }
 
-/* Desktop: hard-cap the second-row controls (Group By / Sort By / Rating /
-   Period) so all four plus Reset always share one row — without the cap,
+/* Desktop: hard-cap the second-row controls (Group By / Sort By / Period /
+   Rating) so all four plus Reset always share one row — without the cap,
    the Rating control appearing for CQV pushed Reset onto a new row. The
    extra selector specificity guarantees this wins over the flex: 1 above. */
 @media (min-width: 721px) {

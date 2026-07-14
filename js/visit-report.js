@@ -1148,8 +1148,11 @@ window.GAILS = window.GAILS || {};
   }
 
   // Restores the last-used filters (saved on every render) so the page opens
-  // in the state the user last worked in. Runs once, right after the filter
-  // dropdowns are populated and before the first filtered render reads them.
+  // in the state the user last worked in. Visit type is deliberately not
+  // restored: summary chips are temporary result filters and must all start
+  // unselected in a new page session. Rating depends on visit type, so it also
+  // starts clear. Runs once, right after the filter dropdowns are populated
+  // and before the first filtered render reads them.
   function restoreVisitLogFilters() {
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(VISIT_LOG_FILTER_STORAGE_KEY) || 'null'); } catch (e) { /* corrupt/unavailable */ }
@@ -1165,8 +1168,6 @@ window.GAILS = window.GAILS || {};
       populateDropdown('visitLogOps', new Set(getVisitLogOps(regionEl.value)), 'All Areas');
     }
     setSelectValueIfPresent(document.getElementById('visitLogOps'), saved.ops);
-    setSelectValueIfPresent(document.getElementById('visitLogType'), saved.type);
-    setSelectValueIfPresent(document.getElementById('visitLogRating'), saved.rating);
     setSelectValueIfPresent(document.getElementById('visitLogGroup'), saved.group);
     setSelectValueIfPresent(document.getElementById('visitLogSort'), saved.sort);
     setSelectValueIfPresent(document.getElementById('visitLogPeriod'), saved.period);
