@@ -645,23 +645,15 @@ window.GAILS = window.GAILS || {};
     delete record._inSectionTable;
     delete record._inCategoryTable;
 
-    // GAIL's rule: a single failed Critical Point OR Allergen Point question
-    // forces the whole visit to Red, overriding the normal percentage bands
-    // (0-69.99% Red / 70-89.99% Yellow / 90%+ Green) — losing any allergen
-    // point is just as disqualifying as losing a critical point. GoAudits
-    // marks these questions in red text in the PDF, which pdf.js's text
-    // layer doesn't expose — but the category totals (already parsed above)
-    // tell us the same thing: if either category's actual is below its
-    // target, at least one of those questions failed. Matched by category
-    // CODE (CRTCL/ALRG), not the label text, so this still catches a fail
-    // even if a report prints a slightly different label for the category.
-    var CRITICAL_CATEGORY_CODES = ['CRTCL', 'ALRG'];
-    var hasCriticalFail = Object.keys(record.categoryScores).some(function(name) {
-      var s = record.categoryScores[name];
-      var isCritical = CRITICAL_CATEGORY_CODES.indexOf(s.code) !== -1
-        || /^(critical|allergen)\b/i.test(name);
-      return isCritical && s.actual < s.target;
-    });
+    // GAIL's rule: a single failed zero-tolerance question forces the whole
+    // visit to Red, overriding the normal percentage bands (0-69.99% Red /
+    // 70-89.99% Yellow / 90%+ Green). Which questions are zero-tolerance is
+    // defined by the canonical list in js/cqv-criticals.js — NOT the
+    // "(allergen point)" tag or the ALRG category total, because not every
+    // allergen point is critical (e.g. out-of-date stock counts toward ALRG
+    // but doesn't force Red). The shared helper matches the parsed questions
+    // against that list, with the CRTCL category total as a backstop.
+    var hasCriticalFail = window.GAILS.CQVCriticals.hasCriticalFail(record);
     var computedBand = record.overallPct == null ? (record.band || '')
       : record.overallPct >= 90 ? 'Green'
       : record.overallPct >= 70 ? 'Yellow'

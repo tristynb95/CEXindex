@@ -198,26 +198,18 @@ window.GAILS = window.GAILS || {};
 
   var CQV_CHART_ID = 'cqvReportScoreChart';
 
-  // Recomputed live from categoryScores rather than trusting the stored
-  // criticalFail flag, so records saved before this override existed (or
-  // with a stale value) still show correctly without needing a re-import.
-  function cqvHasLostAllergensOrCritical(scores) {
-    return Object.keys(scores || {}).some(function(name) {
-      var s = scores[name];
-      var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
-      return isCritical && s.actual < s.target;
-    });
-  }
-
+  // Recomputed live rather than trusting the stored criticalFail flag —
+  // records imported before js/cqv-criticals.js existed stored
+  // criticalFail: true for ANY lost allergen point, and the shared helper
+  // is what knows which questions are actually zero-tolerance.
   function cqvHasCriticalFail(record) {
-    if (record.criticalFail) return true;
-    return cqvHasLostAllergensOrCritical(record.categoryScores);
+    return window.GAILS.CQVCriticals.hasCriticalFail(record);
   }
 
   // Bands GAIL's uses across every CQV surface: 0-69.99% Red, 70-89.99%
-  // Yellow, 90%+ Green, EXCEPT a failed Critical Point or Allergen Point
-  // question always forces Red regardless of the percentage (see
-  // js/cqv-parser.js). Falls back to deriving the band from overallPct for
+  // Yellow, 90%+ Green, EXCEPT a failed zero-tolerance question (see
+  // js/cqv-criticals.js) always forces Red regardless of the percentage.
+  // Falls back to deriving the band from overallPct for
   // records saved before band computation existed, rather than showing a
   // blank, and re-applies the critical-fail override live in case the
   // stored band predates it.
@@ -273,14 +265,13 @@ window.GAILS = window.GAILS || {};
     return null;
   }
 
-  // Questions tagged "(allergen point)" / "(critical point)" are GAIL's
-  // zero-tolerance categories — losing a single one forces the whole visit
-  // Red — so an action item on one of them gets its own warning flag. An
-  // action item only exists because the point was lost, so every match is
-  // by definition a failed critical/allergen point.
+  // An action item on one of GAIL's zero-tolerance questions (see
+  // js/cqv-criticals.js) gets a "Critical Point" flag — losing that point is
+  // what forces the visit Red. Other "(allergen point)" questions still get
+  // an "Allergen Point" flag as a heads-up, but they don't affect the band.
   function cqvCriticalTag(label) {
+    if (window.GAILS.CQVCriticals.isCriticalQuestion(label) || /\bcritical point\b/i.test(label || '')) return 'Critical Point';
     if (/\ballergen point\b/i.test(label || '')) return 'Allergen Point';
-    if (/\bcritical point\b/i.test(label || '')) return 'Critical Point';
     return null;
   }
 
@@ -366,7 +357,7 @@ window.GAILS = window.GAILS || {};
       ? '<div class="visit-report-section-wrapper"><a class="drill-close-btn" style="display:inline-block; text-decoration:none;" href="' + escapeHtml(record.pdfUrl) + '" target="_blank" rel="noopener">&#128196; View Original CQV PDF &#8599;</a></div>'
       : '';
 
-    var criticalFailHtml = record.criticalFail
+    var criticalFailHtml = cqvHasCriticalFail(record)
       ? '<div class="visit-report-section-wrapper"><div class="visit-report-hs-banner visit-report-hs-banner--alert">' +
           '<strong>&#9888; A Critical Point was lost.</strong>' +
         '</div></div>'
@@ -377,11 +368,11 @@ window.GAILS = window.GAILS || {};
       : '';
 
     var categoryHtml = record.categoryScores && Object.keys(record.categoryScores).length
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section' + (cqvHasLostAllergensOrCritical(record.categoryScores) ? ' visit-report-section--danger' : '') + '"><h4>Score by Category</h4>' + buildCqvScoreRowsHtml(record.categoryScores) + '</div></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section' + (cqvHasCriticalFail(record) ? ' visit-report-section--danger' : '') + '"><h4>Score by Category</h4>' + buildCqvScoreRowsHtml(record.categoryScores) + '</div></div>'
       : '';
 
     var sectionHtml = hasSectionScores
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section' + (cqvHasLostAllergensOrCritical(record.sectionScores) ? ' visit-report-section--danger' : '') + '"><h4>Score by Section</h4>' + buildCqvScoreRowsHtml(record.sectionScores) + '</div></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Score by Section</h4>' + buildCqvScoreRowsHtml(record.sectionScores) + '</div></div>'
       : '';
 
     var actionPlanItems = record.actionPlan;

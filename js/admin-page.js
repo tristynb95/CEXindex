@@ -889,7 +889,7 @@ function cqvSummaryHtml(record, warnings) {
       + (record.score != null ? ' &mdash; ' + escapeHtml(record.score) + ' / ' + escapeHtml(record.scoreMax) : ''));
   }
   if (record.criticalFail) {
-    lines.push('<span style="color:#B22A24;">&#9888; Rated Red: a Critical Point or Allergen Point question failed</span>' +
+    lines.push('<span style="color:#B22A24;">&#9888; Rated Red: a zero-tolerance Critical question failed</span>' +
       (record.printedBand && record.printedBand !== 'Red' ? ' (overrides the ' + escapeHtml(record.printedBand) + ' shown in the PDF header).' : '.'));
   }
   var sectionNames = Object.keys(record.sectionScores || {});
@@ -1092,20 +1092,12 @@ function fieldInputHtml(sectionKey, field, value) {
   return '<label class="admin-form-field' + wide + '"><span>' + escapeHtml(field.label) + '</span>' + input + '</label>' + photoLinks;
 }
 
-function cqvHasLostAllergensOrCritical(scores) {
-  return Object.keys(scores || {}).some(function(name) {
-    var s = scores[name];
-    var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
-    return isCritical && s.actual < s.target;
-  });
-}
-
-// Recomputed live from categoryScores rather than trusting the stored
-// criticalFail flag, so records saved before this override existed (or with
-// a stale value) still show correctly without needing a re-import.
+// Recomputed live rather than trusting the stored criticalFail flag —
+// records imported before js/cqv-criticals.js existed stored
+// criticalFail: true for ANY lost allergen point, and the shared helper is
+// what knows which questions are actually zero-tolerance.
 function cqvHasCriticalFail(visit) {
-  if (visit.criticalFail) return true;
-  return cqvHasLostAllergensOrCritical(visit.categoryScores);
+  return window.GAILS.CQVCriticals.hasCriticalFail(visit);
 }
 
 // Falls back to deriving the band from overallPct for records saved before
@@ -1133,14 +1125,13 @@ function cqvPriorityColor(priority) {
   return null;
 }
 
-// Questions tagged "(allergen point)" / "(critical point)" are GAIL's
-// zero-tolerance categories — losing a single one forces the whole visit
-// Red — so an action item on one of them gets its own warning flag. An
-// action item only exists because the point was lost, so every match is by
-// definition a failed critical/allergen point.
+// An action item on one of GAIL's zero-tolerance questions (see
+// js/cqv-criticals.js) gets a "Critical Point" flag — losing that point is
+// what forces the visit Red. Other "(allergen point)" questions still get
+// an "Allergen Point" flag as a heads-up, but they don't affect the band.
 function cqvCriticalTag(label) {
+  if (window.GAILS.CQVCriticals.isCriticalQuestion(label) || /\bcritical point\b/i.test(label || '')) return 'Critical Point';
   if (/\ballergen point\b/i.test(label || '')) return 'Allergen Point';
-  if (/\bcritical point\b/i.test(label || '')) return 'Critical Point';
   return null;
 }
 
@@ -1257,8 +1248,8 @@ function buildCqvDetailHtml(visit) {
         : '')
     + (visit.summary ? '<p class="visit-report-comment">' + escapeHtml(visit.summary) + '</p>' : '')
     + '</div>'
-    + '<div class="visit-detail-section' + (cqvHasLostAllergensOrCritical(visit.sectionScores) ? ' visit-detail-section--danger' : '') + '"><h4>Score by Section</h4>' + (sectionRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
-    + '<div class="visit-detail-section' + (cqvHasLostAllergensOrCritical(visit.categoryScores) ? ' visit-detail-section--danger' : '') + '"><h4>Score by Category</h4>' + (categoryRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
+    + '<div class="visit-detail-section"><h4>Score by Section</h4>' + (sectionRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
+    + '<div class="visit-detail-section' + (cqvHasCriticalFail(visit) ? ' visit-detail-section--danger' : '') + '"><h4>Score by Category</h4>' + (categoryRows || '<p class="visit-report-note">Not parsed.</p>') + '</div>'
     + '<div class="visit-detail-section"><h4>Action Plan (' + (actionPlanItems || []).length + ')</h4>'
     + (actionPlanIsDerived ? '<p class="visit-report-note" style="margin-bottom:10px;">This follow-up report didn\'t include a written action plan &mdash; showing the questions that lost points instead.</p>' : '')
     + actionItemsHtml + '</div>'
