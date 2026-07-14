@@ -1,5 +1,5 @@
 import { firebaseConfig, db, storage, auth as primaryAuth } from './firebase-config.js';
-import { ref, set, push, remove, onValue, get, query, limitToLast, orderByKey } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { ref, set, update, push, remove, onValue, get, query, limitToLast, orderByKey } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
@@ -81,6 +81,7 @@ const cqvImportZone       = document.getElementById('cqvImportZone');
 const cqvImportBrowseBtn  = document.getElementById('cqvImportBrowseBtn');
 const cqvImportInput      = document.getElementById('cqvImportInput');
 const cqvImportMsg        = document.getElementById('cqvImportMsg');
+const cqvBackfillAuditorsBtn = document.getElementById('cqvBackfillAuditorsBtn');
 const cqvConfirmModal     = document.getElementById('cqvConfirmModal');
 const cqvConfirmClose     = document.getElementById('cqvConfirmClose');
 const cqvConfirmCancel    = document.getElementById('cqvConfirmCancel');
@@ -790,6 +791,7 @@ function getVisibleVisits() {
   return rows.filter(function(v) {
     return String(v.bakery || '').toLowerCase().includes(search)
       || String(v.coffeePartner || '').toLowerCase().includes(search)
+      || String(v.auditorName || '').toLowerCase().includes(search)
       || String(v.mod || '').toLowerCase().includes(search);
   });
 }
@@ -831,7 +833,7 @@ function renderVisits() {
       + '  <div class="admin-table__title">' + escapeHtml(v.bakery || 'Unknown') + '</div>'
       + '  ' + typeBadge
       + '</div></td>'
-      + '<td>' + escapeHtml(v.coffeePartner || '—') + '</td>'
+      + '<td>' + escapeHtml(isCqv ? (v.auditorName || '—') : (v.coffeePartner || '—')) + '</td>'
       + '<td>' + escapeHtml(scoreText) + '</td>'
       + '<td>' + escapeHtml(v.mod || '—') + '</td>'
       + '<td><div class="admin-table__actions admin-table__actions--icons">'
@@ -892,6 +894,9 @@ function cqvSummaryHtml(record, warnings) {
     lines.push('<span style="color:#B22A24;">&#9888; Rated Red: a zero-tolerance Critical question failed</span>' +
       (record.printedBand && record.printedBand !== 'Red' ? ' (overrides the ' + escapeHtml(record.printedBand) + ' shown in the PDF header).' : '.'));
   }
+  if (record.auditorName) {
+    lines.push('Auditor: <strong>' + escapeHtml(record.auditorName) + '</strong>');
+  }
   var sectionNames = Object.keys(record.sectionScores || {});
   if (sectionNames.length) {
     lines.push('Sections: ' + sectionNames.map(function(s) {
@@ -941,7 +946,7 @@ async function handleCqvFile(file) {
       throw new Error('CQV parser did not load. Refresh the page and try again.');
     }
     var result = await window.GAILS.CQV.buildRecordFromPdf(bytes.buffer);
-    if (!result.record.overallPct && !result.record.score && !result.record.questions.length) {
+    if (result.record.overallPct == null && result.record.score == null && !result.record.questions.length) {
       throw new Error('Could not find any CQV score data in this PDF. Make sure it\'s the standard GoAudits CQV export.');
     }
     clearMessage(cqvImportMsg);
@@ -954,6 +959,63 @@ async function handleCqvFile(file) {
     if (cqvImportInput) cqvImportInput.value = '';
     if (cqvImportZone) cqvImportZone.classList.remove('drag-over');
   }
+}
+
+function missingCqvAuditorVisits() {
+  return state.visits.filter(function(visit) {
+    return visit.type === 'cqv' && !String(visit.auditorName || '').trim() && visit.pdfUrl;
+  });
+}
+
+function updateCqvBackfillButton() {
+  if (!cqvBackfillAuditorsBtn) return;
+  var count = missingCqvAuditorVisits().length;
+  cqvBackfillAuditorsBtn.disabled = count === 0;
+  cqvBackfillAuditorsBtn.textContent = count
+    ? 'Update missing auditor names (' + count + ')'
+    : 'Auditor names up to date';
+}
+
+async function backfillCqvAuditors() {
+  var visits = missingCqvAuditorVisits();
+  if (!visits.length || !cqvBackfillAuditorsBtn) return;
+
+  cqvBackfillAuditorsBtn.disabled = true;
+  var updated = 0;
+  var notFound = 0;
+  var failed = 0;
+  setMessage(cqvImportMsg, 'info', 'Checking ' + visits.length + ' saved CQV PDF' + (visits.length === 1 ? '' : 's') + ' for auditor names…');
+
+  // Parse sequentially to avoid downloading and decoding every stored PDF at
+  // once on larger visit histories.
+  for (var idx = 0; idx < visits.length; idx++) {
+    var visit = visits[idx];
+    try {
+      var response = await fetch(visit.pdfUrl);
+      if (!response.ok) throw new Error('PDF request returned ' + response.status);
+      var result = await window.GAILS.CQV.buildRecordFromPdf(await response.arrayBuffer());
+      var auditorName = String(result.record.auditorName || '').trim();
+      if (!auditorName) {
+        notFound++;
+        continue;
+      }
+      await update(ref(db, 'routineVisits/' + visit.id), {
+        auditorName: auditorName,
+        'meta/auditorBackfilledAt': nowIso(),
+        'meta/auditorBackfilledBy': currentUserEmail()
+      });
+      updated++;
+    } catch (err) {
+      failed++;
+      console.error('Could not backfill auditor for CQV ' + visit.id + ':', err);
+    }
+  }
+
+  var detail = updated + ' auditor name' + (updated === 1 ? '' : 's') + ' updated.';
+  if (notFound) detail += ' ' + notFound + ' could not be found in the attached PDF.';
+  if (failed) detail += ' ' + failed + ' PDF' + (failed === 1 ? '' : 's') + ' could not be read.';
+  setMessage(cqvImportMsg, failed ? 'error' : 'success', detail);
+  updateCqvBackfillButton();
 }
 
 async function saveCqvRecord() {
@@ -1229,7 +1291,8 @@ function buildCqvDetailHtml(visit) {
 
   var basicFields = [
     { key: 'bakery', label: 'Bakery', type: 'text' },
-    { key: 'date', label: 'Visit date', type: 'date' }
+    { key: 'date', label: 'Visit date', type: 'date' },
+    { key: 'auditorName', label: 'Auditor', type: 'text' }
   ];
   var basicHtml = basicFields.map(function(field) {
     return fieldInputHtml(null, field, visit[field.key]);
@@ -1649,6 +1712,7 @@ function ensurePortalSync() {
       });
     }
     renderVisits();
+    updateCqvBackfillButton();
   }, function(err) {
     console.error('Failed to sync routine visits:', err);
     setMessage(visitMsg, 'error', 'Could not load visit history from Firebase.');
@@ -2103,6 +2167,13 @@ if (cqvImportBrowseBtn) {
   cqvImportBrowseBtn.addEventListener('click', function(event) {
     event.stopPropagation();
     if (cqvImportInput) cqvImportInput.click();
+  });
+}
+
+if (cqvBackfillAuditorsBtn) {
+  cqvBackfillAuditorsBtn.addEventListener('click', function(event) {
+    event.stopPropagation();
+    backfillCqvAuditors();
   });
 }
 

@@ -163,7 +163,10 @@ window.GAILS = window.GAILS || {};
   var RE_SCORE_BY_SECTION_HEADING = /^S\s*C\s*O\s*R\s*E\s*B\s*Y\s*S\s*E\s*C\s*T\s*I\s*O\s*N$/i;
   var RE_SCORE_BY_CATEGORY_HEADING = /^S\s*C\s*O\s*R\s*E\s*B\s*Y\s*C\s*A\s*T\s*E\s*G\s*O\s*R\s*Y$/i;
   var RE_GENERAL_INFO_HEADING = /^GENERAL\s+INFORMATION/i;
-  var RE_PREPARED_BY = /^Prepared\s*By$/i;
+  var RE_PREPARED_BY = /^Prepared\s*By\s*:?\s*$/i;
+  var RE_PREPARED_BY_INLINE = /^Prepared\s*By\s*:?\s+(.+)$/i;
+  var RE_AUDITOR = /^Auditor\s*:?\s*$/i;
+  var RE_AUDITOR_INLINE = /^Auditor\s*:?\s+(.+)$/i;
   var RE_POWERED_BY = /^Powered\s*By$/i;
   // The running page header ("<SITE NAME> DD MON YY", e.g. "WELWYN GARDEN
   // CITY 01 JUL 26") can land appended to the END of real content — a
@@ -191,6 +194,55 @@ window.GAILS = window.GAILS || {};
     var dd = String(parseInt(day, 10)).padStart(2, '0');
     var mm = String(mi + 1).padStart(2, '0');
     return year + '-' + mm + '-' + dd;
+  }
+
+  // GoAudits prints the auditor twice: "Prepared By" at the bottom of the
+  // cover and "Auditor (Name)" in the declaration on the final page. pdf.js
+  // may reconstruct the caption/name as one row or two, and the declaration
+  // wraps the value in parentheses. Keep this extraction separate from the
+  // general cover scan so both layouts remain dependable fallbacks.
+  function cleanAuditorCandidate(value) {
+    var candidate = cleanLine(value)
+      .replace(/^\(\s*/, '')
+      .replace(/\s*\)$/, '')
+      .replace(/^[\s:,-]+|[\s:,-]+$/g, '');
+    if (!candidate || candidate.length > 100 || !/[A-Za-z]/.test(candidate)) return '';
+    if (RE_PREPARED_BY.test(candidate) || RE_AUDITOR.test(candidate)
+        || RE_DATE_LINE.test(candidate) || RE_REF.test(candidate)
+        || isNoiseLine(candidate) || /^CQV\b/i.test(candidate)
+        || /^GAILS?\s+BAKERY\b/i.test(candidate)
+        || RE_DECLARATION_HEADING.test(candidate)) return '';
+    return candidate;
+  }
+
+  function auditorFromCaption(lines, captionRe, inlineRe) {
+    for (var idx = 0; idx < lines.length; idx++) {
+      var line = cleanLine(lines[idx]);
+      var inline = line.match(inlineRe);
+      if (inline) {
+        var inlineName = cleanAuditorCandidate(inline[1]);
+        if (inlineName) return inlineName;
+      }
+      if (!captionRe.test(line)) continue;
+
+      // The value normally follows the caption. Check the immediately
+      // preceding row as a secondary layout variant; reaching farther can
+      // mistake the nearby bakery name for an auditor when a value is absent.
+      var offsets = [1, -1];
+      for (var o = 0; o < offsets.length; o++) {
+        var candidate = cleanAuditorCandidate(lines[idx + offsets[o]]);
+        if (candidate) return candidate;
+      }
+    }
+    return '';
+  }
+
+  function extractAuditorName(pages) {
+    var firstPage = pages[0] || [];
+    var lastPage = pages.length ? (pages[pages.length - 1] || []) : [];
+    return auditorFromCaption(firstPage, RE_PREPARED_BY, RE_PREPARED_BY_INLINE)
+      || auditorFromCaption(lastPage, RE_AUDITOR, RE_AUDITOR_INLINE)
+      || '';
   }
 
   // ---------- main parse ----------
@@ -225,6 +277,7 @@ window.GAILS = window.GAILS || {};
 
     var i = 0;
     var n = lines.length;
+    record.auditorName = extractAuditorName(pages);
 
     // ---- cover page: bakery/title/date/auditor/ref (best-effort scan of
     // page 0 only, tolerant of ordering since GAILS's cover layout varies) ----
@@ -242,15 +295,6 @@ window.GAILS = window.GAILS || {};
         continue;
       }
       if (RE_PREPARED_BY.test(cl)) {
-        // The name can print above or below the "Prepared By" caption
-        // depending on the cover layout — prefer whichever neighbour isn't
-        // itself a recognisable non-name line (date, title, footer, etc).
-        var candidate = page0[c - 1];
-        if (!candidate || RE_DATE_LINE.test(candidate) || /^CQV\b/i.test(candidate)
-            || isNoiseLine(candidate) || RE_REF.test(candidate) || RE_PREPARED_BY.test(candidate)) {
-          candidate = page0[c + 1];
-        }
-        if (candidate) record.auditorName = candidate;
         continue;
       }
       var refm = cl.match(RE_REF);
