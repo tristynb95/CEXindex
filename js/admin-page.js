@@ -603,7 +603,7 @@ function renderSummary() {
   summaryCards.innerHTML = [
     { label: 'Users',        value: s.userCount,    meta: s.adminCount + ' admin' + (s.adminCount === 1 ? '' : 's') },
     { label: 'Sites',        value: s.siteCount,    meta: s.regionCount + ' regions mapped' },
-    { label: 'Ops Managers', value: s.managerCount, meta: state.siteMetaDirty ? 'Unsaved changes' : 'Directory synced' },
+    { label: 'Ops Areas', value: s.managerCount, meta: state.siteMetaDirty ? 'Unsaved changes' : 'Directory synced' },
     { label: 'Records',      value: s.recordCount,  meta: s.monthCount + ' month' + (s.monthCount === 1 ? '' : 's') + ' synced' }
   ].map(function(c) {
     return '<div class="admin-summary-card">'
@@ -623,7 +623,7 @@ function renderOverview() {
   var s = buildSummaryStats();
   overviewGrid.innerHTML = [
     { label: 'Access Health',    value: s.userCount ? s.userCount + ' total users'       : 'No users yet',          meta: s.adminCount + ' admin accounts can manage the portal.' },
-    { label: 'Site Directory',   value: s.siteCount + ' bakeries mapped',                                           meta: s.managerCount + ' ops managers across ' + s.regionCount + ' regions.' },
+    { label: 'Site Directory',   value: s.siteCount + ' bakeries mapped',                                           meta: s.managerCount + ' ops areas across ' + s.regionCount + ' regions.' },
     { label: 'Dataset Status',   value: s.recordCount ? 'Shared workbook active'         : 'No workbook synced',    meta: s.updatedAt ? 'Updated ' + formatDate(s.updatedAt) : 'Upload a workbook to populate the live dashboard.' },
     { label: 'Current Session',  value: currentUserEmail(),                                                         meta: state.siteMetaDirty ? 'You have unsaved site mapping edits.' : 'All site metadata changes are saved.' }
   ].map(function(c) {
@@ -751,7 +751,7 @@ function renderSites() {
     return '<tr>'
       + '<td><div class="admin-table__title">' + escapeHtml(row.name) + '</div></td>'
       + '<td><input type="text" value="' + escapeHtml(row.entry.r || '') + '" list="adminRegionList"  data-site="' + escapeHtml(row.name) + '" data-field="r" placeholder="Region"></td>'
-      + '<td><input type="text" value="' + escapeHtml(row.entry.o || '') + '" list="adminManagerList" data-site="' + escapeHtml(row.name) + '" data-field="o" placeholder="Ops manager"></td>'
+      + '<td><input type="text" value="' + escapeHtml(row.entry.o || '') + '" list="adminManagerList" data-site="' + escapeHtml(row.name) + '" data-field="o" placeholder="Ops area"></td>'
       + '<td><div class="admin-table__actions"><button type="button" class="admin-inline-danger" data-action="remove-site" data-site="' + escapeHtml(row.name) + '">Remove</button></div></td>'
       + '</tr>';
   }).join('');
@@ -1898,7 +1898,7 @@ siteForm.addEventListener('submit', function(e) {
   var region = siteRegionInput.value.trim();
   var ops    = siteOpsInput.value.trim();
   if (!name || !region || !ops) {
-    setMessage(siteMsg, 'error', 'Enter a bakery name, region, and ops manager to add a site.');
+    setMessage(siteMsg, 'error', 'Enter a bakery name, region, and ops area to add a site.');
     return;
   }
   state.siteMetaDraft[name] = { r: region, o: ops };

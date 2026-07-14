@@ -25,6 +25,17 @@
     feedback: 'Customer Feedback',
     'visit-log': 'Bakery Reports'
   };
+  var dashboardMobileTabLabels = {
+    overview: 'Overview',
+    trends: 'Trends',
+    table: 'Rankings',
+    map: 'Map',
+    target: 'Focus',
+    speed: 'Speed',
+    cei: 'Methodology',
+    feedback: 'Feedback',
+    'visit-log': 'Reports'
+  };
   var dashboardTabsWithKpis = {
     overview: true
   };
@@ -47,22 +58,78 @@
     dashboardFooterStamp.hidden = !state.dataLastUpdated;
   }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   function renderHeaderSummary() {
     renderDataUpdatedStamp();
     var headerSub = document.getElementById('headerSub');
     if (!headerSub) return;
     var activePanel = document.querySelector('.tab-content.active');
     var currentTab = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
-    if (currentTab === 'table') {
-      headerSub.textContent = 'League Table';
-      return;
-    }
+
     if (currentTab === 'visit-log') {
-      headerSub.textContent = 'Bakery Reports';
+      headerSub.innerHTML = window.GAILS.getVisitLogHeaderSummary ? window.GAILS.getVisitLogHeaderSummary() : 'Bakery Reports';
       return;
     }
+
+    var isMobile = window.innerWidth <= 980;
+    var prefix = isMobile 
+      ? (dashboardMobileTabLabels[currentTab] || 'Dashboard')
+      : (dashboardTabLabels[currentTab] || 'Dashboard');
+
+    var pills = [];
+
+    // Core bubble: Period and Bakery count
     var bakeryLabel = lastHeaderBakeryCount === 1 ? '1 bakery' : lastHeaderBakeryCount + ' bakeries';
-    headerSub.textContent = formatSelectedPeriod() + ' \u00B7 ' + bakeryLabel;
+    var coreConfigText = formatSelectedPeriod() + ' · ' + bakeryLabel;
+    pills.push('<span class="header-pill-core">' + escapeHtml(coreConfigText) + '</span>');
+
+    // Optional bubble: Region
+    var selRegions = state.regionFilter || [];
+    if (selRegions.length > 0) {
+      var rText = selRegions.length === 1 ? selRegions[0] : selRegions.length + ' Regions';
+      pills.push('<span class="header-pill-filter">' + escapeHtml(rText) + '</span>');
+    }
+
+    // Optional bubble: Area (Ops Area)
+    var selOps = state.opsFilter || [];
+    if (selOps.length > 0) {
+      var oText = selOps.length === 1 ? selOps[0] : selOps.length + ' Areas';
+      pills.push('<span class="header-pill-filter">' + escapeHtml(oText) + '</span>');
+    }
+
+    // Optional bubble: Bakery
+    var selBakeries = state.searchBakery || [];
+    if (selBakeries.length > 0) {
+      var bText = selBakeries.length === 1 ? selBakeries[0] : selBakeries.length + ' Bakeries';
+      pills.push('<span class="header-pill-filter">' + escapeHtml(bText) + '</span>');
+    }
+
+    // Optional bubble: Band
+    var bandVal = state.bandFilter;
+    if (bandVal) {
+      var bandLabels = {
+        'exceeding': 'Exceeding',
+        'onTarget': 'On Target',
+        'watch': 'Watch',
+        'below': 'Below'
+      };
+      var bandText = 'Band: ' + (bandLabels[bandVal] || bandVal);
+      pills.push('<span class="header-pill-filter">' + escapeHtml(bandText) + '</span>');
+    }
+
+    headerSub.innerHTML = prefix + 
+           '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' + 
+           pills.join('') + 
+           '</span>';
   }
 
   function updateHeaderSummary(bakeryCount) {
@@ -1390,7 +1457,7 @@
     }
 
     function updateLabel() {
-      if (!selected.length) { msLabel.textContent = 'All Managers'; }
+      if (!selected.length) { msLabel.textContent = 'All Areas'; }
       else if (selected.length === 1) { msLabel.textContent = selected[0]; }
       else { msLabel.textContent = selected.length + ' managers'; }
       msTrigger.classList.toggle('bakery-ms__trigger--active', selected.length > 0);
@@ -1461,8 +1528,17 @@
     }
 
     function onOpsChange() {
-      state.searchBakery.splice(0, state.searchBakery.length);
-      if (G.resetBakeryMultiselect) G.resetBakeryMultiselect();
+      // Keep any selected bakeries that still belong to the now-selected ops areas
+      if (selected.length) {
+        var removed = false;
+        for (var i = state.searchBakery.length - 1; i >= 0; i--) {
+          if (!selected.includes(G.getBakeryOps(state.searchBakery[i]))) {
+            state.searchBakery.splice(i, 1);
+            removed = true;
+          }
+        }
+        if (removed && G.resetBakeryMultiselect) G.resetBakeryMultiselect();
+      }
       refresh();
     }
 
@@ -1507,9 +1583,16 @@
       for (var i = selected.length - 1; i >= 0; i--) {
         if (!available.includes(selected[i])) selected.splice(i, 1);
       }
-      if (selected.length !== prevLen) {
-        state.searchBakery.splice(0, state.searchBakery.length);
-        if (G.resetBakeryMultiselect) G.resetBakeryMultiselect();
+      if (selected.length !== prevLen && selected.length) {
+        // Some ops areas dropped out; keep only bakeries still under a selected ops area
+        var removed = false;
+        for (var j = state.searchBakery.length - 1; j >= 0; j--) {
+          if (!selected.includes(G.getBakeryOps(state.searchBakery[j]))) {
+            state.searchBakery.splice(j, 1);
+            removed = true;
+          }
+        }
+        if (removed && G.resetBakeryMultiselect) G.resetBakeryMultiselect();
       }
       if (isOpen) renderList(msSearch.value);
       updateLabel();
@@ -1561,6 +1644,7 @@
     compactDashboardSidebarMedia.addEventListener('change', function() {
       syncDashboardSidebarForViewport();
       syncDashboardKpis();
+      renderHeaderSummary();
     });
   }
 
@@ -1598,6 +1682,7 @@
   var filterPanelClose    = document.getElementById('filterPanelClose');
   var filterPanelCloseFab = document.getElementById('filterPanelCloseFab');
   var filterPanelReset    = document.getElementById('filterPanelReset');
+  var desktopFilterReset  = document.getElementById('desktopFilterReset');
   var filterSidePanelOpen = false;
   var mobileFilterMedia   = window.matchMedia('(max-width: 720px)');
   var filterDragState = null;
@@ -1828,6 +1913,7 @@
   if (filterPanelClose) { filterPanelClose.addEventListener('click', closeFilterSidePanel); }
   if (filterPanelCloseFab) { filterPanelCloseFab.addEventListener('click', closeFilterSidePanel); }
   if (filterPanelReset) { filterPanelReset.addEventListener('click', resetAllFilters); }
+  if (desktopFilterReset) { desktopFilterReset.addEventListener('click', resetAllFilters); }
   if (filterSideBackdrop) { filterSideBackdrop.addEventListener('click', closeFilterSidePanel); }
   document.addEventListener('click', function(event) {
     if (!mobileFilterMedia.matches || !filterSidePanelOpen || !filterControlsPanel) return;

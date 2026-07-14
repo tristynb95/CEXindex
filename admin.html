@@ -142,7 +142,7 @@
                   <span class="admin-pg-nav__content">
                     <span class="admin-pg-nav__eyebrow">Directory</span>
                     <strong>Site Data</strong>
-                    <span class="admin-pg-nav__meta">Maintain bakery regions and ops manager ownership.</span>
+                    <span class="admin-pg-nav__meta">Maintain bakery regions and ops area ownership.</span>
                   </span>
                 </button>
                 <button type="button" class="admin-pg-nav__btn" data-admin-panel="data" aria-label="Dataset">
@@ -218,7 +218,7 @@
                   </button>
                   <button type="button" class="admin-action-card" data-admin-panel-target="sites">
                     <span class="admin-action-card__label">Site Ownership</span>
-                    <strong>Update bakery region and ops manager assignments</strong>
+                    <strong>Update bakery region and ops area assignments</strong>
                     <span>Keep filters and operational reporting accurate.</span>
                   </button>
                   <button type="button" class="admin-action-card" data-admin-panel-target="data">
@@ -323,7 +323,7 @@
                 <div class="admin-section__header">
                   <div>
                     <h3>Bakery and Ops Mapping</h3>
-                    <p>Edit the site directory that powers the Region and Ops Manager filters across the dashboard.</p>
+                    <p>Edit the site directory that powers the Region and Ops Area filters across the dashboard.</p>
                   </div>
                   <div class="admin-section__actions">
                     <button type="button" id="resetSitesBtn" class="admin-secondary-btn">Reset Unsaved Changes</button>
@@ -357,7 +357,7 @@
                 <div class="admin-toolbar">
                   <label class="admin-form-field admin-form-field--search" for="siteSearchInput">
                     <span>Search directory</span>
-                    <input type="text" id="siteSearchInput" placeholder="Search bakery, region, or ops manager">
+                    <input type="text" id="siteSearchInput" placeholder="Search bakery, region, or ops area">
                   </label>
                   <div class="admin-toolbar__meta" id="siteTableMeta">Loading site directory&hellip;</div>
                 </div>
@@ -372,8 +372,8 @@
                     <input type="text" id="siteRegionInput" placeholder="Region" list="adminRegionList" required>
                   </label>
                   <label class="admin-form-field" for="siteOpsInput">
-                    <span>Ops manager</span>
-                    <input type="text" id="siteOpsInput" placeholder="Ops manager" list="adminManagerList" required>
+                    <span>Ops area</span>
+                    <input type="text" id="siteOpsInput" placeholder="Ops area" list="adminManagerList" required>
                   </label>
                   <button type="submit" class="admin-secondary-btn">Add Site</button>
                 </form>
@@ -387,7 +387,7 @@
                       <tr>
                         <th>Bakery</th>
                         <th>Region</th>
-                        <th>Ops Manager</th>
+                        <th>Ops Area</th>
                         <th>
                           <div class="table-fullscreen-inline-anchor" data-table-fullscreen-anchor="true">
                             <span>Action</span>

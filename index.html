@@ -237,10 +237,10 @@
               </div>
             </div>
             <div class="filter-control">
-              <label>Ops Manager</label><br>
+              <label>Ops Area</label><br>
               <div class="bakery-ms" id="opsMultiselect">
                 <button class="bakery-ms__trigger" id="opsMsTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="bakery-ms__trigger-label" id="opsMsLabel">All Managers</span>
+                  <span class="bakery-ms__trigger-label" id="opsMsLabel">All Areas</span>
                   <span class="bakery-ms__trigger-icon" aria-hidden="true"></span>
                 </button>
                 <div class="bakery-ms__dropdown" id="opsDropdown">
@@ -297,6 +297,9 @@
                 <option value="abs:Below Standard">Below Standard</option>
               </optgroup>
             </select></div>
+            <div class="filter-control filter-control--reset">
+              <button type="button" id="desktopFilterReset" class="filter-reset-btn">Reset</button>
+            </div>
           </div>
 
           <button type="button" class="filter-panel-close-fab" id="filterPanelCloseFab" aria-label="Close filters">
@@ -696,7 +699,7 @@
                       <th>#</th>
                       <th>Bakery</th>
                       <th>Region</th>
-                      <th>Ops Manager</th>
+                      <th>Ops Area</th>
                       <th>Peer Score</th>
                       <th>Peer Band</th>
                       <th>Benchmark Score</th>
@@ -1078,72 +1081,92 @@
                   <label for="visitLogSearch">Search</label>
                   <input type="text" id="visitLogSearch" placeholder="Search bakery or coffee partner..." class="visit-log-input" autocomplete="off">
                 </div>
-                <div class="visit-log-filter-control">
-                  <label for="visitLogRegion">Region</label>
-                  <select id="visitLogRegion" class="visit-log-select">
-                    <option value="">All Regions</option>
-                  </select>
+                <button type="button" id="visitLogMobileFilterBtn" class="visit-log-mobile-filter-btn" aria-controls="visitLogFilterPanel" aria-expanded="false">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M3 7h18M7 12h10M11 17h2"/>
+                  </svg>
+                  <span>Filters</span>
+                  <span id="visitLogFilterBadge" class="visit-log-filter-badge" hidden></span>
+                </button>
+                <div id="visitLogFilterBackdrop" class="visit-log-filter-backdrop" hidden></div>
+                <div id="visitLogFilterPanel" class="visit-log-filter-panel" aria-label="Visit report filters">
+                  <div class="visit-log-filter-panel__header">
+                    <strong>Filters</strong>
+                    <button type="button" id="visitLogFilterCloseBtn" class="visit-log-filter-panel__close" aria-label="Close filters">
+                      <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <path d="M1 1l12 12M13 1L1 13"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="visit-log-filter-panel__body">
+                    <div class="visit-log-filter-control">
+                      <label for="visitLogRegion">Region</label>
+                      <select id="visitLogRegion" class="visit-log-select">
+                        <option value="">All Regions</option>
+                      </select>
+                    </div>
+                    <div class="visit-log-filter-control">
+                      <label for="visitLogOps">Ops Area</label>
+                      <select id="visitLogOps" class="visit-log-select">
+                        <option value="">All Areas</option>
+                      </select>
+                    </div>
+                    <div class="visit-log-filter-control">
+                      <label for="visitLogType">Visit Type</label>
+                      <select id="visitLogType" class="visit-log-select">
+                        <option value="">All Types</option>
+                        <option value="routine">Routine Coffee Visit</option>
+                        <option value="siteVisit">Check-in</option>
+                        <option value="nboOpening">NBO: Opening</option>
+                        <option value="nbo2wk">NBO: 2WK Check-in</option>
+                        <option value="nbo4wk">NBO: 4WK Check-in</option>
+                        <option value="cqv">CQV</option>
+                        <option value="cqvFollowUp">CQV Follow-Up</option>
+                      </select>
+                    </div>
+                    <div class="visit-log-filter-control visit-log-filter-control--compact">
+                      <label for="visitLogGroup">Group By</label>
+                      <select id="visitLogGroup" class="visit-log-select">
+                        <option value="ops">Ops Area</option>
+                        <option value="region">Region</option>
+                        <option value="type">Visit Type</option>
+                        <option value="none">None</option>
+                      </select>
+                    </div>
+                    <div class="visit-log-filter-control visit-log-filter-control--compact">
+                      <label for="visitLogSort">Sort By</label>
+                      <select id="visitLogSort" class="visit-log-select">
+                        <option value="date">Date</option>
+                        <option value="nameAsc">Alphabetical (A-Z)</option>
+                        <option value="nameDesc">Alphabetical (Z-A)</option>
+                        <option value="type">Visit Type</option>
+                      </select>
+                    </div>
+                    <div class="visit-log-filter-control visit-log-filter-control--compact" id="visitLogRatingControl" style="display:none;">
+                      <label for="visitLogRating">Rating</label>
+                      <select id="visitLogRating" class="visit-log-select">
+                        <option value="">All Ratings</option>
+                        <option value="Green">Green</option>
+                        <option value="Yellow">Yellow</option>
+                        <option value="Red">Red</option>
+                      </select>
+                    </div>
+                    <div class="visit-log-filter-control visit-log-filter-control--compact">
+                      <label for="visitLogPeriod">Period</label>
+                      <select id="visitLogPeriod" class="visit-log-select">
+                        <option value="0">All Time</option>
+                        <option value="currentMonth">This Month</option>
+                        <option value="1" selected>Last Month</option>
+                        <option value="2">Last 2 Months</option>
+                        <option value="3">Last 3 Months</option>
+                        <option value="6">Last 6 Months</option>
+                        <option value="12">Last 12 Months</option>
+                        <option value="lastYear">Last Year</option>
+                      </select>
+                    </div>
+                    <button type="button" id="visitLogResetBtn" class="visit-log-reset-btn">Reset</button>
+                  </div>
                 </div>
-                <div class="visit-log-filter-control">
-                  <label for="visitLogOps">Ops Manager</label>
-                  <select id="visitLogOps" class="visit-log-select">
-                    <option value="">All Managers</option>
-                  </select>
-                </div>
-                <div class="visit-log-filter-control">
-                  <label for="visitLogType">Visit Type</label>
-                  <select id="visitLogType" class="visit-log-select">
-                    <option value="">All Types</option>
-                    <option value="routine">Routine Coffee Visit</option>
-                    <option value="siteVisit">Check-in</option>
-                    <option value="nboOpening">NBO: Opening</option>
-                    <option value="nbo2wk">NBO: 2WK Check-in</option>
-                    <option value="nbo4wk">NBO: 4WK Check-in</option>
-                    <option value="cqv">CQV</option>
-                    <option value="cqvFollowUp">CQV Follow-Up</option>
-                  </select>
-                </div>
-                <div class="visit-log-filter-control visit-log-filter-control--compact">
-                  <label for="visitLogGroup">Group By</label>
-                  <select id="visitLogGroup" class="visit-log-select">
-                    <option value="ops">Ops Manager</option>
-                    <option value="region">Region</option>
-                    <option value="type">Visit Type</option>
-                    <option value="none">None</option>
-                  </select>
-                </div>
-                <div class="visit-log-filter-control visit-log-filter-control--compact">
-                  <label for="visitLogSort">Sort By</label>
-                  <select id="visitLogSort" class="visit-log-select">
-                    <option value="date">Date</option>
-                    <option value="nameAsc">Alphabetical (A-Z)</option>
-                    <option value="nameDesc">Alphabetical (Z-A)</option>
-                    <option value="type">Visit Type</option>
-                  </select>
-                </div>
-                <div class="visit-log-filter-control visit-log-filter-control--compact" id="visitLogRatingControl" style="display:none;">
-                  <label for="visitLogRating">Rating</label>
-                  <select id="visitLogRating" class="visit-log-select">
-                    <option value="">All Ratings</option>
-                    <option value="Green">Green</option>
-                    <option value="Yellow">Yellow</option>
-                    <option value="Red">Red</option>
-                  </select>
-                </div>
-                <div class="visit-log-filter-control visit-log-filter-control--compact">
-                  <label for="visitLogPeriod">Period</label>
-                  <select id="visitLogPeriod" class="visit-log-select">
-                    <option value="0">All Time</option>
-                    <option value="currentMonth">This Month</option>
-                    <option value="1" selected>Last Month</option>
-                    <option value="2">Last 2 Months</option>
-                    <option value="3">Last 3 Months</option>
-                    <option value="6">Last 6 Months</option>
-                    <option value="12">Last 12 Months</option>
-                    <option value="lastYear">Last Year</option>
-                  </select>
-                </div>
-                <button type="button" id="visitLogResetBtn" class="visit-log-reset-btn">Reset</button>
               </div>
 
               <div id="visitLogStatus" class="status" style="margin-bottom:15px"></div>
@@ -1370,7 +1393,7 @@
                   <th>Region</th>
                   <th>
                     <div class="table-fullscreen-inline-anchor" data-table-fullscreen-anchor="true">
-                      <span>Ops Manager</span>
+                      <span>Ops Area</span>
                     </div>
                   </th>
                 </tr>

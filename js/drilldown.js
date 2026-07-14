@@ -138,7 +138,7 @@ window.GAILS = window.GAILS || {};
         }
       },
       {
-        label: 'Ops Manager',
+        label: 'Ops Area',
         render: function(row, index, G) {
           return '<span class="drill-cell-meta">' + escapeHtml(G.getBakeryOps(row.b)) + '</span>';
         }

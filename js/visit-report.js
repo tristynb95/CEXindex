@@ -511,7 +511,7 @@ window.GAILS = window.GAILS || {};
     return 'Routine Coffee Visit';
   }
 
-  // Drives the "Group By" filter — Ops Manager (default), Region, or Visit
+  // Drives the "Group By" filter — Ops Area (default), Region, or Visit
   // Type all group the same underlying visit list, just bucketed differently.
   function getVisitGroupKey(v, groupVal) {
     var G = window.GAILS;
@@ -794,6 +794,112 @@ window.GAILS = window.GAILS || {};
     }
   }
 
+  function getPeriodLabel(val) {
+    var periodLabels = {
+      '0': 'All Time',
+      'currentMonth': 'This Month',
+      '1': 'Last Month',
+      '2': 'Last 2 Months',
+      '3': 'Last 3 Months',
+      '6': 'Last 6 Months',
+      '12': 'Last 12 Months',
+      'lastYear': 'Last Year'
+    };
+    if (val === 'lastYear') {
+      return 'Last Year (' + ((new Date()).getFullYear() - 1) + ')';
+    }
+    return periodLabels[val] || (val + ' Months');
+  }
+
+  window.GAILS.getVisitLogHeaderSummary = function() {
+    var G = window.GAILS;
+    var searchEl = document.getElementById('visitLogSearch');
+    var regionEl = document.getElementById('visitLogRegion');
+    var opsEl = document.getElementById('visitLogOps');
+    var typeEl = document.getElementById('visitLogType');
+    var ratingEl = document.getElementById('visitLogRating');
+    var groupEl = document.getElementById('visitLogGroup');
+    var sortEl = document.getElementById('visitLogSort');
+    var periodEl = document.getElementById('visitLogPeriod');
+
+    var searchVal = searchEl ? searchEl.value.toLowerCase().trim() : '';
+    var regionVal = regionEl ? regionEl.value : '';
+    var opsVal = opsEl ? opsEl.value : '';
+    var typeVal = typeEl ? typeEl.value : '';
+    var ratingVal = ratingEl ? ratingEl.value : '';
+    var groupVal = groupEl ? groupEl.value : 'ops';
+    var sortVal = sortEl ? sortEl.value : 'date';
+    var periodVal = periodEl ? periodEl.value : '1';
+    
+    var view = window.GAILS._activeVisitLogView || 'history';
+
+    var pills = [];
+
+    if (view === 'unvisited') {
+      var periodText = getPeriodLabel(periodVal);
+      pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + '</span>');
+      
+      if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
+      if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
+      if (opsVal) pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
+      
+      var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
+      return title + 
+             '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' + 
+             pills.join('') + 
+             '</span>';
+    }
+
+    var periodText = getPeriodLabel(periodVal);
+    var groupLabels = {
+      'ops': 'Grouped by Ops Area',
+      'region': 'Grouped by Region',
+      'type': 'Grouped by Type',
+      'none': 'Ungrouped'
+    };
+    var sortLabels = {
+      'date': 'Sorted by Date',
+      'nameAsc': 'Sorted A-Z',
+      'nameDesc': 'Sorted Z-A',
+      'type': 'Sorted by Type'
+    };
+
+    var coreConfigText = periodText + ' · ' + (groupLabels[groupVal] || 'Grouped') + ' · ' + (sortLabels[sortVal] || 'Sorted');
+    pills.push('<span class="header-pill-core">' + escapeHtml(coreConfigText) + '</span>');
+
+    if (searchVal) {
+      pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
+    }
+    if (regionVal) {
+      pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
+    }
+    if (opsVal) {
+      pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
+    }
+    if (typeVal) {
+      var typeLabels = {
+        'routine': 'Routine Coffee Visit',
+        'siteVisit': 'Check-in',
+        'nboOpening': 'NBO: Opening',
+        'nbo2wk': 'NBO: 2WK Check-in',
+        'nbo4wk': 'NBO: 4WK Check-in',
+        'cqv': 'CQV',
+        'cqvFollowUp': 'CQV Follow-Up'
+      };
+      var tLabel = typeLabels[typeVal] || typeVal;
+      if (ratingVal && (typeVal === 'cqv' || typeVal === 'cqvFollowUp')) {
+        tLabel += ' (' + ratingVal + ')';
+      }
+      pills.push('<span class="header-pill-filter">' + escapeHtml(tLabel) + '</span>');
+    }
+
+    var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
+    return title + 
+           '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' + 
+           pills.join('') + 
+           '</span>';
+  };
+
   // Regions come straight from BAKERY_META (North Region / South Region /
   // London Region) rather than being inferred from whatever visits happen
   // to be loaded, so the list is always complete and correct.
@@ -803,7 +909,7 @@ window.GAILS = window.GAILS || {};
     return [...new Set(Object.values(meta).map(function(v) { return v.r; }))].filter(function(r) { return r && r !== 'Other'; }).sort();
   }
 
-  // Scoped to regionVal so the Ops Manager dropdown only ever lists managers
+  // Scoped to regionVal so the Ops Area dropdown only ever lists areas
   // that actually operate in the selected region.
   function getVisitLogOps(regionVal) {
     var G = window.GAILS;
@@ -818,11 +924,89 @@ window.GAILS = window.GAILS || {};
     var regionEl = document.getElementById('visitLogRegion');
     var regionVal = regionEl ? regionEl.value : '';
     populateDropdown('visitLogRegion', new Set(getVisitLogRegions()), 'All Regions');
-    populateDropdown('visitLogOps', new Set(getVisitLogOps(regionVal)), 'All Managers');
+    populateDropdown('visitLogOps', new Set(getVisitLogOps(regionVal)), 'All Areas');
     if (window.GAILS.syncCustomSelect) {
       window.GAILS.syncCustomSelect('visitLogRegion');
       window.GAILS.syncCustomSelect('visitLogOps');
     }
+  }
+
+  function getVisitLogActiveFilterCount() {
+    var regionEl = document.getElementById('visitLogRegion');
+    var opsEl = document.getElementById('visitLogOps');
+    var typeEl = document.getElementById('visitLogType');
+    var ratingEl = document.getElementById('visitLogRating');
+    var groupEl = document.getElementById('visitLogGroup');
+    var sortEl = document.getElementById('visitLogSort');
+    var periodEl = document.getElementById('visitLogPeriod');
+    var count = 0;
+
+    if (regionEl && regionEl.value) count++;
+    if (opsEl && opsEl.value) count++;
+    if (typeEl && typeEl.value) count++;
+    if (ratingEl && ratingEl.value && typeEl && (typeEl.value === 'cqv' || typeEl.value === 'cqvFollowUp')) count++;
+    if (groupEl && groupEl.value && groupEl.value !== 'ops') count++;
+    if (sortEl && sortEl.value && sortEl.value !== 'date') count++;
+    if (periodEl && periodEl.value && periodEl.value !== '1') count++;
+    return count;
+  }
+
+  function syncVisitLogMobileFilterButton() {
+    var btn = document.getElementById('visitLogMobileFilterBtn');
+    var badge = document.getElementById('visitLogFilterBadge');
+    if (!btn || !badge) return;
+
+    var count = getVisitLogActiveFilterCount();
+    btn.classList.toggle('has-active-filters', count > 0);
+    if (count > 0) {
+      badge.hidden = false;
+      badge.textContent = count;
+    } else {
+      badge.hidden = true;
+      badge.textContent = '';
+    }
+  }
+
+  function setVisitLogFiltersOpen(open) {
+    var btn = document.getElementById('visitLogMobileFilterBtn');
+    var panel = document.getElementById('visitLogFilterPanel');
+    var backdrop = document.getElementById('visitLogFilterBackdrop');
+    if (!panel || !backdrop) return;
+
+    panel.classList.remove('is-dragging');
+    panel.style.transform = '';
+
+    if (open) {
+      panel.classList.add('is-open');
+      backdrop.classList.add('is-open');
+      backdrop.hidden = false;
+      backdrop.removeAttribute('aria-hidden');
+      if (btn) {
+        btn.classList.add('is-open');
+        btn.setAttribute('aria-expanded', 'true');
+      }
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('visit-log-filter-open');
+      return;
+    }
+
+    panel.querySelectorAll('.filter-select.is-open').forEach(function(wrapper) {
+      wrapper.classList.remove('is-open');
+      var trigger = wrapper.querySelector('.filter-select__trigger');
+      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    });
+    panel.classList.remove('is-open');
+    backdrop.classList.remove('is-open');
+    backdrop.setAttribute('aria-hidden', 'true');
+    if (btn) {
+      btn.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    document.body.style.overflow = '';
+    document.body.classList.remove('visit-log-filter-open');
+    setTimeout(function() {
+      if (!backdrop.classList.contains('is-open')) backdrop.hidden = true;
+    }, 180);
   }
 
   window.GAILS.renderVisitLog = function() {
@@ -857,10 +1041,43 @@ window.GAILS = window.GAILS || {};
       var opsEl = document.getElementById('visitLogOps');
       var periodEl = document.getElementById('visitLogPeriod');
       var resetBtn = document.getElementById('visitLogResetBtn');
+      var mobileFilterBtn = document.getElementById('visitLogMobileFilterBtn');
+      var mobileFilterCloseBtn = document.getElementById('visitLogFilterCloseBtn');
+      var mobileFilterBackdrop = document.getElementById('visitLogFilterBackdrop');
+      var visitMobileFilterMedia = window.matchMedia ? window.matchMedia('(max-width: 720px)') : null;
 
       var lastYearOption = periodEl ? periodEl.querySelector('option[value="lastYear"]') : null;
       if (lastYearOption) {
         lastYearOption.textContent = 'Last Year (' + ((new Date()).getFullYear() - 1) + ')';
+      }
+
+      if (mobileFilterBtn) {
+        mobileFilterBtn.addEventListener('click', function() {
+          setVisitLogFiltersOpen(true);
+        });
+      }
+      if (mobileFilterCloseBtn) {
+        mobileFilterCloseBtn.addEventListener('click', function() {
+          setVisitLogFiltersOpen(false);
+        });
+      }
+      if (mobileFilterBackdrop) {
+        mobileFilterBackdrop.addEventListener('click', function() {
+          setVisitLogFiltersOpen(false);
+        });
+      }
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') setVisitLogFiltersOpen(false);
+      });
+      if (visitMobileFilterMedia) {
+        var closeVisitFilterOnDesktop = function(e) {
+          if (!e.matches) setVisitLogFiltersOpen(false);
+        };
+        if (visitMobileFilterMedia.addEventListener) {
+          visitMobileFilterMedia.addEventListener('change', closeVisitFilterOnDesktop);
+        } else if (visitMobileFilterMedia.addListener) {
+          visitMobileFilterMedia.addListener(closeVisitFilterOnDesktop);
+        }
       }
 
       if (searchEl) {
@@ -872,25 +1089,27 @@ window.GAILS = window.GAILS || {};
       }
       if (regionEl) regionEl.addEventListener('change', function() {
         // Selected region narrowed/changed - the ops list must be rebuilt to
-        // only offer managers who actually operate in that region.
-        populateDropdown('visitLogOps', new Set(getVisitLogOps(regionEl.value)), 'All Managers');
+        // only offer areas that actually operate in that region.
+        populateDropdown('visitLogOps', new Set(getVisitLogOps(regionEl.value)), 'All Areas');
         if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect('visitLogOps');
+        syncVisitLogMobileFilterButton();
         window.GAILS.renderVisitLog();
       });
-      if (opsEl) opsEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
-      if (periodEl) periodEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
+      if (opsEl) opsEl.addEventListener('change', function() { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (periodEl) periodEl.addEventListener('change', function() { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var typeEl = document.getElementById('visitLogType');
       var ratingEl = document.getElementById('visitLogRating');
       if (typeEl) typeEl.addEventListener('change', function() {
         syncCqvRatingVisibility();
+        syncVisitLogMobileFilterButton();
         window.GAILS.renderVisitLog();
       });
-      if (ratingEl) ratingEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
+      if (ratingEl) ratingEl.addEventListener('change', function() { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       syncCqvRatingVisibility();
       var groupEl = document.getElementById('visitLogGroup');
-      if (groupEl) groupEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
+      if (groupEl) groupEl.addEventListener('change', function() { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var sortEl = document.getElementById('visitLogSort');
-      if (sortEl) sortEl.addEventListener('change', function() { window.GAILS.renderVisitLog(); });
+      if (sortEl) sortEl.addEventListener('change', function() { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
 
       // Toggle views
       document.querySelectorAll('.visit-log-toggle-btn').forEach(function(btn) {
@@ -962,8 +1181,10 @@ window.GAILS = window.GAILS || {};
           if (groupEl) groupEl.value = 'ops';
           if (sortEl) sortEl.value = 'date';
           if (periodEl) periodEl.value = '1'; // Default to Last Month
-          populateDropdown('visitLogOps', new Set(getVisitLogOps('')), 'All Managers');
+          populateDropdown('visitLogOps', new Set(getVisitLogOps('')), 'All Areas');
+          if (opsEl) opsEl.value = '';
           syncCqvRatingVisibility();
+          syncVisitLogMobileFilterButton();
           if (window.GAILS.syncCustomSelect) {
             window.GAILS.syncCustomSelect('visitLogRegion');
             window.GAILS.syncCustomSelect('visitLogOps');
@@ -987,6 +1208,7 @@ window.GAILS = window.GAILS || {};
       if (window.GAILS.initCustomSelects) {
         window.GAILS.initCustomSelects(document.querySelector('.visit-log-filters'));
       }
+      syncVisitLogMobileFilterButton();
     }
 
     // Get filter values
@@ -1003,6 +1225,12 @@ window.GAILS = window.GAILS || {};
     var view = window.GAILS._activeVisitLogView || 'history';
     if (sortControl) {
       sortControl.style.display = (view === 'history') ? '' : 'none';
+    }
+    syncVisitLogMobileFilterButton();
+
+    var headerSub = document.getElementById('headerSub');
+    if (headerSub && window.GAILS.getVisitLogHeaderSummary) {
+      headerSub.innerHTML = window.GAILS.getVisitLogHeaderSummary();
     }
 
     // Convert object to array
@@ -1049,7 +1277,7 @@ window.GAILS = window.GAILS || {};
         return;
       }
 
-      // Group by whatever's selected in "Group By" (Ops Manager / Region /
+      // Group by whatever's selected in "Group By" (Ops Area / Region /
       // Visit Type) — same underlying list, just bucketed differently.
       var grouped = {};
       filtered.forEach(function(v) {
@@ -1138,7 +1366,7 @@ window.GAILS = window.GAILS || {};
           var shortDate = dateLabel.split(', ')[1] || dateLabel;
           var bakeryLabel = G.getBakeryMapLabel ? G.getBakeryMapLabel(v.bakery) : v.bakery;
           var partnerColText = v.type === 'cqv' ? (v.auditorName || '—') : (v.coffeePartner || '—');
-          // The row always shows the actual Ops Manager regardless of the
+          // The row always shows the actual Ops Area regardless of the
           // active grouping — grouping by Region/Visit Type would otherwise
           // lose that context entirely.
           var rowOpsLabel = groupVal === 'ops' ? groupName : (G.getBakeryOps ? G.getBakeryOps(v.bakery) : 'Unknown');
@@ -1150,7 +1378,7 @@ window.GAILS = window.GAILS || {};
             '</div>' +
             '<div class="visit-log-row__bakery-col">' +
               '<h3 class="visit-log-row__bakery">' + escapeHtml(bakeryLabel) + '</h3>' +
-              '<span class="visit-log-row__manager">Ops: ' + escapeHtml(rowOpsLabel) + '</span>' +
+              '<span class="visit-log-row__manager">Ops Area: ' + escapeHtml(rowOpsLabel) + '</span>' +
             '</div>' +
             '<div class="visit-log-row__partner" title="' + escapeHtml(v.type === 'cqv' ? 'Auditor: ' + partnerColText : partnerColText) + '">' + escapeHtml(partnerColText) + '</div>' +
             '<div class="visit-log-row__score-col" style="color:' + scoreColor + ';">' + escapeHtml(scoreText) + '</div>' +
@@ -1243,5 +1471,7 @@ window.GAILS = window.GAILS || {};
 
       container.innerHTML = html;
     }
+
+    // Banner is updated at the start of renderVisitLog
   };
 })();
