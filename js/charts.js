@@ -71,7 +71,12 @@ window.GAILS.renderOverviewCharts = function(data) {
   var G = GAILS;
   var avg = G.avg;
   data.forEach(G.ensureBands);
-  var n = data.length;
+  var chartData = data.filter(function(r) { return r && !r.noData; });
+  var n = chartData.length;
+  if (!n) {
+    ['npsHist', 'overviewBandSplit', 'npsVsCei', 'cxRadar', 'absComponentDrag', 'top10Chart', 'bot10Chart'].forEach(G.destroyChart);
+    return;
+  }
   var rankingsMetric = G.state.rankingsMetric === 'absolute' ? 'absolute' : 'relative';
   var isAbsolute = rankingsMetric === 'absolute';
   var valueKey = isAbsolute ? 'ac' : 'c';
@@ -84,8 +89,8 @@ window.GAILS.renderOverviewCharts = function(data) {
 
   // NPS Histogram
   var bins = []; for (var i = -10; i <= 100; i += 10) bins.push({ min: i, max: i + 10, count: 0 });
-  data.forEach(function(b) { var idx = bins.findIndex(function(bn) { return b.n >= bn.min && b.n < bn.max; }); if (idx >= 0) bins[idx].count++; });
-  G.makeChart('npsHist', { type: 'bar', data: { labels: bins.map(function(b) { return b.min + '\u2013' + b.max; }), datasets: [{ data: bins.map(function(b) { return b.count; }), backgroundColor: 'rgba(178, 42, 36,0.5)', hoverBackgroundColor: '#B22A24', borderRadius: 6 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Bakeries' } }, x: { title: { display: true, text: 'NPS (D+M)' } } }, onHover: function(evt, elements) { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; }, onClick: function(evt, elements) { if (elements.length > 0) { var idx = elements[0].index; var bin = bins[idx]; var bakeries = data.filter(function(b) { return b.n >= bin.min && b.n < bin.max; }); if (bakeries.length > 0) { G.showDrillDown('NPS (D+M) ' + bin.min + '\u2013' + bin.max, bakeries.length + ' bakeries in this segment', bakeries, 'nps'); } } } } });
+  chartData.forEach(function(b) { var idx = bins.findIndex(function(bn) { return b.n >= bn.min && b.n < bn.max; }); if (idx >= 0) bins[idx].count++; });
+  G.makeChart('npsHist', { type: 'bar', data: { labels: bins.map(function(b) { return b.min + '\u2013' + b.max; }), datasets: [{ data: bins.map(function(b) { return b.count; }), backgroundColor: 'rgba(178, 42, 36,0.5)', hoverBackgroundColor: '#B22A24', borderRadius: 6 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Bakeries' } }, x: { title: { display: true, text: 'NPS (D+M)' } } }, onHover: function(evt, elements) { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; }, onClick: function(evt, elements) { if (elements.length > 0) { var idx = elements[0].index; var bin = bins[idx]; var bakeries = chartData.filter(function(b) { return b.n >= bin.min && b.n < bin.max; }); if (bakeries.length > 0) { G.showDrillDown('NPS (D+M) ' + bin.min + '\u2013' + bin.max, bakeries.length + ' bakeries in this segment', bakeries, 'nps'); } } } } });
 
   // CEI band split by selected lens
   var bandSplitTitle = document.getElementById('overviewBandSplitTitle');
@@ -96,13 +101,13 @@ window.GAILS.renderOverviewCharts = function(data) {
   // NPS vs CEI
   var npsScatterTitle = document.getElementById('npsScatterTitle');
   if (npsScatterTitle) npsScatterTitle.textContent = 'NPS (Drink + Meal) vs ' + metricLabel;
-  G.makeChart('npsVsCei', { type: 'scatter', data: { datasets: [{ data: data.map(function(b) { return { x: b[valueKey], y: b.n }; }), backgroundColor: data.map(function(b) { return colorMap[b[bandKey]] + '99'; }), borderColor: data.map(function(b) { return colorMap[b[bandKey]]; }), borderWidth: 1, pointRadius: 4.5, pointHitRadius: 12, pointHoverRadius: 7 }] }, options: { interaction: { mode: 'nearest', intersect: true }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function(items) { return data[items[0].dataIndex].b; }, label: function(ctx) { var b = data[ctx.dataIndex]; return [metricLabel + ': ' + b[valueKey] + ' (' + b[bandKey] + ')', 'NPS (D+M): ' + b.n, altMetricLabel + ': ' + b[altValueKey], 'Vol: ' + b.v + ' (' + b.co + ' confidence)']; } } } }, scales: { x: { title: { display: true, text: metricLabel }, min: 0, max: 100 }, y: { title: { display: true, text: 'NPS (D+M)' }, min: -15, max: 105 } } } });
+  G.makeChart('npsVsCei', { type: 'scatter', data: { datasets: [{ data: chartData.map(function(b) { return { x: b[valueKey], y: b.n }; }), backgroundColor: chartData.map(function(b) { return colorMap[b[bandKey]] + '99'; }), borderColor: chartData.map(function(b) { return colorMap[b[bandKey]]; }), borderWidth: 1, pointRadius: 4.5, pointHitRadius: 12, pointHoverRadius: 7 }] }, options: { interaction: { mode: 'nearest', intersect: true }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function(items) { return chartData[items[0].dataIndex].b; }, label: function(ctx) { var b = chartData[ctx.dataIndex]; return [metricLabel + ': ' + b[valueKey] + ' (' + b[bandKey] + ')', 'NPS (D+M): ' + b.n, altMetricLabel + ': ' + b[altValueKey], 'Vol: ' + b.v + ' (' + b.co + ' confidence)']; } } } }, scales: { x: { title: { display: true, text: metricLabel }, min: 0, max: 100 }, y: { title: { display: true, text: 'NPS (D+M)' }, min: -15, max: 105 } } } });
 
   // Radar by selected CEI band
   var radarTitle = document.getElementById('overviewRadarTitle');
   if (radarTitle) radarTitle.textContent = 'Customer Experience by ' + metricLabel + ' Band';
   var cxBandSeries = bandNames.map(function(band) {
-    var rows = data.filter(function(b) { return b[bandKey] === band; });
+    var rows = chartData.filter(function(b) { return b[bandKey] === band; });
     if (!rows.length) return null;
     return {
       label: band,
@@ -128,36 +133,38 @@ window.GAILS.renderOverviewCharts = function(data) {
   if (dragTitle) dragTitle.textContent = 'Biggest Drags on ' + metricLabel;
   if (dragText) {
     dragText.innerHTML = isAbsolute
-      ? 'Average benchmark component score across all bakeries &mdash; shows which area is pulling the network down most versus the 90% benchmark.'
+      ? 'Average benchmark component score across all bakeries &mdash; shows which area is pulling the network down most versus the benchmark.'
       : 'Average peer component score across all bakeries &mdash; shows which area is pulling the network down most versus the rest of the cohort.';
   }
-  var atRows = data.filter(function(b) { return typeof b.at === 'number' && !isNaN(b.at); });
+  var atRows = chartData.filter(function(b) { return typeof b.at === 'number' && !isNaN(b.at); });
   var rawAvgAt = atRows.length ? atRows.reduce(function(a, r) { return a + r.at; }, 0) / atRows.length : null;
 
   var componentAvgs = isAbsolute
     ? [
-      { name: 'Overall Efficiency', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.ef, G.BENCHMARKS.ef); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ef') },
-      { name: 'Drink Quality', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.dr, G.BENCHMARKS.dr); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'dr') },
-      { name: 'Friendliness', avg: data.map(function(b) { return G.computeAbsoluteComponent(b.fr, G.BENCHMARKS.fr); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'fr') },
-      { name: 'Coffee Efficiency', avg: data.map(function(b) { return b.ats; }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(data, 'ts') },
-      { name: 'Avg Wait Time', avg: data.map(function(b) { return (b.a_at !== undefined && b.a_at !== null) ? b.a_at : 100; }).reduce(function(a, v) { return a + v; }, 0) / n, raw: rawAvgAt }
+      { name: 'Drink + Meal NPS', avg: chartData.map(function(b) { return G.computeAbsoluteComponent(b.n, G.BENCHMARKS.nps, G.BENCHMARK_FLOORS.nps); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'n') },
+      { name: 'Overall Efficiency', avg: chartData.map(function(b) { return G.computeAbsoluteComponent(b.ef, G.BENCHMARKS.ef, G.BENCHMARK_FLOORS.ef); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'ef') },
+      { name: 'Drink Quality', avg: chartData.map(function(b) { return G.computeAbsoluteComponent(b.dr, G.BENCHMARKS.dr, G.BENCHMARK_FLOORS.dr); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'dr') },
+      { name: 'Friendliness', avg: chartData.map(function(b) { return G.computeAbsoluteComponent(b.fr, G.BENCHMARKS.fr, G.BENCHMARK_FLOORS.fr); }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'fr') },
+      { name: 'Coffee Efficiency', avg: chartData.map(function(b) { return b.ats; }).reduce(function(a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'ts') },
+      { name: 'Avg Wait Time', avg: chartData.map(function(b) { return (b.a_at !== undefined && b.a_at !== null) ? b.a_at : 100; }).reduce(function(a, v) { return a + v; }, 0) / n, raw: rawAvgAt }
     ]
     : [
-      { name: 'Overall Efficiency', avg: avg(data, 'ep'), raw: avg(data, 'ef') },
-      { name: 'Drink Quality', avg: avg(data, 'dp'), raw: avg(data, 'dr') },
-      { name: 'Friendliness', avg: avg(data, 'fp'), raw: avg(data, 'fr') },
-      { name: 'Coffee Efficiency', avg: avg(data, 'ap'), raw: avg(data, 'ts') },
-      { name: 'Avg Wait Time', avg: avg(data, 'atp'), raw: rawAvgAt }
+      { name: 'Drink + Meal NPS', avg: avg(chartData, 'np'), raw: avg(chartData, 'n') },
+      { name: 'Overall Efficiency', avg: avg(chartData, 'ep'), raw: avg(chartData, 'ef') },
+      { name: 'Drink Quality', avg: avg(chartData, 'dp'), raw: avg(chartData, 'dr') },
+      { name: 'Friendliness', avg: avg(chartData, 'fp'), raw: avg(chartData, 'fr') },
+      { name: 'Coffee Efficiency', avg: avg(chartData, 'ap'), raw: avg(chartData, 'ts') },
+      { name: 'Avg Wait Time', avg: avg(chartData, 'atp'), raw: rawAvgAt }
     ];
   componentAvgs.sort(function(a, b) { return a.avg - b.avg; });
   G.makeChart('absComponentDrag', {
     type: 'bar',
     data: { labels: componentAvgs.map(function(c) { return c.name; }), datasets: [{ label: isAbsolute ? 'Avg Benchmark Score' : 'Avg Peer Score', data: componentAvgs.map(function(c) { return Math.round(c.avg * 10) / 10; }), backgroundColor: componentAvgs.map(function(c) { return c.avg >= (isAbsolute ? 90 : 75) ? 'rgba(29, 158, 92,0.55)' : c.avg >= (isAbsolute ? 60 : 50) ? 'rgba(201, 127, 18,0.55)' : 'rgba(178, 42, 36,0.55)'; }), borderColor: componentAvgs.map(function(c) { return c.avg >= (isAbsolute ? 90 : 75) ? '#1D9E5C' : c.avg >= (isAbsolute ? 60 : 50) ? '#C97F12' : '#B22A24'; }), borderWidth: 2, borderRadius: 6 }] },
-    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { var c = componentAvgs[ctx.dataIndex]; var rawStr = c.name === 'Avg Wait Time' ? G.formatSecs(c.raw) : (c.raw ? c.raw.toFixed(1) + '%' : '—'); return (isAbsolute ? 'Benchmark score: ' : 'Peer score: ') + ctx.raw + ' (raw avg: ' + rawStr + ')'; } } } }, scales: { x: { min: 0, max: 100, title: { display: true, text: isAbsolute ? 'Benchmark Component Score (100 = at target)' : 'Peer Component Score (100 = top of cohort)' }, grid: { color: function(ctx) { return isAbsolute && ctx.tick.value === 100 ? 'rgba(29, 158, 92,0.3)' : 'rgba(34, 31, 26,0.06)'; } } }, y: { ticks: { font: { size: 12, weight: 'bold' } } } } }
+    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { var c = componentAvgs[ctx.dataIndex]; var rawStr = c.name === 'Avg Wait Time' ? G.formatSecs(c.raw) : c.name === 'Drink + Meal NPS' ? (c.raw ? c.raw.toFixed(1) : '—') : (c.raw ? c.raw.toFixed(1) + '%' : '—'); return (isAbsolute ? 'Benchmark score: ' : 'Peer score: ') + ctx.raw + ' (raw avg: ' + rawStr + ')'; } } } }, scales: { x: { min: 0, max: 100, title: { display: true, text: isAbsolute ? 'Benchmark Component Score (100 = at target)' : 'Peer Component Score (100 = top of cohort)' }, grid: { color: function(ctx) { return isAbsolute && ctx.tick.value === 100 ? 'rgba(29, 158, 92,0.3)' : 'rgba(34, 31, 26,0.06)'; } } }, y: { ticks: { font: { size: 12, weight: 'bold' } } } } }
   });
 
   // Top 10 & Bottom 10
-  var rankingData = [].concat(data).sort(function(a, b) { return b[valueKey] - a[valueKey]; });
+  var rankingData = [].concat(chartData).sort(function(a, b) { return b[valueKey] - a[valueKey]; });
   var top10 = rankingData.slice(0, 10);
   var bot10 = rankingData.slice(-10).reverse();
   var topTitle = document.getElementById('top10Title');

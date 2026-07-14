@@ -14,6 +14,7 @@ window.GAILS = window.GAILS || {};
   }
 
   function metricText(value, suffix) {
+    if (value === null || value === undefined || isNaN(value)) return escapeHtml('â€”');
     return escapeHtml(value + (suffix || ''));
   }
 
@@ -29,13 +30,13 @@ window.GAILS = window.GAILS || {};
   }
 
   function renderConfidence(confidence) {
-    return '<span class="conf ' + escapeHtml(confidence) + '">' + escapeHtml(confidence) + '</span>';
+    return '<span class="conf ' + escapeHtml(window.GAILS.bc(confidence)) + '">' + escapeHtml(confidence) + '</span>';
   }
 
   // RAG thresholds matched to the league table (window.GAILS.renderLeagueTable)
   function stdRagColor(value) { return value >= 90 ? 'var(--green)' : value >= 80 ? 'var(--amber)' : 'var(--red)'; }
   function s2RagColor(value) { return value >= 75 ? 'var(--green)' : value >= 60 ? 'var(--amber)' : 'var(--red)'; }
-  function o5RagColor(value) { return value > 1.5 ? 'var(--red)' : value >= 1.0 ? 'var(--amber)' : 'var(--green)'; }
+  function o5RagColor(value) { return value >= 2.5 ? 'var(--red)' : value > 1 ? 'var(--amber)' : 'var(--green)'; }
 
   function renderRagMetric(value, suffix, colorFn) {
     return '<span style="color:' + colorFn(value) + '">' + metricText(value, suffix) + '</span>';

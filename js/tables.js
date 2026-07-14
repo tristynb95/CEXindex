@@ -438,7 +438,7 @@ window.GAILS.renderLeagueTable = function(data) {
     return v;
   };
   var sorted = [].concat(data).sort(function(a, b) { return desc ? sortVal(b) - sortVal(a) : sortVal(a) - sortVal(b); });
-  var absBandClass = function(b) { return b === 'Exceeding' ? 'Top-Performer' : b === 'Meeting' ? 'Above-Average' : b === 'Approaching' ? 'Below-Average' : 'Needs-Support'; };
+  var absBandClass = function(b) { return b === 'Exceeding' ? 'Top-Performer' : b === 'Meeting' ? 'Above-Average' : b === 'Approaching' ? 'Below-Average' : b === 'No Data' ? 'No-Data' : 'Needs-Support'; };
   var hasVal = function(v) { return v !== null && v !== undefined && !isNaN(v); };
   var numOrDash = function(v) { return hasVal(v) ? v : '—'; };
   var pctOrDash = function(v) { return hasVal(v) ? v + '%' : '—'; };
@@ -447,21 +447,21 @@ window.GAILS.renderLeagueTable = function(data) {
     if (!hasVal(v)) return '';
     return ' style="color:' + (v >= 55 ? 'var(--green)' : v >= 45 ? 'var(--amber)' : 'var(--red)') + '"';
   };
-  // Same thresholds as the Avg Wait Time KPI card: ≤1:55 green, 1:55–2:05 amber, >2:05 red.
+  // Same thresholds as the Avg Wait Time KPI card: <=1:55 green, 1:55-2:00 amber, >=2:00 red.
   var atRagStyle = function(v) {
     if (!hasVal(v)) return '';
-    return ' style="color:' + (v <= 115 ? 'var(--green)' : v <= 125 ? 'var(--amber)' : 'var(--red)') + '"';
+    return ' style="color:' + (v <= 115 ? 'var(--green)' : v < 120 ? 'var(--amber)' : 'var(--red)') + '"';
   };
   document.getElementById('tableBody').innerHTML = sorted.map(function(b, i) { return '<tr>' +
     '<td style="font-weight:600">' + (i + 1) + '</td>' +
     '<td style="font-weight:500">' + b.b + '</td>' +
     '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryRegion(b.b) + '</td>' +
     '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(b.b) + '</td>' +
-    '<td style="font-weight:700">' + b.c + '</td>' +
+    '<td style="font-weight:700">' + numOrDash(b.c) + '</td>' +
     '<td><span class="band ' + G.bc(b.cb) + '">' + b.cb + '</span></td>' +
-    '<td style="font-weight:600">' + b.ac + '</td>' +
+    '<td style="font-weight:600">' + numOrDash(b.ac) + '</td>' +
     '<td><span class="band ' + absBandClass(b.acb) + '">' + b.acb + '</span></td>' +
-    '<td><span class="conf ' + b.co + '">' + b.co + '</span></td>' +
+    '<td><span class="conf ' + G.bc(b.co) + '">' + b.co + '</span></td>' +
     '<td style="color:' + (b.n >= 55 ? 'var(--green)' : b.n >= 45 ? 'var(--amber)' : 'var(--red)') + '">' + b.n + '</td>' +
     '<td class="nps-split-col"' + npsSplitStyle(b.nc) + '>' + numOrDash(b.nc) + '</td>' +
     '<td class="nps-split-col"' + npsSplitStyle(b.nm) + '>' + numOrDash(b.nm) + '</td>' +
@@ -471,7 +471,7 @@ window.GAILS.renderLeagueTable = function(data) {
     '<td style="color:' + (b.ov >= 90 ? 'var(--green)' : b.ov >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.ov + '%</td>' +
     '<td>' + pctOrDash(b.s30) + '</td>' +
     '<td style="color:' + (b.s2 >= 75 ? 'var(--green)' : b.s2 >= 60 ? 'var(--amber)' : 'var(--red)') + '">' + b.s2 + '%</td>' +
-    '<td style="color:' + (b.o5 > 1.5 ? 'var(--red)' : b.o5 >= 1.0 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
+    '<td style="color:' + (b.o5 >= 2.5 ? 'var(--red)' : b.o5 > 1 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
     '<td' + atRagStyle(b.at) + '>' + G.formatSecs(b.at) + '</td>' +
     '<td>' + numOrDash(b.td) + '</td>' +
     '</tr>'; }).join('');

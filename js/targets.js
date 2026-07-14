@@ -1099,9 +1099,10 @@ function _renderInsights(targets, bf, cf, highBand, lowBand, isAbsolute) {
   var insightsEl = document.getElementById('targetInsights');
   if (targets.length === 0) { insightsEl.innerHTML = ''; return; }
 
-  var focusCounts = { 'Overall Efficiency': [], 'Drink Quality': [], Friendliness: [], 'Coffee Efficiency': [] };
+  var focusCounts = { 'Drink + Meal NPS': [], 'Overall Efficiency': [], 'Drink Quality': [], Friendliness: [], 'Coffee Efficiency': [] };
   targets.forEach(function(b) {
     var areas = [
+      { name: 'Drink + Meal NPS', pct: b.np },
       { name: 'Overall Efficiency', pct: b.ep }, { name: 'Drink Quality', pct: b.dp },
       { name: 'Friendliness', pct: b.fp }, { name: 'Coffee Efficiency', pct: b.ap },
     ].sort(function(a, x) { return a.pct - x.pct; });
@@ -1159,6 +1160,7 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
   var G = GAILS;
   var getFocus = function(b) {
     var list = [
+      { name: 'Drink + Meal NPS', pct: b.np },
       { name: 'Overall Efficiency', pct: b.ep }, { name: 'Drink Quality', pct: b.dp },
       { name: 'Friendliness', pct: b.fp }, { name: 'Coffee Efficiency', pct: b.ap }
     ];
@@ -1188,7 +1190,7 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
   };
   var atRagStyle = function(v) {
     if (!hasVal(v)) return '';
-    return ' style="color:' + (v <= 115 ? 'var(--green)' : v <= 125 ? 'var(--amber)' : 'var(--red)') + '"';
+    return ' style="color:' + (v <= 115 ? 'var(--green)' : v < 120 ? 'var(--amber)' : 'var(--red)') + '"';
   };
 
   document.getElementById('targetTable').innerHTML = targets.length === 0
@@ -1211,13 +1213,13 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
         '<td class="nps-split-col"' + npsSplitStyle(b.nm) + '>' + numOrDash(b.nm) + '</td>' +
         '<td class="nps-split-col"' + npsSplitStyle(b.na) + '>' + numOrDash(b.na) + '</td>' +
         '<td>' + b.v + '</td>' +
-        '<td><span class="conf ' + b.co + '">' + b.co + '</span></td>' +
+        '<td><span class="conf ' + G.bc(b.co) + '">' + b.co + '</span></td>' +
         '<td style="color:' + (b.dr >= 90 ? 'var(--green)' : b.dr >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.dr + '%</td>' +
         '<td style="color:' + (b.ef >= 90 ? 'var(--green)' : b.ef >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.ef + '%</td>' +
         '<td style="color:' + (b.fr >= 90 ? 'var(--green)' : b.fr >= 80 ? 'var(--amber)' : 'var(--red)') + '">' + b.fr + '%</td>' +
         '<td>' + pctOrDash(b.s30) + '</td>' +
         '<td style="color:' + (b.ts >= 75 ? 'var(--green)' : b.ts >= 60 ? 'var(--amber)' : 'var(--red)') + '">' + b.ts + '%</td>' +
-        '<td style="color:' + (b.o5 > 1.5 ? 'var(--red)' : b.o5 >= 1.0 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
+        '<td style="color:' + (b.o5 >= 2.5 ? 'var(--red)' : b.o5 > 1 ? 'var(--amber)' : 'var(--green)') + '">' + b.o5 + '%</td>' +
         '<td' + atRagStyle(b.at) + '>' + G.formatSecs(b.at) + '</td>' +
         '<td>' + numOrDash(b.td) + '</td>' +
         '<td style="font-weight:600;color:' + focusColor + '">' + focus.name + ' &mdash; ' + focusLabel(focus.pct) + '</td></tr>';

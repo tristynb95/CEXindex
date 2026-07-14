@@ -327,7 +327,7 @@
     if (name === 'trends' && G._trendsNeedRender) {
       G._trendsNeedRender = false;
       requestAnimationFrame(function() {
-        if (G._lastData) G.renderTrendCharts(G._lastData);
+        if (G._lastData) G.renderTrendCharts(G._lastData.filter(function(r) { return r && !r.noData; }));
       });
       return activePanel;
     }
@@ -486,10 +486,11 @@
     updateDashboardActiveIndex();
     updateBandFilterOptions();
     var data = G.getData();
-    var n = data.length;
-    updateHeaderSummary(n);
+    var scoredData = data.filter(function(r) { return r && !r.noData; });
+    var n = scoredData.length;
+    updateHeaderSummary(data.length);
     G.storeDashboardMapData(data);
-    if (n === 0) {
+    if (data.length === 0 || n === 0) {
       var wantAbs = state.indexType === 'absolute';
       var dashMetrics = [
         { eyebrow: 'NPS', title: 'NPS (Drink & Meal)', meta: 'Target: 55', primary: true }
@@ -522,18 +523,18 @@
           + '</article>';
       }).join('');
       fitKpiValues();
-      G.renderOverviewCharts([]);
-      G._lastData = [];
+      G.renderOverviewCharts(data);
+      G._lastData = data;
       var trendsPanelEmpty = document.getElementById('tab-trends');
       if (trendsPanelEmpty && trendsPanelEmpty.classList.contains('active')) {
-        G.renderTrendCharts([]);
+        G.renderTrendCharts(scoredData);
         G._trendsNeedRender = false;
       } else {
         G._trendsNeedRender = true;
       }
-      G.renderSpeedCharts([]);
-      G.renderLeagueTable([]);
-      G.renderTargets([]);
+      G.renderSpeedCharts(scoredData);
+      G.renderLeagueTable(data);
+      G.renderTargets(scoredData);
       return;
     }
 
@@ -569,17 +570,17 @@
         primary: !!config.primary
       };
     };
-    var nps  = G.avg(data, 'n');
-    var cei  = G.avg(data, 'c');
-    var acei = G.avg(data, 'ac');
-    var dr   = G.avg(data, 'dr');
-    var ef   = G.avg(data, 'ef');
-    var fr   = G.avg(data, 'fr');
-    var ts   = G.avg(data, 'ts');
-    var o5   = G.avg(data, 'o5');
+    var nps  = G.avg(scoredData, 'n');
+    var cei  = G.avg(scoredData, 'c');
+    var acei = G.avg(scoredData, 'ac');
+    var dr   = G.avg(scoredData, 'dr');
+    var ef   = G.avg(scoredData, 'ef');
+    var fr   = G.avg(scoredData, 'fr');
+    var ts   = G.avg(scoredData, 'ts');
+    var o5   = G.avg(scoredData, 'o5');
     // Avg wait is null on records that predate the KV avg-time columns, so
     // average only the bakeries that have it.
-    var atRows = data.filter(function(r) { return typeof r.at === 'number' && !isNaN(r.at); });
+    var atRows = scoredData.filter(function(r) { return typeof r.at === 'number' && !isNaN(r.at); });
     var at = atRows.length ? atRows.reduce(function(a, r) { return a + r.at; }, 0) / atRows.length : null;
     var atCard = at === null
       ? { value: '—', eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 1:55.',
@@ -595,11 +596,11 @@
           deltaFormat: G.formatSecs,
           invert: true,
           good: 115,
-          warn: 125,
+          warn: 120,
           bands: [
             { test: function(v) { return v <= 115; }, tone: 'kpi-green', status: 'On Target' },
-            { test: function(v) { return v <= 125; }, tone: 'kpi-amber', status: 'Watch' },
-            { test: function(v) { return v > 125; }, tone: 'kpi-red', status: 'Below' }
+            { test: function(v) { return v < 120; }, tone: 'kpi-amber', status: 'Watch' },
+            { test: function(v) { return v >= 120; }, tone: 'kpi-red', status: 'Below' }
           ],
           labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
         });
@@ -745,12 +746,12 @@
         gapMetric: 'o5',
         bands: [
           { test: function(v) { return v < 0.5; }, tone: 'kpi-green', status: 'Exceeding' },
-          { test: function(v) { return v < 1.0; }, tone: 'kpi-green', status: 'On Target' },
-          { test: function(v) { return v < 1.5; }, tone: 'kpi-amber', status: 'Watch' },
-          { test: function(v) { return v >= 1.5; }, tone: 'kpi-red', status: 'Below' }
+          { test: function(v) { return v <= 1.0; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function(v) { return v < 2.5; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function(v) { return v >= 2.5; }, tone: 'kpi-red', status: 'Below' }
         ],
         good: 1.0,
-        warn: 1.5,
+        warn: 2.5,
         invert: true,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       })
@@ -777,12 +778,12 @@
     G._lastData = data;
     var trendsPanel = document.getElementById('tab-trends');
     if (trendsPanel && trendsPanel.classList.contains('active')) {
-      G.renderTrendCharts(data);
+      G.renderTrendCharts(scoredData);
       G._trendsNeedRender = false;
     } else {
       G._trendsNeedRender = true;
     }
-    G.renderSpeedCharts(data);
+    G.renderSpeedCharts(scoredData);
     G.renderLeagueTable(data);
     G.renderTargets(data);
 

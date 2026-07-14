@@ -25,8 +25,14 @@ window.GAILS.getAvailableBands = function() {
     var grouped = {};
     recs.forEach(function(r) { if (!grouped[r.b]) grouped[r.b] = []; grouped[r.b].push(r); });
     Object.values(grouped).forEach(function(rows) {
-      var avgC = rows.reduce(function(a, r) { return a + r.c; }, 0) / rows.length;
-      var avgAc = rows.reduce(function(a, r) { return a + r.ac; }, 0) / rows.length;
+      var scoredRows = rows.filter(function(r) { return r && !r.noData; });
+      if (!scoredRows.length) {
+        relative.add('No Data');
+        absolute.add('No Data');
+        return;
+      }
+      var avgC = scoredRows.reduce(function(a, r) { return a + r.c; }, 0) / scoredRows.length;
+      var avgAc = scoredRows.reduce(function(a, r) { return a + r.ac; }, 0) / scoredRows.length;
       relative.add(avgC >= 75 ? 'Top Performer' : avgC >= 50 ? 'Above Average' : avgC >= 25 ? 'Below Average' : 'Needs Support');
       absolute.add(avgAc >= 90 ? 'Exceeding' : avgAc >= 75 ? 'Meeting' : avgAc >= 60 ? 'Approaching' : 'Below Standard');
     });
@@ -66,20 +72,22 @@ window.GAILS.getData = function() {
         var vs = rows.filter(function(r) { return typeof r[key] === 'number' && !isNaN(r[key]); });
         return vs.length ? Math.round(vs.reduce(function(a, r) { return a + r[key]; }, 0)) : null;
       };
+      var totalVolume = Math.round(rows.reduce(function(a, r) { return a + r.v; }, 0));
       var a = {
         b: bakery, m: state.selectedMonths.join(', '),
-        n: Math.round(avg('n') * 10) / 10, v: Math.round(rows.reduce(function(a, r) { return a + r.v; }, 0)),
+        n: Math.round(avg('n') * 10) / 10, v: totalVolume,
         s2: Math.round(avg('s2') * 10) / 10, s3: Math.round(avg('s3') * 10) / 10,
         s4: (function() { var v = avgDefined('s4'); return v !== null ? Math.round(v * 10) / 10 : null; })(), o5: Math.round(avg('o5') * 10) / 10,
         ov: Math.round(avg('ov') * 10) / 10, fr: Math.round(avg('fr') * 10) / 10,
         dr: Math.round(avg('dr') * 10) / 10, ef: Math.round(avg('ef') * 10) / 10,
         ep: Math.round(avg('ep') * 10) / 10, dp: Math.round(avg('dp') * 10) / 10,
-        fp: Math.round(avg('fp') * 10) / 10,
+        fp: Math.round(avg('fp') * 10) / 10, np: Math.round(avg('np') * 10) / 10,
         c: Math.round(avg('c') * 10) / 10, co: rows[0].co, s2w: Math.round(avg('s2w') * 10) / 10,
         ac: Math.round(avg('ac') * 10) / 10,
         ats: Math.round(avg('ats') * 10) / 10,
         a_at: r1(avgDefined('a_at')),
         c_raw: Math.round(avg('c_raw') * 10) / 10,
+        ac_raw: Math.round(avg('ac_raw') * 10) / 10,
         s30: r1(avgDefined('s30')),
         td: sum('td'),
         at: r1(avgDefined('at')),
@@ -93,6 +101,7 @@ window.GAILS.getData = function() {
         na: r1(avgDefined('na')),
         va: sum('va'),
       };
+      G.markDataCoverage(a);
       G.ensureBands(a);
       agg.push(a);
     });
@@ -102,7 +111,11 @@ window.GAILS.getData = function() {
       if (bf.indexOf('abs:') === 0) { var abv = bf.slice(4); agg = agg.filter(function(r) { return r.acb === abv; }); }
       else { agg = agg.filter(function(r) { return r.cb === bf; }); }
     }
-    agg.sort(function(a, b) { return b.c - a.c; });
+    agg.sort(function(a, b) {
+      var av = a.c === null || a.c === undefined || isNaN(a.c) ? -Infinity : a.c;
+      var bv = b.c === null || b.c === undefined || isNaN(b.c) ? -Infinity : b.c;
+      return bv - av;
+    });
     agg.forEach(function(a, i) { a.cr = i + 1; a.nr = 0; });
     return agg;
   }
@@ -113,7 +126,11 @@ window.GAILS.getData = function() {
     if (bf.indexOf('abs:') === 0) { var abv = bf.slice(4); recs = recs.filter(function(r) { return r.acb === abv; }); }
     else { recs = recs.filter(function(r) { return r.cb === bf; }); }
   }
-  recs = [].concat(recs).sort(function(a, b) { return b.c - a.c; });
+  recs = [].concat(recs).sort(function(a, b) {
+    var av = a.c === null || a.c === undefined || isNaN(a.c) ? -Infinity : a.c;
+    var bv = b.c === null || b.c === undefined || isNaN(b.c) ? -Infinity : b.c;
+    return bv - av;
+  });
   return recs;
 };
 

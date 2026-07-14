@@ -407,16 +407,17 @@ window.GAILS.isBakeryVisitedInPeriod = function(b, months) {
 };
 
 // ========== COLOUR MAPS ==========
-window.GAILS.COL = { 'Top Performer': '#1D9E5C', 'Above Average': '#1E70C4', 'Below Average': '#C97F12', 'Needs Support': '#B22A24' };
-window.GAILS.ABSCOL = { 'Exceeding': '#1D9E5C', 'Meeting': '#1E70C4', 'Approaching': '#C97F12', 'Below Standard': '#B22A24' };
+window.GAILS.COL = { 'Top Performer': '#1D9E5C', 'Above Average': '#1E70C4', 'Below Average': '#C97F12', 'Needs Support': '#B22A24', 'No Data': '#B3AA99' };
+window.GAILS.ABSCOL = { 'Exceeding': '#1D9E5C', 'Meeting': '#1E70C4', 'Approaching': '#C97F12', 'Below Standard': '#B22A24', 'No Data': '#B3AA99' };
 
 // ========== BAND NAMES ==========
-window.GAILS.BAND_NAMES = ['Top Performer', 'Above Average', 'Below Average', 'Needs Support'];
-window.GAILS.ABS_BAND_NAMES = ['Exceeding', 'Meeting', 'Approaching', 'Below Standard'];
+window.GAILS.BAND_NAMES = ['Top Performer', 'Above Average', 'Below Average', 'Needs Support', 'No Data'];
+window.GAILS.ABS_BAND_NAMES = ['Exceeding', 'Meeting', 'Approaching', 'Below Standard', 'No Data'];
 
 // ========== CEI WEIGHTS & BENCHMARKS ==========
-window.GAILS.CEI_WEIGHTS = { ef: 0.25, dr: 0.35, fr: 0.30, time: 0.05, at: 0.05 };
-window.GAILS.BENCHMARKS = { ef: 90, dr: 90, fr: 90, time: 80, at: 115 };
+window.GAILS.CEI_WEIGHTS = { nps: 0.15, ef: 0.25, dr: 0.25, fr: 0.25, time: 0.05, at: 0.05 };
+window.GAILS.BENCHMARKS = { nps: 55, ef: 90, dr: 90, fr: 90, time: 80, at: 115 };
+window.GAILS.BENCHMARK_FLOORS = { nps: 45, ef: 80, dr: 80, fr: 80, at: 120 };
 
 // ========== UTILITY ==========
-window.GAILS.bc = function(b) { return b.replace(/\s/g, '-'); };
+window.GAILS.bc = function(b) { return String(b || 'No Data').replace(/\s/g, '-'); };
