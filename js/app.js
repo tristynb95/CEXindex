@@ -300,37 +300,8 @@
     });
   }
 
-  function animateScrollToTop() {
-    var startY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-
-    if (startY <= 0) return;
-
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      window.scrollTo(0, 0);
-      return;
-    }
-
-    var duration = 550;
-    var startTime = null;
-
-    function easeOutCubic(progress) {
-      return 1 - Math.pow(1 - progress, 3);
-    }
-
-    function step(timestamp) {
-      if (startTime === null) startTime = timestamp;
-      var elapsed = timestamp - startTime;
-      var progress = Math.min(elapsed / duration, 1);
-      var nextY = Math.round(startY * (1 - easeOutCubic(progress)));
-
-      window.scrollTo(0, nextY);
-
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      }
-    }
-
-    requestAnimationFrame(step);
+  function scrollToTop() {
+    window.scrollTo(0, 0);
   }
 
   function activateDashboardTab(name) {
@@ -1612,9 +1583,7 @@
   document.querySelectorAll('.tab').forEach(function(t) {
     t.addEventListener('click', function() {
       activateDashboardTab(t.dataset.tab);
-      if (window.matchMedia('(max-width: 980px)').matches) {
-        animateScrollToTop();
-      }
+      scrollToTop();
     });
   });
 
@@ -1658,7 +1627,7 @@
     link.addEventListener('click', function() {
       var activePanel = activateDashboardTab(link.dataset.footerTab);
       if (activePanel) {
-        animateScrollToTop();
+        scrollToTop();
       }
     });
   });
@@ -1667,7 +1636,7 @@
     tab.addEventListener('click', function() {
       activateTargetSubtab(tab.dataset.targetSubtab);
       if (window.matchMedia('(max-width: 980px)').matches) {
-        animateScrollToTop();
+        scrollToTop();
       }
     });
   });
