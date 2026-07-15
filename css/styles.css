@@ -1899,6 +1899,10 @@ canvas {
   color: var(--text);
 }
 
+.section-page-header {
+  display: contents;
+}
+
 .dashboard-workspace__status-group {
   display: flex;
   gap: 24px;
@@ -10030,14 +10034,32 @@ body.visit-log-filter-open .mobile-bottom-nav {
 }
 
 /* â”€â”€ Visit Log primary actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   Sits above the card (just under the "Bakery Reports" page title) so the
-   card can lead with its own intro text rather than being crowded by two
-   heavy buttons at its top edge. Equal-height buttons on one row. */
+   The title and primary actions use compact, separate rows on Bakery Reports. */
 .visit-log-actions {
-  display: flex;
+  display: none;
   gap: 10px;
   align-items: stretch;
-  margin-bottom: 14px;
+}
+
+body[data-dash-tab="visit-log"] .dashboard-workspace__toolbar {
+  display: none;
+}
+
+body[data-dash-tab="visit-log"] .section-page-header {
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 12px;
+}
+
+body[data-dash-tab="visit-log"] .section-page-title {
+  margin: 0;
+}
+
+body[data-dash-tab="visit-log"] .visit-log-actions {
+  display: flex;
+  align-self: flex-end;
+  margin-left: auto;
 }
 
 .visit-log-actions__btn {
@@ -10051,7 +10073,10 @@ body.visit-log-filter-open .mobile-bottom-nav {
    each â€” the shortened "Complete Visit Form" label keeps them from
    wrapping, so they stay compact and evenly balanced. */
 @media (max-width: 640px) {
-  .visit-log-actions {
+  body[data-dash-tab="visit-log"] .visit-log-actions {
+    align-self: stretch;
+    width: 100%;
+    margin-left: 0;
     gap: 8px;
   }
 
