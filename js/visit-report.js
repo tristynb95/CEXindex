@@ -1061,14 +1061,15 @@ window.GAILS = window.GAILS || {};
     var groupEl = document.getElementById('visitLogGroup');
     var sortEl = document.getElementById('visitLogSort');
     var periodEl = document.getElementById('visitLogPeriod');
+    var isHistoryView = (window.GAILS._activeVisitLogView || 'history') === 'history';
     var count = 0;
 
     if (regionEl && regionEl.value) count++;
     if (opsEl && opsEl.value) count++;
-    if (typeEl && typeEl.value) count++;
-    if (ratingEl && ratingEl.value && typeEl && (typeEl.value === 'cqv' || typeEl.value === 'cqvFollowUp')) count++;
+    if (isHistoryView && typeEl && typeEl.value) count++;
+    if (isHistoryView && ratingEl && ratingEl.value && typeEl && (typeEl.value === 'cqv' || typeEl.value === 'cqvFollowUp')) count++;
     if (groupEl && groupEl.value && groupEl.value !== 'ops') count++;
-    if (sortEl && sortEl.value && sortEl.value !== 'date') count++;
+    if (isHistoryView && sortEl && sortEl.value && sortEl.value !== 'date') count++;
     if (periodEl && periodEl.value && periodEl.value !== '1') count++;
     return count;
   }
@@ -1186,7 +1187,62 @@ window.GAILS = window.GAILS || {};
   // come from the list BEFORE the type/rating filter so every type stays
   // visible while one is selected — the active chip highlights, the rest dim
   // but remain one-click switches (clicking the active chip clears it).
-  function renderVisitLogSummary(baseFiltered, shownCount, typeVal) {
+  function visitLogGroupToggleHtml(showGroupToggle) {
+    if (!showGroupToggle) return '';
+    return '<button type="button" class="visit-log-summary__expand-all" title="Collapse every group">Collapse all</button>';
+  }
+
+  function syncVisitLogGroupToggle() {
+    var button = document.querySelector('#visitLogSummary .visit-log-summary__expand-all');
+    if (!button) return;
+
+    var groupNames = window.GAILS._visitLogCurrentGroupNames || [];
+    var collapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
+    var allCollapsed = groupNames.length > 0 && groupNames.every(function(name) {
+      return !!collapsedGroups[name];
+    });
+
+    button.textContent = allCollapsed ? 'Expand all' : 'Collapse all';
+    button.title = allCollapsed ? 'Expand every group' : 'Collapse every group';
+  }
+
+  function toggleAllVisitLogGroups() {
+    var groupNames = window.GAILS._visitLogCurrentGroupNames || [];
+    if (!groupNames.length) return;
+
+    var collapsedGroups = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
+    var allCollapsed = groupNames.every(function(name) { return !!collapsedGroups[name]; });
+    var shouldCollapse = !allCollapsed;
+
+    groupNames.forEach(function(name) {
+      if (shouldCollapse) collapsedGroups[name] = true;
+      else delete collapsedGroups[name];
+    });
+
+    document.querySelectorAll('#visitLogList .unvisited-manager-section').forEach(function(section) {
+      var name = section.getAttribute('data-group-name') || '';
+      if (groupNames.indexOf(name) === -1) return;
+      section.classList.toggle('collapsed', shouldCollapse);
+      var title = section.querySelector('.unvisited-manager-title');
+      if (title) title.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+    });
+
+    syncVisitLogGroupToggle();
+  }
+
+  window.GAILS.resetVisitLogCollapsedGroups = function() {
+    window.GAILS._visitLogCollapsedGroups = {};
+
+    document.querySelectorAll('#visitLogList .unvisited-manager-section').forEach(function(section) {
+      section.classList.remove('collapsed');
+      var title = section.querySelector('.unvisited-manager-title');
+      if (title) title.setAttribute('aria-expanded', 'true');
+    });
+
+    syncVisitLogGroupToggle();
+  };
+
+  function renderVisitLogSummary(baseFiltered, shownCount, typeVal, showGroupToggle) {
     var summaryEl = document.getElementById('visitLogSummary');
     if (!summaryEl) return;
 
@@ -1209,17 +1265,19 @@ window.GAILS = window.GAILS || {};
       '</button>';
     }).join('');
 
-    var exportHtml = '<button type="button" class="visit-log-summary__export" title="Download the filtered list as CSV">' +
-      'Export CSV</button>';
+    var actionsHtml = '<span class="visit-log-summary__actions">' +
+      visitLogGroupToggleHtml(showGroupToggle) +
+      '<button type="button" class="visit-log-summary__export" title="Download the filtered list as CSV">Export CSV</button>' +
+      '</span>';
 
     summaryEl.innerHTML =
       '<span class="visit-log-summary__total"><strong>' + shownCount + '</strong> visit' + (shownCount === 1 ? '' : 's') + '</span>' +
       chipsHtml +
-      exportHtml;
+      actionsHtml;
     summaryEl.hidden = false;
   }
 
-  function renderUnvisitedSummary(unvisitedCount, matchingSites) {
+  function renderUnvisitedSummary(unvisitedCount, matchingSites, showGroupToggle) {
     var summaryEl = document.getElementById('visitLogSummary');
     if (!summaryEl) return;
     var visited = matchingSites - unvisitedCount;
@@ -1227,7 +1285,10 @@ window.GAILS = window.GAILS || {};
     summaryEl.innerHTML =
       '<span class="visit-log-summary__total"><strong>' + unvisitedCount + '</strong> of ' + matchingSites + ' sites unvisited</span>' +
       '<span class="visit-log-summary__coverage">' + coverage + '% coverage this period</span>' +
-      '<button type="button" class="visit-log-summary__export" title="Download the unvisited list as CSV">Export CSV</button>';
+      '<span class="visit-log-summary__actions">' +
+        visitLogGroupToggleHtml(showGroupToggle) +
+        '<button type="button" class="visit-log-summary__export" title="Download the unvisited list as CSV">Export CSV</button>' +
+      '</span>';
     summaryEl.hidden = false;
   }
 
@@ -1350,6 +1411,10 @@ window.GAILS = window.GAILS || {};
       var summaryBarEl = document.getElementById('visitLogSummary');
       if (summaryBarEl) {
         summaryBarEl.addEventListener('click', function(e) {
+          if (e.target.closest && e.target.closest('.visit-log-summary__expand-all')) {
+            toggleAllVisitLogGroups();
+            return;
+          }
           if (e.target.closest && e.target.closest('.visit-log-summary__export')) {
             exportVisitLogCsv();
             return;
@@ -1388,6 +1453,7 @@ window.GAILS = window.GAILS || {};
             else collapsedGroups[name] = true;
             section.classList.toggle('collapsed');
             groupBtn.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
+            syncVisitLogGroupToggle();
             return;
           }
 
@@ -1506,11 +1572,19 @@ window.GAILS = window.GAILS || {};
     var sortVal = document.getElementById('visitLogSort') ? document.getElementById('visitLogSort').value : 'date';
     var periodVal = document.getElementById('visitLogPeriod') ? document.getElementById('visitLogPeriod').value : '1';
 
-    var sortControl = document.getElementById('visitLogSort') ? document.getElementById('visitLogSort').closest('.visit-log-filter-control') : null;
     var view = window.GAILS._activeVisitLogView || 'history';
-    if (sortControl) {
-      sortControl.style.display = (view === 'history') ? '' : 'none';
+    var isHistoryView = view === 'history';
+    var typeControl = document.getElementById('visitLogType') ? document.getElementById('visitLogType').closest('.visit-log-filter-control') : null;
+    var sortControl = document.getElementById('visitLogSort') ? document.getElementById('visitLogSort').closest('.visit-log-filter-control') : null;
+    var ratingControl = document.getElementById('visitLogRatingControl');
+    syncCqvRatingVisibility();
+    if (typeControl) {
+      typeControl.style.display = isHistoryView ? '' : 'none';
     }
+    if (sortControl) {
+      sortControl.style.display = isHistoryView ? '' : 'none';
+    }
+    if (!isHistoryView && ratingControl) ratingControl.style.display = 'none';
     syncVisitLogMobileFilterButton();
 
     saveVisitLogFilters({
@@ -1532,6 +1606,7 @@ window.GAILS = window.GAILS || {};
     if (window.GAILS._visitLogRenderSig !== renderSig) {
       window.GAILS._visitLogRenderSig = renderSig;
       window.GAILS._visitLogRenderLimit = VISIT_LOG_RENDER_CHUNK;
+      window.GAILS.resetVisitLogCollapsedGroups();
     }
     var renderLimit = window.GAILS._visitLogRenderLimit || VISIT_LOG_RENDER_CHUNK;
 
@@ -1587,9 +1662,9 @@ window.GAILS = window.GAILS || {};
         return true;
       });
 
-      renderVisitLogSummary(baseFiltered, filtered.length, typeVal);
-
       if (filtered.length === 0) {
+        window.GAILS._visitLogCurrentGroupNames = [];
+        renderVisitLogSummary(baseFiltered, filtered.length, typeVal, false);
         // Clear stale export data so the still-visible Export button can't
         // download the previous filter's rows.
         window.GAILS._visitLogExport = null;
@@ -1611,6 +1686,8 @@ window.GAILS = window.GAILS || {};
       var groupsSorted = Object.keys(grouped).sort();
       var schema = window.GAILS_VISIT_SCHEMA;
       var collapsedGroups = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
+      window.GAILS._visitLogCurrentGroupNames = groupVal === 'none' ? [] : groupsSorted.slice();
+      renderVisitLogSummary(baseFiltered, filtered.length, typeVal, groupVal !== 'none');
 
       // CSV export always mirrors the full filtered list, even when the
       // rendered rows are capped by the Show more pager.
@@ -1759,6 +1836,7 @@ window.GAILS = window.GAILS || {};
       }
 
       container.innerHTML = html;
+      syncVisitLogGroupToggle();
     } else if (view === 'unvisited') {
       // Determine which sites are unvisited in periodVal
       var visitedBakeries = new Set();
@@ -1797,8 +1875,6 @@ window.GAILS = window.GAILS || {};
         }
       });
 
-      renderUnvisitedSummary(totalUnvisited, matchingSites);
-
       // Most recent visit per bakery across ALL history (not just the
       // selected period) so each unvisited card can say how stale it is.
       var lastVisitMap = {};
@@ -1821,12 +1897,16 @@ window.GAILS = window.GAILS || {};
       }
 
       if (totalUnvisited === 0) {
+        window.GAILS._visitLogCurrentGroupNames = [];
+        renderUnvisitedSummary(totalUnvisited, matchingSites, false);
         window.GAILS._visitLogExport = null;
         container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#127881;</div><p>All bakeries have been visited in this period!</p></div>';
         return;
       }
 
       var managersSorted = Object.keys(unvisitedMap).sort();
+      window.GAILS._visitLogCurrentGroupNames = managersSorted.slice();
+      renderUnvisitedSummary(totalUnvisited, matchingSites, true);
 
       window.GAILS._visitLogExport = {
         filename: 'gails-unvisited-sites-' + new Date().toISOString().slice(0, 10) + '.csv',
@@ -1875,6 +1955,7 @@ window.GAILS = window.GAILS || {};
       }).join('');
 
       container.innerHTML = html;
+      syncVisitLogGroupToggle();
     }
 
     // Banner is updated at the start of renderVisitLog

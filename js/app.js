@@ -308,6 +308,12 @@
     var activePanel = document.getElementById('tab-' + name);
     if (!activePanel) return null;
 
+    var previousPanel = document.querySelector('.tab-content.active');
+    var previousName = previousPanel ? previousPanel.id.replace(/^tab-/, '') : '';
+    if (previousName !== name && (previousName === 'visit-log' || name === 'visit-log') && G.resetVisitLogCollapsedGroups) {
+      G.resetVisitLogCollapsedGroups();
+    }
+
     document.querySelectorAll('.tab').forEach(function(tab) {
       tab.classList.toggle('active', tab.dataset.tab === name);
     });

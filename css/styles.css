@@ -10162,8 +10162,15 @@ body.visit-log-filter-open .mobile-bottom-nav {
   font-size: 0.66rem;
 }
 
-.visit-log-summary__export {
+.visit-log-summary__actions {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.visit-log-summary__expand-all,
+.visit-log-summary__export {
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--text-2);
@@ -10175,6 +10182,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
   transition: all 0.2s ease;
 }
 
+.visit-log-summary__expand-all:hover,
 .visit-log-summary__export:hover {
   color: var(--accent);
   border-color: var(--accent);
