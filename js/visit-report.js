@@ -999,6 +999,10 @@ window.GAILS = window.GAILS || {};
     return periodLabels[val] || (val + ' Months');
   }
 
+  function getVisitLogDefaultPeriod(view) {
+    return view === 'unvisited' ? '1' : 'currentMonth';
+  }
+
   window.GAILS.getVisitLogHeaderSummary = function() {
     var G = window.GAILS;
     var searchEl = document.getElementById('visitLogSearch');
@@ -1017,9 +1021,8 @@ window.GAILS = window.GAILS || {};
     var ratingVal = ratingEl ? ratingEl.value : '';
     var groupVal = groupEl ? groupEl.value : 'ops';
     var sortVal = sortEl ? sortEl.value : 'date';
-    var periodVal = periodEl ? periodEl.value : '1';
-    
     var view = window.GAILS._activeVisitLogView || 'history';
+    var periodVal = periodEl ? periodEl.value : getVisitLogDefaultPeriod(view);
 
     var pills = [];
 
@@ -1134,6 +1137,7 @@ window.GAILS = window.GAILS || {};
     var sortEl = document.getElementById('visitLogSort');
     var periodEl = document.getElementById('visitLogPeriod');
     var isHistoryView = (window.GAILS._activeVisitLogView || 'history') === 'history';
+    var defaultPeriod = isHistoryView ? 'currentMonth' : '1';
     var count = 0;
 
     if (regionEl && regionEl.value) count++;
@@ -1142,7 +1146,7 @@ window.GAILS = window.GAILS || {};
     if (isHistoryView && ratingEl && ratingEl.value && typeEl && (typeEl.value === 'cqv' || typeEl.value === 'cqvFollowUp')) count++;
     if (groupEl && groupEl.value && groupEl.value !== 'ops') count++;
     if (isHistoryView && sortEl && sortEl.value && sortEl.value !== 'date') count++;
-    if (periodEl && periodEl.value && periodEl.value !== '1') count++;
+    if (periodEl && periodEl.value && periodEl.value !== defaultPeriod) count++;
     return count;
   }
 
@@ -1602,7 +1606,7 @@ window.GAILS = window.GAILS || {};
           if (ratingEl) ratingEl.value = '';
           if (groupEl) groupEl.value = 'ops';
           if (sortEl) sortEl.value = 'date';
-          if (periodEl) periodEl.value = '1'; // Default to Last Month
+          if (periodEl) periodEl.value = getVisitLogDefaultPeriod(window.GAILS._activeVisitLogView || 'history');
           populateDropdown('visitLogOps', new Set(getVisitLogOps('')), 'All Areas');
           if (opsEl) opsEl.value = '';
           syncCqvRatingVisibility();
@@ -1645,7 +1649,9 @@ window.GAILS = window.GAILS || {};
     var ratingVal = document.getElementById('visitLogRating') ? document.getElementById('visitLogRating').value : '';
     var groupVal = document.getElementById('visitLogGroup') ? document.getElementById('visitLogGroup').value : 'ops';
     var sortVal = document.getElementById('visitLogSort') ? document.getElementById('visitLogSort').value : 'date';
-    var periodVal = document.getElementById('visitLogPeriod') ? document.getElementById('visitLogPeriod').value : '1';
+    var periodVal = document.getElementById('visitLogPeriod')
+      ? document.getElementById('visitLogPeriod').value
+      : getVisitLogDefaultPeriod(view);
 
     syncVisitLogMobileFilterButton();
 
