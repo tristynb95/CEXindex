@@ -10041,10 +10041,6 @@ body.visit-log-filter-open .mobile-bottom-nav {
   align-items: stretch;
 }
 
-body[data-dash-tab="visit-log"] .dashboard-workspace__toolbar {
-  display: none;
-}
-
 body[data-dash-tab="visit-log"] .section-page-header {
   display: flex;
   align-items: stretch;
