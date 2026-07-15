@@ -4,7 +4,7 @@ window.GAILS = window.GAILS || {};
 window.GAILS.getRollingMonths = function() {
   var state = GAILS.state;
   var raw = document.getElementById('rollingWindow').value;
-  if (raw === 'current' || raw === 'thisQuarter' || raw === 'lastQuarter') {
+  if (raw === 'current' || raw === 'thisQuarter' || raw === 'lastQuarter' || raw === 'thisYear' || raw === 'lastYear') {
     return [].concat(state.selectedMonths || []);
   }
   var val = parseInt(raw, 10);

@@ -643,6 +643,16 @@ window.GAILS = window.GAILS || {};
     return (G.getBakeryOps ? G.getBakeryOps(v.bakery) : '') || 'Unknown';
   }
 
+  // GAIL's reporting year starts in March: Q1 Mar-May, Q2 Jun-Aug,
+  // Q3 Sep-Nov, and Q4 Dec-Feb.
+  function getGailsQuarterStart(referenceDate) {
+    var month = referenceDate.getMonth();
+    var reportingYear = month >= 2 ? referenceDate.getFullYear() : referenceDate.getFullYear() - 1;
+    var monthsSinceMarch = (month - 2 + 12) % 12;
+    var quarterIndex = Math.floor(monthsSinceMarch / 3);
+    return new Date(reportingYear, 2 + (quarterIndex * 3), 1);
+  }
+
   function isDateWithinMonths(dateStr, n) {
     var d = new Date(dateStr + 'T00:00:00');
     if (isNaN(d.getTime())) return false;
@@ -654,6 +664,22 @@ window.GAILS = window.GAILS || {};
       return d >= currentMonthStart && d <= now;
     }
 
+    if (n === 'thisQuarter') {
+      var currentQuarterStart = getGailsQuarterStart(now);
+      now.setHours(23, 59, 59, 999);
+      return d >= currentQuarterStart && d <= now;
+    }
+
+    if (n === 'lastQuarter') {
+      var currentQuarterStart = getGailsQuarterStart(now);
+      var previousQuarterStart = new Date(currentQuarterStart.getFullYear(), currentQuarterStart.getMonth() - 3, 1);
+      return d >= previousQuarterStart && d < currentQuarterStart;
+    }
+
+    if (n === 'thisYear') {
+      return d.getFullYear() === now.getFullYear();
+    }
+
     // The previous calendar year always uses its exact Jan 1 - Dec 31 range.
     if (n === 'lastYear') {
       return d.getFullYear() === now.getFullYear() - 1;
@@ -662,12 +688,18 @@ window.GAILS = window.GAILS || {};
     var num = parseInt(n, 10);
     if (isNaN(num) || num === 0) return true;
 
-    // Numeric options are complete calendar months before the current one:
-    // "Last Month" is June 1-30 when today is in July, while "Last 2 Months"
-    // is May 1 through June 30.
-    var periodStart = new Date(now.getFullYear(), now.getMonth() - num, 1);
+    // "Last Month" is the complete previous calendar month. Larger numeric
+    // periods include the current month-to-date: when today is in July,
+    // "Last 2 Months" starts June 1 and "Last 3 Months" starts May 1.
     var currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    return d >= periodStart && d < currentMonthStart;
+    if (num === 1) {
+      var previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return d >= previousMonthStart && d < currentMonthStart;
+    }
+
+    var periodStart = new Date(now.getFullYear(), now.getMonth() - (num - 1), 1);
+    now.setHours(23, 59, 59, 999);
+    return d >= periodStart && d <= now;
   }
 
   // The Rating filter (Green/Yellow/Red) only makes sense once the results
@@ -951,11 +983,14 @@ window.GAILS = window.GAILS || {};
     var periodLabels = {
       '0': 'All Time',
       'currentMonth': 'This Month',
+      'thisQuarter': 'This Quarter',
       '1': 'Last Month',
+      'lastQuarter': 'Last Quarter',
       '2': 'Last 2 Months',
       '3': 'Last 3 Months',
       '6': 'Last 6 Months',
       '12': 'Last 12 Months',
+      'thisYear': 'This Year',
       'lastYear': 'Last Year'
     };
     if (val === 'lastYear') {

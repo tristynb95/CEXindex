@@ -56,6 +56,15 @@ window.GAILS.getFiscalQuarterMonths = function(offset) {
   return labels;
 };
 
+window.GAILS.getCalendarYearMonths = function(offset) {
+  var year = (new Date()).getFullYear() + (offset || 0);
+  var labels = [];
+  for (var month = 0; month < 12; month++) {
+    labels.push(GAILS.monthLabelFromDate(new Date(year, month, 1)));
+  }
+  return labels;
+};
+
 // "All Months" should cover the current month even before any data has
 // been uploaded for it, so bakeries don't read as falsely unvisited etc.
 // Returns a new array, sorted, with the current month appended if missing.
@@ -81,6 +90,11 @@ window.GAILS.resolvePeriodMonths = function(rawValue, months, records) {
   var list = months || [];
   var current = GAILS.getCurrentMonthLabel();
   if (rawValue === 'current') return [current];
+  if (rawValue === 'thisYear' || rawValue === 'lastYear') {
+    var yearMonths = GAILS.getCalendarYearMonths(rawValue === 'lastYear' ? -1 : 0);
+    var availableYearMonths = GAILS.withCurrentMonth(list);
+    return yearMonths.filter(function(m) { return availableYearMonths.indexOf(m) !== -1; });
+  }
   if (rawValue === 'thisQuarter' || rawValue === 'lastQuarter') {
     var quarterMonths = GAILS.getFiscalQuarterMonths(rawValue === 'lastQuarter' ? -1 : 0);
     var currentKey = GAILS.monthSortKey(current);
