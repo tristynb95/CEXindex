@@ -644,39 +644,30 @@ window.GAILS = window.GAILS || {};
   }
 
   function isDateWithinMonths(dateStr, n) {
+    var d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return false;
+    var now = new Date();
+
     if (n === 'currentMonth') {
-      var d = new Date(dateStr + 'T00:00:00');
-      if (isNaN(d.getTime())) return false;
-      var now = new Date();
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      var currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      now.setHours(23, 59, 59, 999);
+      return d >= currentMonthStart && d <= now;
     }
 
-    // The previous calendar year (Jan 1 - Dec 31), not a rolling 12-month
-    // window from today — that's what "Last 12 Months" already covers.
+    // The previous calendar year always uses its exact Jan 1 - Dec 31 range.
     if (n === 'lastYear') {
-      var d = new Date(dateStr + 'T00:00:00');
-      if (isNaN(d.getTime())) return false;
-      return d.getFullYear() === (new Date()).getFullYear() - 1;
+      return d.getFullYear() === now.getFullYear() - 1;
     }
 
     var num = parseInt(n, 10);
     if (isNaN(num) || num === 0) return true;
 
-    var d = new Date(dateStr + 'T00:00:00');
-    if (isNaN(d.getTime())) return false;
-
-    // Date#setMonth() overflows into the next month when the current day-of-
-    // month doesn't exist N months back (e.g. May 31 minus 1 month computes
-    // "April 31", which JS normalizes to May 1 — putting the cutoff AFTER
-    // today and silently hiding everything). Zeroing the day first avoids
-    // that entirely and aligns the cutoff to the start of the target month,
-    // which also reads more intuitively for a "Last N Months" filter.
-    var limit = new Date();
-    limit.setDate(1);
-    limit.setMonth(limit.getMonth() - num);
-    limit.setHours(0, 0, 0, 0);
-
-    return d >= limit;
+    // Numeric options are complete calendar months before the current one:
+    // "Last Month" is June 1-30 when today is in July, while "Last 2 Months"
+    // is May 1 through June 30.
+    var periodStart = new Date(now.getFullYear(), now.getMonth() - num, 1);
+    var currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    return d >= periodStart && d < currentMonthStart;
   }
 
   // The Rating filter (Green/Yellow/Red) only makes sense once the results
@@ -693,6 +684,46 @@ window.GAILS = window.GAILS || {};
     if (!isCqvType && ratingEl && ratingEl.value) {
       ratingEl.value = '';
       if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect('visitLogRating');
+    }
+  }
+
+  function syncVisitLogViewControls(view) {
+    var isHistoryView = view === 'history';
+    var searchEl = document.getElementById('visitLogSearch');
+    var typeEl = document.getElementById('visitLogType');
+    var groupEl = document.getElementById('visitLogGroup');
+    var sortEl = document.getElementById('visitLogSort');
+    var typeControl = typeEl ? typeEl.closest('.visit-log-filter-control') : null;
+    var sortControl = sortEl ? sortEl.closest('.visit-log-filter-control') : null;
+    var ratingControl = document.getElementById('visitLogRatingControl');
+    var typeGroupOption = groupEl ? groupEl.querySelector('option[value="type"]') : null;
+
+    if (searchEl) {
+      searchEl.placeholder = isHistoryView
+        ? 'Search bakery, partner or auditor...'
+        : 'Search bakery...';
+    }
+    if (typeControl) typeControl.style.display = isHistoryView ? '' : 'none';
+    if (sortControl) sortControl.style.display = isHistoryView ? '' : 'none';
+
+    syncCqvRatingVisibility();
+    if (!isHistoryView && ratingControl) ratingControl.style.display = 'none';
+
+    // Unvisited sites have no visit type of their own. Region, Ops Area, and
+    // ungrouped views remain meaningful, but grouping them by visit type does
+    // not, so fall back to Ops Area if that history-only option was active.
+    if (!isHistoryView && groupEl && groupEl.value === 'type') {
+      groupEl.value = 'ops';
+      if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect(groupEl);
+    }
+    if (!isHistoryView && typeGroupOption) {
+      typeGroupOption.remove();
+    } else if (isHistoryView && groupEl && !typeGroupOption) {
+      var restoredTypeOption = document.createElement('option');
+      restoredTypeOption.value = 'type';
+      restoredTypeOption.textContent = 'Visit Type';
+      var noneOption = groupEl.querySelector('option[value="none"]');
+      groupEl.insertBefore(restoredTypeOption, noneOption || null);
     }
   }
 
@@ -944,7 +975,7 @@ window.GAILS = window.GAILS || {};
     var sortEl = document.getElementById('visitLogSort');
     var periodEl = document.getElementById('visitLogPeriod');
 
-    var searchVal = searchEl ? searchEl.value.toLowerCase().trim() : '';
+    var searchVal = searchEl ? searchEl.value.trim() : '';
     var regionVal = regionEl ? regionEl.value : '';
     var opsVal = opsEl ? opsEl.value : '';
     var typeVal = typeEl ? typeEl.value : '';
@@ -959,7 +990,13 @@ window.GAILS = window.GAILS || {};
 
     if (view === 'unvisited') {
       var periodText = getPeriodLabel(periodVal);
-      pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + '</span>');
+      var unvisitedGroupLabels = {
+        'ops': 'Grouped by Ops Area',
+        'region': 'Grouped by Region',
+        'none': 'Ungrouped'
+      };
+      pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + ' \u00b7 ' +
+        escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Ops Area') + '</span>');
       
       if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
       if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
@@ -1562,6 +1599,9 @@ window.GAILS = window.GAILS || {};
       syncVisitLogMobileFilterButton();
     }
 
+    var view = window.GAILS._activeVisitLogView || 'history';
+    syncVisitLogViewControls(view);
+
     // Get filter values
     var searchVal = document.getElementById('visitLogSearch') ? document.getElementById('visitLogSearch').value.toLowerCase().trim() : '';
     var regionVal = document.getElementById('visitLogRegion') ? document.getElementById('visitLogRegion').value : '';
@@ -1572,19 +1612,6 @@ window.GAILS = window.GAILS || {};
     var sortVal = document.getElementById('visitLogSort') ? document.getElementById('visitLogSort').value : 'date';
     var periodVal = document.getElementById('visitLogPeriod') ? document.getElementById('visitLogPeriod').value : '1';
 
-    var view = window.GAILS._activeVisitLogView || 'history';
-    var isHistoryView = view === 'history';
-    var typeControl = document.getElementById('visitLogType') ? document.getElementById('visitLogType').closest('.visit-log-filter-control') : null;
-    var sortControl = document.getElementById('visitLogSort') ? document.getElementById('visitLogSort').closest('.visit-log-filter-control') : null;
-    var ratingControl = document.getElementById('visitLogRatingControl');
-    syncCqvRatingVisibility();
-    if (typeControl) {
-      typeControl.style.display = isHistoryView ? '' : 'none';
-    }
-    if (sortControl) {
-      sortControl.style.display = isHistoryView ? '' : 'none';
-    }
-    if (!isHistoryView && ratingControl) ratingControl.style.display = 'none';
     syncVisitLogMobileFilterButton();
 
     saveVisitLogFilters({
@@ -1627,8 +1654,6 @@ window.GAILS = window.GAILS || {};
       return Object.assign({ id: id }, allVisits[id]);
     });
 
-    var view = window.GAILS._activeVisitLogView || 'history';
-
     if (view === 'history') {
       // Filter history in two stages: everything except visit type/rating
       // first, so the summary bar can keep showing every type's count while
@@ -1640,7 +1665,8 @@ window.GAILS = window.GAILS || {};
         if (searchVal) {
           var bakeryMatch = v.bakery.toLowerCase().indexOf(searchVal) !== -1;
           var partnerMatch = v.coffeePartner && v.coffeePartner.toLowerCase().indexOf(searchVal) !== -1;
-          if (!bakeryMatch && !partnerMatch) return false;
+          var auditorMatch = v.auditorName && v.auditorName.toLowerCase().indexOf(searchVal) !== -1;
+          if (!bakeryMatch && !partnerMatch && !auditorMatch) return false;
         }
         if (regionVal) {
           var reg = G.getBakeryRegion ? G.getBakeryRegion(v.bakery) : 'Unknown';
@@ -1866,11 +1892,14 @@ window.GAILS = window.GAILS || {};
         matchingSites++;
 
         if (!visitedBakeries.has(bName)) {
-          var manager = G.getBakeryOps ? G.getBakeryOps(bName) : 'Unknown';
-          if (!unvisitedMap[manager]) {
-            unvisitedMap[manager] = [];
+          var groupName = 'All Sites';
+          if (groupVal === 'region') {
+            groupName = (G.getBakeryRegion ? G.getBakeryRegion(bName) : '') || 'Unknown';
+          } else if (groupVal !== 'none') {
+            groupName = (G.getBakeryOps ? G.getBakeryOps(bName) : '') || 'Unknown';
           }
-          unvisitedMap[manager].push(bName);
+          if (!unvisitedMap[groupName]) unvisitedMap[groupName] = [];
+          unvisitedMap[groupName].push(bName);
           totalUnvisited++;
         }
       });
@@ -1904,18 +1933,18 @@ window.GAILS = window.GAILS || {};
         return;
       }
 
-      var managersSorted = Object.keys(unvisitedMap).sort();
-      window.GAILS._visitLogCurrentGroupNames = managersSorted.slice();
-      renderUnvisitedSummary(totalUnvisited, matchingSites, true);
+      var groupsSorted = Object.keys(unvisitedMap).sort();
+      window.GAILS._visitLogCurrentGroupNames = groupVal === 'none' ? [] : groupsSorted.slice();
+      renderUnvisitedSummary(totalUnvisited, matchingSites, groupVal !== 'none');
 
       window.GAILS._visitLogExport = {
         filename: 'gails-unvisited-sites-' + new Date().toISOString().slice(0, 10) + '.csv',
-        rows: [['Bakery', 'Region', 'Ops Area', 'Last Visited']].concat(managersSorted.reduce(function(rows, mName) {
-          unvisitedMap[mName].slice().sort().forEach(function(bName) {
+        rows: [['Bakery', 'Region', 'Ops Area', 'Last Visited']].concat(groupsSorted.reduce(function(rows, groupName) {
+          unvisitedMap[groupName].slice().sort().forEach(function(bName) {
             rows.push([
               bName,
               G.getBakeryRegion ? G.getBakeryRegion(bName) : '',
-              mName,
+              G.getBakeryOps ? G.getBakeryOps(bName) : '',
               lastVisitMap[bName] ? lastVisitMap[bName].split('T')[0] : 'Never visited'
             ]);
           });
@@ -1924,8 +1953,8 @@ window.GAILS = window.GAILS || {};
       };
 
       var collapsedUnvisited = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
-      var html = managersSorted.map(function(mName) {
-        var bakeries = unvisitedMap[mName].sort();
+      var html = groupsSorted.map(function(groupName) {
+        var bakeries = unvisitedMap[groupName].sort();
         var count = bakeries.length;
 
         var bakeryCardsHtml = bakeries.map(function(bName) {
@@ -1940,11 +1969,15 @@ window.GAILS = window.GAILS || {};
           '</div>';
         }).join('');
 
-        var isCollapsed = !!collapsedUnvisited[mName];
-        return '<div class="unvisited-manager-section' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(mName) + '">' +
+        if (groupVal === 'none') {
+          return '<div class="unvisited-manager-body"><div class="unvisited-bakeries-grid">' + bakeryCardsHtml + '</div></div>';
+        }
+
+        var isCollapsed = !!collapsedUnvisited[groupName];
+        return '<div class="unvisited-manager-section' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
           '<button type="button" class="unvisited-manager-title" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
             '<svg class="unvisited-manager-title__chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
-            '<span>' + escapeHtml(mName) + ' (' + count + ' unvisited)</span>' +
+            '<span>' + escapeHtml(groupName) + ' (' + count + ' unvisited)</span>' +
           '</button>' +
           '<div class="unvisited-manager-body">' +
             '<div class="unvisited-bakeries-grid">' +
