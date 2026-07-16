@@ -29,6 +29,26 @@ function requestIdFromContinueUrl(continueUrl) {
   }
 }
 
+function getActionParams() {
+  var directParams = new URLSearchParams(window.location.search);
+  var wrappedLink = window.location.hash ? window.location.hash.slice(1) : '';
+  if (!wrappedLink) return directParams;
+
+  try {
+    var actionUrl = new URL(wrappedLink);
+    var allowedOrigins = [
+      'https://cexindex.firebaseapp.com',
+      'https://cexindex.web.app'
+    ];
+    if (allowedOrigins.indexOf(actionUrl.origin) === -1 || actionUrl.pathname !== '/__/auth/action') {
+      return directParams;
+    }
+    return actionUrl.searchParams;
+  } catch (error) {
+    return directParams;
+  }
+}
+
 async function hashEmail(email) {
   var normalized = String(email || '').trim().toLowerCase();
   var bytes = new TextEncoder().encode(normalized);
@@ -90,7 +110,7 @@ async function clearExpiredRequestIfSignedIn(requestId, request) {
 }
 
 async function confirmEmailChange() {
-  var params = new URLSearchParams(window.location.search);
+  var params = getActionParams();
   var actionCode = params.get('oobCode') || '';
   var mode = params.get('mode') || '';
   var requestId = requestIdFromContinueUrl(params.get('continueUrl'));
