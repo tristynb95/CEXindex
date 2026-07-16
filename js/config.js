@@ -180,6 +180,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "Blackheath":                { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4663, 0.0095] },
   "Bromley":                   { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4066, 0.0142] },
   "Canary Wharf":              { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.5035,-0.0235] },
+  "Crossrail Place":           { "r": "South Region",  "o": "Elena Ilciuc",           "ll": [51.5064,-0.0175] },
   "Crystal Palace":            { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4174,-0.0735] },
   "Dulwich":                   { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4487,-0.0885] },
   "East Dulwich":              { "r": "London Region", "o": "Elena Ilciuc",           "ll": [51.4532,-0.0745] },

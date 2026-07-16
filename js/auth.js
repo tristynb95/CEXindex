@@ -432,18 +432,12 @@ onAuthStateChanged(auth, async (user) => {
 
       if (isAllowed) {
         if (user.email && userProfile && String(userProfile.email || '').toLowerCase() !== user.email.toLowerCase()) {
-          const completedRequestId = userProfile.pendingEmailRequestId || '';
           await update(userRef, {
             email: user.email,
-            pendingEmailRequestId: null,
-            pendingEmailAddress: null,
             updatedAt: nowIso()
           });
-          if (completedRequestId) await remove(ref(db, `emailChangeRequests/${completedRequestId}`));
           userProfile = Object.assign({}, userProfile, {
-            email: user.email,
-            pendingEmailRequestId: null,
-            pendingEmailAddress: null
+            email: user.email
           });
         }
         updateProfileMenu(user, userProfile);

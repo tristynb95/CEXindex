@@ -3,7 +3,26 @@
     "public": ".",
     "ignore": [
       "firebase.json",
+      ".firebaserc",
+      ".gitignore",
+      ".firebase",
+      ".firebase/**",
+      ".git",
+      ".git/**",
+      ".github",
+      ".github/**",
+      ".vscode",
+      ".vscode/**",
+      "apps-script",
+      "apps-script/**",
+      "tmp",
+      "tmp/**",
+      "admin-setup.html",
+      "database.rules.reference.json",
+      "storage.rules.reference.txt",
+      "firebase-debug.log",
       "**/.*",
+      "**/.*/**",
       "**/node_modules/**"
     ]
   }
