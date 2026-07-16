@@ -759,7 +759,16 @@ window.GAILS = window.GAILS || {};
     }
   }
 
+  // Role permission for logging visits (set by js/auth.js after sign-in).
+  // Defaults to allowed when permissions haven't loaded so the built-in
+  // roles keep their historical behaviour.
+  function canLogVisits() {
+    var perms = window.GAILS && window.GAILS.permissions;
+    return !(perms && perms.actions && perms.actions.logVisits === false);
+  }
+
   window.GAILS.openAddSiteVisitModal = function(presetBakery) {
+    if (!canLogVisits()) return;
     var modal = document.getElementById('addSiteVisitModal');
     var select = document.getElementById('addVisitBakery');
     if (!modal || !select) return;
@@ -2006,7 +2015,9 @@ window.GAILS = window.GAILS || {};
               '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(reg) + '</div>' +
               '<div class="unvisited-bakery-item__last">' + escapeHtml(lastVisitedLabel(bName)) + '</div>' +
             '</div>' +
-            '<button type="button" class="unvisited-log-btn" data-bakery="' + escapeHtml(bName) + '">+ Log Visit</button>' +
+            (canLogVisits()
+              ? '<button type="button" class="unvisited-log-btn" data-bakery="' + escapeHtml(bName) + '">+ Log Visit</button>'
+              : '') +
           '</div>';
         }).join('');
 

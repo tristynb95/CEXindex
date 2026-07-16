@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Profile — GAIL's Coffee Experience Dashboard</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" href="favicon.ico">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#B5312A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=2.0.9">
+</head>
+
+<body class="profile-body">
+  <div class="glass-bg">
+    <div class="glass-bg-blob blob1"></div>
+    <div class="glass-bg-blob blob2"></div>
+    <div class="glass-bg-blob blob3"></div>
+    <div class="glass-noise"></div>
+  </div>
+
+  <div id="profileAuthGuard" class="admin-page-guard">
+    <div class="auth-loading-content">
+      <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+      <p class="auth-loading__text" style="color:var(--text);">Loading your profile <span class="auth-small-spinner"></span></p>
+    </div>
+  </div>
+
+  <div id="profilePage" class="profile-page" hidden>
+    <header class="profile-page__header">
+      <a class="profile-page__brand" href="index.html" aria-label="Return to dashboard">
+        <img src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+        <span>
+          <small>Coffee Experience Dashboard</small>
+          <strong>Your profile</strong>
+        </span>
+      </a>
+      <div class="profile-page__header-actions">
+        <a href="index.html" class="profile-page__header-link">← Dashboard</a>
+        <button type="button" id="profilePageSignOut" class="profile-page__header-link">Sign out</button>
+      </div>
+    </header>
+
+    <main class="profile-page__main">
+      <div class="profile-page__intro">
+        <p class="profile-page__eyebrow">Account settings</p>
+        <h1>Make this profile yours.</h1>
+        <p>Keep your name and work email up to date. Your assigned role is managed by an administrator.</p>
+      </div>
+
+      <div class="profile-layout">
+        <aside class="profile-card profile-card--identity" aria-label="Profile picture placeholder">
+          <div id="profilePicturePlaceholder" class="profile-picture-placeholder" aria-hidden="true">P</div>
+          <div>
+            <p class="profile-card__eyebrow">Profile picture</p>
+            <h2 id="profileIdentityName">Your profile</h2>
+            <p id="profileIdentityEmail" class="profile-card__muted"></p>
+          </div>
+          <div class="profile-picture-coming-soon">
+            <span>Coming later</span>
+            Profile picture uploads will be added in a future update.
+          </div>
+        </aside>
+
+        <section class="profile-card profile-card--form" aria-labelledby="profileDetailsTitle">
+          <div class="profile-card__head">
+            <div>
+              <p class="profile-card__eyebrow">Personal details</p>
+              <h2 id="profileDetailsTitle">Profile information</h2>
+            </div>
+            <div class="profile-role">
+              <span>Assigned role</span>
+              <strong id="profileRole">Loading…</strong>
+            </div>
+          </div>
+
+          <form id="profileForm" class="profile-form">
+            <div class="profile-form__row">
+              <label class="profile-field" for="profileFirstName">
+                <span>First name</span>
+                <input type="text" id="profileFirstName" autocomplete="given-name" maxlength="50" required>
+              </label>
+              <label class="profile-field" for="profileLastName">
+                <span>Last name</span>
+                <input type="text" id="profileLastName" autocomplete="family-name" maxlength="50" required>
+              </label>
+            </div>
+
+            <label class="profile-field" for="profileEmail">
+              <span>Work email</span>
+              <input type="email" id="profileEmail" autocomplete="email" autocapitalize="none" spellcheck="false" required>
+              <small>Changing your email also changes the address you use to sign in.</small>
+            </label>
+
+            <div id="profileMessage" class="profile-message" role="status" aria-live="polite" hidden></div>
+
+            <div class="profile-form__actions">
+              <a href="index.html" class="profile-cancel-btn">Cancel</a>
+              <button type="submit" id="profileSaveBtn" class="btn">Save changes</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="js/profile-page.js"></script>
+</body>
+
+</html>

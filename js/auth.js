@@ -1,6 +1,7 @@
 import { auth, db } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { ref, get, set, remove, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess } from './permissions.js';
 
 function nowIso() {
   return new Date().toISOString();
@@ -85,6 +86,13 @@ window.GAILS_Firebase = {
   },
   saveSiteVisit: async function(visitRecord) {
     if (!auth.currentUser) throw new Error('You must be signed in to log a visit.');
+    // Only blocks when the resolved role explicitly denies it, so the field
+    // form keeps working for built-in roles. The database rules enforce the
+    // same check server-side.
+    var perms = window.GAILS && window.GAILS.permissions;
+    if (perms && perms.actions && perms.actions.logVisits === false) {
+      throw new Error('Your role does not allow logging visits.');
+    }
     var newVisitRef = push(ref(db, 'routineVisits'));
     var nowIsoStr = nowIso();
     var payload = Object.assign({
@@ -103,6 +111,10 @@ window.GAILS_Firebase = {
   },
   deleteSiteVisit: async function(visitId) {
     if (!auth.currentUser) throw new Error('You must be signed in to delete a visit.');
+    var perms = window.GAILS && window.GAILS.permissions;
+    if (!window.GAILS.isAdmin && perms && perms.admin && perms.admin.visits !== 'edit') {
+      throw new Error('Your role does not allow deleting visits.');
+    }
     await remove(ref(db, 'routineVisits/' + visitId));
   }
 };
@@ -116,6 +128,13 @@ const loginBtn = document.getElementById('loginBtn');
 const emailInput = document.getElementById('emailInput');
 const passwordInput = document.getElementById('passwordInput');
 const loginError = document.getElementById('loginError');
+const adminBtn = document.getElementById('adminBtn');
+const profileMenu = document.querySelector('.header [data-profile-menu]');
+const profileMenuBtn = document.getElementById('profileMenuBtn');
+const profileMenuPopover = document.getElementById('profileMenuPopover');
+const profileMenuAvatar = document.getElementById('profileMenuAvatar');
+const profileMenuName = document.getElementById('profileMenuName');
+const profileMenuEmail = document.getElementById('profileMenuEmail');
 const logoutBtn = document.getElementById('logoutBtn');
 
 let siteMetaUnsubscribe = null;
@@ -140,6 +159,41 @@ function markActivityLogged(uid) {
   try {
     localStorage.setItem(getLastLogKey(uid), String(Date.now()));
   } catch (e) {}
+}
+
+function profileInitials(firstName, lastName, fallback) {
+  const initials = [firstName, lastName]
+    .map(function(part) { return String(part || '').trim().charAt(0); })
+    .join('')
+    .toUpperCase();
+  return initials || String(fallback || 'P').trim().charAt(0).toUpperCase() || 'P';
+}
+
+function setProfileMenuOpen(open) {
+  if (!profileMenuBtn || !profileMenuPopover) return;
+  profileMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  profileMenuPopover.hidden = !open;
+}
+
+function updateProfileMenu(user, profile) {
+  if (!user) {
+    if (profileMenuAvatar) profileMenuAvatar.textContent = 'P';
+    if (profileMenuName) profileMenuName.textContent = 'Your profile';
+    if (profileMenuEmail) profileMenuEmail.textContent = '';
+    setProfileMenuOpen(false);
+    return;
+  }
+
+  const data = profile || {};
+  const firstName = String(data.firstName || '').trim();
+  const lastName = String(data.lastName || '').trim();
+  const storedName = [firstName, lastName].filter(Boolean).join(' ');
+  const displayName = storedName || user.displayName || 'Your profile';
+  const email = user.email || data.email || '';
+
+  if (profileMenuAvatar) profileMenuAvatar.textContent = profileInitials(firstName, lastName, displayName || email);
+  if (profileMenuName) profileMenuName.textContent = displayName;
+  if (profileMenuEmail) profileMenuEmail.textContent = email;
 }
 
 headerEl.style.display = 'none';
@@ -241,14 +295,16 @@ function clearLoginForm() {
   }
 }
 
-async function loadSharedDashboardData(isAdmin) {
+// canUpload: true for admins and roles with 'edit' on the shared dataset —
+// controls whether the upload zone is revealed when no shared data exists.
+async function loadSharedDashboardData(canUpload) {
   try {
     var statusEl = document.getElementById('uploadStatus');
 
     // Fetch lightweight metadata first to check if a download is actually needed
     var metaSnap = await get(ref(db, 'dashboardMeta'));
     if (!metaSnap.exists()) {
-      if (isAdmin) {
+      if (canUpload) {
         var uploadZone = document.getElementById('uploadZone');
         if (uploadZone) uploadZone.style.display = '';
       }
@@ -274,7 +330,7 @@ async function loadSharedDashboardData(isAdmin) {
     if (!data) {
       var dbSnap = await get(ref(db, 'dashboardData'));
       if (!dbSnap.exists()) {
-        if (isAdmin) {
+        if (canUpload) {
           var uploadZoneEl = document.getElementById('uploadZone');
           if (uploadZoneEl) uploadZoneEl.style.display = '';
         }
@@ -343,6 +399,7 @@ onAuthStateChanged(auth, async (user) => {
 
       let isAdmin = false;
       let isAllowed = false;
+      let roleId = 'viewer';
 
       if (adminSnap.exists() && adminSnap.val() === true) {
         isAdmin = true;
@@ -353,10 +410,26 @@ onAuthStateChanged(auth, async (user) => {
       }
       if (userSnap.exists() && userSnap.val() !== null) {
         isAllowed = true;
-        if (userSnap.val().role === 'admin') isAdmin = true;
+        roleId = userSnap.val().role || 'viewer';
+        if (roleId === 'admin') isAdmin = true;
       }
+      if (isAdmin) roleId = 'admin';
+
+      // Custom roles live at roles/{roleId}; a deleted/unknown role safely
+      // falls back to viewer permissions inside resolveRolePermissions.
+      let customRoleDef = null;
+      if (isAllowed && !BUILTIN_ROLES[roleId]) {
+        try {
+          const roleSnap = await get(ref(db, `roles/${roleId}`));
+          customRoleDef = roleSnap.exists() ? roleSnap.val() : null;
+        } catch (roleErr) {
+          console.warn('Could not load role definition:', roleErr);
+        }
+      }
+      const permissions = resolveRolePermissions(roleId, customRoleDef);
 
       if (isAllowed) {
+        updateProfileMenu(user, userSnap.exists() ? userSnap.val() : null);
         const action = _freshLogin ? 'login' : 'session_resume';
         _freshLogin = false;
         if (shouldLogActivity(user.uid, action)) {
@@ -364,7 +437,7 @@ onAuthStateChanged(auth, async (user) => {
             await push(ref(db, 'activityLog'), {
               email: user.email || user.uid,
               uid: user.uid,
-              role: isAdmin ? 'admin' : 'viewer',
+              role: roleId,
               action: action,
               timestamp: nowIso()
             });
@@ -373,10 +446,11 @@ onAuthStateChanged(auth, async (user) => {
             console.warn('Could not write login activity log:', logErr);
           }
         }
-        showApp(isAdmin);
+        showApp(isAdmin, permissions);
+        applyDashboardTabPermissions(permissions);
         startSiteMetaSync();
         startRoutineVisitsSync();
-        await loadSharedDashboardData(isAdmin);
+        await loadSharedDashboardData(isAdmin || permissions.admin.dataset === 'edit');
       } else {
         loginError.textContent = "You don't have access to this dashboard. Contact your administrator.";
         loginError.style.display = 'block';
@@ -400,12 +474,45 @@ onAuthStateChanged(auth, async (user) => {
     stopRoutineVisitsSync();
     applySiteMeta(null);
     clearLoginForm();
+    updateProfileMenu(null);
     showApp(undefined);
   }
 });
 
-function showApp(isAdmin) {
-  if (window.GAILS) window.GAILS.isAdmin = !!isAdmin;
+// Hides dashboard tab buttons (desktop nav + mobile bottom nav) that the
+// signed-in user's role can't see, and moves off a hidden active tab.
+function applyDashboardTabPermissions(permissions) {
+  const perms = normalizePermissions(permissions);
+  const tabButtons = Array.from(document.querySelectorAll('.tab[data-tab]'));
+  tabButtons.forEach(function(btn) {
+    const key = btn.dataset.tab;
+    const allowed = perms.tabs[key] !== false;
+    btn.style.display = allowed ? '' : 'none';
+  });
+  const activeHidden = tabButtons.some(function(btn) {
+    return btn.classList.contains('active') && btn.style.display === 'none';
+  });
+  if (activeHidden) {
+    const firstVisible = tabButtons.find(function(btn) { return btn.style.display !== 'none'; });
+    if (firstVisible) firstVisible.click();
+  }
+
+  // Dashboard actions: roles without logVisits see the Bakery Reports tab
+  // read-only — the "+ Log Visit" entry points are removed.
+  const addVisitBtn = document.getElementById('visitLogAddBtn');
+  if (addVisitBtn) addVisitBtn.style.display = perms.actions.logVisits ? '' : 'none';
+}
+
+function showApp(isAdmin, permissions) {
+  if (window.GAILS) {
+    window.GAILS.isAdmin = !!isAdmin;
+    window.GAILS.permissions = normalizePermissions(permissions);
+    window.GAILS.can = function(areaKey, level) {
+      const current = window.GAILS.permissions.admin[areaKey];
+      if (level === 'edit') return current === 'edit';
+      return current === 'view' || current === 'edit';
+    };
+  }
   if (isAdmin !== undefined) {
     // Keep the loading screen visible — loadSharedDashboardData will dismiss it
     // once Firebase data has finished loading.
@@ -413,10 +520,9 @@ function showApp(isAdmin) {
     headerEl.style.display = 'flex';
     containerEl.style.display = 'block';
 
-    const adminBtn = document.getElementById('adminBtn');
     const globalIndexToggle = document.getElementById('globalIndexToggle');
     const uploader = document.getElementById('uploadZone');
-    if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
+    if (adminBtn) adminBtn.style.display = (isAdmin || hasAdminPanelAccess(permissions)) ? 'inline-block' : 'none';
     if (globalIndexToggle) globalIndexToggle.style.display = 'inline-flex';
 
     // Always hide upload zone initially — loadSharedDashboardData will reveal it
@@ -471,8 +577,31 @@ if (adminBtn) {
   });
 }
 
+if (profileMenuBtn && profileMenuPopover) {
+  profileMenuBtn.addEventListener('click', function(event) {
+    event.stopPropagation();
+    setProfileMenuOpen(profileMenuPopover.hidden);
+  });
+
+  profileMenuPopover.addEventListener('click', function(event) {
+    event.stopPropagation();
+  });
+
+  document.addEventListener('click', function(event) {
+    if (profileMenu && !profileMenu.contains(event.target)) setProfileMenuOpen(false);
+  });
+
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && !profileMenuPopover.hidden) {
+      setProfileMenuOpen(false);
+      profileMenuBtn.focus();
+    }
+  });
+}
+
 if (logoutBtn) {
   logoutBtn.addEventListener('click', async () => {
+    setProfileMenuOpen(false);
     clearLoginForm();
     await signOut(auth);
   });

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -19,7 +19,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?v=2.0.5">
+  <link rel="stylesheet" href="css/styles.css?v=2.0.9">
 </head>
 
 <body>
@@ -156,14 +156,37 @@
         </svg>
         <span class="header-btn-text">Admin Portal</span>
       </button>
-      <button id="logoutBtn" title="Sign Out">
-        <svg class="header-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-          <polyline points="16 17 21 12 16 7" />
-          <line x1="21" y1="12" x2="9" y2="12" />
-        </svg>
-        <span class="header-btn-text">Sign Out</span>
-      </button>
+      <div class="profile-menu" data-profile-menu>
+        <button type="button" id="profileMenuBtn" class="profile-menu__trigger" title="Open profile menu"
+          aria-haspopup="menu" aria-expanded="false" aria-controls="profileMenuPopover">
+          <span id="profileMenuAvatar" class="profile-menu__avatar" aria-hidden="true">P</span>
+          <span class="header-btn-text">Profile</span>
+          <svg class="profile-menu__chevron" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <path d="m6 8 4 4 4-4" />
+          </svg>
+        </button>
+        <div id="profileMenuPopover" class="profile-menu__popover" role="menu" hidden>
+          <div class="profile-menu__identity">
+            <span id="profileMenuName">Your profile</span>
+            <small id="profileMenuEmail"></small>
+          </div>
+          <a class="profile-menu__item" href="profile.html" role="menuitem">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4.5 21a7.5 7.5 0 0 1 15 0" />
+            </svg>
+            Profile
+          </a>
+          <button type="button" id="logoutBtn" class="profile-menu__item profile-menu__item--danger" role="menuitem">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Sign out
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -304,13 +327,13 @@
             </div>
             <div class="filter-control"><label id="bandFilterLabel">Band</label><br><select id="bandFilter">
                 <option value="">All</option>
-                <optgroup label="— Peer Score Band">
+                <optgroup label="â€” Peer Score Band">
                   <option value="Top Performer">Top Performer</option>
                   <option value="Above Average">Above Average</option>
                   <option value="Below Average">Below Average</option>
                   <option value="Needs Support">Needs Support</option>
                 </optgroup>
-                <optgroup label="— Benchmark Score Band">
+                <optgroup label="â€” Benchmark Score Band">
                   <option value="abs:Exceeding">Exceeding</option>
                   <option value="abs:Meeting">Meeting</option>
                   <option value="abs:Approaching">Approaching</option>
@@ -516,7 +539,7 @@
               </div>
               <div class="section overview-card overview-card--drags">
                 <h2 id="overviewDragTitle">Biggest Drags on Peer Score</h2>
-                <p class="chart-caption">Which parts of the customer experience are pulling the overall score down. Shorter bars are the weakest areas — the biggest drags.</p>
+                <p class="chart-caption">Which parts of the customer experience are pulling the overall score down. Shorter bars are the weakest areas â€” the biggest drags.</p>
                 <canvas id="absComponentDrag" style="max-height:300px"></canvas>
               </div>
             </div>
@@ -674,8 +697,8 @@
                   </li>
                   <li><strong>Coffee Efficiency (5%)</strong> &mdash; How fast the order was completed. We display the %
                     under 2 mins (Target: 80% &lt; 2 min) in the KPI cards and tables, but the index score uses a
-                    progressive 5-tier scale: <strong>1.0x</strong> for under 2 mins, <strong>0.5x</strong> for 2–3
-                    mins, <strong>0.25x</strong> for 3–4 mins, <strong>0.1x</strong> for 4–5 mins, and a
+                    progressive 5-tier scale: <strong>1.0x</strong> for under 2 mins, <strong>0.5x</strong> for 2â€“3
+                    mins, <strong>0.25x</strong> for 3â€“4 mins, <strong>0.1x</strong> for 4â€“5 mins, and a
                     <strong>-5.0x</strong> penalty for orders over 5 mins. If orders over 5 mins reach
                     <strong>1.5%</strong>, the component score is halved; if they reach <strong>2.5%</strong>, the
                     component scores 0.</li>
@@ -752,14 +775,14 @@
                   (<strong>Exceeding</strong>, <strong>On Target</strong>, <strong>Watch</strong>, or
                   <strong>Below</strong>) based on specific performance bands for the selected period:</p>
                 <ul class="method-list">
-                  <li><strong>Net Promoter Score (NPS)</strong>: Exceeding (&gt;60), On Target (55–60), Watch (45–54),
+                  <li><strong>Net Promoter Score (NPS)</strong>: Exceeding (&gt;60), On Target (55â€“60), Watch (45â€“54),
                     Below (&lt;45).</li>
                   <li><strong>SHINE Cards (Drink Quality, Efficiency, Friendliness)</strong>: Exceeding (&ge;93%), On
-                    Target (90–92%), Watch (80–89%), Below (&lt;80%).</li>
-                  <li><strong>Coffee Efficiency</strong>: Exceeding (&gt;80%), On Target (70–80%), Watch (60–69%), Below
+                    Target (90â€“92%), Watch (80â€“89%), Below (&lt;80%).</li>
+                  <li><strong>Coffee Efficiency</strong>: Exceeding (&gt;80%), On Target (70â€“80%), Watch (60â€“69%), Below
                     (&lt;60%).</li>
-                  <li><strong>Orders &gt;5 Min</strong>: Exceeding (&lt;0.5%), On Target (0.5–1.0%), Watch
-                    (&gt;1.0–2.4%), Below (&ge;2.5%).</li>
+                  <li><strong>Orders &gt;5 Min</strong>: Exceeding (&lt;0.5%), On Target (0.5â€“1.0%), Watch
+                    (&gt;1.0â€“2.4%), Below (&ge;2.5%).</li>
                 </ul>
 
                 <h3>What's New in v4?</h3>
@@ -1634,3 +1657,5 @@
 </body>
 
 </html>
+
+

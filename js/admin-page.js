@@ -2,7 +2,8 @@ import { firebaseConfig, db, storage, auth as primaryAuth } from './firebase-con
 import { ref, set, update, push, remove, onValue, get, query, limitToLast, orderByKey } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { DASHBOARD_TABS, DASHBOARD_ACTIONS, ADMIN_AREAS, BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess, canViewArea, canEditArea } from './permissions.js';
 
 const secondaryApp = initializeApp(firebaseConfig, 'AdminPage');
 const secondaryAuth = getAuth(secondaryApp);
@@ -22,11 +23,19 @@ const heroSummary     = document.getElementById('adminHeroSummary');
 const heroMeta        = document.getElementById('adminHeroMeta');
 const userList        = document.getElementById('adminUserList');
 const createUserForm  = document.getElementById('createUserForm');
+const newFirstNameInput = document.getElementById('newFirstNameInput');
+const newLastNameInput = document.getElementById('newLastNameInput');
 const newEmailInput   = document.getElementById('newEmailInput');
 const newPassInput    = document.getElementById('newPassInput');
 const roleSelect      = document.getElementById('newRoleSelect');
 const createMsg       = document.getElementById('createMsg');
 const usersMsg        = document.getElementById('usersMsg');
+const profileMenu     = document.querySelector('[data-profile-menu]');
+const profileMenuBtn  = document.getElementById('adminProfileMenuBtn');
+const profileMenuPopover = document.getElementById('adminProfileMenuPopover');
+const profileMenuAvatar = document.getElementById('adminProfileMenuAvatar');
+const profileMenuName = document.getElementById('adminProfileMenuName');
+const profileMenuEmail = document.getElementById('adminProfileMenuEmail');
 const siteImportZone  = document.getElementById('siteImportZone');
 const siteImportInput = document.getElementById('siteImportInput');
 const siteImportBrowseBtn = document.getElementById('siteImportBrowseBtn');
@@ -77,6 +86,19 @@ const deleteConfirmInput      = document.getElementById('deleteConfirmInput');
 const deleteConfirmSubmitBtn  = document.getElementById('deleteConfirmSubmitBtn');
 const deleteConfirmPromptText = document.getElementById('deleteConfirmPromptText');
 
+const roleFormSection     = document.getElementById('roleFormSection');
+const roleForm            = document.getElementById('roleForm');
+const roleFormTitle       = document.getElementById('roleFormTitle');
+const roleFormHint        = document.getElementById('roleFormHint');
+const roleNameInput       = document.getElementById('roleNameInput');
+const roleDescInput       = document.getElementById('roleDescInput');
+const roleTabMatrix       = document.getElementById('roleTabMatrix');
+const roleAreaMatrix      = document.getElementById('roleAreaMatrix');
+const roleSubmitBtn       = document.getElementById('roleSubmitBtn');
+const roleCancelBtn       = document.getElementById('roleCancelBtn');
+const roleMsg             = document.getElementById('roleMsg');
+const roleList            = document.getElementById('adminRoleList');
+
 const cqvImportZone       = document.getElementById('cqvImportZone');
 const cqvImportBrowseBtn  = document.getElementById('cqvImportBrowseBtn');
 const cqvImportInput      = document.getElementById('cqvImportInput');
@@ -114,14 +136,99 @@ const state = {
   visits: [],
   visitSearch: '',
   visitDetailId: null,
-  cqvPending: null // { record, warnings, file } awaiting confirmation in cqvConfirmModal
+  cqvPending: null, // { record, warnings, file } awaiting confirmation in cqvConfirmModal
+  roles: {},        // custom roles synced from roles/ in Firebase
+  editingRoleId: null,
+  permissions: normalizePermissions(BUILTIN_ROLES.viewer.permissions),
+  isAdmin: false
 };
 
 let usersUnsubscribe = null;
 let visitsUnsubscribe = null;
+let rolesUnsubscribe = null;
+
+// ── Role helpers ──
+function canView(areaKey) {
+  return state.isAdmin || canViewArea(state.permissions, areaKey);
+}
+
+function canEdit(areaKey) {
+  return state.isAdmin || canEditArea(state.permissions, areaKey);
+}
+
+function allRolesList() {
+  var builtIns = Object.keys(BUILTIN_ROLES).map(function(id) {
+    return { id: id, def: BUILTIN_ROLES[id], builtIn: true };
+  });
+  var customs = Object.keys(state.roles).map(function(id) {
+    return { id: id, def: state.roles[id], builtIn: false };
+  }).sort(function(a, b) {
+    return String(a.def.name || a.id).localeCompare(String(b.def.name || b.id));
+  });
+  return builtIns.concat(customs);
+}
+
+function roleDisplayName(roleId) {
+  if (BUILTIN_ROLES[roleId]) return BUILTIN_ROLES[roleId].name;
+  if (state.roles[roleId] && state.roles[roleId].name) return state.roles[roleId].name;
+  // Legacy activity-log entries stored 'admin'/'viewer'; anything else
+  // unknown means the role was deleted — fall back to the raw id.
+  return roleId || 'Viewer';
+}
+
+function roleUserCount(roleId) {
+  return state.users.filter(function(u) { return u.role === roleId; }).length;
+}
+
+function slugifyRoleId(name) {
+  return String(name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function roleOptionsHtml(selected) {
+  return allRolesList().filter(function(role) {
+    // Only full admins may grant the Admin role (the database rules
+    // also block non-admins from writing it).
+    return role.id !== 'admin' || state.isAdmin || selected === 'admin';
+  }).map(function(role) {
+    return '<option value="' + escapeHtml(role.id) + '" ' + (role.id === selected ? 'selected' : '') + '>'
+      + escapeHtml(role.def.name || role.id) + '</option>';
+  }).join('');
+}
+
+function populateRoleSelects() {
+  if (roleSelect) {
+    var current = roleSelect.value || 'viewer';
+    roleSelect.innerHTML = roleOptionsHtml(current);
+    if (!roleSelect.value) roleSelect.value = 'viewer';
+  }
+}
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function profileInitials(firstName, lastName, fallback) {
+  var initials = [firstName, lastName].map(function(part) {
+    return String(part || '').trim().charAt(0);
+  }).join('').toUpperCase();
+  return initials || String(fallback || 'P').trim().charAt(0).toUpperCase() || 'P';
+}
+
+function setProfileMenuOpen(open) {
+  if (!profileMenuBtn || !profileMenuPopover) return;
+  profileMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  profileMenuPopover.hidden = !open;
+}
+
+function updateProfileMenu(user, profile) {
+  var data = profile || {};
+  var firstName = String(data.firstName || '').trim();
+  var lastName = String(data.lastName || '').trim();
+  var fullName = [firstName, lastName].filter(Boolean).join(' ') || (user && user.displayName) || 'Your profile';
+  var email = (user && user.email) || data.email || '';
+  if (profileMenuAvatar) profileMenuAvatar.textContent = profileInitials(firstName, lastName, fullName || email);
+  if (profileMenuName) profileMenuName.textContent = fullName;
+  if (profileMenuEmail) profileMenuEmail.textContent = email;
 }
 
 // ── Helpers ──
@@ -638,6 +745,10 @@ function renderOverview() {
 
 async function renderActivityLog() {
   if (!activityLogList) return;
+  if (!canView('users')) {
+    activityLogList.innerHTML = '<tr><td colspan="4" class="admin-empty">Login activity is only visible to roles with Users &amp; Roles access.</td></tr>';
+    return;
+  }
   activityLogList.innerHTML = '<tr><td colspan="4" class="admin-empty">Loading&hellip;</td></tr>';
   try {
     var snap = await get(query(ref(db, 'activityLog'), orderByKey(), limitToLast(10)));
@@ -657,7 +768,7 @@ async function renderActivityLog() {
       var eventClass = isResume ? 'admin-status-note' : 'admin-status-note';
       return '<tr>'
         + '<td><div class="admin-table__title">' + escapeHtml(entry.email || 'Unknown') + '</div></td>'
-        + '<td><div class="' + roleClass + '">' + escapeHtml(entry.role === 'admin' ? 'Admin' : 'Viewer') + '</div></td>'
+        + '<td><div class="' + roleClass + '">' + escapeHtml(roleDisplayName(entry.role)) + '</div></td>'
         + '<td><div class="' + eventClass + '">' + escapeHtml(eventLabel) + '</div></td>'
         + '<td>' + escapeHtml(formatDate(entry.timestamp)) + '</td>'
         + '</tr>';
@@ -670,23 +781,21 @@ async function renderActivityLog() {
 
 function renderUsers() {
   if (!state.users.length) {
-    userList.innerHTML = '<tr><td colspan="4" class="admin-empty">No users found yet.</td></tr>';
+    userList.innerHTML = '<tr><td colspan="5" class="admin-empty">No users found yet.</td></tr>';
     return;
   }
+  var canManageUsers = canEdit('users');
   userList.innerHTML = state.users.map(function(user) {
     var isCurrent    = currentUserId() === user.uid;
-    var isEditing    = state.editingUserUid === user.uid;
+    var isEditing    = canManageUsers && state.editingUserUid === user.uid;
     var roleClass    = user.role === 'admin' ? 'admin-pill admin-pill--admin' : 'admin-pill';
-    var selAdmin     = user.role === 'admin'  ? 'selected' : '';
-    var selViewer    = user.role === 'viewer' ? 'selected' : '';
     var dis          = isCurrent ? 'disabled' : '';
 
     var roleHtml, statusHtml, actionsHtml;
 
     if (isEditing) {
       roleHtml = '<select data-user-role="' + escapeHtml(user.uid) + '" ' + dis + '>'
-          + '<option value="viewer" ' + selViewer + '>Viewer</option>'
-          + '<option value="admin"  ' + selAdmin  + '>Admin</option>'
+          + roleOptionsHtml(user.role)
         + '</select>';
       statusHtml = '<div class="admin-status-note" style="color:var(--accent);">Editing access settings</div>';
       actionsHtml = '<div class="admin-table__actions">'
@@ -696,22 +805,262 @@ function renderUsers() {
         + '<button type="button" class="admin-inline-danger" data-action="revoke-user" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Remove</button>'
       + '</div>';
     } else {
-      roleHtml = '<div class="' + roleClass + '">' + escapeHtml(user.role === 'admin' ? 'Admin' : 'Viewer') + '</div>';
+      roleHtml = '<div class="' + roleClass + '">' + escapeHtml(roleDisplayName(user.role)) + '</div>';
       var status       = isCurrent ? 'Current session' : 'Active access';
       var statusNote   = isCurrent ? 'You cannot edit or remove the logged-in admin.' : 'Managed through Firebase dashboard access rules.';
       statusHtml = '<div class="admin-status-note">' + escapeHtml(status) + '</div><div class="admin-status-note">' + escapeHtml(statusNote) + '</div>';
-      actionsHtml = '<div class="admin-table__actions">'
-        + '<button type="button" class="admin-inline-btn" data-action="edit-user" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Edit</button>'
-      + '</div>';
+      actionsHtml = canManageUsers
+        ? '<div class="admin-table__actions">'
+          + '<button type="button" class="admin-inline-btn" data-action="edit-user" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Edit</button>'
+        + '</div>'
+        : '<div class="admin-status-note">View only</div>';
     }
 
     return '<tr>'
+      + '<td><div class="admin-table__title">' + escapeHtml([user.firstName, user.lastName].filter(Boolean).join(' ') || 'Name not set') + '</div></td>'
       + '<td><div class="admin-table__title">' + escapeHtml(user.email || 'Unknown') + '</div></td>'
       + '<td>' + roleHtml + '</td>'
       + '<td>' + statusHtml + '</td>'
       + '<td>' + actionsHtml + '</td>'
       + '</tr>';
   }).join('');
+}
+
+// ── Role creator ──
+function buildRoleMatrix() {
+  if (roleTabMatrix) {
+    roleTabMatrix.innerHTML = DASHBOARD_TABS.map(function(tab) {
+      return '<label class="admin-role-tab">'
+        + '<input type="checkbox" data-role-tab="' + escapeHtml(tab.key) + '" checked>'
+        + '<span>' + escapeHtml(tab.label) + '</span>'
+        + '</label>';
+    }).join('')
+    + '<div class="admin-role-actions">'
+    + '<div class="admin-role-actions__title">Dashboard actions</div>'
+    + DASHBOARD_ACTIONS.map(function(action) {
+        return '<label class="admin-role-action">'
+          + '<input type="checkbox" data-role-action="' + escapeHtml(action.key) + '">'
+          + '<span><strong>' + escapeHtml(action.label) + '</strong> &mdash; ' + escapeHtml(action.description) + '</span>'
+          + '</label>';
+      }).join('')
+    + '</div>';
+  }
+  if (roleAreaMatrix) {
+    roleAreaMatrix.innerHTML = ADMIN_AREAS.map(function(area) {
+      var levels = ['none', 'view', 'edit'].map(function(level) {
+        return '<label class="admin-role-level">'
+          + '<input type="radio" name="roleArea-' + escapeHtml(area.key) + '" value="' + level + '" ' + (level === 'none' ? 'checked' : '') + '>'
+          + '<span>' + level.charAt(0).toUpperCase() + level.slice(1) + '</span>'
+          + '</label>';
+      }).join('');
+      return '<div class="admin-role-area">'
+        + '<div class="admin-role-area__info">'
+        + '  <strong>' + escapeHtml(area.label) + '</strong>'
+        + '  <span>' + escapeHtml(area.description) + '</span>'
+        + '</div>'
+        + '<div class="admin-role-area__levels">' + levels + '</div>'
+        + '</div>';
+    }).join('');
+  }
+}
+
+function setRoleMatrixValues(permissions) {
+  var perms = normalizePermissions(permissions);
+  DASHBOARD_TABS.forEach(function(tab) {
+    var box = roleTabMatrix.querySelector('[data-role-tab="' + tab.key + '"]');
+    if (box) box.checked = !!perms.tabs[tab.key];
+  });
+  DASHBOARD_ACTIONS.forEach(function(action) {
+    var box = roleTabMatrix.querySelector('[data-role-action="' + action.key + '"]');
+    if (box) box.checked = !!perms.actions[action.key];
+  });
+  ADMIN_AREAS.forEach(function(area) {
+    var radio = roleAreaMatrix.querySelector('[name="roleArea-' + area.key + '"][value="' + perms.admin[area.key] + '"]');
+    if (radio) radio.checked = true;
+  });
+}
+
+function collectRoleMatrixValues() {
+  var tabs = {};
+  DASHBOARD_TABS.forEach(function(tab) {
+    var box = roleTabMatrix.querySelector('[data-role-tab="' + tab.key + '"]');
+    tabs[tab.key] = !!(box && box.checked);
+  });
+  var actions = {};
+  DASHBOARD_ACTIONS.forEach(function(action) {
+    var box = roleTabMatrix.querySelector('[data-role-action="' + action.key + '"]');
+    actions[action.key] = !!(box && box.checked);
+  });
+  var admin = {};
+  ADMIN_AREAS.forEach(function(area) {
+    var checked = roleAreaMatrix.querySelector('[name="roleArea-' + area.key + '"]:checked');
+    admin[area.key] = checked ? checked.value : 'none';
+  });
+  return { tabs: tabs, actions: actions, admin: admin };
+}
+
+function resetRoleForm() {
+  state.editingRoleId = null;
+  if (roleForm) roleForm.reset();
+  setRoleMatrixValues(BUILTIN_ROLES.viewer.permissions);
+  if (roleFormTitle) roleFormTitle.textContent = 'Create Role';
+  if (roleFormHint) roleFormHint.textContent = 'Name the role, tick the dashboard tabs it can see, then set what it can do in each admin panel. Assign it to users from the Users panel.';
+  if (roleSubmitBtn) roleSubmitBtn.textContent = 'Create Role';
+  if (roleCancelBtn) roleCancelBtn.style.display = 'none';
+}
+
+function startEditRole(roleId) {
+  var role = state.roles[roleId];
+  if (!role) return;
+  state.editingRoleId = roleId;
+  roleNameInput.value = role.name || '';
+  roleDescInput.value = role.description || '';
+  setRoleMatrixValues(role.permissions);
+  if (roleFormTitle) roleFormTitle.textContent = 'Edit Role';
+  if (roleFormHint) roleFormHint.textContent = 'Changes apply to every user assigned to this role as soon as you save.';
+  if (roleSubmitBtn) roleSubmitBtn.textContent = 'Save Role';
+  if (roleCancelBtn) roleCancelBtn.style.display = '';
+  clearMessage(roleMsg);
+  if (roleFormSection) roleFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function summarizeRoleTabs(perms) {
+  var visible = DASHBOARD_TABS.filter(function(tab) { return perms.tabs[tab.key]; });
+  var tabsPart;
+  if (visible.length === DASHBOARD_TABS.length) tabsPart = 'All tabs';
+  else if (!visible.length) tabsPart = 'No tabs';
+  else tabsPart = visible.length + ' of ' + DASHBOARD_TABS.length + ' tabs';
+  return tabsPart + (perms.actions.logVisits ? ' · can log visits' : ' · read-only');
+}
+
+function summarizeRoleAdmin(perms) {
+  var parts = ADMIN_AREAS.filter(function(area) { return perms.admin[area.key] !== 'none'; })
+    .map(function(area) {
+      return escapeHtml(area.label) + ': <strong>' + (perms.admin[area.key] === 'edit' ? 'Edit' : 'View') + '</strong>';
+    });
+  return parts.length ? parts.join('<br>') : 'No admin access';
+}
+
+function renderRoles() {
+  if (!roleList) return;
+  var editable = canEdit('users');
+  roleList.innerHTML = allRolesList().map(function(role) {
+    var perms = normalizePermissions(role.def.permissions);
+    var assigned = roleUserCount(role.id);
+    var pillClass = role.id === 'admin' ? 'admin-pill admin-pill--admin' : 'admin-pill';
+    var actionsHtml;
+    if (role.builtIn) {
+      actionsHtml = '<div class="admin-status-note">Built-in role &mdash; locked</div>';
+    } else if (!editable) {
+      actionsHtml = '<div class="admin-status-note">View only</div>';
+    } else {
+      actionsHtml = '<div class="admin-table__actions">'
+        + '<button type="button" class="admin-inline-btn" data-action="edit-role" data-role="' + escapeHtml(role.id) + '">Edit</button>'
+        + '<button type="button" class="admin-inline-danger" data-action="delete-role" data-role="' + escapeHtml(role.id) + '"'
+        + (assigned ? ' title="Deleting this role will default ' + assigned + ' user' + (assigned === 1 ? '' : 's') + ' back to Viewer"' : '')
+        + '>Delete</button>'
+        + '</div>';
+    }
+    return '<tr>'
+      + '<td><div class="admin-table__title"><span class="' + pillClass + '">' + escapeHtml(role.def.name || role.id) + '</span></div>'
+      + (role.def.description ? '<div class="admin-status-note">' + escapeHtml(role.def.description) + '</div>' : '')
+      + '</td>'
+      + '<td><div class="admin-status-note">' + escapeHtml(summarizeRoleTabs(perms)) + '</div></td>'
+      + '<td><div class="admin-status-note">' + summarizeRoleAdmin(perms) + '</div></td>'
+      + '<td>' + formatCount(assigned, 'user', 'users') + '</td>'
+      + '<td>' + actionsHtml + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+async function saveRoleFromForm() {
+  var name = roleNameInput.value.trim();
+  if (!name) {
+    setMessage(roleMsg, 'error', 'Give the role a name.');
+    return;
+  }
+
+  var permissions = collectRoleMatrixValues();
+  var hasTab = DASHBOARD_TABS.some(function(tab) { return permissions.tabs[tab.key]; });
+  var hasArea = ADMIN_AREAS.some(function(area) { return permissions.admin[area.key] !== 'none'; });
+  if (!hasTab && !hasArea) {
+    setMessage(roleMsg, 'error', 'This role cannot see or do anything yet — tick at least one dashboard tab or admin permission.');
+    return;
+  }
+
+  var editingId = state.editingRoleId;
+  var roleId = editingId || slugifyRoleId(name);
+
+  if (!editingId) {
+    if (!roleId || BUILTIN_ROLES[roleId]) {
+      setMessage(roleMsg, 'error', '"' + name + '" clashes with a built-in role. Pick a different name.');
+      return;
+    }
+    if (state.roles[roleId]) {
+      setMessage(roleMsg, 'error', 'A role called "' + (state.roles[roleId].name || roleId) + '" already exists. Edit it from the table below instead.');
+      return;
+    }
+  } else {
+    // Renaming is fine, but block a rename onto another existing role's name.
+    var clash = allRolesList().find(function(role) {
+      return role.id !== editingId && String(role.def.name || '').trim().toLowerCase() === name.toLowerCase();
+    });
+    if (clash) {
+      setMessage(roleMsg, 'error', 'Another role is already called "' + name + '".');
+      return;
+    }
+  }
+
+  roleSubmitBtn.disabled = true;
+  try {
+    var existing = editingId ? state.roles[editingId] : null;
+    await set(ref(db, 'roles/' + roleId), {
+      name: name,
+      description: roleDescInput.value.trim(),
+      permissions: permissions,
+      createdAt: existing && existing.createdAt ? existing.createdAt : nowIso(),
+      updatedAt: nowIso(),
+      updatedBy: currentUserEmail()
+    });
+    setMessage(roleMsg, 'success', (editingId ? 'Updated' : 'Created') + ' the "' + name + '" role.'
+      + (editingId ? ' Users with this role get the new permissions on their next page load.' : ' Assign it from the Users panel.'));
+    resetRoleForm();
+  } catch (err) {
+    console.error('Failed to save role:', err);
+    setMessage(roleMsg, 'error', 'Could not save this role: ' + err.message);
+  } finally {
+    roleSubmitBtn.disabled = false;
+  }
+}
+
+async function deleteRole(roleId) {
+  var role = state.roles[roleId];
+  if (!role) return;
+  var assigned = roleUserCount(roleId);
+  var confirmMsg = 'Delete the "' + (role.name || roleId) + '" role? This cannot be undone.';
+  if (assigned) {
+    confirmMsg = 'Delete the "' + (role.name || roleId) + '" role? '
+      + formatCount(assigned, 'user', 'users') + ' currently assigned to this role will default back to Viewer. This cannot be undone.';
+  }
+  if (!confirm(confirmMsg)) return;
+  try {
+    await remove(ref(db, 'roles/' + roleId));
+    if (assigned) {
+      var userUpdates = state.users.filter(function(u) { return u.role === roleId; }).map(function(u) {
+        return update(ref(db, 'users/' + u.uid), { role: 'viewer' });
+      });
+      await Promise.all(userUpdates);
+    }
+    if (state.editingRoleId === roleId) resetRoleForm();
+    if (assigned) {
+      setMessage(roleMsg, 'success', 'Deleted the "' + (role.name || roleId) + '" role and defaulted ' + assigned + ' ' + (assigned === 1 ? 'user' : 'users') + ' to Viewer.');
+    } else {
+      setMessage(roleMsg, 'success', 'Deleted the "' + (role.name || roleId) + '" role.');
+    }
+  } catch (err) {
+    console.error('Failed to delete role:', err);
+    setMessage(roleMsg, 'error', 'Could not delete this role: ' + err.message);
+  }
 }
 
 function renderDatalists() {
@@ -748,12 +1097,17 @@ function renderSites() {
     siteList.innerHTML = '<tr><td colspan="4" class="admin-empty">No sites match the current search.</td></tr>';
     return;
   }
+  var sitesEditable = canEdit('sites');
+  var siteInputDis = sitesEditable ? '' : ' disabled';
   siteList.innerHTML = rows.map(function(row) {
     return '<tr>'
       + '<td><div class="admin-table__title">' + escapeHtml(row.name) + '</div></td>'
-      + '<td><input type="text" value="' + escapeHtml(row.entry.r || '') + '" list="adminRegionList"  data-site="' + escapeHtml(row.name) + '" data-field="r" placeholder="Region"></td>'
-      + '<td><input type="text" value="' + escapeHtml(row.entry.o || '') + '" list="adminManagerList" data-site="' + escapeHtml(row.name) + '" data-field="o" placeholder="Ops area"></td>'
-      + '<td><div class="admin-table__actions"><button type="button" class="admin-inline-danger" data-action="remove-site" data-site="' + escapeHtml(row.name) + '">Remove</button></div></td>'
+      + '<td><input type="text" value="' + escapeHtml(row.entry.r || '') + '" list="adminRegionList"  data-site="' + escapeHtml(row.name) + '" data-field="r" placeholder="Region"' + siteInputDis + '></td>'
+      + '<td><input type="text" value="' + escapeHtml(row.entry.o || '') + '" list="adminManagerList" data-site="' + escapeHtml(row.name) + '" data-field="o" placeholder="Ops area"' + siteInputDis + '></td>'
+      + '<td>' + (sitesEditable
+          ? '<div class="admin-table__actions"><button type="button" class="admin-inline-danger" data-action="remove-site" data-site="' + escapeHtml(row.name) + '">Remove</button></div>'
+          : '<div class="admin-status-note">View only</div>')
+      + '</td>'
       + '</tr>';
   }).join('');
 }
@@ -841,9 +1195,11 @@ function renderVisits() {
       +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>'
       +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>'
       + '</button>'
-      + '<button type="button" class="admin-icon-btn admin-icon-btn--danger" data-action="remove-visit" data-id="' + escapeHtml(v.id) + '" title="Delete" aria-label="Delete">'
-      +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>'
-      + '</button>'
+      + (canEdit('visits')
+          ? '<button type="button" class="admin-icon-btn admin-icon-btn--danger" data-action="remove-visit" data-id="' + escapeHtml(v.id) + '" title="Delete" aria-label="Delete">'
+          +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>'
+          + '</button>'
+          : '')
       + '</div></td>'
       + '</tr>';
   }).join('');
@@ -1119,7 +1475,8 @@ function siteVisitKindOptionsHtml(value) {
 }
 
 function fieldInputHtml(sectionKey, field, value) {
-  var dataAttrs = 'data-section="' + escapeHtml(sectionKey || '') + '" data-field="' + escapeHtml(field.key) + '" data-type="' + escapeHtml(field.type) + '"';
+  var dataAttrs = 'data-section="' + escapeHtml(sectionKey || '') + '" data-field="' + escapeHtml(field.key) + '" data-type="' + escapeHtml(field.type) + '"'
+    + (canEdit('visits') ? '' : ' disabled');
   var wide = (field.type === 'textarea' || field.type === 'photos') ? ' admin-form-field--wide' : '';
   var input;
 
@@ -1317,10 +1674,12 @@ function buildCqvDetailHtml(visit) {
     + (actionPlanIsDerived ? '<p class="visit-report-note" style="margin-bottom:10px;">This follow-up report didn\'t include a written action plan &mdash; showing the questions that lost points instead.</p>' : '')
     + actionItemsHtml + '</div>'
     + '<div class="visit-detail-section"><h4>Original Report</h4>' + pdfLinkHtml + '</div>'
-    + '<div class="visit-detail-actions">'
-    + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
-    + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Bakery / Date</button>'
-    + '</div>';
+    + (canEdit('visits')
+        ? '<div class="visit-detail-actions">'
+        + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
+        + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Bakery / Date</button>'
+        + '</div>'
+        : '');
 }
 
 function buildVisitDetailHtml(visit) {
@@ -1364,7 +1723,7 @@ function buildVisitDetailHtml(visit) {
       { key: 'date', label: 'Visit date', type: 'date' },
       { key: 'time', label: 'Visit time', type: 'time' },
       { key: 'coffeePartner', label: 'Coffee Partner', type: 'text' },
-      { key: 'mod', label: 'MOD', type: 'text' },
+      { key: 'mod', label: 'Barista/MOD', type: 'text' },
       { key: 'comments', label: 'Comments', type: 'textarea' }
     ];
 
@@ -1377,10 +1736,12 @@ function buildVisitDetailHtml(visit) {
       + '  <h4>Details</h4>'
       + '  <div class="visit-detail-grid">' + adhocHtml + '</div>'
       + '</div>'
-      + '<div class="visit-detail-actions">'
-      + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
-      + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Changes</button>'
-      + '</div>';
+      + (canEdit('visits')
+          ? '<div class="visit-detail-actions">'
+          + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
+          + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Changes</button>'
+          + '</div>'
+          : '');
   } else {
     var generalHtml = VISIT_GENERAL_FIELDS.map(function(field) {
       return fieldInputHtml(null, field, visit[field.key]);
@@ -1403,10 +1764,12 @@ function buildVisitDetailHtml(visit) {
       + '  <div class="visit-detail-grid">' + generalHtml + '</div>'
       + '</div>'
       + sectionsHtml
-      + '<div class="visit-detail-actions">'
-      + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
-      + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Changes</button>'
-      + '</div>';
+      + (canEdit('visits')
+          ? '<div class="visit-detail-actions">'
+          + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
+          + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Changes</button>'
+          + '</div>'
+          : '');
   }
 }
 
@@ -1562,6 +1925,8 @@ function renderPortal() {
   renderOverview();
   renderActivityLog();
   renderUsers();
+  renderRoles();
+  populateRoleSelects();
   renderSites();
   renderVisits();
   renderDataControls();
@@ -1638,11 +2003,14 @@ async function saveUserRole(uid) {
   if (!user || uid === currentUserId()) return;
   var select = userList.querySelector('[data-user-role="' + uid + '"]');
   var nextRole = select ? select.value : user.role;
-  await set(ref(db, 'users/' + uid), { email: user.email, role: nextRole });
-  if (nextRole === 'admin') {
-    await set(ref(db, 'admins/' + uid), true);
-  } else {
-    await remove(ref(db, 'admins/' + uid));
+  await update(ref(db, 'users/' + uid), { role: nextRole });
+  // Only full admins may write the admins/ mirror (rules enforce this too).
+  if (state.isAdmin) {
+    if (nextRole === 'admin') {
+      await set(ref(db, 'admins/' + uid), true);
+    } else {
+      await remove(ref(db, 'admins/' + uid));
+    }
   }
   setMessage(createMsg, 'success', 'Updated access level for ' + (user.email || 'user') + '.');
 }
@@ -1652,7 +2020,9 @@ async function revokeUser(uid) {
   if (!user || uid === currentUserId()) return;
   if (!confirm('Remove dashboard access for ' + (user.email || 'this user') + '?')) return;
   await remove(ref(db, 'users/' + uid));
-  await remove(ref(db, 'admins/' + uid));
+  if (state.isAdmin) {
+    await remove(ref(db, 'admins/' + uid));
+  }
   setMessage(createMsg, 'success', 'Removed access for ' + (user.email || 'user') + '.');
 }
 
@@ -1677,21 +2047,44 @@ function removeSite(name) {
 }
 
 function ensurePortalSync() {
-  if (usersUnsubscribe) return;
-  usersUnsubscribe = onValue(ref(db, 'users'), function(snapshot) {
-    state.users = [];
-    if (snapshot.exists()) {
-      var users = snapshot.val();
-      state.users = Object.keys(users).map(function(uid) {
-        return { uid: uid, email: users[uid].email || 'Unknown', role: users[uid].role === 'admin' ? 'admin' : 'viewer' };
-      }).sort(function(a, b) { return a.email.localeCompare(b.email); });
-    }
-    renderSummary();
-    renderOverview();
+  if (usersUnsubscribe || rolesUnsubscribe) return;
+  if (canView('users')) {
+    usersUnsubscribe = onValue(ref(db, 'users'), function(snapshot) {
+      state.users = [];
+      if (snapshot.exists()) {
+        var users = snapshot.val();
+        state.users = Object.keys(users).map(function(uid) {
+          return {
+            uid: uid,
+            firstName: users[uid].firstName || '',
+            lastName: users[uid].lastName || '',
+            email: users[uid].email || 'Unknown',
+            role: users[uid].role || 'viewer'
+          };
+        }).sort(function(a, b) {
+          var aLabel = [a.firstName, a.lastName].filter(Boolean).join(' ') || a.email;
+          var bLabel = [b.firstName, b.lastName].filter(Boolean).join(' ') || b.email;
+          return aLabel.localeCompare(bLabel);
+        });
+      }
+      renderSummary();
+      renderOverview();
+      renderUsers();
+      renderRoles();
+    }, function(err) {
+      console.error('Failed to sync users:', err);
+      setMessage(createMsg, 'error', 'Could not load active users from Firebase.');
+    });
+  }
+
+  rolesUnsubscribe = onValue(ref(db, 'roles'), function(snapshot) {
+    state.roles = snapshot.exists() ? (snapshot.val() || {}) : {};
+    renderRoles();
+    populateRoleSelects();
     renderUsers();
   }, function(err) {
-    console.error('Failed to sync users:', err);
-    setMessage(createMsg, 'error', 'Could not load active users from Firebase.');
+    console.error('Failed to sync roles:', err);
+    setMessage(roleMsg, 'error', 'Could not load roles from Firebase.');
   });
 
   get(ref(db, 'portalData/siteMeta')).then(function(snapshot) {
@@ -1720,6 +2113,53 @@ function ensurePortalSync() {
 }
 
 // ── Auth guard ──
+// Panels are gated per-area by the signed-in user's role: full admins see
+// everything; custom roles see only the panels their permissions allow
+// (view = read-only, edit = full controls). Roles with no admin access at
+// all are bounced back to the dashboard. Client-side gating is backed up
+// by the database rules (see database.rules.reference.json).
+var PANEL_AREAS = { users: 'users', roles: 'users', sites: 'sites', data: 'dataset', visits: 'visits' };
+
+function applyAdminAccessUI() {
+  Object.keys(PANEL_AREAS).forEach(function(panelName) {
+    var area = PANEL_AREAS[panelName];
+    var hidden = !canView(area);
+    var navBtn = nav.querySelector('[data-admin-panel="' + panelName + '"]');
+    if (navBtn) navBtn.style.display = hidden ? 'none' : '';
+    var panel = panels.find(function(p) { return p.dataset.adminPanelContent === panelName; });
+    if (panel) panel.dataset.roleHidden = hidden ? 'true' : 'false';
+    Array.from(document.querySelectorAll('[data-admin-panel-target="' + panelName + '"]')).forEach(function(card) {
+      card.style.display = hidden ? 'none' : '';
+    });
+  });
+
+  // Hide edit-only controls in panels where the role is view-only.
+  var editOnly = {
+    users: [createUserForm && createUserForm.closest('.admin-section')],
+    sites: [
+      document.querySelector('.admin-site-import'),
+      siteForm,
+      saveSitesBtn,
+      resetSitesBtn
+    ],
+    dataset: [
+      document.querySelector('[data-admin-panel-content="data"] .admin-dataset-upload'),
+      clearDatasetBtn,
+      restoreMetaBtn
+    ],
+    visits: [document.querySelector('[data-admin-panel-content="visits"] .admin-dataset-upload')]
+  };
+  if (roleForm) {
+    editOnly.users.push(roleFormSection);
+  }
+  Object.keys(editOnly).forEach(function(area) {
+    var hide = !canEdit(area);
+    editOnly[area].forEach(function(el) {
+      if (el) el.style.display = hide ? 'none' : '';
+    });
+  });
+}
+
 onAuthStateChanged(primaryAuth, async function(user) {
   if (!user) {
     window.location.replace('index.html');
@@ -1732,9 +2172,23 @@ onAuthStateChanged(primaryAuth, async function(user) {
 
     var isAdmin = false;
     if (adminSnap.exists() && adminSnap.val() === true) isAdmin = true;
-    if (userSnap.exists() && userSnap.val() && userSnap.val().role === 'admin') isAdmin = true;
 
-    if (!isAdmin) {
+    var roleId = 'viewer';
+    if (userSnap.exists() && userSnap.val()) roleId = userSnap.val().role || 'viewer';
+    if (roleId === 'admin') isAdmin = true;
+    if (isAdmin) roleId = 'admin';
+
+    var customRoleDef = null;
+    if (!BUILTIN_ROLES[roleId]) {
+      var roleSnap = await get(ref(db, 'roles/' + roleId));
+      customRoleDef = roleSnap.exists() ? roleSnap.val() : null;
+    }
+
+    state.isAdmin = isAdmin;
+    state.permissions = resolveRolePermissions(roleId, customRoleDef);
+    updateProfileMenu(user, userSnap.exists() ? userSnap.val() : null);
+
+    if (!isAdmin && !hasAdminPanelAccess(state.permissions)) {
       window.location.replace('index.html');
       return;
     }
@@ -1749,6 +2203,9 @@ onAuthStateChanged(primaryAuth, async function(user) {
 
   setDirty(false);
   syncSidebarForViewport();
+  buildRoleMatrix();
+  resetRoleForm();
+  applyAdminAccessUI();
   ensurePortalSync();
   switchPanel('overview');
   renderPortal();
@@ -1756,9 +2213,30 @@ onAuthStateChanged(primaryAuth, async function(user) {
 });
 
 // ── Event listeners ──
+if (profileMenuBtn && profileMenuPopover) {
+  profileMenuBtn.addEventListener('click', function(event) {
+    event.stopPropagation();
+    setProfileMenuOpen(profileMenuPopover.hidden);
+  });
+  profileMenuPopover.addEventListener('click', function(event) {
+    event.stopPropagation();
+  });
+  document.addEventListener('click', function(event) {
+    if (profileMenu && !profileMenu.contains(event.target)) setProfileMenuOpen(false);
+  });
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && !profileMenuPopover.hidden) {
+      setProfileMenuOpen(false);
+      profileMenuBtn.focus();
+    }
+  });
+}
+
 signOutBtn.addEventListener('click', async function() {
+  setProfileMenuOpen(false);
   if (usersUnsubscribe) { usersUnsubscribe(); usersUnsubscribe = null; }
   if (visitsUnsubscribe) { visitsUnsubscribe(); visitsUnsubscribe = null; }
+  if (rolesUnsubscribe) { rolesUnsubscribe(); rolesUnsubscribe = null; }
   await signOut(primaryAuth);
   window.location.href = 'index.html';
 });
@@ -1851,13 +2329,26 @@ createUserForm.addEventListener('submit', async function(e) {
   var btn = createUserForm.querySelector('button');
   btn.disabled = true;
   try {
+    var firstName = newFirstNameInput.value.trim();
+    var lastName = newLastNameInput.value.trim();
     var email = newEmailInput.value.trim();
     var pass  = newPassInput.value.trim();
     var role  = roleSelect.value;
+    if (!firstName || !lastName) throw new Error('Enter the user\'s first and last name.');
     var cred  = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
     var uid   = cred.user.uid;
-    await set(ref(db, 'users/' + uid), { email: email, role: role });
-    if (role === 'admin') await set(ref(db, 'admins/' + uid), true);
+    await set(ref(db, 'users/' + uid), {
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      role: role
+    });
+    try {
+      await updateProfile(cred.user, { displayName: firstName + ' ' + lastName });
+    } catch (profileErr) {
+      console.warn('Could not mirror the user name to Firebase Auth:', profileErr);
+    }
+    if (role === 'admin' && state.isAdmin) await set(ref(db, 'admins/' + uid), true);
 
     var emailSent = false;
     try {
@@ -1868,6 +2359,8 @@ createUserForm.addEventListener('submit', async function(e) {
     }
 
     await signOut(secondaryAuth);
+    newFirstNameInput.value = '';
+    newLastNameInput.value = '';
     newEmailInput.value = '';
     newPassInput.value  = '';
     roleSelect.value    = 'viewer';
@@ -1941,6 +2434,41 @@ userList.addEventListener('click', async function(e) {
     if (btn) btn.disabled = false;
   }
 });
+
+if (roleForm) {
+  roleForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    clearMessage(roleMsg);
+    saveRoleFromForm();
+  });
+}
+
+if (roleCancelBtn) {
+  roleCancelBtn.addEventListener('click', function() {
+    resetRoleForm();
+    clearMessage(roleMsg);
+  });
+}
+
+if (roleList) {
+  roleList.addEventListener('click', async function(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var roleId = btn.dataset.role;
+    if (btn.dataset.action === 'edit-role') {
+      startEditRole(roleId);
+      return;
+    }
+    if (btn.dataset.action === 'delete-role') {
+      btn.disabled = true;
+      try {
+        await deleteRole(roleId);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  });
+}
 
 siteSearchInput.addEventListener('input', function(e) {
   state.siteSearch = e.target.value;

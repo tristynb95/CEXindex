@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -21,7 +21,7 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=2.0.5">
+  <link rel="stylesheet" href="css/styles.css?v=2.0.9">
 </head>
 
 <body>
@@ -53,7 +53,37 @@
             </div>
             <div class="admin-workspace__actions">
               <a href="index.html" class="admin-secondary-btn">&#8592; Dashboard</a>
-              <button type="button" id="adminPageSignOut" class="admin-secondary-btn">Sign Out</button>
+              <div class="profile-menu profile-menu--light" data-profile-menu>
+                <button type="button" id="adminProfileMenuBtn" class="admin-secondary-btn profile-menu__trigger"
+                  aria-haspopup="menu" aria-expanded="false" aria-controls="adminProfileMenuPopover">
+                  <span id="adminProfileMenuAvatar" class="profile-menu__avatar" aria-hidden="true">P</span>
+                  <span>Profile</span>
+                  <svg class="profile-menu__chevron" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <path d="m6 8 4 4 4-4" />
+                  </svg>
+                </button>
+                <div id="adminProfileMenuPopover" class="profile-menu__popover" role="menu" hidden>
+                  <div class="profile-menu__identity">
+                    <span id="adminProfileMenuName">Your profile</span>
+                    <small id="adminProfileMenuEmail"></small>
+                  </div>
+                  <a class="profile-menu__item" href="profile.html" role="menuitem">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M4.5 21a7.5 7.5 0 0 1 15 0" />
+                    </svg>
+                    Profile
+                  </a>
+                  <button type="button" id="adminPageSignOut" class="profile-menu__item profile-menu__item--danger" role="menuitem">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    Sign out
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -130,6 +160,19 @@
                     <span class="admin-pg-nav__eyebrow">Access</span>
                     <strong>Users</strong>
                     <span class="admin-pg-nav__meta">Create accounts, change roles, or remove access.</span>
+                  </span>
+                </button>
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="roles" aria-label="Roles">
+                  <span class="admin-pg-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M12 3.5 5 6.5v4.6c0 4.3 3 7.6 7 9.4 4-1.8 7-5.1 7-9.4V6.5L12 3.5Z"></path>
+                      <path d="M9.2 11.8l2 2 3.6-3.9"></path>
+                    </svg>
+                  </span>
+                  <span class="admin-pg-nav__content">
+                    <span class="admin-pg-nav__eyebrow">Access</span>
+                    <strong>Roles</strong>
+                    <span class="admin-pg-nav__meta">Create roles and decide what each one can see or edit.</span>
                   </span>
                 </button>
                 <button type="button" class="admin-pg-nav__btn" data-admin-panel="sites" aria-label="Site data">
@@ -216,6 +259,11 @@
                     <strong>Manage who can view or administer the dashboard</strong>
                     <span>Invite users, change roles, or revoke access.</span>
                   </button>
+                  <button type="button" class="admin-action-card" data-admin-panel-target="roles">
+                    <span class="admin-action-card__label">Roles</span>
+                    <strong>Create roles and set what each can see and edit</strong>
+                    <span>Build custom access levels, then assign them to users.</span>
+                  </button>
                   <button type="button" class="admin-action-card" data-admin-panel-target="sites">
                     <span class="admin-action-card__label">Site Ownership</span>
                     <strong>Update bakery region and ops area assignments</strong>
@@ -270,9 +318,17 @@
                   </div>
                 </div>
                 <form id="createUserForm" class="admin-form admin-form--inline">
+                  <label class="admin-form-field" for="newFirstNameInput">
+                    <span>First name</span>
+                    <input type="text" id="newFirstNameInput" placeholder="First name" autocomplete="given-name" maxlength="50" required>
+                  </label>
+                  <label class="admin-form-field" for="newLastNameInput">
+                    <span>Last name</span>
+                    <input type="text" id="newLastNameInput" placeholder="Last name" autocomplete="family-name" maxlength="50" required>
+                  </label>
                   <label class="admin-form-field" for="newEmailInput">
                     <span>Work email</span>
-                    <input type="email" id="newEmailInput" placeholder="Email address" required>
+                    <input type="email" id="newEmailInput" placeholder="Email address" autocomplete="email" required>
                   </label>
                   <label class="admin-form-field" for="newPassInput">
                     <span>Temporary password</span>
@@ -302,6 +358,7 @@
                   <table class="admin-table">
                     <thead>
                       <tr>
+                        <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
                         <th>Status</th>
@@ -313,6 +370,75 @@
                       </tr>
                     </thead>
                     <tbody id="adminUserList"></tbody>
+                  </table>
+                </div>
+              </div>
+                </section>
+
+                <section class="admin-portal__panel" data-admin-panel-content="roles">
+              <div class="admin-section" id="roleFormSection">
+                <div class="admin-section__header">
+                  <div>
+                    <h3 id="roleFormTitle">Create Role</h3>
+                    <p id="roleFormHint">Name the role, tick the dashboard tabs it can see, then set what it can do in each admin panel. Assign it to users from the Users panel.</p>
+                  </div>
+                </div>
+                <form id="roleForm" class="admin-form admin-role-form">
+                  <div class="admin-role-form__basics">
+                    <label class="admin-form-field" for="roleNameInput">
+                      <span>Role name</span>
+                      <input type="text" id="roleNameInput" placeholder="e.g. Ops Manager" maxlength="40" required>
+                    </label>
+                    <label class="admin-form-field admin-form-field--grow" for="roleDescInput">
+                      <span>Description (optional)</span>
+                      <input type="text" id="roleDescInput" placeholder="What is this role for?" maxlength="120">
+                    </label>
+                  </div>
+
+                  <div class="admin-role-matrix">
+                    <div class="admin-role-matrix__group">
+                      <h4>Dashboard &mdash; what they can see</h4>
+                      <p>Unticked tabs are hidden from the dashboard for anyone with this role.</p>
+                      <div class="admin-role-tabs" id="roleTabMatrix"></div>
+                    </div>
+                    <div class="admin-role-matrix__group">
+                      <h4>Admin portal &mdash; what they can do</h4>
+                      <p><strong>None</strong> hides the panel, <strong>View</strong> is read-only, <strong>Edit</strong> allows changes. Any View or Edit access lets the role open this admin portal.</p>
+                      <div class="admin-role-areas" id="roleAreaMatrix"></div>
+                    </div>
+                  </div>
+
+                  <div class="admin-role-form__actions">
+                    <button type="button" id="roleCancelBtn" class="admin-secondary-btn" style="display:none;">Cancel Edit</button>
+                    <button type="submit" id="roleSubmitBtn" class="btn">Create Role</button>
+                  </div>
+                </form>
+                <div id="roleMsg" class="admin-message" style="display:none;"></div>
+              </div>
+
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
+                    <h3>Existing Roles</h3>
+                    <p>Admin and Viewer are built in and cannot be changed. A role that is still assigned to users cannot be deleted.</p>
+                  </div>
+                </div>
+                <div class="admin-table-wrap">
+                  <table class="admin-table admin-table--roles">
+                    <thead>
+                      <tr>
+                        <th>Role</th>
+                        <th>Dashboard</th>
+                        <th>Admin access</th>
+                        <th>Users</th>
+                        <th>
+                          <div class="table-fullscreen-inline-anchor" data-table-fullscreen-anchor="true">
+                            <span>Actions</span>
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminRoleList"></tbody>
                   </table>
                 </div>
               </div>
@@ -583,3 +709,5 @@
 </body>
 
 </html>
+
+

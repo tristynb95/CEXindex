@@ -597,7 +597,7 @@ window.GAILS.renderSpeedCharts = function (data) {
   var corr = function (k) { var xm = avg(data, k), ym = avg(data, 'n'); var num = 0, xd = 0, yd = 0; data.forEach(function (b) { num += (b[k] - xm) * (b.n - ym); xd += (b[k] - xm) ** 2; yd += (b.n - ym) ** 2; }); return xd && yd ? (num * num) / (xd * yd) * 100 : 0; };
   var metrics = [
     { name: 'Within 2 min', r2: corr('s2'), t: 'speed' }, { name: 'Within 3 min', r2: corr('s3'), t: 'speed' },
-    { name: 'Over 5 min', r2: corr('o5'), t: 'speed' }, { name: 'Coffee Efficiency', r2: corr('ts'), t: 'speed' },
+    { name: 'Over 5 min', r2: corr('o5'), t: 'speed' },
     { name: 'Friendliness', r2: corr('fr'), t: 'cx' }, { name: 'Drink Quality', r2: corr('dr'), t: 'cx' },
     { name: 'Overall Efficiency', r2: corr('ef'), t: 'cx' }, { name: 'Overall CX', r2: corr('ov'), t: 'cx' }
   ];
