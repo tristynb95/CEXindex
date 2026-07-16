@@ -732,7 +732,7 @@ window.GAILS = window.GAILS || {};
 
     if (searchEl) {
       searchEl.placeholder = isHistoryView
-        ? 'Search bakery, partner or auditor...'
+        ? 'Search bakery or partner...'
         : 'Search bakery...';
     }
     if (typeControl) typeControl.style.display = isHistoryView ? '' : 'none';
@@ -1008,8 +1008,8 @@ window.GAILS = window.GAILS || {};
     return periodLabels[val] || (val + ' Months');
   }
 
-  function getVisitLogDefaultPeriod(view) {
-    return view === 'unvisited' ? '1' : 'currentMonth';
+  function getVisitLogDefaultPeriod() {
+    return 'thisQuarter';
   }
 
   window.GAILS.getVisitLogHeaderSummary = function() {
@@ -1146,7 +1146,7 @@ window.GAILS = window.GAILS || {};
     var sortEl = document.getElementById('visitLogSort');
     var periodEl = document.getElementById('visitLogPeriod');
     var isHistoryView = (window.GAILS._activeVisitLogView || 'history') === 'history';
-    var defaultPeriod = isHistoryView ? 'currentMonth' : '1';
+    var defaultPeriod = getVisitLogDefaultPeriod();
     var count = 0;
 
     if (regionEl && regionEl.value) count++;
@@ -1162,9 +1162,19 @@ window.GAILS = window.GAILS || {};
   function syncVisitLogMobileFilterButton() {
     var btn = document.getElementById('visitLogMobileFilterBtn');
     var badge = document.getElementById('visitLogFilterBadge');
-    if (!btn || !badge) return;
-
     var count = getVisitLogActiveFilterCount();
+
+    // Desktop reset icon: plain funnel at rest, funnel-with-X once a
+    // filter is active (search counts too, unlike the mobile badge, since
+    // Reset clears it as well).
+    var resetBtn = document.getElementById('visitLogResetBtn');
+    if (resetBtn) {
+      var searchEl = document.getElementById('visitLogSearch');
+      var hasSearch = !!(searchEl && searchEl.value.trim());
+      resetBtn.classList.toggle('has-active-filters', hasSearch || count > 0);
+    }
+
+    if (!btn || !badge) return;
     btn.classList.toggle('has-active-filters', count > 0);
     if (count > 0) {
       badge.hidden = false;
@@ -1367,9 +1377,10 @@ window.GAILS = window.GAILS || {};
     if (!summaryEl) return;
     var visited = matchingSites - unvisitedCount;
     var coverage = matchingSites > 0 ? Math.round((visited / matchingSites) * 100) : 0;
+    var coverageText = matchingSites > 0 ? coverage + '% coverage this period' : 'No sites match the current filters';
     summaryEl.innerHTML =
       '<span class="visit-log-summary__total"><strong>' + unvisitedCount + '</strong> of ' + matchingSites + ' sites unvisited</span>' +
-      '<span class="visit-log-summary__coverage">' + coverage + '% coverage this period</span>' +
+      '<span class="visit-log-summary__coverage">' + coverageText + '</span>' +
       '<span class="visit-log-summary__actions">' +
         visitLogGroupToggleHtml(showGroupToggle) +
         '<button type="button" class="visit-log-summary__export" title="Download the unvisited list as CSV">Export CSV</button>' +
@@ -1979,7 +1990,11 @@ window.GAILS = window.GAILS || {};
         window.GAILS._visitLogCurrentGroupNames = [];
         renderUnvisitedSummary(totalUnvisited, matchingSites, false);
         window.GAILS._visitLogExport = null;
-        container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#127881;</div><p>All bakeries have been visited in this period!</p></div>';
+        // Zero matches means the filters excluded every site — only celebrate
+        // when matched sites exist and all of them were actually visited.
+        container.innerHTML = matchingSites === 0
+          ? '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#128269;</div><p>No sites match your current filters.</p></div>'
+          : '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#127881;</div><p>All bakeries have been visited in this period!</p></div>';
         return;
       }
 

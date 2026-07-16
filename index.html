@@ -341,7 +341,20 @@
                 </optgroup>
               </select></div>
             <div class="filter-control filter-control--reset">
-              <button type="button" id="desktopFilterReset" class="filter-reset-btn">Reset</button>
+              <button type="button" id="desktopFilterReset" class="filter-reset-btn" title="Reset filters"
+                aria-label="Reset filters">
+                <svg class="filter-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
+                </svg>
+                <svg class="filter-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
+                  <path d="m22 3-5 5" />
+                  <path d="m17 3 5 5" />
+                </svg>
+                <span class="filter-reset-btn__label">Reset</span>
+              </button>
             </div>
           </div>
 
@@ -1262,7 +1275,7 @@
               <div class="visit-log-filters">
                 <div class="visit-log-filter-control">
                   <label for="visitLogSearch">Search</label>
-                  <input type="text" id="visitLogSearch" placeholder="Search bakery, partner or auditor..."
+                  <input type="text" id="visitLogSearch" placeholder="Search bakery or partner..."
                     class="visit-log-input" autocomplete="off">
                 </div>
                 <button type="button" id="visitLogMobileFilterBtn" class="visit-log-mobile-filter-btn"
@@ -1299,6 +1312,40 @@
                         <option value="">All Areas</option>
                       </select>
                     </div>
+                    <div class="visit-log-filter-control visit-log-filter-control--compact">
+                      <label for="visitLogGroup">Group By</label>
+                      <select id="visitLogGroup" class="visit-log-select">
+                        <option value="ops">Ops Area</option>
+                        <option value="region">Region</option>
+                        <option value="type">Visit Type</option>
+                        <option value="none">None</option>
+                      </select>
+                    </div>
+                    <div class="visit-log-filter-control visit-log-filter-control--compact">
+                      <label for="visitLogPeriod">Period</label>
+                      <select id="visitLogPeriod" class="visit-log-select">
+                        <option value="0">All Time</option>
+                        <option value="currentMonth">This Month</option>
+                        <option value="1">Last Month</option>
+                        <option value="2">Last 2 Months</option>
+                        <option value="3">Last 3 Months</option>
+                        <option value="6">Last 6 Months</option>
+                        <option value="12">Last 12 Months</option>
+                        <option value="thisQuarter" selected>This Quarter</option>
+                        <option value="lastQuarter">Last Quarter</option>
+                        <option value="thisYear">This Year</option>
+                        <option value="lastYear">Last Year</option>
+                      </select>
+                    </div>
+                    <div class="visit-log-filter-control visit-log-filter-control--compact">
+                      <label for="visitLogSort">Sort By</label>
+                      <select id="visitLogSort" class="visit-log-select">
+                        <option value="date">Date</option>
+                        <option value="nameAsc">Alphabetical (A-Z)</option>
+                        <option value="nameDesc">Alphabetical (Z-A)</option>
+                        <option value="type">Visit Type</option>
+                      </select>
+                    </div>
                     <div class="visit-log-filter-control">
                       <label for="visitLogType">Visit Type</label>
                       <select id="visitLogType" class="visit-log-select">
@@ -1312,40 +1359,6 @@
                         <option value="cqvFollowUp">CQV Follow-Up</option>
                       </select>
                     </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact">
-                      <label for="visitLogGroup">Group By</label>
-                      <select id="visitLogGroup" class="visit-log-select">
-                        <option value="ops">Ops Area</option>
-                        <option value="region">Region</option>
-                        <option value="type">Visit Type</option>
-                        <option value="none">None</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact">
-                      <label for="visitLogSort">Sort By</label>
-                      <select id="visitLogSort" class="visit-log-select">
-                        <option value="date">Date</option>
-                        <option value="nameAsc">Alphabetical (A-Z)</option>
-                        <option value="nameDesc">Alphabetical (Z-A)</option>
-                        <option value="type">Visit Type</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact">
-                      <label for="visitLogPeriod">Period</label>
-                      <select id="visitLogPeriod" class="visit-log-select">
-                        <option value="0">All Time</option>
-                        <option value="currentMonth" selected>This Month</option>
-                        <option value="1">Last Month</option>
-                        <option value="2">Last 2 Months</option>
-                        <option value="3">Last 3 Months</option>
-                        <option value="6">Last 6 Months</option>
-                        <option value="12">Last 12 Months</option>
-                        <option value="thisQuarter">This Quarter</option>
-                        <option value="lastQuarter">Last Quarter</option>
-                        <option value="thisYear">This Year</option>
-                        <option value="lastYear">Last Year</option>
-                      </select>
-                    </div>
                     <div class="visit-log-filter-control visit-log-filter-control--compact" id="visitLogRatingControl"
                       style="display:none;">
                       <label for="visitLogRating">Rating</label>
@@ -1356,7 +1369,22 @@
                         <option value="Red">Red</option>
                       </select>
                     </div>
-                    <button type="button" id="visitLogResetBtn" class="visit-log-reset-btn">Reset</button>
+                    <button type="button" id="visitLogResetBtn" class="visit-log-reset-btn" title="Reset filters"
+                      aria-label="Reset filters">
+                      <svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true"
+                        focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
+                      </svg>
+                      <svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true"
+                        focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
+                        <path d="m22 3-5 5" />
+                        <path d="m17 3 5 5" />
+                      </svg>
+                      <span class="visit-log-reset-btn__label">Reset</span>
+                    </button>
                   </div>
                 </div>
               </div>

@@ -9437,15 +9437,69 @@ body.visit-log-filter-open .mobile-bottom-nav {
   flex: 0 1 220px;
 }
 
-/* Desktop: hard-cap the second-row controls (Group By / Sort By / Period /
-   Rating) so all four plus Reset always share one row — without the cap,
-   the Rating control appearing for CQV pushed Reset onto a new row. The
-   extra selector specificity guarantees this wins over the flex: 1 above. */
+/* Desktop: a two-row grid of four equal columns, shared by both views —
+   Search / Region / Ops Area / Group By on top; Period / Sort By / Visit
+   Type / Rating below, with the Reset icon in its own slim end column.
+   Every control is one column wide, so all boxes are the same size and
+   nothing drifts between rows as the viewport changes.
+
+   Reset occupies the end column of row 1, which is what pushes Period —
+   the fifth control in source order — down to the start of row 2. Keeping
+   the tracks equal (rather than pinning Search to a fixed width) is what
+   lets row 2 line up with row 1: a fixed-width first column would be
+   inherited by whatever sat beneath it.
+
+   minmax(0, ...) stops a wide control from inflating its track and
+   squeezing its neighbours into truncation. */
 @media (min-width: 721px) {
-  .visit-log-filters .visit-log-filter-control--compact {
-    flex: 0 1 200px;
-    min-width: 150px;
-    max-width: 220px;
+  .visit-log-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) 38px;
+    align-items: end;
+  }
+
+  .visit-log-filters .visit-log-filter-control {
+    min-width: 0;
+  }
+
+  /* Permanent square icon button in its reserved end column, bottom-
+     aligned with the top row of dropdowns (38px tall). Neutral grey/white
+     resting state so it reads as a plain utility control, not an alert. */
+  .visit-log-filters .visit-log-reset-btn {
+    grid-column: -2 / -1;
+    grid-row: 1;
+    align-self: end;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    background: rgba(34, 31, 26, 0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    color: var(--text);
+  }
+
+  .visit-log-filters .visit-log-reset-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .visit-log-filters .visit-log-reset-btn:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .visit-log-filters .visit-log-reset-btn .visit-log-reset-btn__label {
+    display: none;
+  }
+}
+
+/* Narrow desktop: a quarter-width column gets too tight for the Search
+   placeholder, so Search takes its own full row and the dropdowns flow
+   four per row beneath it. */
+@media (min-width: 721px) and (max-width: 900px) {
+  .visit-log-filters > .visit-log-filter-control {
+    grid-column: 1 / -2;
   }
 }
 
@@ -9487,6 +9541,10 @@ body.visit-log-filter-open .mobile-bottom-nav {
 }
 
 .visit-log-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   font-size: 0.8rem;
   font-weight: 700;
   background: rgba(34, 31, 26, 0.05);
@@ -9499,21 +9557,33 @@ body.visit-log-filter-open .mobile-bottom-nav {
   height: 38px;
 }
 
+.visit-log-reset-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Plain funnel by default; swaps to the funnel-with-X once a filter is
+   active (toggled via .has-active-filters in JS), signalling there's now
+   something for this button to actually clear. */
+.visit-log-reset-btn__icon--active {
+  display: none;
+}
+
+.visit-log-reset-btn.has-active-filters .visit-log-reset-btn__icon--plain {
+  display: none;
+}
+
+.visit-log-reset-btn.has-active-filters .visit-log-reset-btn__icon--active {
+  display: block;
+}
+
 .visit-log-reset-btn:hover {
   background: var(--accent-light);
   color: var(--accent);
   border-color: var(--accent);
 }
 
-/* Desktop: Reset anchors to the right edge of the bottom row (auto margin
-   absorbs the free space), so the CQV Rating control appearing/disappearing
-   fills the middle gap instead of shoving Reset around. Mobile keeps its own
-   grid placement. */
-@media (min-width: 721px) {
-  .visit-log-reset-btn {
-    margin-left: auto;
-  }
-}
 
 /* â”€â”€ Visit Log Rows (Table-like layout) â”€â”€
    Fixed height + internal scroll so the card's overall size stays put as the
@@ -10547,15 +10617,17 @@ table.nps-splits-collapsed .nps-split-col {
 }
 
 
-/* Desktop filter reset button — same design as the visit page's
-   .visit-log-reset-btn (neutral grey resting state, red on hover), keeping
-   the grid-layout sizing this bar needs. */
+/* Filter reset button — same design as the visit page's .visit-log-reset-btn
+   (neutral grey resting state, red on hover; icon swaps from a plain funnel
+   to a funnel-with-X once a filter is active), keeping the grid-layout
+   sizing this bar needs. */
 .filter-reset-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   width: 100%;
-  min-height: 38px;
+  min-height: 36px;
   padding: 9px 16px;
   border-radius: 8px;
   font-family: var(--font);
@@ -10563,15 +10635,41 @@ table.nps-splits-collapsed .nps-split-col {
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: rgba(34, 31, 26, 0.05);
+  /* Same gradient + border treatment as the dropdown triggers it sits
+     beside (.bakery-ms__trigger), so it reads as part of the same row
+     instead of a mismatched, flatter box. */
+  background: linear-gradient(180deg, rgba(34, 31, 26, 0.04) 0%, rgba(34, 31, 26, 0.01) 100%), rgba(255, 255, 255, 0.96);
   color: var(--text);
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--card-border-h);
+}
+
+.filter-reset-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Plain funnel by default; swaps to the funnel-with-X once a filter is
+   active (toggled via .has-active-filters in JS), signalling there's now
+   something for this button to actually clear. */
+.filter-reset-btn__icon--active {
+  display: none;
+}
+
+.filter-reset-btn.has-active-filters .filter-reset-btn__icon--plain {
+  display: none;
+}
+
+.filter-reset-btn.has-active-filters .filter-reset-btn__icon--active {
+  display: block;
 }
 
 .filter-reset-btn:hover {
-  background: var(--accent-light);
+  /* Same red-border-plus-lift hover as the dropdown triggers beside it
+     (.bakery-ms__trigger:hover) rather than a flat accent fill. */
+  border-color: rgba(178, 42, 36, 0.55);
+  box-shadow: inset 0 1px 0 rgba(34, 31, 26, 0.05), 0 14px 28px rgba(0, 0, 0, 0.112), 0 0 0 1px rgba(178, 42, 36, 0.12);
   color: var(--accent);
-  border-color: var(--accent);
 }
 
 .filter-control--reset {
@@ -10587,6 +10685,25 @@ table.nps-splits-collapsed .nps-split-col {
 @media (max-width: 840px) {
   .filter-control--reset {
     grid-column: 2;
+  }
+}
+
+/* Desktop: collapse to a permanent square icon button, matching the visit
+   log page's reset control — the label hides, the icon does the talking. */
+@media (min-width: 721px) {
+  .filter-reset-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+  }
+
+  .filter-reset-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .filter-reset-btn__label {
+    display: none;
   }
 }
 

@@ -1783,6 +1783,7 @@
     }
     if (filterPanelReset) filterPanelReset.disabled = n === 0;
     if (filterSideTab) { filterSideTab.classList.toggle('has-active-filters', n > 0); }
+    if (desktopFilterReset) { desktopFilterReset.classList.toggle('has-active-filters', n > 0); }
   }
 
   if (filterSideTab) {
