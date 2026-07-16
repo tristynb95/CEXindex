@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=2.0.9">
+  <link rel="stylesheet" href="css/styles.css?v=2.0.10">
 </head>
 
 <body class="profile-body">
@@ -95,8 +95,23 @@
             <label class="profile-field" for="profileEmail">
               <span>Work email</span>
               <input type="email" id="profileEmail" autocomplete="email" autocapitalize="none" spellcheck="false" required>
-              <small>Changing your email also changes the address you use to sign in.</small>
+              <small>We will send a confirmation link to a new address. The link must be used within 15 minutes.</small>
             </label>
+
+            <div id="profileEmailPending" class="profile-email-pending" hidden>
+              <div class="profile-email-pending__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M4 6h16v12H4z"></path>
+                  <path d="m4 7 8 6 8-6"></path>
+                </svg>
+              </div>
+              <div class="profile-email-pending__copy">
+                <span>Waiting for email confirmation</span>
+                <strong id="profilePendingEmail"></strong>
+                <small>The request expires in <b id="profilePendingCountdown">15:00</b>.</small>
+              </div>
+              <button type="button" id="profileCancelEmailChange" class="profile-email-pending__cancel">Cancel change</button>
+            </div>
 
             <div id="profileMessage" class="profile-message" role="status" aria-live="polite" hidden></div>
 

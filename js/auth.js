@@ -1,6 +1,6 @@
 import { auth, db } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { ref, get, set, remove, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { ref, get, set, update, remove, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess } from './permissions.js';
 
 function nowIso() {
@@ -396,6 +396,7 @@ onAuthStateChanged(auth, async (user) => {
     try {
       const adminSnap = await get(adminRef);
       const userSnap = await get(userRef);
+      let userProfile = userSnap.exists() ? userSnap.val() : null;
 
       let isAdmin = false;
       let isAllowed = false;
@@ -405,12 +406,13 @@ onAuthStateChanged(auth, async (user) => {
         isAdmin = true;
         isAllowed = true;
         if (!userSnap.exists()) {
-          await set(ref(db, `users/${user.uid}`), { email: user.email, role: 'admin' });
+          userProfile = { email: user.email, role: 'admin' };
+          await set(ref(db, `users/${user.uid}`), userProfile);
         }
       }
-      if (userSnap.exists() && userSnap.val() !== null) {
+      if (userProfile !== null) {
         isAllowed = true;
-        roleId = userSnap.val().role || 'viewer';
+        roleId = userProfile.role || 'viewer';
         if (roleId === 'admin') isAdmin = true;
       }
       if (isAdmin) roleId = 'admin';
@@ -429,7 +431,22 @@ onAuthStateChanged(auth, async (user) => {
       const permissions = resolveRolePermissions(roleId, customRoleDef);
 
       if (isAllowed) {
-        updateProfileMenu(user, userSnap.exists() ? userSnap.val() : null);
+        if (user.email && userProfile && String(userProfile.email || '').toLowerCase() !== user.email.toLowerCase()) {
+          const completedRequestId = userProfile.pendingEmailRequestId || '';
+          await update(userRef, {
+            email: user.email,
+            pendingEmailRequestId: null,
+            pendingEmailAddress: null,
+            updatedAt: nowIso()
+          });
+          if (completedRequestId) await remove(ref(db, `emailChangeRequests/${completedRequestId}`));
+          userProfile = Object.assign({}, userProfile, {
+            email: user.email,
+            pendingEmailRequestId: null,
+            pendingEmailAddress: null
+          });
+        }
+        updateProfileMenu(user, userProfile);
         const action = _freshLogin ? 'login' : 'session_resume';
         _freshLogin = false;
         if (shouldLogActivity(user.uid, action)) {

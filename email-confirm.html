@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm Email Change — GAIL's Coffee Experience Dashboard</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" href="favicon.ico">
+  <meta name="theme-color" content="#B5312A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=2.0.10">
+</head>
+
+<body class="email-action-body">
+  <div class="glass-bg"></div>
+
+  <main class="email-action-page">
+    <section class="email-action-card" aria-live="polite">
+      <div class="email-action-card__brand">
+        <img src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+      </div>
+      <div id="emailActionIcon" class="email-action-card__icon is-loading" aria-hidden="true">
+        <span class="auth-small-spinner"></span>
+      </div>
+      <p id="emailActionEyebrow" class="email-action-card__eyebrow">Checking confirmation</p>
+      <h1 id="emailActionTitle">Confirming your email…</h1>
+      <p id="emailActionMessage">Please keep this page open while we verify the link.</p>
+      <div id="emailActionAddress" class="email-action-card__address" hidden></div>
+      <a id="emailActionReturn" class="btn email-action-card__return" href="profile.html" hidden>Return to profile</a>
+    </section>
+  </main>
+
+  <script type="module" src="js/email-confirm.js"></script>
+</body>
+
+</html>
