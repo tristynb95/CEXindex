@@ -7519,6 +7519,7 @@ a,
   align-items: center;
   justify-content: center;
   gap: 8px;
+  width: 104px;
   height: 46px;
   padding: 0 16px;
   border-radius: 99px;
@@ -9816,11 +9817,12 @@ body.visit-log-filter-open .mobile-bottom-nav {
     z-index: 45;
     align-items: center;
     justify-content: center;
-    gap: 7px;
+    gap: 8px;
+    width: 104px;
     height: 46px;
     min-height: 46px;
     padding: 0 16px;
-    border-radius: 999px;
+    border-radius: 99px;
     border: 1px solid rgba(70, 14, 11, 0.4);
     background: linear-gradient(135deg, #B5312A 0%, #A32520 100%);
     color: #fff;
@@ -9828,20 +9830,36 @@ body.visit-log-filter-open .mobile-bottom-nav {
     letter-spacing: 0.05em;
     text-transform: uppercase;
     box-shadow: 0 8px 28px rgba(120, 28, 22, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     cursor: pointer;
     transition: border-color 0.28s ease, box-shadow 0.28s ease, background 0.28s ease, opacity 0.24s ease, transform 0.2s ease;
     touch-action: none;
   }
 
+  .visit-log-mobile-filter-btn:hover {
+    border-color: rgba(70, 14, 11, 0.5);
+    background: linear-gradient(135deg, #C0362E 0%, #AC2822 100%);
+    box-shadow: 0 10px 34px rgba(120, 28, 22, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .visit-log-mobile-filter-btn:active {
+    transform: scale(0.95);
+  }
+
   .visit-log-mobile-filter-btn svg {
-    width: 15px;
-    height: 15px;
+    width: 16px;
+    height: 16px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 2.2;
     flex: 0 0 auto;
   }
 
   .visit-log-mobile-filter-btn.has-active-filters {
     border-color: rgba(70, 14, 11, 0.55);
     background: linear-gradient(135deg, #8F1F1B 0%, #7C1A16 100%);
+    box-shadow: 0 8px 30px rgba(120, 28, 22, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   .visit-log-mobile-filter-btn.is-open {
@@ -9851,18 +9869,21 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 
   .visit-log-filter-badge {
-    min-width: 17px;
-    height: 17px;
+    min-width: 18px;
+    height: 18px;
     padding: 0 5px;
-    border-radius: 999px;
+    border-radius: 50%;
     background: #fff;
     color: var(--accent);
-    font-size: 0.6rem;
+    font-size: 0.62rem;
     font-weight: 800;
+    letter-spacing: normal;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     line-height: 1;
+    box-shadow: 0 2px 8px rgba(178, 42, 36, 0.55);
+    margin-left: 2px;
   }
 
   .visit-log-filter-badge[hidden] {
@@ -10010,6 +10031,10 @@ body.visit-log-filter-open .mobile-bottom-nav {
     background: rgba(178, 42, 36, 0.04);
     color: var(--accent);
     font-size: 0.88rem;
+  }
+
+  .visit-log-filter-panel__body .visit-log-reset-btn svg {
+    display: none !important;
   }
 
   .visit-log-filter-panel .filter-select__trigger,
@@ -10716,6 +10741,9 @@ table.nps-splits-collapsed .nps-split-col {
     min-height: 42px;
     font-size: 0.88rem;
     border-radius: 11px;
+  }
+  .filter-reset-btn svg {
+    display: none !important;
   }
 }
 
