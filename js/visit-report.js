@@ -8,14 +8,7 @@ window.GAILS = window.GAILS || {};
   var CHART_ID = 'visitReportScoreChart';
   var WAIT_TIME_TARGET_SECONDS = 115;
 
-  function escapeHtml(value) {
-    return String(value == null ? '' : value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
+  var escapeHtml = GAILS.escapeHtml;
 
   function lockBackgroundScroll() {
     lockedScrollY = window.scrollY || window.pageYOffset || 0;
@@ -223,34 +216,10 @@ window.GAILS = window.GAILS || {};
 
   var CQV_CHART_ID = 'cqvReportScoreChart';
 
-  // Recomputed live rather than trusting the stored criticalFail flag —
-  // records imported before js/cqv-criticals.js existed stored
-  // criticalFail: true for ANY lost allergen point, and the shared helper
-  // is what knows which questions are actually zero-tolerance.
-  function cqvHasCriticalFail(record) {
-    return window.GAILS.CQVCriticals.hasCriticalFail(record);
-  }
-
-  // Bands GAIL's uses across every CQV surface: 0-69.99% Red, 70-89.99%
-  // Yellow, 90%+ Green, EXCEPT a failed zero-tolerance question (see
-  // js/cqv-criticals.js) always forces Red regardless of the percentage.
-  // Falls back to deriving the band from overallPct for
-  // records saved before band computation existed, rather than showing a
-  // blank, and re-applies the critical-fail override live in case the
-  // stored band predates it.
-  function cqvBand(record) {
-    if (cqvHasCriticalFail(record)) return 'Red';
-    if (record.band) return record.band;
-    if (record.overallPct == null) return '';
-    return record.overallPct >= 90 ? 'Green' : record.overallPct >= 70 ? 'Yellow' : 'Red';
-  }
-
-  function cqvBandColor(band) {
-    if (band === 'Green') return '#1D9E5C';
-    if (band === 'Yellow') return '#C97F12';
-    if (band === 'Red') return '#B22A24';
-    return null;
-  }
+  // Shared with the admin CQV table — see js/cqv-shared.js.
+  var cqvHasCriticalFail = GAILS.CQVShared.hasCriticalFail;
+  var cqvBand = GAILS.CQVShared.band;
+  var cqvBandColor = GAILS.CQVShared.bandColor;
 
   function buildCqvHeaderStatsHtml(record) {
     var scoreText = record.overallPct != null ? record.overallPct + '%' : '—';
@@ -283,44 +252,9 @@ window.GAILS = window.GAILS || {};
     }).join('');
   }
 
-  function cqvPriorityColor(priority) {
-    if (/^high$/i.test(priority)) return '#B22A24';
-    if (/^medium$/i.test(priority)) return '#C97F12';
-    if (/^low$/i.test(priority)) return '#0E8074';
-    return null;
-  }
-
-  // An action item on one of GAIL's zero-tolerance questions (see
-  // js/cqv-criticals.js) gets a "Critical Point" flag — losing that point is
-  // what forces the visit Red. Other "(allergen point)" questions still get
-  // an "Allergen Point" flag as a heads-up, but they don't affect the band.
-  function cqvCriticalTag(label) {
-    if (window.GAILS.CQVCriticals.isCriticalQuestion(label) || /\bcritical point\b/i.test(label || '')) return 'Critical Point';
-    if (/\ballergen point\b/i.test(label || '')) return 'Allergen Point';
-    return null;
-  }
-
-  // Follow-up CQVs sometimes skip the written "Comments & Action Plan"
-  // block entirely (see js/cqv-parser.js's action-plan parsing) even though
-  // individual questions still lost points — falling back to those lost
-  // questions keeps the Action Plan section useful instead of showing
-  // "no action items" on a visit that clearly didn't score 100%.
-  function cqvLostPointItems(record) {
-    return (record.questions || [])
-      .filter(function(q) { return q.score != null && q.max != null && q.score < q.max; })
-      .map(function(q) {
-        var lost = q.max - q.score;
-        return {
-          sectionPath: q.section + (q.subsection ? ' >> ' + q.subsection : ''),
-          questionLabel: (q.label || ('Question ' + (q.qNum || ''))) + ' (−' + lost + ' pt' + (lost === 1 ? '' : 's') + ')',
-          findings: q.note || '',
-          actionRequired: '',
-          assignee: record.bakery || '',
-          priority: '',
-          dueDate: ''
-        };
-      });
-  }
+  var cqvPriorityColor = GAILS.CQVShared.priorityColor;
+  var cqvCriticalTag = GAILS.CQVShared.criticalTag;
+  var cqvLostPointItems = GAILS.CQVShared.lostPointItems;
 
   function buildCqvActionPlanHtml(actionPlan) {
     if (!actionPlan || !actionPlan.length) {

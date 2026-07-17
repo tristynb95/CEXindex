@@ -4,6 +4,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gsta
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, updateProfile, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { DASHBOARD_TABS, DASHBOARD_ACTIONS, ADMIN_AREAS, BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess, canViewArea, canEditArea } from './permissions.js';
+import { createProfileMenu } from './profile-menu.js';
 
 const secondaryApp = initializeApp(firebaseConfig, 'AdminPage');
 const secondaryAuth = getAuth(secondaryApp);
@@ -207,28 +208,24 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function profileInitials(firstName, lastName, fallback) {
-  var initials = [firstName, lastName].map(function(part) {
-    return String(part || '').trim().charAt(0);
-  }).join('').toUpperCase();
-  return initials || String(fallback || 'P').trim().charAt(0).toUpperCase() || 'P';
-}
+// Shared with the dashboard header — see js/profile-menu.js. The shared copy
+// also resets and closes the menu when passed a null user, which this page's
+// previous local copy did not do; admin only ever passes a real user, so that
+// branch is unreachable here.
+const profileMenuUi = createProfileMenu({
+  btn: profileMenuBtn,
+  popover: profileMenuPopover,
+  avatar: profileMenuAvatar,
+  nameEl: profileMenuName,
+  emailEl: profileMenuEmail
+});
 
 function setProfileMenuOpen(open) {
-  if (!profileMenuBtn || !profileMenuPopover) return;
-  profileMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  profileMenuPopover.hidden = !open;
+  profileMenuUi.setOpen(open);
 }
 
 function updateProfileMenu(user, profile) {
-  var data = profile || {};
-  var firstName = String(data.firstName || '').trim();
-  var lastName = String(data.lastName || '').trim();
-  var fullName = [firstName, lastName].filter(Boolean).join(' ') || (user && user.displayName) || 'Your profile';
-  var email = (user && user.email) || data.email || '';
-  if (profileMenuAvatar) profileMenuAvatar.textContent = profileInitials(firstName, lastName, fullName || email);
-  if (profileMenuName) profileMenuName.textContent = fullName;
-  if (profileMenuEmail) profileMenuEmail.textContent = email;
+  profileMenuUi.update(user, profile);
 }
 
 // ── Helpers ──
@@ -243,10 +240,10 @@ function formatDate(iso) {
   return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+// Declaration rather than a const alias: roleOptionsHtml above calls this
+// before this line, and relies on hoisting.
 function escapeHtml(value) {
-  return String(value == null ? '' : value)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return window.GAILS.escapeHtml(value);
 }
 
 function formatCount(value, singular, plural) {
@@ -1511,70 +1508,15 @@ function fieldInputHtml(sectionKey, field, value) {
   return '<label class="admin-form-field' + wide + '"><span>' + escapeHtml(field.label) + '</span>' + input + '</label>' + photoLinks;
 }
 
-// Recomputed live rather than trusting the stored criticalFail flag —
-// records imported before js/cqv-criticals.js existed stored
-// criticalFail: true for ANY lost allergen point, and the shared helper is
-// what knows which questions are actually zero-tolerance.
-function cqvHasCriticalFail(visit) {
-  return window.GAILS.CQVCriticals.hasCriticalFail(visit);
-}
-
-// Falls back to deriving the band from overallPct for records saved before
-// band computation existed (see js/cqv-parser.js), rather than showing
-// blank, and re-applies the critical-fail override live in case the stored
-// band predates it.
-function cqvBand(visit) {
-  if (cqvHasCriticalFail(visit)) return 'Red';
-  if (visit.band) return visit.band;
-  if (visit.overallPct == null) return '';
-  return visit.overallPct >= 90 ? 'Green' : visit.overallPct >= 70 ? 'Yellow' : 'Red';
-}
-
-function cqvBandColor(band) {
-  if (band === 'Green') return '#1D9E5C';
-  if (band === 'Yellow') return '#C97F12';
-  if (band === 'Red') return '#B22A24';
-  return null;
-}
-
-function cqvPriorityColor(priority) {
-  if (/^high$/i.test(priority)) return '#B22A24';
-  if (/^medium$/i.test(priority)) return '#C97F12';
-  if (/^low$/i.test(priority)) return '#0E8074';
-  return null;
-}
-
-// An action item on one of GAIL's zero-tolerance questions (see
-// js/cqv-criticals.js) gets a "Critical Point" flag — losing that point is
-// what forces the visit Red. Other "(allergen point)" questions still get
-// an "Allergen Point" flag as a heads-up, but they don't affect the band.
-function cqvCriticalTag(label) {
-  if (window.GAILS.CQVCriticals.isCriticalQuestion(label) || /\bcritical point\b/i.test(label || '')) return 'Critical Point';
-  if (/\ballergen point\b/i.test(label || '')) return 'Allergen Point';
-  return null;
-}
-
-// Follow-up CQVs sometimes skip the written "Comments & Action Plan" block
-// entirely (see js/cqv-parser.js's action-plan parsing) even though
-// individual questions still lost points — falling back to those lost
-// questions keeps the Action Plan section useful instead of showing "no
-// action items" on a visit that clearly didn't score 100%.
-function cqvLostPointItems(visit) {
-  return (visit.questions || [])
-    .filter(function(q) { return q.score != null && q.max != null && q.score < q.max; })
-    .map(function(q) {
-      var lost = q.max - q.score;
-      return {
-        sectionPath: q.section + (q.subsection ? ' >> ' + q.subsection : ''),
-        questionLabel: (q.label || ('Question ' + (q.qNum || ''))) + ' (−' + lost + ' pt' + (lost === 1 ? '' : 's') + ')',
-        findings: q.note || '',
-        actionRequired: '',
-        assignee: visit.bakery || '',
-        priority: '',
-        dueDate: ''
-      };
-    });
-}
+// Shared with the visit report modal — see js/cqv-shared.js. Declarations
+// rather than const aliases: buildCqvSummaryHtml above calls cqvBand and
+// cqvBandColor before this point, and relies on hoisting.
+function cqvHasCriticalFail(visit) { return window.GAILS.CQVShared.hasCriticalFail(visit); }
+function cqvBand(visit)            { return window.GAILS.CQVShared.band(visit); }
+function cqvBandColor(band)        { return window.GAILS.CQVShared.bandColor(band); }
+function cqvPriorityColor(priority){ return window.GAILS.CQVShared.priorityColor(priority); }
+function cqvCriticalTag(label)     { return window.GAILS.CQVShared.criticalTag(label); }
+function cqvLostPointItems(visit)  { return window.GAILS.CQVShared.lostPointItems(visit); }
 
 function buildCqvDetailHtml(visit) {
   var sectionRows = Object.keys(visit.sectionScores || {}).map(function(name) {

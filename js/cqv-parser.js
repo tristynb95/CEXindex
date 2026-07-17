@@ -698,10 +698,10 @@ window.GAILS = window.GAILS || {};
     // but doesn't force Red). The shared helper matches the parsed questions
     // against that list, with the CRTCL category total as a backstop.
     var hasCriticalFail = window.GAILS.CQVCriticals.hasCriticalFail(record);
+    // Unlike the display-time band in js/cqv-shared.js, this recomputes from
+    // overallPct and only falls back to whatever band the PDF itself printed.
     var computedBand = record.overallPct == null ? (record.band || '')
-      : record.overallPct >= 90 ? 'Green'
-      : record.overallPct >= 70 ? 'Yellow'
-      : 'Red';
+      : window.GAILS.CQVShared.bandFromPct(record.overallPct);
     if (hasCriticalFail) computedBand = 'Red';
     record.criticalFail = hasCriticalFail;
     record.printedBand = record.band; // whatever band text the PDF itself showed, kept for reference

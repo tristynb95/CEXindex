@@ -2,6 +2,7 @@ import { auth, db } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { ref, get, set, update, remove, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess } from './permissions.js';
+import { createProfileMenu } from './profile-menu.js';
 
 function nowIso() {
   return new Date().toISOString();
@@ -161,39 +162,21 @@ function markActivityLogged(uid) {
   } catch (e) {}
 }
 
-function profileInitials(firstName, lastName, fallback) {
-  const initials = [firstName, lastName]
-    .map(function(part) { return String(part || '').trim().charAt(0); })
-    .join('')
-    .toUpperCase();
-  return initials || String(fallback || 'P').trim().charAt(0).toUpperCase() || 'P';
-}
+// Shared with the admin page — see js/profile-menu.js.
+const profileMenuUi = createProfileMenu({
+  btn: profileMenuBtn,
+  popover: profileMenuPopover,
+  avatar: profileMenuAvatar,
+  nameEl: profileMenuName,
+  emailEl: profileMenuEmail
+});
 
 function setProfileMenuOpen(open) {
-  if (!profileMenuBtn || !profileMenuPopover) return;
-  profileMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  profileMenuPopover.hidden = !open;
+  profileMenuUi.setOpen(open);
 }
 
 function updateProfileMenu(user, profile) {
-  if (!user) {
-    if (profileMenuAvatar) profileMenuAvatar.textContent = 'P';
-    if (profileMenuName) profileMenuName.textContent = 'Your profile';
-    if (profileMenuEmail) profileMenuEmail.textContent = '';
-    setProfileMenuOpen(false);
-    return;
-  }
-
-  const data = profile || {};
-  const firstName = String(data.firstName || '').trim();
-  const lastName = String(data.lastName || '').trim();
-  const storedName = [firstName, lastName].filter(Boolean).join(' ');
-  const displayName = storedName || user.displayName || 'Your profile';
-  const email = user.email || data.email || '';
-
-  if (profileMenuAvatar) profileMenuAvatar.textContent = profileInitials(firstName, lastName, displayName || email);
-  if (profileMenuName) profileMenuName.textContent = displayName;
-  if (profileMenuEmail) profileMenuEmail.textContent = email;
+  profileMenuUi.update(user, profile);
 }
 
 headerEl.style.display = 'none';

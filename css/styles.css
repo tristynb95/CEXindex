@@ -1,4 +1,4 @@
-/* ========== GAIL's Bakery Dashboard â€” GAIL's Brand Light Redesign ========== */
+/* ========== GAIL's Bakery Dashboard — GAIL's Brand Light Redesign ========== */
 
 html {
   scrollbar-gutter: stable;
@@ -14,7 +14,7 @@ html {
 }
 
 :root {
-  /* â”€â”€ Core Palette â€” GAIL's cream, white & ink â”€â”€ */
+  /* ── Core Palette — GAIL's cream, white & ink ── */
   --bg: #F5F1E7;
   --bg-2: #FBF9F3;
   --card: #FFFFFF;
@@ -23,20 +23,20 @@ html {
   --card-border: rgba(34, 31, 26, 0.09);
   --card-border-h: rgba(34, 31, 26, 0.16);
 
-  /* â”€â”€ Typography â”€â”€ */
+  /* ── Typography ── */
   --text: #221F1A;
   --text-2: #4D463C;
   --muted: #8C8272;
   --muted-l: #757575;
 
-  /* â”€â”€ Primary Accent â€“ GAIL's Red â”€â”€ */
+  /* ── Primary Accent – GAIL's Red ── */
   --accent: #B22A24;
   --accent-hover: #9A211C;
   --accent-light: rgba(178, 42, 36, 0.15);
   --accent-d: rgba(178, 42, 36, 0.15);
   --accent-g: 0 0 24px rgba(178, 42, 36, 0.22);
 
-  /* â”€â”€ Secondary Accents â”€â”€ */
+  /* ── Secondary Accents ── */
   --gold: #C97F12;
   --gold-d: rgba(201, 127, 18, 0.15);
   --teal: #0E8074;
@@ -44,7 +44,7 @@ html {
   --purple: #6B4FA8;
   --purple-d: rgba(107, 79, 168, 0.15);
 
-  /* â”€â”€ Semantic Colours â”€â”€ */
+  /* ── Semantic Colours ── */
   --green: #1D9E5C;
   --green-d: rgba(29, 158, 92, 0.15);
   --amber: #C97F12;
@@ -53,12 +53,12 @@ html {
   --blue: #1E70C4;
   --blue-d: rgba(30, 112, 196, 0.15);
 
-  /* â”€â”€ Legacy compatibility aliases â”€â”€ */
+  /* ── Legacy compatibility aliases ── */
   --border: rgba(34, 31, 26, 0.07);
   --glass-border: rgba(34, 31, 26, 0.09);
   --glass-border-hover: rgba(34, 31, 26, 0.18);
 
-  /* â”€â”€ Shadows â€” soft & warm for a light UI â”€â”€ */
+  /* ── Shadows — soft & warm for a light UI ── */
   --shadow-sm: 0 1px 4px rgba(48, 36, 22, 0.06), 0 2px 10px rgba(48, 36, 22, 0.05);
   --shadow-md: 0 4px 12px rgba(48, 36, 22, 0.07), 0 10px 32px rgba(48, 36, 22, 0.08);
   --shadow-lg: 0 12px 28px rgba(48, 36, 22, 0.12), 0 28px 64px rgba(48, 36, 22, 0.12);
@@ -80,9 +80,9 @@ body {
   overflow-x: hidden;
 }
 
-/* â”€â”€ Mobile app-shell: lock layout height so browser chrome (address bar)
+/* ── Mobile app-shell: lock layout height so browser chrome (address bar)
    showing/hiding only shifts the visible window into the scroll container,
-   never reflowing the page layout or jumping fixed elements â”€â”€ */
+   never reflowing the page layout or jumping fixed elements ── */
 @media (max-width: 980px) {
   html, body {
     height: auto;
@@ -110,7 +110,7 @@ body.admin-modal-open {
   overflow: hidden;
 }
 
-/* â”€â”€ Background: warm GAIL's cream with the faintest red & gold glow â”€â”€ */
+/* ── Background: warm GAIL's cream with the faintest red & gold glow ── */
 .glass-bg {
   position: fixed;
   inset: 0;
@@ -129,7 +129,7 @@ body.admin-modal-open {
   display: none;
 }
 
-/* â”€â”€ Shared Glass Panel â”€â”€ */
+/* ── Shared Glass Panel ── */
 .glass-panel {
   background: var(--card);
   border: 1px solid var(--card-border);
@@ -151,7 +151,7 @@ h4 {
   color: var(--text);
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• HEADER â•â• */
+/* ══════════════════════════════════════ HEADER ══ */
 /* GAIL's red brand band, echoing the gailsbread.co.uk footer */
 .header {
   background: linear-gradient(180deg, #B5312A 0%, #A32520 100%);
@@ -293,7 +293,7 @@ h4 {
   stroke-linejoin: round;
 }
 
-/* â”€â”€ Global Index Type Toggle (header bar) â”€â”€ */
+/* ── Global Index Type Toggle (header bar) ── */
 .header-index-toggle {
   display: inline-flex;
   align-items: center;
@@ -400,7 +400,7 @@ h4 {
   }
 }
 
-/* â”€â”€ Container â”€â”€ */
+/* ── Container ── */
 .container {
   max-width: 1440px;
   margin: 0 auto;
@@ -408,7 +408,7 @@ h4 {
   overflow-x: hidden;
 }
 
-/* â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â•  FILTER BAR â• â•  */
+/* ══════════════════════════════════════ FILTER BAR ══ */
 .filter-bar {
   background: var(--card);
   border: 1px solid var(--card-border);
@@ -700,13 +700,13 @@ h4 {
   user-select: none;
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• BAKERY MULTI-SELECT â•â• */
+/* ══════════════════════════════════════ BAKERY MULTI-SELECT ══ */
 .bakery-ms {
   position: relative;
   width: 100%;
 }
 
-/* Trigger â€” identical look to .filter-select__trigger */
+/* Trigger — identical look to .filter-select__trigger */
 .bakery-ms__trigger {
   width: 100%;
   min-height: 36px;
@@ -1004,7 +1004,7 @@ h4 {
   }
 }
 
-/* â”€â”€ Period buttons â”€â”€ */
+/* ── Period buttons ── */
 .period-btns {
   display: flex;
   gap: 4px;
@@ -1040,7 +1040,7 @@ h4 {
   box-shadow: 0 4px 14px rgba(178, 42, 36, 0.4);
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• KPI ROW â•â• */
+/* ══════════════════════════════════════ KPI ROW ══ */
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -1382,7 +1382,7 @@ h4 {
   }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• SECTION CARDS â•â• */
+/* ══════════════════════════════════════ SECTION CARDS ══ */
 .section {
   background: var(--card);
   border-radius: var(--r-lg);
@@ -1419,7 +1419,7 @@ h4 {
   opacity: 0.85;
 }
 
-/* â”€â”€ Grid layout â”€â”€ */
+/* ── Grid layout ── */
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1545,7 +1545,7 @@ canvas {
   box-shadow: 0 2px 10px rgba(30, 112, 196, 0.45), inset 0 1px 0 rgba(34, 31, 26, 0.2);
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TABS â•â• */
+/* ══════════════════════════════════════ TABS ══ */
 .dashboard-workspace {
   position: relative;
   isolation: isolate;
@@ -2240,7 +2240,7 @@ canvas {
   }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TABLES â•â• */
+/* ══════════════════════════════════════ TABLES ══ */
 .table-wrap {
   overflow-x: auto;
   border-radius: var(--r);
@@ -2548,7 +2548,7 @@ body.table-fullscreen-lock {
   min-width: 160px;
 }
 
-/* â”€â”€ Buttons â”€â”€ */
+/* ── Buttons ── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -2577,7 +2577,7 @@ body.table-fullscreen-lock {
 
 
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• BADGES â•â• */
+/* ══════════════════════════════════════ BADGES ══ */
 .band {
   display: inline-block;
   padding: 4px 10px;
@@ -2673,7 +2673,7 @@ body.table-fullscreen-lock {
   color: var(--muted);
 }
 
-/* â”€â”€ Direction badges â”€â”€ */
+/* ── Direction badges ── */
 .dir {
   display: inline-flex;
   align-items: center;
@@ -2704,7 +2704,7 @@ body.table-fullscreen-lock {
   color: var(--blue);
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UPLOAD ZONE â•â• */
+/* ══════════════════════════════════════ UPLOAD ZONE ══ */
 .upload-zone {
   background: var(--card);
   border: 2px dashed rgba(178, 42, 36, 0.3);
@@ -2769,7 +2769,7 @@ body.table-fullscreen-lock {
   margin-bottom: 8px;
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• CALLOUT GRID â•â• */
+/* ══════════════════════════════════════ CALLOUT GRID ══ */
 .callout-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2816,7 +2816,7 @@ body.table-fullscreen-lock {
   color: var(--green);
 }
 
-/* â”€â”€ Explain blocks â”€â”€ */
+/* ── Explain blocks ── */
 .explain {
   background: rgba(201, 127, 18, 0.06);
   border-radius: var(--r);
@@ -2842,7 +2842,7 @@ body.table-fullscreen-lock {
   line-height: 1.7;
 }
 
-/* â”€â”€ Formula blocks â”€â”€ */
+/* ── Formula blocks ── */
 .formula {
   background: var(--bg);
   border: 1px solid var(--card-border-h);
@@ -2855,7 +2855,7 @@ body.table-fullscreen-lock {
   line-height: 1.8;
 }
 
-/* â”€â”€ Benchmark bands â”€â”€ */
+/* ── Benchmark bands ── */
 .benchmarks {
   display: grid;
   gap: 12px;
@@ -2910,7 +2910,7 @@ body.table-fullscreen-lock {
   margin: 12px 0 20px;
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• METHODOLOGY PAGE â•â• */
+/* ══════════════════════════════════════ METHODOLOGY PAGE ══ */
 .methodology {
   padding: 22px 26px;
 }
@@ -2942,7 +2942,7 @@ body.table-fullscreen-lock {
   flex-shrink: 0;
 }
 
-/* Relative vs Absolute â€” side-by-side highlight cards */
+/* Relative vs Absolute — side-by-side highlight cards */
 .method-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3054,7 +3054,7 @@ body.table-fullscreen-lock {
   min-height: 20px;
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• AUTH LOADING â•â• */
+/* ══════════════════════════════════════ AUTH LOADING ══ */
 .auth-loading-content {
   display: flex;
   flex-direction: column;
@@ -3134,7 +3134,7 @@ body.table-fullscreen-lock {
   }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• LOGIN / MODALS â•â• */
+/* ══════════════════════════════════════ LOGIN / MODALS ══ */
 .overlay-screen {
   position: fixed;
   top: 0;
@@ -4450,7 +4450,7 @@ body.table-fullscreen-lock {
   }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ADMIN PAGE (full-page) â•â• */
+/* ══════════════════════════════════════ ADMIN PAGE (full-page) ══ */
 .admin-page-guard {
   position: fixed;
   inset: 0;
@@ -4688,7 +4688,7 @@ body.table-fullscreen-lock {
   }
 }
 
-/* â”€â”€ Drill-down modal â”€â”€ */
+/* ── Drill-down modal ── */
 .drillInner {
   background: var(--card) !important;
   border: 1px solid var(--card-border-h) !important;
@@ -4707,7 +4707,7 @@ body.table-fullscreen-lock {
   background: transparent;
 }
 
-/* â”€â”€ Status text â”€â”€ */
+/* ── Status text ── */
 .status {
   margin-top: 12px;
   font-size: 0.85rem;
@@ -4723,7 +4723,7 @@ body.table-fullscreen-lock {
   color: var(--red);
 }
 
-/* â”€â”€ Hero section (transparent wrapper for Speed tab) â”€â”€ */
+/* ── Hero section (transparent wrapper for Speed tab) ── */
 .hero-section {
   border: none !important;
   background: transparent !important;
@@ -4737,7 +4737,7 @@ body.table-fullscreen-lock {
   transform: none !important;
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• INSIGHT / TARGET CARDS â•â• */
+/* ══════════════════════════════════════ INSIGHT / TARGET CARDS ══ */
 .insight-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -4847,7 +4847,7 @@ body.table-fullscreen-lock {
   border-bottom: none;
 }
 
-/* â”€â”€ Scrollbars â”€â”€ */
+/* ── Scrollbars ── */
 .drill-modal {
   position: fixed;
   inset: 0;
@@ -6184,7 +6184,7 @@ body.table-fullscreen-lock {
   }
 }
 
-/* â”€â”€ Sparkline scale toggle â”€â”€ */
+/* ── Sparkline scale toggle ── */
 .spark-scale-toggle {
   display: inline-flex;
   align-items: center;
@@ -6240,7 +6240,7 @@ body.table-fullscreen-lock {
   color: var(--accent);
 }
 
-/* â”€â”€ Sparkline sorting dropdown â”€â”€ */
+/* ── Sparkline sorting dropdown ── */
 .spark-sort-label {
   display: inline-flex;
   align-items: center;
@@ -6257,7 +6257,7 @@ body.table-fullscreen-lock {
   min-width: 180px;
 }
 
-/* â”€â”€ Focus Bakeries Redesign â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Focus Bakeries Redesign ─────────────────── */
 #tab-target .section {
   padding: 16px 20px;
   margin-bottom: 10px;
@@ -6745,7 +6745,7 @@ body.table-fullscreen-lock {
   text-decoration: underline;
 }
 
-/* â”€â”€ Visit Report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Visit Report ─────────────────────────────────────────────────────── */
 .visit-report-hs-banner {
   border-radius: 14px;
   padding: 14px 18px;
@@ -6948,7 +6948,7 @@ body.table-fullscreen-lock {
   outline-offset: 2px;
 }
 
-/* â”€â”€ Visit Report print â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Visit Report print ──────────────────────────────────────────────── */
 @page {
   margin-top: 20mm;
   margin-bottom: 20mm;
@@ -7094,7 +7094,7 @@ body.table-fullscreen-lock {
   }
 }
 
-/* â”€â”€ Word Cloud â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Word Cloud ──────────────────────────────────────────────────────────── */
 .wc-canvas-wrap {
   position: relative;
   width: 100%;
@@ -7194,7 +7194,7 @@ body.table-fullscreen-lock {
   background: #B22A24;
 }
 
-/* â”€â”€ Word Cloud Sentiment Bar & Tag â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Word Cloud Sentiment Bar & Tag ─────────────────────────────────────── */
 .wc-sentiment-bar {
   margin-top: 14px;
   padding: 0 2px;
@@ -7298,7 +7298,7 @@ body.table-fullscreen-lock {
   margin-right: 1px;
 }
 
-/* â”€â”€ Word Cloud Top Signals Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Word Cloud Top Signals Panel ───────────────────────────────────────── */
 .wc-sig-panel {
   margin-top: 16px;
   background: var(--card-2);
@@ -7395,7 +7395,7 @@ body.table-fullscreen-lock {
   .wc-sig__bar-wrap { width: 40px; }
 }
 
-/* â”€â”€ Word Cloud Drift Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Word Cloud Drift Panel ─────────────────────────────────────────────── */
 .wc-drift-panel {
   margin-top: 16px;
   background: var(--card-2);
@@ -7468,11 +7468,11 @@ body.table-fullscreen-lock {
   .wc-drift__cols { grid-template-columns: 1fr; }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ══════════════════════════════════════════════════════
    MOBILE RESPONSIVE IMPROVEMENTS
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ══════════════════════════════════════════════════════ */
 
-/* â”€â”€ Touch-action optimisation (removes 300ms tap delay) â”€â”€ */
+/* ── Touch-action optimisation (removes 300ms tap delay) ── */
 button,
 a,
 [role="button"],
@@ -7485,27 +7485,27 @@ a,
   touch-action: manipulation;
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ══════════════════════════════════════════════════════
    MOBILE FILTER SIDE PANEL
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ══════════════════════════════════════════════════════ */
 
-/* â”€â”€ Filter controls body (wraps the 6 controls) â”€â”€ */
+/* ── Filter controls body (wraps the 6 controls) ── */
 .filter-controls-body {
   display: contents;
-  /* transparent passthrough on desktop â€” children act as direct grid items */
+  /* transparent passthrough on desktop — children act as direct grid items */
 }
 
-/* â”€â”€ Filter panel header (mobile only, hidden on desktop) â”€â”€ */
+/* ── Filter panel header (mobile only, hidden on desktop) ── */
 .filter-panel-header {
   display: none;
 }
 
-/* â”€â”€ Filter panel close FAB (mobile only, hidden on desktop) â”€â”€ */
+/* ── Filter panel close FAB (mobile only, hidden on desktop) ── */
 .filter-panel-close-fab {
   display: none;
 }
 
-/* â”€â”€ Floating filter tab (fixed to bottom right, mobile only) â”€â”€ */
+/* ── Floating filter tab (fixed to bottom right, mobile only) ── */
 .filter-side-tab {
   display: none;
   position: fixed;
@@ -7603,7 +7603,7 @@ a,
   }
 }
 
-/* â”€â”€ Mobile filter side backdrop â”€â”€ */
+/* ── Mobile filter side backdrop ── */
 .filter-side-backdrop {
   display: block;
   position: fixed;
@@ -7624,7 +7624,7 @@ a,
   pointer-events: auto;
 }
 
-/* â”€â”€ Mobile: collapse filter-bar and turn filter-controls into a side panel â”€â”€ */
+/* ── Mobile: collapse filter-bar and turn filter-controls into a side panel ── */
 @media (max-width: 720px) {
 
   /* Strip the filter-bar card visually; keep it as a valid block container so
@@ -7675,7 +7675,7 @@ a,
     transition: none;
   }
 
-  /* Panel header â€” shown on mobile */
+  /* Panel header — shown on mobile */
   .filter-panel-header {
     display: none;
     align-items: center;
@@ -7810,7 +7810,7 @@ a,
     align-content: start;
   }
 
-  /* Each filter control row â€” mirrors the desktop filter-control: no
+  /* Each filter control row — mirrors the desktop filter-control: no
      boxed card, no accent border, just a label above the control. */
   .filter-controls-body .filter-control {
     position: relative;
@@ -7924,7 +7924,7 @@ a,
 
   /* --- NEW MOBILE FILTER REDESIGN --- */
 
-  /* 1. Active expanded state for filter controls â€” the control never grows
+  /* 1. Active expanded state for filter controls — the control never grows
      or gets boxed in; it just lifts above its grid siblings so the floating
      menu (positioned absolutely below) can overlap them without pushing
      layout. Highlight lives on the trigger itself, matching the desktop
@@ -7941,7 +7941,7 @@ a,
     transition: color 0.25s ease;
   }
 
-  /* 2. Keep trigger buttons fully rounded when open â€” the menu floats below
+  /* 2. Keep trigger buttons fully rounded when open — the menu floats below
      as its own card rather than fusing with the trigger. */
   .filter-controls .filter-select.is-open .filter-select__trigger,
   .filter-controls .bakery-ms__trigger.is-open {
@@ -7951,7 +7951,7 @@ a,
     transition: all 0.2s ease;
   }
 
-  /* 3. Float dropdown menus over the panel instead of expanding the card â€”
+  /* 3. Float dropdown menus over the panel instead of expanding the card —
      matches the desktop filter-select__menu treatment (rounded card, blurred
      shadow) so the mobile and desktop dropdowns read as the same component. */
   .filter-controls .filter-select__menu,
@@ -8077,12 +8077,12 @@ a,
   }
 }
 
-/* â”€â”€ Mobile filter sub-panel â”€â”€ */
+/* ── Mobile filter sub-panel ── */
 .filter-sub-panel {
   display: none !important;
 }
 
-/* â”€â”€ Mobile bottom navigation bar â”€â”€ */
+/* ── Mobile bottom navigation bar ── */
 .mobile-bottom-nav {
   display: none;
   /* hidden by default; shown via media query */
@@ -8180,7 +8180,7 @@ a,
     margin-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Reduce the "open menu" button clutter â€” bottom nav handles tab switching */
+  /* Reduce the "open menu" button clutter — bottom nav handles tab switching */
   .dashboard-workspace__menu-btn {
     font-size: 0.76rem;
   }
@@ -8192,7 +8192,7 @@ a,
   }
 }
 
-/* â”€â”€ Mobile-specific layout improvements â”€â”€ */
+/* ── Mobile-specific layout improvements ── */
 
 /* Container padding on small screens */
 @media (max-width: 640px) {
@@ -8228,14 +8228,14 @@ a,
   /* Keep-clear zone: the Relative/Absolute toggle notch hangs ~47px down
      from the header's top-right corner and overlays the content. On the
      methodology tab the long page title wraps to two lines and slid under
-     it, so drop the title below the notch's underside â€” it then uses the
+     it, so drop the title below the notch's underside — it then uses the
      full width cleanly. Scoped to this tab so short titles on other tabs
-     (Overview, Mapâ€¦) keep their normal position. */
+     (Overview, Map…) keep their normal position. */
   body[data-dash-tab="cei"] .section-page-title {
     margin-top: 34px;
   }
 
-  /* â”€â”€ Methodology: flatten the box-in-box, give text room to breathe â”€â”€ */
+  /* ── Methodology: flatten the box-in-box, give text room to breathe ── */
   .methodology-section {
     padding: 18px 16px;
   }
@@ -8334,13 +8334,13 @@ a,
     font-size: 1.25rem;
   }
 
-  /* Spark grid â€” 1 column on very small screens */
+  /* Spark grid — 1 column on very small screens */
   .spark-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* â”€â”€ Drilldown modal mobile â”€â”€ */
+/* ── Drilldown modal mobile ── */
 @media (max-width: 540px) {
   .drill-modal {
     padding: 8px;
@@ -8369,11 +8369,11 @@ a,
     padding: 16px 18px 20px;
   }
 
-  /* â”€â”€ Visit report modal: the report modal uses the .drill-modal-*
+  /* ── Visit report modal: the report modal uses the .drill-modal-*
      classes (not the #drill* IDs the analytics drilldown uses), so it
-     needs its own mobile treatment â€” otherwise the title renders at the
+     needs its own mobile treatment — otherwise the title renders at the
      full 1.85rem and the header stat cards fall back to a ragged
-     flex-wrap that reads as an untidy stack on a phone. â”€â”€ */
+     flex-wrap that reads as an untidy stack on a phone. ── */
   #visitReportModal .drill-modal-header {
     flex-direction: column;
     align-items: stretch;
@@ -8409,7 +8409,7 @@ a,
     gap: 10px;
   }
 
-  /* Even 2-up grid replaces the ragged wrap â€” every card the same width,
+  /* Even 2-up grid replaces the ragged wrap — every card the same width,
      and a lone final card spans the full row instead of hanging half-width. */
   #visitReportModal .drill-summary {
     display: grid;
@@ -8483,7 +8483,7 @@ a,
   }
 }
 
-/* â”€â”€ Header on very small screens â”€â”€ */
+/* ── Header on very small screens ── */
 @media (max-width: 400px) {
   .header {
     padding: 12px 14px;
@@ -8508,7 +8508,7 @@ a,
   }
 }
 
-/* â”€â”€ Improved scrollbar for mobile content â”€â”€ */
+/* ── Improved scrollbar for mobile content ── */
 @media (max-width: 980px) {
   .table-wrap {
     -webkit-overflow-scrolling: touch;
@@ -8581,7 +8581,7 @@ a,
   }
 }
 
-/* â”€â”€ Login screen on very small screens â”€â”€ */
+/* ── Login screen on very small screens ── */
 @media (max-width: 400px) {
   .overlay-screen {
     padding: 12px 10px;
@@ -8606,7 +8606,7 @@ a,
   }
 }
 
-/* â”€â”€ Safe area support for notched devices â”€â”€ */
+/* ── Safe area support for notched devices ── */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .mobile-bottom-nav {
     padding-bottom: calc(6px + env(safe-area-inset-bottom));
@@ -8619,15 +8619,15 @@ a,
   }
 }
 
-/* â”€â”€ Prevent layout jank on filter open/close animation â”€â”€ */
+/* ── Prevent layout jank on filter open/close animation ── */
 .filter-bar .filter-controls {
   transition: none;
 }
 
-/* â”€â”€ Ensure the dashboard sidebar (z-index:40) and backdrop (z-index:34)
-      remain above the bottom nav (z-index:29) when sidebar is open â”€â”€ */
+/* ── Ensure the dashboard sidebar (z-index:40) and backdrop (z-index:34)
+      remain above the bottom nav (z-index:29) when sidebar is open ── */
 
-/* â”€â”€ Word cloud responsive height â”€â”€ */
+/* ── Word cloud responsive height ── */
 @media (max-width: 640px) {
   .wc-canvas-wrap {
     min-height: 340px;
@@ -8641,10 +8641,10 @@ a,
   }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   MOBILE USABILITY â€” PHASE 2
+/* ══════════════════════════════════════════════════════
+   MOBILE USABILITY — PHASE 2
    Based on real-device review
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ══════════════════════════════════════════════════════ */
 
 /* 1. Hide the redundant toolbar (Menu btn + "Active view" label) on mobile.
       Bottom nav handles all tab switching, so this row is pure noise. */
@@ -8654,7 +8654,7 @@ a,
   }
 }
 
-/* 2. Compact header on mobile â€” collapse to a single tight row:
+/* 2. Compact header on mobile — collapse to a single tight row:
       [Logo]  [Dashboard title/sub]  [Sign Out]  (Admin hidden in kebab)  */
 @media (max-width: 640px) {
   .header {
@@ -8706,7 +8706,7 @@ a,
     flex-wrap: nowrap;
   }
 
-  /* Both header action buttons â†’ compact icon-only squares */
+  /* Both header action buttons → compact icon-only squares */
   #adminBtn,
   #profileMenuBtn {
     width: 30px;
@@ -8730,7 +8730,7 @@ a,
   }
 
   /* The banner's crisp 1px bottom border would otherwise cut straight across
-     the notch's concave carve â€” the carve is transparent, so the dark border
+     the notch's concave carve — the carve is transparent, so the dark border
      (and the drop shadow) showed through and broke the "seamless extension"
      look. Drop the hard edge here; the header's soft drop shadow still
      separates the banner from the content below. */
@@ -8741,41 +8741,41 @@ a,
   /* Relative/absolute index toggle: a stylish notch that extends down from
      the banner's top-right corner as a seamless continuation of the red
      band, overlaying the content below. Absolutely positioned (relative to
-     the sticky header), so it's out of flow â€” pages without the toggle
+     the sticky header), so it's out of flow — pages without the toggle
      don't reflow when it appears/disappears, and it stays pinned with the
      banner while scrolling. */
   .header-index-toggle {
     position: absolute;
     /* Overlap 1px up into the banner so no sub-pixel hairline appears at the
-       join â€” the notch red matches the banner's lower edge, so the overlap
+       join — the notch red matches the banner's lower edge, so the overlap
        is invisible. */
     top: calc(100% - 1px);
     right: 0;
     gap: 0;
     margin: 0;
     padding: 4px 16px 8px 14px;
-    /* Same bright red as the banner's lower edge â€” kept flat so the notch
+    /* Same bright red as the banner's lower edge — kept flat so the notch
        stays as vivid as the band it hangs from, not darkened. */
     background: #A32520;
     border-radius: 0 0 0 18px;
-    /* Only a soft drop shadow to lift it over the content â€” no inner
+    /* Only a soft drop shadow to lift it over the content — no inner
        shadow that would dull the surface. */
     box-shadow: -8px 10px 20px rgba(120, 28, 22, 0.24);
   }
 
-  /* Top-left concave fillet removed by request â€” the notch now meets the
+  /* Top-left concave fillet removed by request — the notch now meets the
      banner with a straight left edge, keeping only the rounded bottom-left
      corner (border-radius above). */
   .header-index-toggle::before {
     content: none;
   }
 
-  /* Just the pills in the notch â€” the "Index" caption is redundant here */
+  /* Just the pills in the notch — the "Index" caption is redundant here */
   .header-index-toggle__label {
     display: none;
   }
 
-  /* Light, airy track â€” a translucent white well rather than a dark recess */
+  /* Light, airy track — a translucent white well rather than a dark recess */
   .header-index-toggle .overview-rankings-toggle {
     padding: 3px;
     background: rgba(255, 255, 255, 0.14);
@@ -8803,7 +8803,7 @@ a,
   }
 }
 
-/* 3. Fix wrapping KPI labels â€” allow smaller text and truncation */
+/* 3. Fix wrapping KPI labels — allow smaller text and truncation */
 @media (max-width: 980px) {
   .kpi .label {
     white-space: nowrap;
@@ -8812,7 +8812,7 @@ a,
     font-size: 0.6rem;
   }
 
-  /* Tighten KPI grid â€” 2 cols on all mobile widths */
+  /* Tighten KPI grid — 2 cols on all mobile widths */
   .kpi-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -8837,19 +8837,19 @@ a,
   }
 }
 
-/* 4. Filter bar â€” tighter top margin now toolbar is gone */
+/* 4. Filter bar — tighter top margin now toolbar is gone */
 @media (max-width: 980px) {
   .filter-bar {
     margin-top: 0;
   }
 }
 
-/* â”€â”€â”€ 5. Mobile KPI grid: all cards visible on-screen at once â”€â”€â”€
-   Uses dvh (dynamic viewport height â€” excludes browser chrome) so the
+/* ─── 5. Mobile KPI grid: all cards visible on-screen at once ───
+   Uses dvh (dynamic viewport height — excludes browser chrome) so the
    grid fills exactly the space between the header and bottom nav.
    grid-auto-rows: 1fr divides that height equally across however many
    rows there are, so cards scale to the device without scrolling.
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+──────────────────────────────────────────────────────────────────── */
 @media (max-width: 980px) {
   .kpi-row {
     margin-bottom: 16px;
@@ -8998,7 +8998,7 @@ a,
   color: var(--muted-l);
 }
 
-/* Full-screen toggle button â€” matches the League Table's .table-fullscreen-btn */
+/* Full-screen toggle button — matches the League Table's .table-fullscreen-btn */
 .map-fullscreen-btn {
   margin-left: auto;
   flex: 0 0 auto;
@@ -9077,7 +9077,7 @@ a,
   display: inline;
 }
 
-/* Selected-filter summary â€” only surfaced in full screen, where the header and
+/* Selected-filter summary — only surfaced in full screen, where the header and
    global filter bar are hidden. It sits as a slim panel to the RIGHT of the map
    so the map keeps its full height (which matters most for the tall UK map). */
 .map-filter-summary {
@@ -9312,7 +9312,7 @@ body.map-fullscreen-active .filter-side-tab {
 
 /* Inside the workspace, .dashboard-workspace__main (z-index:1) sits below the
    sidebar (z-index:3), which would otherwise show through the overlay. Lift the
-   main column â€” and therefore its fixed map overlay â€” above the sidebar. */
+   main column — and therefore its fixed map overlay — above the sidebar. */
 body.map-fullscreen-active .dashboard-workspace__main {
   z-index: 3001;
 }
@@ -9394,7 +9394,7 @@ body.map-fullscreen-active .dashboard-workspace__main {
   display: none !important;
 }
 
-/* â”€â”€ Visit Log Styles â”€â”€ */
+/* ── Visit Log Styles ── */
 .visit-log-filters {
   display: flex;
   flex-wrap: wrap;
@@ -9431,7 +9431,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
 }
 
 /* Without a cap, a control grows to fill the whole row (via flex: 1 above)
-   whenever it wraps onto its own line â€” noticeable for Period and Rating,
+   whenever it wraps onto its own line — noticeable for Period and Rating,
    which then end up stretched edge-to-edge next to the compact Reset
    button. */
 .visit-log-filter-control--compact {
@@ -9586,7 +9586,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
 }
 
 
-/* â”€â”€ Visit Log Rows (Table-like layout) â”€â”€
+/* ── Visit Log Rows (Table-like layout) ──
    Fixed height + internal scroll so the card's overall size stays put as the
    result count changes (filtering/search no longer pushes the page around). */
 .visit-log-list {
@@ -10130,7 +10130,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 }
 
-/* â”€â”€ Visit Log primary actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/* ── Visit Log primary actions ──────────────────────────────────────────
    The title and primary actions use compact, separate rows on Bakery Reports. */
 .visit-log-actions {
   display: none;
@@ -10163,7 +10163,7 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
 }
 
 /* On phones, let the two buttons share the full width on a single line
-   each â€” the shortened "Complete Visit Form" label keeps them from
+   each — the shortened "Complete Visit Form" label keeps them from
    wrapping, so they stay compact and evenly balanced. */
 @media (max-width: 640px) {
   body[data-dash-tab="visit-log"] .visit-log-actions {
@@ -10181,7 +10181,7 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   }
 }
 
-/* â”€â”€ Visit Log Toggle buttons â”€â”€ */
+/* ── Visit Log Toggle buttons ── */
 .visit-log-toggle-btn {
   background: rgba(34, 31, 26, 0.03);
   border: 1px solid var(--card-border);
@@ -10480,7 +10480,7 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   background: var(--accent-light);
 }
 
-/* â”€â”€ Unvisited list grouping styles â”€â”€ */
+/* ── Unvisited list grouping styles ── */
 .unvisited-manager-section {
   background: transparent;
   border: none;

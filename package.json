@@ -1,0 +1,13 @@
+{
+  "name": "cexindex",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GAIL's Bakery customer experience dashboard. Static site served by Firebase Hosting — there is no build step; this package.json exists only for tooling.",
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0"
+  }
+}

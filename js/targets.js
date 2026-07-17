@@ -161,14 +161,7 @@ function _setTargetTrendState(hasData, message) {
     }
   };
 
-  function escapeHtml(value) {
-    return String(value == null ? '' : value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
+  var escapeHtml = GAILS.escapeHtml;
 
   // Colour for an ops-area boundary from its average score. Peer mode ranks each
   // area against the *other ops areas* (percentile of the area averages) so the four

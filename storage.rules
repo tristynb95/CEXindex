@@ -1,23 +1,20 @@
-Reference only — like database.rules.reference.json, this isn't auto-deployed
-(firebase.json here only configures Hosting). Paste the rules block below into
-Firebase console > Storage > Rules for project cexindex, replacing whatever is
-there. Needed once CQV PDF import (js/cqv-parser.js + the CQV import zone in
-admin.html / js/admin-page.js) starts uploading files to cqvPdfs/.
-
-Unlike Realtime Database rules, Storage rules are NOT JSON — this is the
-literal syntax to paste as-is:
-
-NOTE on admin-only writes: database.rules.reference.json restricts writes
-(dashboardData, routineVisits, etc.) to admins via a lookup against the
-admins/{uid} Realtime Database node. Storage security rules can only read
-Firestore (via firestore.get(...)), not Realtime Database, so that same check
-can't be replicated here without adding Firebase custom claims + a Cloud
-Function to sync admins/{uid} into request.auth.token.admin — infrastructure
-this project doesn't otherwise have. Deliberately left as "any signed-in user"
-below; admin-only enforcement for the CQV import path stays client-side (the
-import zone only exists on admin.html, which already gates access via the
-same admins/{uid} check). Revisit if Storage ever needs to hold something
-more sensitive than these PDFs.
+// Storage rules for project cexindex. Deployed from this file — see the
+// "storage" key in firebase.json. Deploy with:  firebase deploy --only storage
+//
+// Used by the CQV PDF import (js/cqv-parser.js + the CQV import zone in
+// admin.html / js/admin-page.js), which uploads to cqvPdfs/.
+//
+// NOTE on admin-only writes: database.rules.json restricts writes
+// (dashboardData, routineVisits, etc.) to admins via a lookup against the
+// admins/{uid} Realtime Database node. Storage security rules can only read
+// Firestore (via firestore.get(...)), not Realtime Database, so that same check
+// can't be replicated here without adding Firebase custom claims + a Cloud
+// Function to sync admins/{uid} into request.auth.token.admin — infrastructure
+// this project doesn't otherwise have. Deliberately left as "any signed-in user"
+// below; admin-only enforcement for the CQV import path stays client-side (the
+// import zone only exists on admin.html, which already gates access via the
+// same admins/{uid} check). Revisit if Storage ever needs to hold something
+// more sensitive than these PDFs.
 
 rules_version = '2';
 service firebase.storage {

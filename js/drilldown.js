@@ -4,17 +4,10 @@ window.GAILS = window.GAILS || {};
 (function() {
   var lockedScrollY = 0;
 
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
+  var escapeHtml = GAILS.escapeHtml;
 
   function metricText(value, suffix) {
-    if (value === null || value === undefined || isNaN(value)) return escapeHtml('â€”');
+    if (value === null || value === undefined || isNaN(value)) return escapeHtml('—');
     return escapeHtml(value + (suffix || ''));
   }
 

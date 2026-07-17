@@ -142,6 +142,19 @@ window.GAILS.percentileRank = function(values, value, invert) {
 };
 
 // ========== GENERIC HELPERS ==========
+
+// Escapes a value for interpolation into an innerHTML string. Note the null
+// check is `== null` rather than a falsy check: 0 is a meaningful score across
+// this dashboard and must render as "0", not as a blank cell.
+window.GAILS.escapeHtml = function(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 window.GAILS.avg = function(arr, k) {
   if (!arr || !arr.length) return 0;
   var vs = arr.map(function(r) { return r ? r[k] : undefined; }).filter(function(v) { return typeof v === 'number' && !isNaN(v); });
