@@ -27,7 +27,6 @@ const createUserForm  = document.getElementById('createUserForm');
 const newFirstNameInput = document.getElementById('newFirstNameInput');
 const newLastNameInput = document.getElementById('newLastNameInput');
 const newEmailInput   = document.getElementById('newEmailInput');
-const newPassInput    = document.getElementById('newPassInput');
 const roleSelect      = document.getElementById('newRoleSelect');
 const createMsg       = document.getElementById('createMsg');
 const usersMsg        = document.getElementById('usersMsg');
@@ -206,6 +205,24 @@ function populateRoleSelects() {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+// Firebase Auth needs an initial password when the account is created. It is
+// deliberately random and never shown or shared: the invitation email lets the
+// user choose their own password before signing in.
+function createInvitationPassword() {
+  var alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+  var bytes = new Uint8Array(30);
+  window.crypto.getRandomValues(bytes);
+  return 'Ga1!' + Array.from(bytes, function(byte) {
+    return alphabet[byte % alphabet.length];
+  }).join('');
+}
+
+function invitationEmailSettings() {
+  return {
+    url: 'https://' + firebaseConfig.projectId + '.web.app/?invited=1'
+  };
 }
 
 // Shared with the dashboard header — see js/profile-menu.js. The shared copy
@@ -787,6 +804,10 @@ function renderUsers() {
     var isEditing    = canManageUsers && state.editingUserUid === user.uid;
     var roleClass    = user.role === 'admin' ? 'admin-pill admin-pill--admin' : 'admin-pill';
     var dis          = isCurrent ? 'disabled' : '';
+    var invitation = user.invitation || {};
+    var isPending = invitation.status === 'pending';
+    var hasDeliveryError = invitation.status === 'delivery_failed';
+    var resetLabel = isPending || hasDeliveryError ? 'Resend Invitation' : 'Reset Password';
 
     var roleHtml, statusHtml, actionsHtml;
 
@@ -798,13 +819,23 @@ function renderUsers() {
       actionsHtml = '<div class="admin-table__actions">'
         + '<button type="button" class="admin-inline-btn" data-action="save-user-role" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Save Role</button>'
         + '<button type="button" class="admin-inline-btn" data-action="cancel-edit-user">Cancel</button>'
-        + '<button type="button" class="admin-inline-btn" data-action="send-password-reset" data-email="' + escapeHtml(user.email) + '" ' + dis + '>Reset Password</button>'
+        + '<button type="button" class="admin-inline-btn" data-action="send-password-reset" data-uid="' + escapeHtml(user.uid) + '" data-email="' + escapeHtml(user.email) + '" ' + dis + '>' + resetLabel + '</button>'
         + '<button type="button" class="admin-inline-danger" data-action="revoke-user" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Remove</button>'
       + '</div>';
     } else {
       roleHtml = '<div class="' + roleClass + '">' + escapeHtml(roleDisplayName(user.role)) + '</div>';
-      var status       = isCurrent ? 'Current session' : 'Active access';
-      var statusNote   = isCurrent ? 'You cannot edit or remove the logged-in admin.' : 'Managed through Firebase dashboard access rules.';
+      var status = isCurrent
+        ? 'Current session'
+        : (isPending ? 'Invitation sent' : (hasDeliveryError ? 'Email not delivered' : 'Active access'));
+      var statusNote = isCurrent
+        ? 'You cannot edit or remove the logged-in admin.'
+        : (isPending
+          ? 'Waiting for the user to confirm their details.'
+          : (hasDeliveryError
+            ? 'Open Edit to resend their password email.'
+            : (invitation.status === 'accepted'
+              ? 'Dashboard details confirmed.'
+              : 'Managed through Firebase dashboard access rules.')));
       statusHtml = '<div class="admin-status-note">' + escapeHtml(status) + '</div><div class="admin-status-note">' + escapeHtml(statusNote) + '</div>';
       actionsHtml = canManageUsers
         ? '<div class="admin-table__actions">'
@@ -2001,7 +2032,8 @@ function ensurePortalSync() {
             firstName: users[uid].firstName || '',
             lastName: users[uid].lastName || '',
             email: users[uid].email || 'Unknown',
-            role: users[uid].role || 'viewer'
+            role: users[uid].role || 'viewer',
+            invitation: users[uid].invitation || null
           };
         }).sort(function(a, b) {
           var aLabel = [a.firstName, a.lastName].filter(Boolean).join(' ') || a.email;
@@ -2267,23 +2299,29 @@ createUserForm.addEventListener('submit', async function(e) {
   e.preventDefault();
   clearMessage(createMsg);
   clearMessage(usersMsg);
-  setMessage(createMsg, 'info', 'Creating user…');
+  setMessage(createMsg, 'info', 'Creating invitation…');
   var btn = createUserForm.querySelector('button');
   btn.disabled = true;
   try {
     var firstName = newFirstNameInput.value.trim();
     var lastName = newLastNameInput.value.trim();
     var email = newEmailInput.value.trim();
-    var pass  = newPassInput.value.trim();
     var role  = roleSelect.value;
     if (!firstName || !lastName) throw new Error('Enter the user\'s first and last name.');
+    var pass = createInvitationPassword();
     var cred  = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
     var uid   = cred.user.uid;
+    var invitedAt = nowIso();
     await set(ref(db, 'users/' + uid), {
       firstName: firstName,
       lastName: lastName,
       email: email,
-      role: role
+      role: role,
+      invitation: {
+        status: 'pending',
+        invitedAt: invitedAt,
+        invitedBy: primaryAuth.currentUser ? (primaryAuth.currentUser.email || primaryAuth.currentUser.uid) : 'Unknown'
+      }
     });
     try {
       await updateProfile(cred.user, { displayName: firstName + ' ' + lastName });
@@ -2294,27 +2332,46 @@ createUserForm.addEventListener('submit', async function(e) {
 
     var emailSent = false;
     try {
-      await sendPasswordResetEmail(secondaryAuth, email);
+      await sendPasswordResetEmail(secondaryAuth, email, invitationEmailSettings());
       emailSent = true;
+      try {
+        await update(ref(db, 'users/' + uid + '/invitation'), {
+          emailSentAt: nowIso()
+        });
+      } catch (statusErr) {
+        console.warn('Invitation email was sent, but its delivery status could not be recorded:', statusErr);
+      }
     } catch (emailErr) {
       console.warn('Failed to send auto-reset email:', emailErr);
+      try {
+        await update(ref(db, 'users/' + uid + '/invitation'), {
+          status: 'delivery_failed'
+        });
+      } catch (statusErr) {
+        console.warn('Could not record the invitation delivery failure:', statusErr);
+      }
     }
 
-    await signOut(secondaryAuth);
     newFirstNameInput.value = '';
     newLastNameInput.value = '';
     newEmailInput.value = '';
-    newPassInput.value  = '';
     roleSelect.value    = 'viewer';
 
     if (emailSent) {
-      setMessage(createMsg, 'success', 'User created successfully and password reset email sent.');
+      setMessage(createMsg, 'success', 'Invitation sent to ' + email + '. They can choose a password, sign in, and confirm their dashboard details.');
     } else {
-      setMessage(createMsg, 'success', 'User created, but failed to send password reset email automatically. Please reset manually.');
+      setMessage(createMsg, 'error', 'Access was created for ' + email + ', but the invitation email could not be sent. Open the user and resend their password email.');
     }
   } catch (err) {
     setMessage(createMsg, 'error', 'Error: ' + err.message);
   } finally {
+    if (secondaryAuth.currentUser) {
+      try {
+        await signOut(secondaryAuth);
+      } catch (signOutErr) {
+        console.warn('Could not close the invitation account session:', signOutErr);
+      }
+    }
     btn.disabled = false;
   }
 });
@@ -2340,16 +2397,36 @@ userList.addEventListener('click', async function(e) {
   }
   if (action === 'send-password-reset') {
     var email = btn.dataset.email;
-    if (!confirm('Send a password reset email to ' + email + '?')) return;
+    var invitee = state.users.find(function(user) { return user.uid === uid; });
+    var isInvitation = invitee && invitee.invitation && invitee.invitation.status !== 'accepted';
+    var prompt = isInvitation ? 'Resend the invitation to ' : 'Send a password reset email to ';
+    if (!confirm(prompt + email + '?')) return;
     btn.disabled = true;
     try {
       if (typeof sendPasswordResetEmail === 'function' && primaryAuth) {
-        await sendPasswordResetEmail(primaryAuth, email);
-        setMessage(usersMsg, 'success', 'Password reset email sent to ' + email + '.');
+        if (isInvitation) {
+          await sendPasswordResetEmail(primaryAuth, email, invitationEmailSettings());
+        } else {
+          await sendPasswordResetEmail(primaryAuth, email);
+        }
+        if (isInvitation) {
+          await update(ref(db, 'users/' + uid + '/invitation'), {
+            status: 'pending',
+            emailSentAt: nowIso()
+          });
+        }
+        setMessage(usersMsg, 'success', (isInvitation ? 'Invitation resent to ' : 'Password reset email sent to ') + email + '.');
       } else {
          setMessage(usersMsg, 'error', 'Password reset not available.');
       }
     } catch (err) {
+      if (isInvitation) {
+        try {
+          await update(ref(db, 'users/' + uid + '/invitation'), { status: 'delivery_failed' });
+        } catch (statusErr) {
+          console.warn('Could not record the invitation delivery failure:', statusErr);
+        }
+      }
       setMessage(usersMsg, 'error', 'Error sending password reset: ' + err.message);
     } finally {
       if (btn) btn.disabled = false;

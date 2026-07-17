@@ -190,6 +190,39 @@
     </div>
   </div>
 
+  <aside id="invitationNotice" class="dashboard-invitation" aria-labelledby="invitationNoticeTitle" aria-live="polite" hidden>
+    <div class="dashboard-invitation__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M20 11.5a8 8 0 1 1-4.7-7.3"></path>
+        <path d="m9 11 2 2 7-7"></path>
+      </svg>
+    </div>
+    <div class="dashboard-invitation__body">
+      <p class="dashboard-invitation__eyebrow">Your invitation</p>
+      <h2 id="invitationNoticeTitle">Welcome to the dashboard</h2>
+      <p>Please confirm the account details your administrator added for you.</p>
+      <dl class="dashboard-invitation__details">
+        <div>
+          <dt>Name</dt>
+          <dd id="invitationNoticeName"></dd>
+        </div>
+        <div>
+          <dt>Work email</dt>
+          <dd id="invitationNoticeEmail"></dd>
+        </div>
+        <div>
+          <dt>Access level</dt>
+          <dd id="invitationNoticeRole"></dd>
+        </div>
+      </dl>
+      <p id="invitationNoticeError" class="dashboard-invitation__error" role="alert" hidden></p>
+      <div class="dashboard-invitation__actions">
+        <button type="button" id="confirmInvitationBtn" class="btn">Confirm Details</button>
+        <a href="profile.html" class="dashboard-invitation__profile-link">Review profile</a>
+      </div>
+    </div>
+  </aside>
+
   <div class="container" style="display:none;">
 
     <!-- UPLOAD ZONE -->

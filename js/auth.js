@@ -137,11 +137,18 @@ const profileMenuAvatar = document.getElementById('profileMenuAvatar');
 const profileMenuName = document.getElementById('profileMenuName');
 const profileMenuEmail = document.getElementById('profileMenuEmail');
 const logoutBtn = document.getElementById('logoutBtn');
+const invitationNotice = document.getElementById('invitationNotice');
+const invitationNoticeName = document.getElementById('invitationNoticeName');
+const invitationNoticeEmail = document.getElementById('invitationNoticeEmail');
+const invitationNoticeRole = document.getElementById('invitationNoticeRole');
+const invitationNoticeError = document.getElementById('invitationNoticeError');
+const confirmInvitationBtn = document.getElementById('confirmInvitationBtn');
 
 let siteMetaUnsubscribe = null;
 let dashboardDataUnsubscribe = null;
 let routineVisitsUnsubscribe = null;
 let _freshLogin = false;
+let pendingInvitationUserRef = null;
 
 const ACTIVITY_LOG_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -177,6 +184,52 @@ function setProfileMenuOpen(open) {
 
 function updateProfileMenu(user, profile) {
   profileMenuUi.update(user, profile);
+}
+
+function invitationRoleName(roleId, customRoleDef) {
+  if (BUILTIN_ROLES[roleId]) return BUILTIN_ROLES[roleId].name;
+  return customRoleDef && customRoleDef.name ? customRoleDef.name : roleId;
+}
+
+function showInvitationNotice(user, profile, roleId, customRoleDef) {
+  var invitation = profile && profile.invitation;
+  var shouldShow = invitation && invitation.status === 'pending';
+  pendingInvitationUserRef = shouldShow ? ref(db, 'users/' + user.uid) : null;
+  invitationNotice.hidden = !shouldShow;
+  if (!shouldShow) return;
+
+  invitationNoticeName.textContent = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || user.displayName || 'Not provided';
+  invitationNoticeEmail.textContent = profile.email || user.email || 'Not provided';
+  invitationNoticeRole.textContent = invitationRoleName(roleId, customRoleDef);
+  invitationNoticeError.hidden = true;
+  invitationNoticeError.textContent = '';
+  confirmInvitationBtn.disabled = false;
+  confirmInvitationBtn.textContent = 'Confirm Details';
+}
+
+if (confirmInvitationBtn) {
+  confirmInvitationBtn.addEventListener('click', async function() {
+    if (!pendingInvitationUserRef) return;
+    confirmInvitationBtn.disabled = true;
+    confirmInvitationBtn.textContent = 'Confirming…';
+    invitationNoticeError.hidden = true;
+    try {
+      var confirmedAt = nowIso();
+      await update(pendingInvitationUserRef, {
+        'invitation/status': 'accepted',
+        'invitation/confirmedAt': confirmedAt,
+        updatedAt: confirmedAt
+      });
+      pendingInvitationUserRef = null;
+      invitationNotice.hidden = true;
+    } catch (error) {
+      invitationNoticeError.textContent = 'Your details could not be confirmed. Please try again.';
+      invitationNoticeError.hidden = false;
+      confirmInvitationBtn.disabled = false;
+      confirmInvitationBtn.textContent = 'Confirm Details';
+      console.error('Could not confirm invitation details:', error);
+    }
+  });
 }
 
 headerEl.style.display = 'none';
@@ -424,6 +477,7 @@ onAuthStateChanged(auth, async (user) => {
           });
         }
         updateProfileMenu(user, userProfile);
+        showInvitationNotice(user, userProfile, roleId, customRoleDef);
         const action = _freshLogin ? 'login' : 'session_resume';
         _freshLogin = false;
         if (shouldLogActivity(user.uid, action)) {
@@ -469,6 +523,8 @@ onAuthStateChanged(auth, async (user) => {
     applySiteMeta(null);
     clearLoginForm();
     updateProfileMenu(null);
+    pendingInvitationUserRef = null;
+    invitationNotice.hidden = true;
     showApp(undefined);
   }
 });

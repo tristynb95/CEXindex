@@ -159,7 +159,7 @@
                   <span class="admin-pg-nav__content">
                     <span class="admin-pg-nav__eyebrow">Access</span>
                     <strong>Users</strong>
-                    <span class="admin-pg-nav__meta">Create accounts, change roles, or remove access.</span>
+                    <span class="admin-pg-nav__meta">Invite users, change roles, or remove access.</span>
                   </span>
                 </button>
                 <button type="button" class="admin-pg-nav__btn" data-admin-panel="roles" aria-label="Roles">
@@ -313,8 +313,8 @@
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
-                    <h3>Create User</h3>
-                    <p>Create a dashboard login and assign the right access level.</p>
+                    <h3>Invite User</h3>
+                    <p>Create their dashboard access and email them a secure link to choose a password.</p>
                   </div>
                 </div>
                 <form id="createUserForm" class="admin-form admin-form--inline">
@@ -330,10 +330,6 @@
                     <span>Work email</span>
                     <input type="email" id="newEmailInput" placeholder="Email address" autocomplete="email" required>
                   </label>
-                  <label class="admin-form-field" for="newPassInput">
-                    <span>Temporary password</span>
-                    <input type="text" id="newPassInput" placeholder="Temporary password" required>
-                  </label>
                   <label class="admin-form-field" for="newRoleSelect">
                     <span>Access level</span>
                     <select id="newRoleSelect">
@@ -341,7 +337,7 @@
                       <option value="admin">Admin</option>
                     </select>
                   </label>
-                  <button type="submit" class="btn">Create User</button>
+                  <button type="submit" class="btn">Send Invitation</button>
                 </form>
                 <div id="createMsg" class="admin-message" style="display:none;"></div>
               </div>
