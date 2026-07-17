@@ -641,7 +641,13 @@ function _setTargetTrendState(hasData, message) {
     cfg._areaTooltipLayers = [];
     cfg._hoveredArea = null;
 
-    var sourceItems = cfg.noDataFallback ? buildMergedItems(cfg) : cfg.items;
+    // The dashboard normally fills gaps with grey "No Data" pins so bakeries
+    // without a record for the selected period remain visible. Once a band is
+    // selected, cfg.items has already been narrowed by getData(); merging the
+    // full bakery directory back in would incorrectly turn every out-of-band
+    // bakery into a "No Data" pin.
+    var hasBandFilter = !!(GAILS.state && GAILS.state.bandFilter);
+    var sourceItems = cfg.noDataFallback && !hasBandFilter ? buildMergedItems(cfg) : cfg.items;
 
     var visibleItems = getVisitFilteredItems(cfg, sourceItems);
 

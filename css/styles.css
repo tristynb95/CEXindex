@@ -1884,6 +1884,7 @@ canvas {
    height across the title and card rows, pushing both down compared with the
    other views. Pack the rows to the top on desktop instead. */
 @media (min-width: 981px) {
+  body[data-dash-tab="table"] .dashboard-workspace__main,
   body[data-dash-tab="map"] .dashboard-workspace__main,
   body[data-dash-tab="target"] .dashboard-workspace__main,
   body[data-dash-tab="visit-log"] .dashboard-workspace__main {
