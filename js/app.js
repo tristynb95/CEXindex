@@ -1596,7 +1596,18 @@
       renderSelected();
     };
   })();
-  document.getElementById('sortBy').addEventListener('change', refresh);
+  document.getElementById('sortBy').addEventListener('change', function () {
+    var leagueTableBody = document.getElementById('tableBody');
+    var leagueTable = leagueTableBody ? leagueTableBody.closest('table') : null;
+    if (leagueTable) {
+      delete leagueTable.dataset.sortCol0;
+      delete leagueTable.dataset.sortAsc0;
+      leagueTable.querySelectorAll('thead th').forEach(function (header) {
+        header.classList.remove('sort-asc', 'sort-desc');
+      });
+    }
+    refresh();
+  });
 
   document.getElementById('rollingWindow').addEventListener('change', function () {
     state.selectedMonths = G.resolvePeriodMonths(this.value, state.MONTHS, state.ALL);
