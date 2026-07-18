@@ -400,6 +400,10 @@ function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
       monthsSinceVisit: monthsSinceVisit,
       hasVisitEver: !!lastVisit, escapeLine: escapeLine, severeLine: severeLine
     });
+    // Carry the priority tier onto the snapshot so the focus map (which is fed
+    // these same records) can colour its pins by support priority.
+    rec.supportTier = p.tier;
+    rec.supportPriority = p.priority;
     return {
       name: rec.b, rec: rec, trend: trend, ops: G.getBakeryOps(rec.b),
       score: rec[cf], focusMonths: focusMonths, focusStreak: focusStreak, monthsWithData: recentTrend.monthsTracked,
@@ -1115,21 +1119,19 @@ document.addEventListener('keydown', function (event) {
     absolute: '<span style="color:var(--green);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span>'
   };
 
-  var TARGET_LEGEND = {
-    relative: [
-      { label: 'Low Performance', color: '#B22A24' },
-      { label: 'Below Average', color: '#C97F12' }
-    ],
-    absolute: [
-      { label: 'Below Standard', color: '#B22A24' },
-      { label: 'Approaching', color: '#C97F12' }
-    ]
-  };
-
-  var TARGET_HINT = {
-    relative: '<span style="color:var(--red);font-weight:600">&#9679; Low Performance</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL\'s bakery before plotting.',
-    absolute: '<span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; Click a pin for details. Imported site names are matched back to the correct GAIL\'s bakery before plotting.'
-  };
+  // The focus map is classified by support-priority tier, not performance band,
+  // so it can never be misread as a second copy of the network performance map.
+  // A dedicated status triad (validated for colour-vision separation) keeps the
+  // three tiers cleanly distinct instead of collapsing into one warm hue:
+  // High = brand red, Medium = a bright gold (not the brown performance amber),
+  // Monitor = a calm cool slate for the "resting" tier.
+  var PRIORITY_TIER_COLORS = { critical: '#B22A24', high: '#E3A130', watch: '#78909C' };
+  var TARGET_PRIORITY_LEGEND = [
+    { label: 'High', color: '#B22A24' },
+    { label: 'Medium', color: '#E3A130' },
+    { label: 'Monitor', color: '#78909C' }
+  ];
+  var TARGET_PRIORITY_HINT = '<span style="color:#B22A24;font-weight:600">&#9679; High</span> &nbsp;&middot;&nbsp; <span style="color:#E3A130;font-weight:600">&#9679; Medium</span> &nbsp;&middot;&nbsp; <span style="color:#78909C;font-weight:600">&#9679; Monitor</span> &nbsp;&middot;&nbsp; Colour shows support priority, not performance band. Click a pin for details.';
 
   var _networkMapAreaState = 'off';
   var _targetMapAreaState = 'off';
@@ -1163,7 +1165,8 @@ document.addEventListener('keydown', function (event) {
       modalTitle: 'Focus Bakeries Not Mapped',
       emptyMessage: 'No focus bakeries for the current selection.',
       bandField: 'cb',
-      legendItems: TARGET_LEGEND.relative,
+      colorMode: 'priority',
+      legendItems: TARGET_PRIORITY_LEGEND,
       items: [],
       missingItems: [],
       instance: null,
@@ -1214,6 +1217,47 @@ document.addEventListener('keydown', function (event) {
     return header +
       '<br><span style="font-size:0.82em;opacity:0.85">' + areaAvg + ' &nbsp;&middot;&nbsp; ' + diffStr + ' vs avg</span>' +
       coverageLine;
+  }
+
+  // ---- Priority-mode area shading (focus map) ----------------------------
+  // Territories are shaded by FOCUS DENSITY — the share of the area's bakeries
+  // (focus and not) that are currently in focus — so the map shows which ops
+  // areas have the greatest concentration of support need. Blue = a small share
+  // in focus (healthy area), through green and amber, to red = a large share in
+  // focus. This matches the network map's convention that red = worse.
+  var DENSITY_BANDS = [
+    { min: 0.50, color: '#B22A24' }, // red   — half or more of the area in focus
+    { min: 0.25, color: '#C97F12' }, // amber
+    { min: 0.10, color: '#1D9E5C' }, // green
+    { min: 0.00, color: '#1E70C4' }  // blue  — very few in focus
+  ];
+
+  function getAreaDensityColor(density) {
+    for (var i = 0; i < DENSITY_BANDS.length; i++) {
+      if (density >= DENSITY_BANDS[i].min) return DENSITY_BANDS[i].color;
+    }
+    return DENSITY_BANDS[DENSITY_BANDS.length - 1].color;
+  }
+
+  function buildAreaDensityTooltip(mgr, items, focusCount, areaTotal, density, areaVisited, visitLabel) {
+    var high = 0, medium = 0, monitor = 0;
+    (items || []).forEach(function (item) {
+      if (!item) return;
+      if (item.supportTier === 'critical') high++;
+      else if (item.supportTier === 'high') medium++;
+      else monitor++;
+    });
+    var makeup = [];
+    if (high) makeup.push(high + ' High');
+    if (medium) makeup.push(medium + ' Medium');
+    if (monitor) makeup.push(monitor + ' Monitor');
+    var pct = Math.round(density * 100);
+    var header = '<strong>' + escapeHtml(mgr) + '’s Area</strong>';
+    return header +
+      '<br><span style="font-size:0.82em;opacity:0.85"><strong>' + pct + '% in focus</strong>' +
+        ' &nbsp;&middot;&nbsp; ' + focusCount + ' of ' + areaTotal + ' baker' + (areaTotal === 1 ? 'y' : 'ies') + '</span>' +
+      (makeup.length ? '<br><span style="font-size:0.82em;opacity:0.85">' + makeup.join(', ') + '</span>' : '') +
+      '<br><span style="font-size:0.82em;opacity:0.85">' + areaVisited + ' ' + visitLabel + '</span>';
   }
 
   function pointInLatLngRing(latlng, ring) {
@@ -1341,9 +1385,17 @@ document.addEventListener('keydown', function (event) {
     'Default': '#d32f2f'
   };
 
-  function getMarkerColor(item, bandField) {
+  // Higher tiers draw last so their pins sit on top when markers overlap.
+  function getPriorityDrawRank(item) {
+    return { watch: 0, high: 1, critical: 2 }[item && item.supportTier] || 0;
+  }
+
+  function getMarkerColor(item, bandField, colorMode) {
     if (item && item.incompletePeriod) return VIBRANT_MAP_COLORS['Incomplete'];
     if (item && item.noData) return VIBRANT_MAP_COLORS['No Data'];
+    if (colorMode === 'priority') {
+      return PRIORITY_TIER_COLORS[item && item.supportTier] || VIBRANT_MAP_COLORS['Default'];
+    }
     var band = item && item[bandField || 'cb'];
     return VIBRANT_MAP_COLORS[band] || VIBRANT_MAP_COLORS['Default'];
   }
@@ -1355,7 +1407,7 @@ document.addEventListener('keydown', function (event) {
     return 'Last visited ' + d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
-  function getPopupHtml(item, color, bandField) {
+  function getPopupHtml(item, color, bandField, colorMode) {
     var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b;
     var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
     var region = GAILS.getBakeryRegion ? GAILS.getBakeryRegion(item.b) : 'Unknown';
@@ -1386,14 +1438,25 @@ document.addEventListener('keydown', function (event) {
     var nps = item.n != null ? item.n : '\u2014';
     var volume = item.v != null ? item.v : '\u2014';
 
+    // In priority mode the chip communicates the support tier (matching the pin
+    // colour); the performance band stays visible as context on the stats line.
+    var isPriority = colorMode === 'priority';
+    var chipLabel = isPriority
+      ? (_TIER_LABEL[item.supportTier] || 'Unknown') + (item.supportTier === 'watch' ? '' : ' priority')
+      : (band || 'Unknown');
+    // The Medium gold is too light for the chip's default white text, so give
+    // that one tier dark ink; High and Monitor keep white.
+    var chipStyle = 'background:' + color + (isPriority && item.supportTier === 'high' ? ';color:#3d2f0e' : '');
+    var statsPrefix = isPriority && band ? escapeHtml(band) + ' &nbsp;&middot;&nbsp; ' : '';
+
     var visitLine = lastVisit
       ? '<button type="button" class="map-popup__visit map-popup__visit--link" data-visit-report="' + escapeHtml(item.b) + '">' + escapeHtml(formatLastVisitDate(lastVisit)) + ' &rarr;</button>'
       : '<div class="map-popup__visit">' + escapeHtml(formatLastVisitDate(lastVisit)) + '</div>';
 
     return '<div class="map-popup">' +
       '<div class="map-popup__name">' + escapeHtml(siteLabel) + '</div>' +
-      '<span class="map-popup__band" style="background:' + color + '">' + escapeHtml(band || 'Unknown') + '</span>' +
-      '<div class="map-popup__stats">Index <strong>' + escapeHtml(cei) + '</strong> &nbsp;&middot;&nbsp; NPS ' + escapeHtml(nps) + ' &nbsp;&middot;&nbsp; Vol ' + escapeHtml(volume) + '</div>' +
+      '<span class="map-popup__band" style="' + chipStyle + '">' + escapeHtml(chipLabel) + '</span>' +
+      '<div class="map-popup__stats">' + statsPrefix + 'Index <strong>' + escapeHtml(cei) + '</strong> &nbsp;&middot;&nbsp; NPS ' + escapeHtml(nps) + ' &nbsp;&middot;&nbsp; Vol ' + escapeHtml(volume) + '</div>' +
       '<div class="map-popup__mgr">' + escapeHtml(ops) + '</div>' +
       '<div class="map-popup__meta">' + escapeHtml(region) + '</div>' +
       visitLine +
@@ -1722,6 +1785,18 @@ document.addEventListener('keydown', function (event) {
         .map(function (m) { return _areaAvgByMgr[m]; })
         .filter(function (v) { return v != null; });
 
+      // Priority-mode density needs the TOTAL bakeries per area (focus and not),
+      // taken from the full directory under the current filters, as the
+      // denominator for each area's focus share.
+      var _isPriorityAreas = cfg.colorMode === 'priority';
+      var _areaDirTotals = {};
+      if (_isPriorityAreas) {
+        getFilteredBakeryNames().forEach(function (name) {
+          var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(name) : 'Unknown';
+          _areaDirTotals[ops] = (_areaDirTotals[ops] || 0) + 1;
+        });
+      }
+
       // Coverage per area from the full source set (before the visit filter) so the
       // tooltip reports the true area size and how many were visited this period,
       // regardless of which visit filter is active.
@@ -1742,9 +1817,21 @@ document.addEventListener('keydown', function (event) {
         var group = managerGroups[mgr];
         var total = areaTotals[mgr] != null ? areaTotals[mgr] : group.items.length;
         var visited = areaVisited[mgr] != null ? areaVisited[mgr] : 0;
-        var color = getAreaBandColor(_areaAvgByMgr[mgr], cfg.bandField, _areaAvgVals);
-        var tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField, networkAvg, total, visited,
-          cfg.key === 'target' ? 'visited recently' : 'visited this period');
+        var visitLabel = cfg.key === 'target' ? 'visited recently' : 'visited this period';
+        // Priority map: colour the territory by focus density (share of the
+        // area's bakeries currently in focus). Network map: keep the
+        // performance-band colour. Both use the colour for stroke and fill.
+        var strokeColor, fillColor, tooltip;
+        if (_isPriorityAreas) {
+          var focusCount = total; // sourceItems on the focus map are the focus bakeries
+          var areaBakeryTotal = Math.max(_areaDirTotals[mgr] || 0, focusCount);
+          var density = areaBakeryTotal > 0 ? Math.min(1, focusCount / areaBakeryTotal) : 0;
+          strokeColor = fillColor = getAreaDensityColor(density);
+          tooltip = buildAreaDensityTooltip(mgr, group.items, focusCount, areaBakeryTotal, density, visited, visitLabel);
+        } else {
+          strokeColor = fillColor = getAreaBandColor(_areaAvgByMgr[mgr], cfg.bandField, _areaAvgVals);
+          tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField, networkAvg, total, visited, visitLabel);
+        }
         var dashArray = AREA_DASH_PATTERNS[mgrIndex % AREA_DASH_PATTERNS.length] || null;
         mgrIndex++;
 
@@ -1753,11 +1840,11 @@ document.addEventListener('keydown', function (event) {
 
         var polygons = polyList.map(function (poly) {
           var polygon = L.polygon(poly, {
-            color: color,
+            color: strokeColor,
             weight: 3.5,
             opacity: 1.0,
             dashArray: dashArray,
-            fillColor: color,
+            fillColor: fillColor,
             fillOpacity: 0.22,
             lineJoin: 'round',
             pane: 'areaPane'
@@ -1793,6 +1880,11 @@ document.addEventListener('keydown', function (event) {
       var aNoData = !!a.noData, bNoData = !!b.noData;
       if (aNoData && bNoData) return (a.b || '').localeCompare(b.b || '');
       if (aNoData !== bNoData) return aNoData ? 1 : -1;
+      if (cfg.colorMode === 'priority') {
+        var tierDelta = getPriorityDrawRank(a) - getPriorityDrawRank(b);
+        if (tierDelta !== 0) return tierDelta;
+        return (a.supportPriority || 0) - (b.supportPriority || 0);
+      }
       var bandDelta = getBandPriority(a, bf) - getBandPriority(b, bf);
       if (bandDelta !== 0) return bandDelta;
       return (a.c || 0) - (b.c || 0);
@@ -1806,7 +1898,7 @@ document.addEventListener('keydown', function (event) {
         return;
       }
 
-      var color = getMarkerColor(item, bf);
+      var color = getMarkerColor(item, bf, cfg.colorMode);
       var marker = L.circleMarker(ll, {
         radius: 9,
         fillColor: color,
@@ -1815,7 +1907,7 @@ document.addEventListener('keydown', function (event) {
         opacity: 1,
         fillOpacity: 0.88
       });
-      marker.bindPopup(getPopupHtml(item, color, bf));
+      marker.bindPopup(getPopupHtml(item, color, bf, cfg.colorMode));
       var glanceHtml = getGlanceHtml(item, color, bf);
       (function (ops) {
         marker.on('mouseover', function () {
@@ -1962,11 +2054,13 @@ document.addEventListener('keydown', function (event) {
   window.GAILS.setTargetMapMetric = function (metric) {
     var cfg = MAPS.target;
     var isAbsolute = metric === 'absolute';
+    // Only the underlying score field changes with the metric; the focus map is
+    // always classified by support-priority tier, so the legend/hint stay fixed.
     cfg.bandField = isAbsolute ? 'acb' : 'cb';
-    cfg.legendItems = isAbsolute ? TARGET_LEGEND.absolute : TARGET_LEGEND.relative;
+    cfg.legendItems = TARGET_PRIORITY_LEGEND;
 
     var hintEl = document.getElementById('targetMapLegendHint');
-    if (hintEl) hintEl.innerHTML = isAbsolute ? TARGET_HINT.absolute : TARGET_HINT.relative;
+    if (hintEl) hintEl.innerHTML = TARGET_PRIORITY_HINT;
 
     if (cfg.instance) {
       renderLegend(cfg);
@@ -2144,10 +2238,11 @@ window.GAILS.renderTargets = function (data) {
     return b[bf] === highBand || b[bf] === lowBand;
   }).sort(function (a, b) { return a[cf] - b[cf]; });
 
-  G.storeMapTargets(targets);
-
   _renderFocusDataStatus(focusContext, targets);
+  // The hub computes and attaches each bakery's support-priority tier onto the
+  // snapshot, so it must run before the map is fed those records.
   _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute);
+  G.storeMapTargets(targets);
   _renderInsights(targets, bf, cf, lowBand, isAbsolute);
   _renderTargetTable(targets, bf, cf, highBand, isAbsolute);
   _renderTargetTrends(targets, bf, cf, highBand, lowBand, isAbsolute);

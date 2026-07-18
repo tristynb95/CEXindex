@@ -7,6 +7,11 @@ window.GAILS = window.GAILS || {};
   var G = window.GAILS;
   var WEIGHTS = Object.freeze({ severity: 50, momentum: 25, persistence: 15, coverage: 10 });
   var TIERS = Object.freeze({ high: 60, medium: 35 });
+  // Weight applied to earlier-decline credit once the latest month has turned
+  // positive (the dip has already reversed). 0 keeps the score focused on the
+  // current trajectory; 1 restores the legacy behaviour where a recovered dip
+  // still counted. A bakery that is still sliding always keeps full credit.
+  var RECOVERED_DIP_WEIGHT = 0;
 
   function isNumber(value) {
     return typeof value === 'number' && !isNaN(value);
@@ -37,8 +42,17 @@ window.GAILS = window.GAILS || {};
     // The three-month movement already contains the latest MoM movement. Only
     // score the deterioration that happened before the latest month here.
     var earlierDrop = Math.max(0, threeMonthDrop - recentDrop);
+
+    // If the latest month is a confirmed non-drop, the earlier decline has
+    // already reversed and is stale evidence. Discount it by
+    // RECOVERED_DIP_WEIGHT so the priority tracks the current trajectory. A
+    // bakery that is still sliding, or whose latest month is unknown, keeps
+    // full earlier-decline credit.
+    var recovered = trend.prev && isNumber(trend.ceiChange) && trend.ceiChange >= 0;
+    var earlierWeight = recovered ? RECOVERED_DIP_WEIGHT : 1;
+
     var recentPoints = Math.min(15, Math.round(recentDrop * 1.5));
-    var earlierPoints = Math.min(10, Math.round(earlierDrop));
+    var earlierPoints = Math.min(10, Math.round(earlierDrop * earlierWeight));
     return recentPoints + earlierPoints;
   }
 
@@ -66,7 +80,7 @@ window.GAILS = window.GAILS || {};
     return hasVisitEver ? 6 : WEIGHTS.coverage;
   }
 
-  G.SUPPORT_SCORE_CONFIG = Object.freeze({ weights: WEIGHTS, tiers: TIERS });
+  G.SUPPORT_SCORE_CONFIG = Object.freeze({ weights: WEIGHTS, tiers: TIERS, recoveredDipWeight: RECOVERED_DIP_WEIGHT });
 
   G.computeSupportPriority = function(input) {
     input = input || {};

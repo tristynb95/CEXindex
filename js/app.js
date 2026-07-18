@@ -105,9 +105,6 @@
     var coreConfigText = formatSelectedPeriod() + ' · ' + bakeryLabel;
     if (currentTab === 'target') coreConfigText = 'All Time \u00b7 ' + bakeryLabel;
     pills.push('<span class="header-pill-core">' + escapeHtml(coreConfigText) + '</span>');
-    if (focusContext && focusContext.latestClosedMonth) {
-      pills.push('<span class="header-pill-filter">Through ' + escapeHtml(focusContext.latestClosedMonth) + ' \u00b7 recent months weighted most</span>');
-    }
 
     // Optional bubble: Region
     var selRegions = state.regionFilter || [];

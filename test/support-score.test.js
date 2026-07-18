@@ -50,6 +50,33 @@ test('does not count the latest decline again in the three-month signal', () => 
   assert.equal(sustained.momentum, 25);
 });
 
+test('discards earlier-decline credit once the dip has reversed', () => {
+  // Dipped three months ago (-10) but the latest month is a clear gain: the
+  // decline is stale, so it should no longer earn momentum.
+  const recovered = score({
+    trend: { prev: true, ceiChange: 8, threePrev: true, cei3mChange: -10 }
+  });
+  assert.equal(recovered.momentum, 0);
+});
+
+test('keeps earlier-decline credit while the bakery is still sliding', () => {
+  // Same earlier drop, but the latest month is still negative, so the slide is
+  // current and keeps full credit: recent drop 2 -> 3 pts, earlier drop 10 -> 10.
+  const sliding = score({
+    trend: { prev: true, ceiChange: -2, threePrev: true, cei3mChange: -12 }
+  });
+  assert.equal(sliding.momentum, 13);
+});
+
+test('keeps earlier-decline credit when the latest month is unknown', () => {
+  // No confirmed latest month (no prev): recovery cannot be assumed, so the
+  // three-month decline is not discounted.
+  const gap = score({
+    trend: { prev: false, threePrev: true, cei3mChange: -10 }
+  });
+  assert.equal(gap.momentum, 10);
+});
+
 test('uses visit coverage as a bounded guardrail', () => {
   assert.equal(score({ visitedInPeriod: true, hasVisitEver: true }).coverage, 0);
   assert.equal(score({ visitedInPeriod: false, hasVisitEver: true }).coverage, 6);

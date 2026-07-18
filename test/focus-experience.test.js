@@ -62,9 +62,34 @@ test('keeps performance and activity filters independent and reports results', (
   assert.match(targets, /Performance: /);
 });
 
-test('initialises the focus bakery map in peer mode', () => {
-  assert.match(targets, /key: 'target',[\s\S]*?bandField: 'cb',[\s\S]*?legendItems: TARGET_LEGEND\.relative/);
-  assert.match(html, /id="targetMapLegendHint"[\s\S]*?Low Performance[\s\S]*?Below Average/);
+test('classifies the focus bakery map by support-priority tier, not performance band', () => {
+  // The focus map deliberately colours by priority tier (High/Medium/Monitor)
+  // so it is never mistaken for the network performance-band map.
+  assert.match(targets, /key: 'target',[\s\S]*?colorMode: 'priority',[\s\S]*?legendItems: TARGET_PRIORITY_LEGEND/);
+  assert.match(targets, /TARGET_PRIORITY_LEGEND = \[[\s\S]*?'High'[\s\S]*?'Medium'[\s\S]*?'Monitor'/);
+  // Scope the hint check to the target legend element itself — the network map
+  // hint elsewhere on the page still (correctly) names the performance bands.
+  const targetHint = html.match(/id="targetMapLegendHint"[\s\S]*?<\/p>/)[0];
+  assert.match(targetHint, /High[\s\S]*?Medium[\s\S]*?Monitor/);
+  assert.doesNotMatch(targetHint, /Low Performance|Below Average/);
+  // Tier is carried onto the snapshot the map is fed, before the map is stored.
+  assert.match(targets, /rec\.supportTier = p\.tier/);
+  assert.ok(targets.indexOf('_renderFocusHub(targets, data') < targets.indexOf('G.storeMapTargets(targets)'));
+});
+
+test('shades focus-map territories by focus density (share of area in focus), not performance', () => {
+  // Area boundaries on the focus map show the share of each ops area's bakeries
+  // (focus and not) that are in focus: blue = few, through green/amber, to red.
+  // The network map keeps its performance-band colouring.
+  assert.match(targets, /function getAreaDensityColor\(density\)/);
+  assert.match(targets, /function buildAreaDensityTooltip\(/);
+  // Blue (low) -> green -> amber -> red (high) density bands.
+  assert.match(targets, /DENSITY_BANDS = \[[\s\S]*?0\.50[\s\S]*?#B22A24[\s\S]*?0\.10[\s\S]*?#1D9E5C[\s\S]*?#1E70C4/);
+  // Denominator is the full directory per area (focus + non-focus), under filters.
+  assert.match(targets, /getFilteredBakeryNames\(\)\.forEach[\s\S]*?_areaDirTotals\[ops\]/);
+  // Priority branch computes density and drives colour + tooltip; band path stays on network.
+  assert.match(targets, /if \(_isPriorityAreas\) \{[\s\S]*?focusCount \/ areaBakeryTotal[\s\S]*?getAreaDensityColor\(density\)[\s\S]*?buildAreaDensityTooltip\(/);
+  assert.match(targets, /\} else \{[\s\S]*?getAreaBandColor\([\s\S]*?buildAreaTooltip\(/);
 });
 
 test('provides readable labels and a card layout on narrow screens', () => {
