@@ -32,6 +32,7 @@ they can rely on `window.GAILS` already existing.
 Shared code lives in one place per concern; prefer extending these over re-copying:
 
 - `js/utils.js` — `GAILS.escapeHtml`, month parsing, formatting, generic helpers.
+- `js/focus-data.js` — the Focus-only closed-month eligibility and recency-weighted snapshot.
 - `js/support-score.js` — the tested 0–100 support-priority calculation.
 - `js/cqv-criticals.js` — `GAILS.CQVCriticals`, the canonical zero-tolerance question list.
 - `js/cqv-shared.js` — `GAILS.CQVShared`, CQV band derivation and presentation.

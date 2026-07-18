@@ -47,7 +47,7 @@ window.GAILS.getAvailableBands = function() {
       }
       var avgC = scoredRows.reduce(function(a, r) { return a + r.c; }, 0) / scoredRows.length;
       var avgAc = scoredRows.reduce(function(a, r) { return a + r.ac; }, 0) / scoredRows.length;
-      relative.add(avgC >= 75 ? 'Top Performer' : avgC >= 50 ? 'Above Average' : avgC >= 25 ? 'Below Average' : 'Low Performer');
+      relative.add(avgC >= 75 ? 'Top Performance' : avgC >= 50 ? 'Above Average' : avgC >= 25 ? 'Below Average' : 'Low Performance');
       absolute.add(avgAc >= 90 ? 'Exceeding' : avgAc >= 75 ? 'Meeting' : avgAc >= 60 ? 'Approaching' : 'Below Standard');
     });
   } else {
@@ -135,12 +135,18 @@ window.GAILS.getData = function() {
       if (bf.indexOf('abs:') === 0) { var abv = bf.slice(4); agg = agg.filter(function(r) { return r.acb === abv; }); }
       else { agg = agg.filter(function(r) { return r.cb === bf; }); }
     }
+    var isRankable = function(record) { return record && !record.noData && !record.incompletePeriod; };
     agg.sort(function(a, b) {
+      if (isRankable(a) !== isRankable(b)) return isRankable(a) ? -1 : 1;
       var av = a.c === null || a.c === undefined || isNaN(a.c) ? -Infinity : a.c;
       var bv = b.c === null || b.c === undefined || isNaN(b.c) ? -Infinity : b.c;
       return bv - av;
     });
-    agg.forEach(function(a, i) { a.cr = i + 1; a.nr = 0; });
+    var companyRank = 0;
+    agg.forEach(function(a) {
+      a.cr = isRankable(a) ? ++companyRank : null;
+      a.nr = 0;
+    });
     return agg;
   }
   G.recomputeTimelinessRanks(recs);
@@ -151,6 +157,9 @@ window.GAILS.getData = function() {
     else { recs = recs.filter(function(r) { return r.cb === bf; }); }
   }
   recs = [].concat(recs).sort(function(a, b) {
+    var aRankable = a && !a.noData && !a.incompletePeriod;
+    var bRankable = b && !b.noData && !b.incompletePeriod;
+    if (aRankable !== bRankable) return aRankable ? -1 : 1;
     var av = a.c === null || a.c === undefined || isNaN(a.c) ? -Infinity : a.c;
     var bv = b.c === null || b.c === undefined || isNaN(b.c) ? -Infinity : b.c;
     return bv - av;

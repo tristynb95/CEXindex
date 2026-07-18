@@ -54,6 +54,9 @@ test('uses visit coverage as a bounded guardrail', () => {
   assert.equal(score({ visitedInPeriod: true, hasVisitEver: true }).coverage, 0);
   assert.equal(score({ visitedInPeriod: false, hasVisitEver: true }).coverage, 6);
   assert.equal(score({ visitedInPeriod: false, hasVisitEver: false }).coverage, 10);
+  assert.equal(score({ monthsSinceVisit: 2, visitedInPeriod: false, hasVisitEver: true }).coverage, 0);
+  assert.equal(score({ monthsSinceVisit: 8, visitedInPeriod: true, hasVisitEver: true }).coverage, 6);
+  assert.equal(score({ monthsSinceVisit: 14, visitedInPeriod: true, hasVisitEver: true }).coverage, 10);
 });
 
 test('keeps the total bounded and assigns stable tier thresholds', () => {

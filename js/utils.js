@@ -65,7 +65,7 @@ window.GAILS.getCalendarYearMonths = function(offset) {
   return labels;
 };
 
-// "All Months" should cover the current month even before any data has
+// "All Time" should cover the current month even before any data has
 // been uploaded for it, so bakeries don't read as falsely unvisited etc.
 // Returns a new array, sorted, with the current month appended if missing.
 window.GAILS.withCurrentMonth = function(months) {

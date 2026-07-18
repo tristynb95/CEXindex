@@ -1,5 +1,5 @@
 // ========== MAIN APPLICATION ENTRY POINT ==========
-(function() {
+(function () {
   var G = GAILS;
   var state = G.state;
   var dashboardWorkspaceShell = document.getElementById('dashboardWorkspaceShell');
@@ -48,6 +48,25 @@
     return selectedMonths[0] + ' \u2013 ' + selectedMonths[count - 1];
   }
 
+  function setFocusPeriodControls(isFocus) {
+    [
+      { id: 'monthSelect', label: '\u2014 Select \u2014' },
+      { id: 'rollingWindow', label: 'All Time' }
+    ].forEach(function (config) {
+      var select = document.getElementById(config.id);
+      if (!select) return;
+      select.disabled = isFocus;
+      if (isFocus) {
+        select.dataset.lockedLabel = config.label;
+        select.title = 'Focus Bakeries uses all completed history and weights recent months most.';
+      } else {
+        delete select.dataset.lockedLabel;
+        select.removeAttribute('title');
+      }
+      if (G.syncCustomSelect) G.syncCustomSelect(select);
+    });
+  }
+
   var lastHeaderBakeryCount = 0;
 
   function renderDataUpdatedStamp() {
@@ -73,16 +92,22 @@
     }
 
     var isMobile = window.innerWidth <= 980;
-    var prefix = isMobile 
+    var prefix = isMobile
       ? (dashboardMobileTabLabels[currentTab] || 'Dashboard')
       : (dashboardTabLabels[currentTab] || 'Dashboard');
 
     var pills = [];
 
     // Core bubble: Period and Bakery count
-    var bakeryLabel = lastHeaderBakeryCount === 1 ? '1 bakery' : lastHeaderBakeryCount + ' bakeries';
+    var focusContext = currentTab === 'target' ? G._focusDataContext : null;
+    var headerBakeryCount = focusContext ? focusContext.bakeryCount : lastHeaderBakeryCount;
+    var bakeryLabel = headerBakeryCount === 1 ? '1 bakery' : headerBakeryCount + ' bakeries';
     var coreConfigText = formatSelectedPeriod() + ' · ' + bakeryLabel;
+    if (currentTab === 'target') coreConfigText = 'All Time \u00b7 ' + bakeryLabel;
     pills.push('<span class="header-pill-core">' + escapeHtml(coreConfigText) + '</span>');
+    if (focusContext && focusContext.latestClosedMonth) {
+      pills.push('<span class="header-pill-filter">Through ' + escapeHtml(focusContext.latestClosedMonth) + ' \u00b7 recent months weighted most</span>');
+    }
 
     // Optional bubble: Region
     var selRegions = state.regionFilter || [];
@@ -118,10 +143,10 @@
       pills.push('<span class="header-pill-filter">' + escapeHtml(bandText) + '</span>');
     }
 
-    headerSub.innerHTML = prefix + 
-           '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' + 
-           pills.join('') + 
-           '</span>';
+    headerSub.innerHTML = prefix +
+      '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' +
+      pills.join('') +
+      '</span>';
   }
 
   function updateHeaderSummary(bakeryCount) {
@@ -136,8 +161,8 @@
 
   function resizeChartsSoon(container) {
     if (!container || !G.resizeChartsIn) return;
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
         G.resizeChartsIn(container);
       });
     });
@@ -260,7 +285,7 @@
   function activateTargetSubtab(name) {
     var workspace = document.getElementById('targetTabWorkspace');
     if (!workspace) return;
-    workspace.querySelectorAll('.target-subtab').forEach(function(btn) {
+    workspace.querySelectorAll('.target-subtab').forEach(function (btn) {
       var isActive = btn.dataset.targetSubtab === name;
       btn.classList.toggle('active', isActive);
       if (isActive) {
@@ -271,12 +296,12 @@
         });
       }
     });
-    workspace.querySelectorAll('.target-subtab-panel').forEach(function(panel) {
+    workspace.querySelectorAll('.target-subtab-panel').forEach(function (panel) {
       panel.classList.toggle('active', panel.dataset.targetSubtabPanel === name);
     });
     if (name === 'map') {
-      requestAnimationFrame(function() {
-        requestAnimationFrame(function() { G.initTargetMap(); });
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { G.initTargetMap(); });
       });
     } else if (name === 'feedback') {
       G.fetchTargetWordCloud();
@@ -287,8 +312,8 @@
   }
 
   function initDashboardMapSoon() {
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() { G.initDashboardMap(); });
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { G.initDashboardMap(); });
     });
   }
 
@@ -306,17 +331,18 @@
       G.resetVisitLogCollapsedGroups();
     }
 
-    document.querySelectorAll('.tab').forEach(function(tab) {
+    document.querySelectorAll('.tab').forEach(function (tab) {
       tab.classList.toggle('active', tab.dataset.tab === name);
     });
-    document.querySelectorAll('.dashboard-footer__link').forEach(function(link) {
+    document.querySelectorAll('.dashboard-footer__link').forEach(function (link) {
       link.classList.toggle('active', link.dataset.footerTab === name);
     });
-    document.querySelectorAll('.tab-content').forEach(function(panel) {
+    document.querySelectorAll('.tab-content').forEach(function (panel) {
       panel.classList.toggle('active', panel === activePanel);
     });
     updateDashboardActiveView(name);
     syncDashboardKpis(name);
+    setFocusPeriodControls(name === 'target');
     renderHeaderSummary();
     updateBandFilterOptions();
 
@@ -346,15 +372,15 @@
     if (name === 'feedback') {
       if (!G.wordCloudInited) {
         G.wordCloudInited = true;
-        requestAnimationFrame(function() { G.initWordCloud(); });
+        requestAnimationFrame(function () { G.initWordCloud(); });
       } else {
-        requestAnimationFrame(function() { G.fetchWordCloud(); });
+        requestAnimationFrame(function () { G.fetchWordCloud(); });
       }
       return activePanel;
     }
 
     if (name === 'visit-log') {
-      requestAnimationFrame(function() {
+      requestAnimationFrame(function () {
         if (typeof G.renderVisitLog === 'function') G.renderVisitLog();
       });
       return activePanel;
@@ -362,8 +388,8 @@
 
     if (name === 'trends' && G._trendsNeedRender) {
       G._trendsNeedRender = false;
-      requestAnimationFrame(function() {
-        if (G._lastData) G.renderTrendCharts(G._lastData.filter(function(r) { return r && !r.noData; }));
+      requestAnimationFrame(function () {
+        if (G._lastData) G.renderTrendCharts(G._lastData.filter(function (r) { return r && !r.noData; }));
       });
       return activePanel;
     }
@@ -372,8 +398,8 @@
     if (name === 'target') {
       var activeSubtab = activePanel.querySelector('.target-subtab-panel.active');
       if (activeSubtab && activeSubtab.dataset.targetSubtabPanel === 'map') {
-        requestAnimationFrame(function() {
-          requestAnimationFrame(function() { G.initTargetMap(); });
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { G.initTargetMap(); });
         });
       } else {
         resizeChartsSoon(activeSubtab);
@@ -389,26 +415,26 @@
     var sel = state.selectedMonths;
     var all = state.MONTHS;
     if (!sel || sel.length === 0 || all.length === 0) return null;
-    var indices = sel.map(function(m) { return all.indexOf(m); }).filter(function(i) { return i >= 0; });
+    var indices = sel.map(function (m) { return all.indexOf(m); }).filter(function (i) { return i >= 0; });
     if (indices.length === 0) return null;
-    indices.sort(function(a, b) { return a - b; });
+    indices.sort(function (a, b) { return a - b; });
     var firstIdx = indices[0];
     var n = indices.length;
     if (firstIdx < n) return null;
     var priorMonths = all.slice(firstIdx - n, firstIdx);
-    var recs = state.ALL.filter(function(r) { return priorMonths.indexOf(r.m) >= 0; });
-    if (state.regionFilter.length) recs = recs.filter(function(r) { return state.regionFilter.indexOf(G.getBakeryRegion(r.b)) >= 0; });
-    if (state.opsFilter.length) recs = recs.filter(function(r) { return state.opsFilter.indexOf(G.getBakeryOps(r.b)) >= 0; });
-    if (state.searchBakery && state.searchBakery.length) recs = recs.filter(function(r) {
-      return state.searchBakery.some(function(s) { return r.b.toLowerCase().indexOf(s.toLowerCase()) >= 0; });
+    var recs = state.ALL.filter(function (r) { return priorMonths.indexOf(r.m) >= 0; });
+    if (state.regionFilter.length) recs = recs.filter(function (r) { return state.regionFilter.indexOf(G.getBakeryRegion(r.b)) >= 0; });
+    if (state.opsFilter.length) recs = recs.filter(function (r) { return state.opsFilter.indexOf(G.getBakeryOps(r.b)) >= 0; });
+    if (state.searchBakery && state.searchBakery.length) recs = recs.filter(function (r) {
+      return state.searchBakery.some(function (s) { return r.b.toLowerCase().indexOf(s.toLowerCase()) >= 0; });
     });
     if (recs.length === 0) return null;
-    var avg = function(key) { return recs.reduce(function(a, r) { return a + (r[key] || 0); }, 0) / recs.length; };
+    var avg = function (key) { return recs.reduce(function (a, r) { return a + (r[key] || 0); }, 0) / recs.length; };
     // Sparse metrics (e.g. avg wait) may be absent on older records — average only
     // the rows that have them; NaN when none do, so kpiDeltaHtml skips the delta.
-    var avgDef = function(key) {
-      var vs = recs.filter(function(r) { return typeof r[key] === 'number' && !isNaN(r[key]); });
-      return vs.length ? vs.reduce(function(a, r) { return a + r[key]; }, 0) / vs.length : NaN;
+    var avgDef = function (key) {
+      var vs = recs.filter(function (r) { return typeof r[key] === 'number' && !isNaN(r[key]); });
+      return vs.length ? vs.reduce(function (a, r) { return a + r[key]; }, 0) / vs.length : NaN;
     };
     var label = n === 1 ? priorMonths[0] : 'prior ' + n + 'm';
     return {
@@ -419,9 +445,9 @@
       at: avgDef('at'),
       // Total drinks is compared as a period sum, not a mean; NaN when the
       // prior period predates the KV drinks column so the delta is skipped.
-      td: (function() {
-        var vs = recs.filter(function(r) { return typeof r.td === 'number' && !isNaN(r.td) && r.td > 0; });
-        return vs.length ? vs.reduce(function(a, r) { return a + r.td; }, 0) : NaN;
+      td: (function () {
+        var vs = recs.filter(function (r) { return typeof r.td === 'number' && !isNaN(r.td) && r.td > 0; });
+        return vs.length ? vs.reduce(function (a, r) { return a + r.td; }, 0) : NaN;
       })(),
       label: label
     };
@@ -446,21 +472,21 @@
     var r = Math.round(val);
     var gap, next;
     if (gapMetric === 'nps') {
-      if (val < 45)      { gap = 45 - r; next = 'Watch'; }
+      if (val < 45) { gap = 45 - r; next = 'Watch'; }
       else if (val < 55) { gap = 55 - r; next = 'On Target'; }
-      else if (val <= 60){ gap = 61 - r; next = 'Exceeding'; }
+      else if (val <= 60) { gap = 61 - r; next = 'Exceeding'; }
       else return '';
       return gap + ' pts from ' + next;
     }
     if (gapMetric === 'cei') {
-      if (val < 25)      { gap = 25 - r; next = 'Below Average'; }
+      if (val < 25) { gap = 25 - r; next = 'Below Average'; }
       else if (val < 50) { gap = 50 - r; next = 'Above Average'; }
-      else if (val < 75) { gap = 75 - r; next = 'Top Performer'; }
+      else if (val < 75) { gap = 75 - r; next = 'Top Performance'; }
       else return '';
       return gap + ' pts from ' + next;
     }
     if (gapMetric === 'acei') {
-      if (val < 60)      { gap = 60 - r; next = 'Approaching'; }
+      if (val < 60) { gap = 60 - r; next = 'Approaching'; }
       else if (val < 75) { gap = 75 - r; next = 'Meeting'; }
       else if (val < 90) { gap = 90 - r; next = 'Exceeding'; }
       else return '';
@@ -480,7 +506,7 @@
       return '';
     }
     if (gapMetric === 'at') {
-      if (val > 115) return '+' + Math.round(val - 115) + 's over target';
+      if (val > G.BENCHMARKS.at) return '+' + Math.round(val - G.BENCHMARKS.at) + 's over target';
       return '';
     }
     return '';
@@ -495,7 +521,7 @@
   var KPI_VALUE_MIN_PX = 14;
   function fitKpiValues() {
     if (!dashboardKpiRow) return;
-    Array.from(dashboardKpiRow.querySelectorAll('.kpi__value')).forEach(function(el) {
+    Array.from(dashboardKpiRow.querySelectorAll('.kpi__value')).forEach(function (el) {
       el.style.fontSize = '';
       el.style.whiteSpace = 'nowrap';
       var available = el.clientWidth;
@@ -511,7 +537,7 @@
   }
 
   if (dashboardKpiRow && window.ResizeObserver) {
-    new ResizeObserver(function() { fitKpiValues(); }).observe(dashboardKpiRow);
+    new ResizeObserver(function () { fitKpiValues(); }).observe(dashboardKpiRow);
   } else {
     window.addEventListener('resize', fitKpiValues);
   }
@@ -522,7 +548,7 @@
     updateDashboardActiveIndex();
     updateBandFilterOptions();
     var data = G.getData();
-    var scoredData = data.filter(function(r) { return r && !r.noData; });
+    var scoredData = data.filter(function (r) { return r && !r.noData; });
     var n = scoredData.length;
     updateHeaderSummary(data.length);
     G.storeDashboardMapData(data);
@@ -541,10 +567,10 @@
         { eyebrow: 'SHINE', title: 'Efficiency', meta: 'Target: 90%.' },
         { eyebrow: 'SHINE', title: 'Friendliness', meta: 'Target: 90%.' },
         { eyebrow: 'KV Link', title: 'Coffee Efficiency', meta: 'Target: 80% < 2 min.' },
-        { eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 1:55.' },
+        { eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 2:00.' },
         { eyebrow: 'KV Link', title: 'Orders >5 Min', meta: 'Target: < 1%.' }
       );
-      dashboardKpiRow.innerHTML = dashMetrics.map(function(metric) {
+      dashboardKpiRow.innerHTML = dashMetrics.map(function (metric) {
         return '<article class="kpi kpi-muted' + (metric.primary ? ' kpi--primary' : '') + '">'
           + '<div class="kpi__top">'
           + '<span class="kpi__eyebrow">' + metric.eyebrow + '</span>'
@@ -571,11 +597,12 @@
       G.renderSpeedCharts(scoredData);
       G.renderLeagueTable(data);
       G.renderTargets(scoredData);
+      renderHeaderSummary();
       return;
     }
 
     // KPI cards pair each metric with a compact status so the row scans quickly.
-    var metricState = function(val, good, warn, invert, labels, bands) {
+    var metricState = function (val, good, warn, invert, labels, bands) {
       if (Array.isArray(bands) && bands.length) {
         for (var i = 0; i < bands.length; i++) {
           var band = bands[i];
@@ -591,7 +618,7 @@
       return { tone: tone, status: status };
     };
     var prior = getPriorAvgs();
-    var buildMetricCard = function(config) {
+    var buildMetricCard = function (config) {
       var cmpVal = config.compare != null ? config.compare : config.value;
       var status = metricState(cmpVal, config.good, config.warn, config.invert, config.labels, config.bands);
       return {
@@ -606,40 +633,42 @@
         primary: !!config.primary
       };
     };
-    var nps  = G.avg(scoredData, 'n');
-    var cei  = G.avg(scoredData, 'c');
+    var nps = G.avg(scoredData, 'n');
+    var cei = G.avg(scoredData, 'c');
     var acei = G.avg(scoredData, 'ac');
-    var dr   = G.avg(scoredData, 'dr');
-    var ef   = G.avg(scoredData, 'ef');
-    var fr   = G.avg(scoredData, 'fr');
-    var ts   = G.avg(scoredData, 'ts');
-    var o5   = G.avg(scoredData, 'o5');
+    var dr = G.avg(scoredData, 'dr');
+    var ef = G.avg(scoredData, 'ef');
+    var fr = G.avg(scoredData, 'fr');
+    var ts = G.avg(scoredData, 'ts');
+    var o5 = G.avg(scoredData, 'o5');
     // Avg wait is null on records that predate the KV avg-time columns, so
     // average only the bakeries that have it.
-    var atRows = scoredData.filter(function(r) { return typeof r.at === 'number' && !isNaN(r.at); });
-    var at = atRows.length ? atRows.reduce(function(a, r) { return a + r.at; }, 0) / atRows.length : null;
+    var atRows = scoredData.filter(function (r) { return typeof r.at === 'number' && !isNaN(r.at); });
+    var at = atRows.length ? atRows.reduce(function (a, r) { return a + r.at; }, 0) / atRows.length : null;
     var atCard = at === null
-      ? { value: '—', eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 1:55.',
-          delta: '', gap: '', tone: 'kpi-muted', status: 'No Data', primary: false }
+      ? {
+        value: '—', eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 2:00.',
+        delta: '', gap: '', tone: 'kpi-muted', status: 'No Data', primary: false
+      }
       : buildMetricCard({
-          value: at,
-          display: G.formatSecs(at),
-          eyebrow: 'KV Link',
-          title: 'Avg Wait Time',
-          meta: 'Target: ≤ 1:55.',
-          priorKey: 'at',
-          gapMetric: 'at',
-          deltaFormat: G.formatSecs,
-          invert: true,
-          good: 115,
-          warn: 120,
-          bands: [
-            { test: function(v) { return v <= 115; }, tone: 'kpi-green', status: 'On Target' },
-            { test: function(v) { return v < 120; }, tone: 'kpi-amber', status: 'Watch' },
-            { test: function(v) { return v >= 120; }, tone: 'kpi-red', status: 'Below' }
-          ],
-          labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
-        });
+        value: at,
+        display: G.formatSecs(at),
+        eyebrow: 'KV Link',
+        title: 'Avg Wait Time',
+        meta: 'Target: ≤ 2:00.',
+        priorKey: 'at',
+        gapMetric: 'at',
+        deltaFormat: G.formatSecs,
+        invert: true,
+        good: G.BENCHMARKS.at,
+        warn: G.BENCHMARK_FLOORS.at,
+        bands: [
+          { test: function (v) { return G.metricRagTone('at', v) === 'green'; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function (v) { return G.metricRagTone('at', v) === 'amber'; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function (v) { return G.metricRagTone('at', v) === 'red'; }, tone: 'kpi-red', status: 'Below' }
+        ],
+        labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
+      });
     var wantAbs = state.indexType === 'absolute';
     var cards = [
       buildMetricCard({
@@ -652,10 +681,10 @@
         priorKey: 'n',
         gapMetric: 'nps',
         bands: [
-          { test: function(val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
-          { test: function(val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
-          { test: function(val) { return val <= 60; }, tone: 'kpi-green', status: 'On Target' },
-          { test: function(val) { return val > 60; }, tone: 'kpi-green', status: 'Exceeding' }
+          { test: function (val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
+          { test: function (val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function (val) { return val <= 60; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function (val) { return val > 60; }, tone: 'kpi-green', status: 'Exceeding' }
         ],
         labels: { good: 'Exceeding', warn: 'Watch', bad: 'Below' },
         primary: true
@@ -707,10 +736,10 @@
         good: 90,
         warn: 80,
         bands: [
-          { test: function(val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
-          { test: function(val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
-          { test: function(val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
-          { test: function(val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
+          { test: function (val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function (val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function (val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function (val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
         ],
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       }),
@@ -726,10 +755,10 @@
         good: 90,
         warn: 80,
         bands: [
-          { test: function(val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
-          { test: function(val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
-          { test: function(val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
-          { test: function(val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
+          { test: function (val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function (val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function (val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function (val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
         ],
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       }),
@@ -745,10 +774,10 @@
         good: 90,
         warn: 80,
         bands: [
-          { test: function(val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
-          { test: function(val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
-          { test: function(val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
-          { test: function(val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
+          { test: function (val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function (val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function (val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function (val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
         ],
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       }),
@@ -765,10 +794,10 @@
         warn: 70,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' },
         bands: [
-          { test: function(v) { return v > 80; }, tone: 'kpi-green', status: 'Exceeding' },
-          { test: function(v) { return v >= 70 && v <= 80; }, tone: 'kpi-green', status: 'On Target' },
-          { test: function(v) { return v >= 60 && v < 70; }, tone: 'kpi-amber', status: 'Watch' },
-          { test: function(v) { return v < 60; }, tone: 'kpi-red', status: 'Below' }
+          { test: function (v) { return v > 80; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function (v) { return v >= 70 && v <= 80; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function (v) { return v >= 60 && v < 70; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function (v) { return v < 60; }, tone: 'kpi-red', status: 'Below' }
         ]
       }),
       atCard,
@@ -781,10 +810,10 @@
         priorKey: 'o5',
         gapMetric: 'o5',
         bands: [
-          { test: function(v) { return v < 0.5; }, tone: 'kpi-green', status: 'Exceeding' },
-          { test: function(v) { return v <= 1.0; }, tone: 'kpi-green', status: 'On Target' },
-          { test: function(v) { return v < 2.5; }, tone: 'kpi-amber', status: 'Watch' },
-          { test: function(v) { return v >= 2.5; }, tone: 'kpi-red', status: 'Below' }
+          { test: function (v) { return v < 0.5; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function (v) { return v <= 1.0; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function (v) { return v < 2.5; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function (v) { return v >= 2.5; }, tone: 'kpi-red', status: 'Below' }
         ],
         good: 1.0,
         warn: 2.5,
@@ -793,7 +822,7 @@
       })
     );
 
-    dashboardKpiRow.innerHTML = cards.map(function(metric) {
+    dashboardKpiRow.innerHTML = cards.map(function (metric) {
       return '<article class="kpi ' + metric.tone + (metric.primary ? ' kpi--primary' : '') + '">'
         + '<div class="kpi__top">'
         + '<span class="kpi__eyebrow">' + metric.eyebrow + '</span>'
@@ -822,6 +851,7 @@
     G.renderSpeedCharts(scoredData);
     G.renderLeagueTable(data);
     G.renderTargets(data);
+    renderHeaderSummary();
 
     // Word clouds — only call when their panel is visible; fetch functions handle cache
     var feedbackTab = document.getElementById('tab-feedback');
@@ -842,7 +872,7 @@
     // Applied here so it also fixes records that were parsed and stored (Firebase /
     // localStorage cache) before the parser started canonicalizing at upload time.
     if (G.resolveBakeryMetaKey) {
-      (records || []).forEach(function(r) {
+      (records || []).forEach(function (r) {
         if (r && r.b) r.b = G.resolveBakeryMetaKey(r.b) || r.b;
       });
     }
@@ -852,7 +882,7 @@
     // so stored data matches freshly parsed data: keep the all-sources values
     // as na/va, then switch the headline to the D+M score and net volume.
     // Freshly parsed records already have na and are left untouched.
-    (records || []).forEach(function(r) {
+    (records || []).forEach(function (r) {
       if (!r || typeof r.na === 'number') return;
       r.na = typeof r.n === 'number' ? r.n : null;
       r.va = typeof r.v === 'number' ? r.v : null;
@@ -864,14 +894,14 @@
     }
     state.ALL = records;
     state.MONTHS = months;
-    state.BAKERIES = [...new Set(records.map(function(r) { return r.b; }))].sort();
+    state.BAKERIES = [...new Set(records.map(function (r) { return r.b; }))].sort();
     state.PERIODS = G.buildPeriods(months);
 
     state.selectedMonths = G.resolvePeriodMonths(document.getElementById('rollingWindow').value, months, records);
 
     var mSel = document.getElementById('monthSelect');
     mSel.innerHTML = '<option value="">\u2014 Select \u2014</option>';
-    [].concat(months).reverse().forEach(function(m) {
+    [].concat(months).reverse().forEach(function (m) {
       var o = document.createElement('option');
       o.value = m;
       o.textContent = m;
@@ -889,7 +919,7 @@
   }
 
   // ========== EVENT LISTENERS ==========
-  document.getElementById('monthSelect').addEventListener('change', function() {
+  document.getElementById('monthSelect').addEventListener('change', function () {
     if (this.value) {
       state.selectedMonths = [this.value];
       document.getElementById('rollingWindow').value = '0';
@@ -900,15 +930,15 @@
 
   // ========== GLOBAL INDEX TYPE TOGGLE (header) ==========
   _networkMapMetric = 'relative';
-  Array.from(document.querySelectorAll('[data-global-index]')).forEach(function(btn) {
-    btn.addEventListener('click', function() {
+  Array.from(document.querySelectorAll('[data-global-index]')).forEach(function (btn) {
+    btn.addEventListener('click', function () {
       var nextMetric = btn.dataset.globalIndex === 'absolute' ? 'absolute' : 'relative';
       if (state.indexType === nextMetric) return;
       state.indexType = nextMetric;
       state.rankingsMetric = nextMetric;
       state.targetMetric = nextMetric;
       _networkMapMetric = nextMetric;
-      Array.from(document.querySelectorAll('[data-global-index]')).forEach(function(toggleBtn) {
+      Array.from(document.querySelectorAll('[data-global-index]')).forEach(function (toggleBtn) {
         toggleBtn.classList.toggle('active', toggleBtn.dataset.globalIndex === nextMetric);
       });
       if (G.setNetworkMapMetric) G.setNetworkMapMetric(nextMetric);
@@ -920,12 +950,12 @@
 
   // ========== NETWORK MAP AREA TOGGLE ==========
   var _networkMapArea = 'off';
-  Array.from(document.querySelectorAll('[data-map-area]')).forEach(function(btn) {
-    btn.addEventListener('click', function() {
+  Array.from(document.querySelectorAll('[data-map-area]')).forEach(function (btn) {
+    btn.addEventListener('click', function () {
       var nextArea = btn.dataset.mapArea === 'on' ? 'on' : 'off';
       if (_networkMapArea === nextArea) return;
       _networkMapArea = nextArea;
-      Array.from(document.querySelectorAll('[data-map-area]')).forEach(function(toggleBtn) {
+      Array.from(document.querySelectorAll('[data-map-area]')).forEach(function (toggleBtn) {
         toggleBtn.classList.toggle('active', toggleBtn.dataset.mapArea === nextArea);
       });
       if (G.setNetworkMapArea) G.setNetworkMapArea(nextArea);
@@ -934,12 +964,12 @@
 
   // ========== TARGET MAP AREA TOGGLE ==========
   var _targetMapArea = 'off';
-  Array.from(document.querySelectorAll('[data-target-map-area]')).forEach(function(btn) {
-    btn.addEventListener('click', function() {
+  Array.from(document.querySelectorAll('[data-target-map-area]')).forEach(function (btn) {
+    btn.addEventListener('click', function () {
       var nextArea = btn.dataset.targetMapArea === 'on' ? 'on' : 'off';
       if (_targetMapArea === nextArea) return;
       _targetMapArea = nextArea;
-      Array.from(document.querySelectorAll('[data-target-map-area]')).forEach(function(toggleBtn) {
+      Array.from(document.querySelectorAll('[data-target-map-area]')).forEach(function (toggleBtn) {
         toggleBtn.classList.toggle('active', toggleBtn.dataset.targetMapArea === nextArea);
       });
       if (G.setTargetMapArea) G.setTargetMapArea(nextArea);
@@ -948,12 +978,12 @@
 
   // ========== NETWORK MAP VISITED TOGGLE ==========
   var _networkMapVisit = 'all';
-  Array.from(document.querySelectorAll('[data-map-visit]')).forEach(function(btn) {
-    btn.addEventListener('click', function() {
+  Array.from(document.querySelectorAll('[data-map-visit]')).forEach(function (btn) {
+    btn.addEventListener('click', function () {
       var nextVisit = btn.dataset.mapVisit;
       if (_networkMapVisit === nextVisit) return;
       _networkMapVisit = nextVisit;
-      Array.from(document.querySelectorAll('[data-map-visit]')).forEach(function(toggleBtn) {
+      Array.from(document.querySelectorAll('[data-map-visit]')).forEach(function (toggleBtn) {
         toggleBtn.classList.toggle('active', toggleBtn.dataset.mapVisit === nextVisit);
       });
       if (G.setNetworkMapVisitFilter) G.setNetworkMapVisitFilter(nextVisit);
@@ -962,12 +992,12 @@
 
   // ========== TARGET MAP VISITED TOGGLE ==========
   var _targetMapVisit = 'all';
-  Array.from(document.querySelectorAll('[data-target-map-visit]')).forEach(function(btn) {
-    btn.addEventListener('click', function() {
+  Array.from(document.querySelectorAll('[data-target-map-visit]')).forEach(function (btn) {
+    btn.addEventListener('click', function () {
       var nextVisit = btn.dataset.targetMapVisit;
       if (_targetMapVisit === nextVisit) return;
       _targetMapVisit = nextVisit;
-      Array.from(document.querySelectorAll('[data-target-map-visit]')).forEach(function(toggleBtn) {
+      Array.from(document.querySelectorAll('[data-target-map-visit]')).forEach(function (toggleBtn) {
         toggleBtn.classList.toggle('active', toggleBtn.dataset.targetMapVisit === nextVisit);
       });
       if (G.setTargetMapVisitFilter) G.setTargetMapVisitFilter(nextVisit);
@@ -975,7 +1005,7 @@
   });
 
   // ========== MAP FULLSCREEN TOGGLE ==========
-  (function() {
+  (function () {
     function invalidate(key) {
       if (G.invalidateMapSize) G.invalidateMapSize(key);
     }
@@ -1005,7 +1035,7 @@
       } else {
         filterHome.parent.appendChild(filterBar);
       }
-      ['networkMapFilterSummary', 'targetMapFilterSummary'].forEach(function(id) {
+      ['networkMapFilterSummary', 'targetMapFilterSummary'].forEach(function (id) {
         var host = document.getElementById(id);
         if (host) host.innerHTML = '';
       });
@@ -1026,11 +1056,11 @@
       invalidate(panel.dataset.mapKey);
     }
 
-    Array.from(document.querySelectorAll('[data-map-fullscreen]')).forEach(function(btn) {
+    Array.from(document.querySelectorAll('[data-map-fullscreen]')).forEach(function (btn) {
       var panelId = btn.dataset.mapFullscreen === 'network' ? 'networkMapPanel' : 'targetMapPanel';
       var panel = document.getElementById(panelId);
       if (!panel) return;
-      btn.addEventListener('click', function() {
+      btn.addEventListener('click', function () {
         if (panel.classList.contains('is-fullscreen')) {
           exitFullscreen(panel);
         } else {
@@ -1039,7 +1069,7 @@
       });
     });
 
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       var open = document.querySelector('.map-panel.is-fullscreen');
       if (open) exitFullscreen(open);
@@ -1047,7 +1077,7 @@
   })();
 
   // ========== BAKERY MULTI-SELECT ==========
-  (function() {
+  (function () {
     var selected = state.searchBakery;
     var msTrigger = document.getElementById('bakeryMsTrigger');
     var msLabel = document.getElementById('bakeryMsLabel');
@@ -1074,7 +1104,7 @@
       msSelectedSection.style.display = sorted.length ? '' : 'none';
       msSelectedCount.textContent = sorted.length;
       msSelectedChips.innerHTML = '';
-      sorted.forEach(function(name) {
+      sorted.forEach(function (name) {
         var chip = document.createElement('span');
         chip.className = 'bakery-ms__sel-chip';
         var lbl = document.createElement('span');
@@ -1084,7 +1114,7 @@
         x.className = 'bakery-ms__sel-chip-remove';
         x.setAttribute('aria-label', 'Remove ' + name);
         x.innerHTML = '&#x2715;';
-        x.addEventListener('click', function(e) {
+        x.addEventListener('click', function (e) {
           e.stopPropagation();
           var idx = selected.indexOf(name);
           if (idx !== -1) selected.splice(idx, 1);
@@ -1100,15 +1130,15 @@
     }
 
     function renderList(query) {
-      var all = (state.BAKERIES || []).filter(function(b) {
+      var all = (state.BAKERIES || []).filter(function (b) {
         if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(b))) return false;
         if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(b))) return false;
         return true;
       });
       var q = (query || '').toLowerCase().trim();
-      var visible = q ? all.filter(function(b) { return b.toLowerCase().includes(q); }) : all;
+      var visible = q ? all.filter(function (b) { return b.toLowerCase().includes(q); }) : all;
       msList.innerHTML = '';
-      visible.forEach(function(name) {
+      visible.forEach(function (name) {
         var isSel = selected.includes(name);
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -1122,7 +1152,7 @@
         txt.textContent = name;
         btn.appendChild(box);
         btn.appendChild(txt);
-        btn.addEventListener('click', function() { toggleBakery(name); });
+        btn.addEventListener('click', function () { toggleBakery(name); });
         msList.appendChild(btn);
       });
     }
@@ -1154,24 +1184,24 @@
       msTrigger.classList.remove('is-open');
     }
 
-    msTrigger.addEventListener('click', function() { isOpen ? closeDropdown() : openDropdown(); });
-    msSearch.addEventListener('input', function() { renderList(this.value); });
-    msClearBtn.addEventListener('click', function() {
+    msTrigger.addEventListener('click', function () { isOpen ? closeDropdown() : openDropdown(); });
+    msSearch.addEventListener('input', function () { renderList(this.value); });
+    msClearBtn.addEventListener('click', function () {
       selected.splice(0, selected.length);
       updateLabel();
       if (isOpen) { renderList(msSearch.value); renderSelected(); }
       refresh();
     });
-    document.addEventListener('click', function(e) {
-      if (isOpen && !e.composedPath().some(function(el) { return el === msContainer; })) closeDropdown();
+    document.addEventListener('click', function (e) {
+      if (isOpen && !e.composedPath().some(function (el) { return el === msContainer; })) closeDropdown();
     });
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
       if (isOpen && e.key === 'Escape') { closeDropdown(); msTrigger.focus(); }
     });
 
     updateLabel();
 
-    G.resetBakeryMultiselect = function() {
+    G.resetBakeryMultiselect = function () {
       updateLabel();
       renderSelected();
       if (isOpen) renderList(msSearch.value);
@@ -1183,25 +1213,26 @@
 
     // Snapshot original structure once
     if (!updateBandFilterOptions._orig) {
-      updateBandFilterOptions._orig = Array.from(bandFilterEl.children).map(function(child) {
+      updateBandFilterOptions._orig = Array.from(bandFilterEl.children).map(function (child) {
         if (child.tagName === 'OPTGROUP') {
-          return { type: 'optgroup', label: child.label, options: Array.from(child.children).map(function(opt) { return { value: opt.value, text: opt.textContent }; }) };
+          return { type: 'optgroup', label: child.label, options: Array.from(child.children).map(function (opt) { return { value: opt.value, text: opt.textContent }; }) };
         }
         return { type: 'option', value: child.value, text: child.textContent };
       });
     }
 
-    var available = G.getAvailableBands();
-    var currentValue = state.bandFilter;
-
     var activePanel = document.querySelector('.tab-content.active');
     var currentTab = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
+    var available = currentTab === 'target' && G.getFocusAvailableBands
+      ? G.getFocusAvailableBands()
+      : G.getAvailableBands();
+    var currentValue = state.bandFilter;
     var toggleApplies = !tabsWithoutGlobalIndexToggle[currentTab];
     var wantAbs = state.indexType === 'absolute';
 
     // Rebuild select from original structure, omitting unavailable options
     bandFilterEl.innerHTML = '';
-    updateBandFilterOptions._orig.forEach(function(item) {
+    updateBandFilterOptions._orig.forEach(function (item) {
       if (item.type === 'option') {
         var opt = document.createElement('option');
         opt.value = item.value;
@@ -1216,7 +1247,7 @@
       var isAbsGroup = item.options.length > 0 && item.options[0].value.indexOf('abs:') === 0;
       if (toggleApplies && isAbsGroup !== wantAbs) return;
 
-      var visibleOpts = item.options.filter(function(o) {
+      var visibleOpts = item.options.filter(function (o) {
         return o.value.indexOf('abs:') === 0
           ? available.absolute.has(o.value.slice(4))
           : available.relative.has(o.value);
@@ -1225,7 +1256,7 @@
 
       if (toggleApplies) {
         // Single mode active: flatten, the optgroup label is redundant with the toggle
-        visibleOpts.forEach(function(o) {
+        visibleOpts.forEach(function (o) {
           var opt = document.createElement('option');
           opt.value = o.value;
           opt.textContent = o.text;
@@ -1234,7 +1265,7 @@
       } else {
         var grp = document.createElement('optgroup');
         grp.label = item.label;
-        visibleOpts.forEach(function(o) {
+        visibleOpts.forEach(function (o) {
           var opt = document.createElement('option');
           opt.value = o.value;
           opt.textContent = o.text;
@@ -1250,7 +1281,7 @@
     }
 
     // Reset to "All" only if the current selection is no longer in the available options
-    var selectionExists = !currentValue || !!Array.from(bandFilterEl.options).find(function(o) { return o.value === currentValue; });
+    var selectionExists = !currentValue || !!Array.from(bandFilterEl.options).find(function (o) { return o.value === currentValue; });
     if (!selectionExists) currentValue = '';
     state.bandFilter = currentValue;
     bandFilterEl.value = currentValue;
@@ -1258,10 +1289,10 @@
     if (bandFilterEl._customSelect) bandFilterEl._customSelect.rebuild();
   }
 
-  document.getElementById('bandFilter').addEventListener('change', function(e) { state.bandFilter = e.target.value; refresh(); });
+  document.getElementById('bandFilter').addEventListener('change', function (e) { state.bandFilter = e.target.value; refresh(); });
 
   // ========== REGION MULTI-SELECT ==========
-  (function() {
+  (function () {
     var selected = state.regionFilter;
     var msTrigger = document.getElementById('regionMsTrigger');
     var msLabel = document.getElementById('regionMsLabel');
@@ -1288,7 +1319,7 @@
       msSelectedSection.style.display = sorted.length ? '' : 'none';
       msSelectedCount.textContent = sorted.length;
       msSelectedChips.innerHTML = '';
-      sorted.forEach(function(name) {
+      sorted.forEach(function (name) {
         var chip = document.createElement('span');
         chip.className = 'bakery-ms__sel-chip';
         var lbl = document.createElement('span');
@@ -1298,7 +1329,7 @@
         x.className = 'bakery-ms__sel-chip-remove';
         x.setAttribute('aria-label', 'Remove ' + name);
         x.innerHTML = '&#x2715;';
-        x.addEventListener('click', function(e) {
+        x.addEventListener('click', function (e) {
           e.stopPropagation();
           var idx = selected.indexOf(name);
           if (idx !== -1) selected.splice(idx, 1);
@@ -1315,7 +1346,7 @@
 
     function renderList() {
       msList.innerHTML = '';
-      availableOptions.forEach(function(name) {
+      availableOptions.forEach(function (name) {
         var isSel = selected.includes(name);
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -1329,7 +1360,7 @@
         txt.textContent = name;
         btn.appendChild(box);
         btn.appendChild(txt);
-        btn.addEventListener('click', function() { toggleRegion(name); });
+        btn.addEventListener('click', function () { toggleRegion(name); });
         msList.appendChild(btn);
       });
     }
@@ -1375,24 +1406,24 @@
       msTrigger.classList.remove('is-open');
     }
 
-    msTrigger.addEventListener('click', function() { isOpen ? closeDropdown() : openDropdown(); });
-    msClearBtn.addEventListener('click', function() {
+    msTrigger.addEventListener('click', function () { isOpen ? closeDropdown() : openDropdown(); });
+    msClearBtn.addEventListener('click', function () {
       selected.splice(0, selected.length);
       updateLabel();
       if (isOpen) { renderList(); renderSelected(); }
       onRegionChange();
     });
-    document.addEventListener('click', function(e) {
-      if (isOpen && !e.composedPath().some(function(el) { return el === msContainer; })) closeDropdown();
+    document.addEventListener('click', function (e) {
+      if (isOpen && !e.composedPath().some(function (el) { return el === msContainer; })) closeDropdown();
     });
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
       if (isOpen && e.key === 'Escape') { closeDropdown(); msTrigger.focus(); }
     });
 
     updateLabel();
 
-    G.rebuildRegionMultiselect = function() {
-      availableOptions = [...new Set(Object.values(G.BAKERY_META).map(function(v) { return v.r; }))].filter(function(r) { return r && r !== 'Other'; }).sort();
+    G.rebuildRegionMultiselect = function () {
+      availableOptions = [...new Set(Object.values(G.BAKERY_META).map(function (v) { return v.r; }))].filter(function (r) { return r && r !== 'Other'; }).sort();
       for (var i = selected.length - 1; i >= 0; i--) {
         if (!availableOptions.includes(selected[i])) selected.splice(i, 1);
       }
@@ -1403,7 +1434,7 @@
   })();
 
   // ========== OPS MANAGER MULTI-SELECT ==========
-  (function() {
+  (function () {
     var selected = state.opsFilter;
     var msTrigger = document.getElementById('opsMsTrigger');
     var msLabel = document.getElementById('opsMsLabel');
@@ -1420,8 +1451,8 @@
     function getAvailableOps() {
       var regions = state.regionFilter;
       return [...new Set(Object.entries(G.BAKERY_META)
-        .filter(function(e) { return !regions.length || regions.includes(e[1].r); })
-        .map(function(e) { return e[1].o; })
+        .filter(function (e) { return !regions.length || regions.includes(e[1].r); })
+        .map(function (e) { return e[1].o; })
       )].filter(Boolean).sort();
     }
 
@@ -1438,7 +1469,7 @@
       msSelectedSection.style.display = sorted.length ? '' : 'none';
       msSelectedCount.textContent = sorted.length;
       msSelectedChips.innerHTML = '';
-      sorted.forEach(function(name) {
+      sorted.forEach(function (name) {
         var chip = document.createElement('span');
         chip.className = 'bakery-ms__sel-chip';
         var lbl = document.createElement('span');
@@ -1448,7 +1479,7 @@
         x.className = 'bakery-ms__sel-chip-remove';
         x.setAttribute('aria-label', 'Remove ' + name);
         x.innerHTML = '&#x2715;';
-        x.addEventListener('click', function(e) {
+        x.addEventListener('click', function (e) {
           e.stopPropagation();
           var idx = selected.indexOf(name);
           if (idx !== -1) selected.splice(idx, 1);
@@ -1466,9 +1497,9 @@
     function renderList(query) {
       var available = getAvailableOps();
       var q = (query || '').toLowerCase().trim();
-      var visible = q ? available.filter(function(o) { return o.toLowerCase().includes(q); }) : available;
+      var visible = q ? available.filter(function (o) { return o.toLowerCase().includes(q); }) : available;
       msList.innerHTML = '';
-      visible.forEach(function(name) {
+      visible.forEach(function (name) {
         var isSel = selected.includes(name);
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -1482,7 +1513,7 @@
         txt.textContent = name;
         btn.appendChild(box);
         btn.appendChild(txt);
-        btn.addEventListener('click', function() { toggleOps(name); });
+        btn.addEventListener('click', function () { toggleOps(name); });
         msList.appendChild(btn);
       });
     }
@@ -1529,24 +1560,24 @@
       msTrigger.classList.remove('is-open');
     }
 
-    msTrigger.addEventListener('click', function() { isOpen ? closeDropdown() : openDropdown(); });
-    msSearch.addEventListener('input', function() { renderList(this.value); });
-    msClearBtn.addEventListener('click', function() {
+    msTrigger.addEventListener('click', function () { isOpen ? closeDropdown() : openDropdown(); });
+    msSearch.addEventListener('input', function () { renderList(this.value); });
+    msClearBtn.addEventListener('click', function () {
       selected.splice(0, selected.length);
       updateLabel();
       if (isOpen) { renderList(msSearch.value); renderSelected(); }
       onOpsChange();
     });
-    document.addEventListener('click', function(e) {
-      if (isOpen && !e.composedPath().some(function(el) { return el === msContainer; })) closeDropdown();
+    document.addEventListener('click', function (e) {
+      if (isOpen && !e.composedPath().some(function (el) { return el === msContainer; })) closeDropdown();
     });
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
       if (isOpen && e.key === 'Escape') { closeDropdown(); msTrigger.focus(); }
     });
 
     updateLabel();
 
-    G.rebuildOpsMultiselect = function() {
+    G.rebuildOpsMultiselect = function () {
       var available = getAvailableOps();
       var prevLen = selected.length;
       for (var i = selected.length - 1; i >= 0; i--) {
@@ -1570,7 +1601,7 @@
   })();
   document.getElementById('sortBy').addEventListener('change', refresh);
 
-  document.getElementById('rollingWindow').addEventListener('change', function() {
+  document.getElementById('rollingWindow').addEventListener('change', function () {
     state.selectedMonths = G.resolvePeriodMonths(this.value, state.MONTHS, state.ALL);
     document.getElementById('monthSelect').value = '';
     G.syncCustomSelect('monthSelect');
@@ -1578,15 +1609,15 @@
   });
 
   // Tabs
-  document.querySelectorAll('.tab').forEach(function(t) {
-    t.addEventListener('click', function() {
+  document.querySelectorAll('.tab').forEach(function (t) {
+    t.addEventListener('click', function () {
       activateDashboardTab(t.dataset.tab);
       scrollToTop();
     });
   });
 
   if (dashboardSidebarToggleBtn) {
-    dashboardSidebarToggleBtn.addEventListener('click', function() {
+    dashboardSidebarToggleBtn.addEventListener('click', function () {
       if (compactDashboardSidebarMedia.matches) {
         setDashboardSidebarOpen(false);
         return;
@@ -1596,33 +1627,33 @@
   }
 
   if (dashboardSidebarOpenBtn) {
-    dashboardSidebarOpenBtn.addEventListener('click', function() {
+    dashboardSidebarOpenBtn.addEventListener('click', function () {
       setDashboardSidebarOpen(true);
     });
   }
 
   if (dashboardSidebarBackdrop) {
-    dashboardSidebarBackdrop.addEventListener('click', function() {
+    dashboardSidebarBackdrop.addEventListener('click', function () {
       setDashboardSidebarOpen(false);
     });
   }
 
   if (compactDashboardSidebarMedia && compactDashboardSidebarMedia.addEventListener) {
-    compactDashboardSidebarMedia.addEventListener('change', function() {
+    compactDashboardSidebarMedia.addEventListener('change', function () {
       syncDashboardSidebarForViewport();
       syncDashboardKpis();
       renderHeaderSummary();
     });
   }
 
-  document.addEventListener('keydown', function(event) {
+  document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape' && compactDashboardSidebarMedia.matches && dashboardWorkspaceShell && dashboardWorkspaceShell.dataset.sidebarOpen === 'true') {
       setDashboardSidebarOpen(false);
     }
   });
 
-  document.querySelectorAll('.dashboard-footer__link').forEach(function(link) {
-    link.addEventListener('click', function() {
+  document.querySelectorAll('.dashboard-footer__link').forEach(function (link) {
+    link.addEventListener('click', function () {
       var activePanel = activateDashboardTab(link.dataset.footerTab);
       if (activePanel) {
         scrollToTop();
@@ -1630,8 +1661,8 @@
     });
   });
 
-  document.querySelectorAll('.target-subtab').forEach(function(tab) {
-    tab.addEventListener('click', function() {
+  document.querySelectorAll('.target-subtab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
       activateTargetSubtab(tab.dataset.targetSubtab);
       if (window.matchMedia('(max-width: 980px)').matches) {
         scrollToTop();
@@ -1642,16 +1673,16 @@
   // ========== INITIALISE FILE UPLOAD ==========
   // ── Mobile filter side panel ──
   var filterControlsPanel = document.getElementById('filterControlsPanel');
-  var filterActiveBadge   = document.getElementById('filterActiveBadge');
-  var filterSideTab       = document.getElementById('filterSideTab');
-  var filterSideTabBadge  = document.getElementById('filterSideTabBadge');
-  var filterSideBackdrop  = document.getElementById('filterSideBackdrop');
-  var filterPanelClose    = document.getElementById('filterPanelClose');
+  var filterActiveBadge = document.getElementById('filterActiveBadge');
+  var filterSideTab = document.getElementById('filterSideTab');
+  var filterSideTabBadge = document.getElementById('filterSideTabBadge');
+  var filterSideBackdrop = document.getElementById('filterSideBackdrop');
+  var filterPanelClose = document.getElementById('filterPanelClose');
   var filterPanelCloseFab = document.getElementById('filterPanelCloseFab');
-  var filterPanelReset    = document.getElementById('filterPanelReset');
-  var desktopFilterReset  = document.getElementById('desktopFilterReset');
+  var filterPanelReset = document.getElementById('filterPanelReset');
+  var desktopFilterReset = document.getElementById('desktopFilterReset');
   var filterSidePanelOpen = false;
-  var mobileFilterMedia   = window.matchMedia('(max-width: 720px)');
+  var mobileFilterMedia = window.matchMedia('(max-width: 720px)');
   var filterDragState = null;
   var suppressFilterTabClick = false;
 
@@ -1687,12 +1718,12 @@
 
   function closeExpandedMobileFilters() {
     if (!filterControlsPanel) return;
-    filterControlsPanel.querySelectorAll('.filter-select.is-open').forEach(function(wrapper) {
+    filterControlsPanel.querySelectorAll('.filter-select.is-open').forEach(function (wrapper) {
       wrapper.classList.remove('is-open');
       var trigger = wrapper.querySelector('.filter-select__trigger');
       if (trigger) trigger.setAttribute('aria-expanded', 'false');
     });
-    filterControlsPanel.querySelectorAll('.bakery-ms__trigger.is-open').forEach(function(trigger) {
+    filterControlsPanel.querySelectorAll('.bakery-ms__trigger.is-open').forEach(function (trigger) {
       trigger.click();
     });
   }
@@ -1779,7 +1810,7 @@
   }
 
   if (filterSideTab) {
-    filterSideTab.addEventListener('pointerdown', function(event) {
+    filterSideTab.addEventListener('pointerdown', function (event) {
       return; // Disable drag-to-open gesture for top sheet layout
       if (!mobileFilterMedia.matches || filterSidePanelOpen) return;
       if (event.pointerType === 'mouse') return;
@@ -1803,7 +1834,7 @@
       filterSideTab.setPointerCapture(event.pointerId);
       event.preventDefault();
     });
-    filterSideTab.addEventListener('pointermove', function(event) {
+    filterSideTab.addEventListener('pointermove', function (event) {
       if (!filterDragState || filterDragState.mode !== 'opening' || filterDragState.pointerId !== event.pointerId) return;
       var width = getFilterPanelWidth();
       if (!width) return;
@@ -1813,7 +1844,7 @@
       filterDragState.lastX = event.clientX;
       setFilterPanelDragOffset(width - openedDistance);
     });
-    filterSideTab.addEventListener('pointerup', function(event) {
+    filterSideTab.addEventListener('pointerup', function (event) {
       if (!filterDragState || filterDragState.mode !== 'opening' || filterDragState.pointerId !== event.pointerId) return;
       var width = getFilterPanelWidth();
       var elapsed = Math.max(1, performance.now() - filterDragState.startTime);
@@ -1822,20 +1853,20 @@
       suppressFilterTabClick = filterDragState.distance > 8;
       filterDragState = null;
       shouldOpen ? openFilterSidePanel() : closeFilterSidePanel();
-      window.setTimeout(function() { suppressFilterTabClick = false; }, 180);
+      window.setTimeout(function () { suppressFilterTabClick = false; }, 180);
     });
-    filterSideTab.addEventListener('pointercancel', function(event) {
+    filterSideTab.addEventListener('pointercancel', function (event) {
       if (!filterDragState || filterDragState.pointerId !== event.pointerId) return;
       filterDragState = null;
       closeFilterSidePanel();
     });
-    filterSideTab.addEventListener('click', function() {
+    filterSideTab.addEventListener('click', function () {
       if (suppressFilterTabClick) return;
       filterSidePanelOpen ? closeFilterSidePanel() : openFilterSidePanel();
     });
   }
   if (filterControlsPanel) {
-    filterControlsPanel.addEventListener('pointerdown', function(event) {
+    filterControlsPanel.addEventListener('pointerdown', function (event) {
       return; // Disable drag-to-close gesture for top sheet layout
       if (!mobileFilterMedia.matches || !filterSidePanelOpen) return;
       if (event.pointerType === 'mouse') return;
@@ -1853,7 +1884,7 @@
       };
       filterControlsPanel.setPointerCapture(event.pointerId);
     });
-    filterControlsPanel.addEventListener('pointermove', function(event) {
+    filterControlsPanel.addEventListener('pointermove', function (event) {
       if (!filterDragState || filterDragState.mode !== 'closing' || filterDragState.pointerId !== event.pointerId) return;
       var width = getFilterPanelWidth();
       if (!width) return;
@@ -1863,7 +1894,7 @@
       filterDragState.lastX = event.clientX;
       setFilterPanelDragOffset(closeDistance);
     });
-    filterControlsPanel.addEventListener('pointerup', function(event) {
+    filterControlsPanel.addEventListener('pointerup', function (event) {
       if (!filterDragState || filterDragState.mode !== 'closing' || filterDragState.pointerId !== event.pointerId) return;
       var width = getFilterPanelWidth();
       var elapsed = Math.max(1, performance.now() - filterDragState.startTime);
@@ -1872,7 +1903,7 @@
       filterDragState = null;
       shouldClose ? closeFilterSidePanel() : openFilterSidePanel();
     });
-    filterControlsPanel.addEventListener('pointercancel', function(event) {
+    filterControlsPanel.addEventListener('pointercancel', function (event) {
       if (!filterDragState || filterDragState.pointerId !== event.pointerId) return;
       filterDragState = null;
       openFilterSidePanel();
@@ -1883,7 +1914,7 @@
   if (filterPanelReset) { filterPanelReset.addEventListener('click', resetAllFilters); }
   if (desktopFilterReset) { desktopFilterReset.addEventListener('click', resetAllFilters); }
   if (filterSideBackdrop) { filterSideBackdrop.addEventListener('click', closeFilterSidePanel); }
-  document.addEventListener('click', function(event) {
+  document.addEventListener('click', function (event) {
     if (!mobileFilterMedia.matches || !filterSidePanelOpen || !filterControlsPanel) return;
     var path = typeof event.composedPath === 'function' ? event.composedPath() : [];
     var insidePanel = path.indexOf(filterControlsPanel) !== -1;
@@ -1891,22 +1922,22 @@
     if (!insidePanel && !onTab) closeFilterSidePanel();
   });
 
-  document.addEventListener('keydown', function(e) {
+  document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && filterSidePanelOpen) { closeFilterSidePanel(); }
   });
 
   // Close side panel when viewport grows past mobile breakpoint
   if (mobileFilterMedia.addEventListener) {
-    mobileFilterMedia.addEventListener('change', function(e) {
+    mobileFilterMedia.addEventListener('change', function (e) {
       if (!e.matches && filterSidePanelOpen) { closeFilterSidePanel(); }
     });
   }
 
   // ── Mobile filter sub-panel ──────────────────────────────────
-  (function() {
-    var subPanel     = document.getElementById('filterSubPanel');
-    var subTitle     = document.getElementById('filterSubPanelTitle');
-    var subBack      = document.getElementById('filterSubPanelBack');
+  (function () {
+    var subPanel = document.getElementById('filterSubPanel');
+    var subTitle = document.getElementById('filterSubPanelTitle');
+    var subBack = document.getElementById('filterSubPanelBack');
     if (!subPanel || !subBack) return;
     return;
 
@@ -1930,11 +1961,11 @@
     }
 
     // After a trigger click, check if something is now open and show the sub-panel header
-    filterControlsPanel.addEventListener('click', function(e) {
+    filterControlsPanel.addEventListener('click', function (e) {
       if (!mobileFilterMedia.matches) return;
       var trigger = e.target.closest('.filter-select__trigger, .bakery-ms__trigger');
       if (!trigger) return;
-      setTimeout(function() {
+      setTimeout(function () {
         if (subPanelClosing) return;
         // Check which dropdown is now open
         var openSelect = filterControlsPanel.querySelector('.filter-select.is-open');
@@ -1946,33 +1977,33 @@
     });
 
     // After an option is selected in a filter-select, close the sub-panel
-    filterControlsPanel.addEventListener('change', function() {
+    filterControlsPanel.addEventListener('change', function () {
       if (!mobileFilterMedia.matches) return;
-      setTimeout(function() {
+      setTimeout(function () {
         var stillOpen = filterControlsPanel.querySelector('.filter-select.is-open');
         if (!stillOpen) hideSubPanel();
       }, 0);
     });
 
     // Back button: close whatever is open, hide sub-panel
-    subBack.addEventListener('click', function() {
+    subBack.addEventListener('click', function () {
       subPanelClosing = true;
       // bakery-ms: click trigger to toggle closed (isOpen=true → closeDropdown)
-      filterControlsPanel.querySelectorAll('.bakery-ms__trigger.is-open').forEach(function(t) {
+      filterControlsPanel.querySelectorAll('.bakery-ms__trigger.is-open').forEach(function (t) {
         t.click();
       });
       // filter-select: closeAll fires on document click propagation, but also close explicitly
-      filterControlsPanel.querySelectorAll('.filter-select.is-open').forEach(function(w) {
+      filterControlsPanel.querySelectorAll('.filter-select.is-open').forEach(function (w) {
         w.classList.remove('is-open');
         var t = w.querySelector('.filter-select__trigger');
         if (t) t.setAttribute('aria-expanded', 'false');
       });
       hideSubPanel();
-      setTimeout(function() { subPanelClosing = false; }, 60);
+      setTimeout(function () { subPanelClosing = false; }, 60);
     });
 
     // When the main filter panel closes, also hide the sub-panel
-    var panelObserver = new MutationObserver(function() {
+    var panelObserver = new MutationObserver(function () {
       if (!filterControlsPanel.classList.contains('is-open')) hideSubPanel();
     });
     panelObserver.observe(filterControlsPanel, { attributes: true, attributeFilter: ['class'] });
@@ -1980,17 +2011,17 @@
 
   // Patch refresh to also sync the filter badge
   var originalRefresh = refresh;
-  refresh = function() {
+  refresh = function () {
     originalRefresh();
     syncFilterBadge();
   };
 
   G.refreshDashboard = refresh;
-  G.rebuildDashboardFilters = function() {
+  G.rebuildDashboardFilters = function () {
     rebuildRegionFilter();
     if (state.ALL.length > 0) refresh();
   };
-  G.onBakeryMetaChanged = function() {
+  G.onBakeryMetaChanged = function () {
     G.rebuildDashboardFilters();
   };
   updateDashboardActiveView('overview');

@@ -91,10 +91,21 @@
 
     function syncLabel() {
       var active = select.options[select.selectedIndex];
-      label.textContent = active ? active.textContent : '';
+      label.textContent = select.dataset.lockedLabel || (active ? active.textContent : '');
       trigger.setAttribute('aria-label', (select.previousElementSibling && select.previousElementSibling.tagName === 'LABEL'
         ? select.previousElementSibling.textContent + ': '
         : '') + label.textContent);
+    }
+
+    function syncDisabledState() {
+      var disabled = !!select.disabled;
+      trigger.disabled = disabled;
+      wrapper.classList.toggle('is-disabled', disabled);
+      trigger.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+      if (disabled) {
+        wrapper.classList.remove('is-open');
+        trigger.setAttribute('aria-expanded', 'false');
+      }
     }
 
     function syncSelectedState() {
@@ -104,6 +115,7 @@
         optionBtn.setAttribute('aria-selected', selected ? 'true' : 'false');
       });
       syncLabel();
+      syncDisabledState();
     }
 
     function visibleOptions() {
@@ -284,7 +296,7 @@
     var observer = new MutationObserver(function() {
       rebuildOptions();
     });
-    observer.observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
+    observer.observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'data-locked-label'] });
 
     select._customSelect = {
       rebuild: rebuildOptions,

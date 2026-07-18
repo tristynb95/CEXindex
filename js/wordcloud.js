@@ -778,14 +778,15 @@ window.GAILS = window.GAILS || {};
     var canvas   = document.getElementById('wcTargetCanvas');
     var emptyEl  = document.getElementById('wcTargetEmpty');
 
-    // Build request body first -- focus bakeries only (Low Performer + Below Average)
+    // Build request body first -- focus bakeries only (Low Performance + Below Average)
     var body = {};
-    if (G && typeof G.getData === 'function' && state && state.ALL && state.ALL.length) {
-      var filtered = G.getData();
+    var focusContext = G && (G._focusDataContext || (G.buildFocusDataset ? G.buildFocusDataset() : null));
+    if (G && focusContext && state && state.ALL && state.ALL.length) {
+      var filtered = focusContext.data || [];
       var bakeries = [];
       var isAbsoluteTarget = state && state.targetMetric !== 'relative';
       var targetBf = isAbsoluteTarget ? 'acb' : 'cb';
-      var targetHigh = isAbsoluteTarget ? 'Below Standard' : 'Low Performer';
+      var targetHigh = isAbsoluteTarget ? 'Below Standard' : 'Low Performance';
       var targetLow = isAbsoluteTarget ? 'Approaching' : 'Below Average';
       filtered.forEach(function (r) {
         if ((r[targetBf] === targetHigh || r[targetBf] === targetLow) && r.b && bakeries.indexOf(r.b) === -1) {
@@ -796,7 +797,7 @@ window.GAILS = window.GAILS || {};
         // No focus bakeries -- show empty state without hitting the API
         var emptyKey = buildWcParamsKey(body);
         if (!force && emptyKey === lastTargetWcParamsKey && lastTargetWordData !== null) return;
-        if (statusEl) { statusEl.textContent = 'No focus bakeries for the current selection.'; statusEl.className = 'status'; }
+        if (statusEl) { statusEl.textContent = 'No eligible focus bakeries through the latest completed month.'; statusEl.className = 'status'; }
         if (emptyEl)  emptyEl.style.display = '';
         lastTargetWordData = [];
         lastTargetWcParamsKey = emptyKey;
@@ -808,13 +809,16 @@ window.GAILS = window.GAILS || {};
       }
       body.bakery_locations = bakeries;
     }
-    if (state && state.selectedMonths && state.selectedMonths.length) {
-      body.start_date = monthLabelToIso(state.selectedMonths[0], false);
-      body.end_date   = monthLabelToIso(state.selectedMonths[state.selectedMonths.length - 1], true);
+    var focusMonths = focusContext && focusContext.closedMonths ? focusContext.closedMonths : [];
+    if (focusMonths.length) {
+      body.start_date = monthLabelToIso(focusMonths[0], false);
+      body.end_date   = monthLabelToIso(focusMonths[focusMonths.length - 1], true);
     }
 
     var paramsKey = buildWcParamsKey(body);
-    var prevInfo  = buildPrevPeriodInfo(state && state.selectedMonths, state && state.MONTHS);
+    // The Focus view intentionally uses all completed history, so there is no
+    // equivalent preceding period for the drift comparison.
+    var prevInfo  = null;
 
     // Skip the API call if filters haven't changed and we already have a result
     if (!force && paramsKey === lastTargetWcParamsKey && lastTargetWordData !== null) {

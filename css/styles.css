@@ -668,6 +668,20 @@ h4 {
   box-shadow: inset 0 1px 0 rgba(34, 31, 26, 0.05), 0 14px 28px rgba(0, 0, 0, 0.112), 0 0 0 1px rgba(178, 42, 36, 0.12);
 }
 
+.filter-select__trigger:disabled,
+.filter-select__trigger:disabled:hover {
+  cursor: not-allowed;
+  color: var(--muted);
+  border-color: var(--card-border);
+  background: rgba(146, 137, 120, 0.08);
+  box-shadow: none;
+  opacity: 0.82;
+}
+
+.filter-select__trigger:disabled .filter-select__icon {
+  opacity: 0.45;
+}
+
 .filter-select.is-open .filter-select__trigger,
 .filter-select__trigger:focus-visible {
   border-color: var(--accent);
@@ -2749,7 +2763,7 @@ body.table-fullscreen-lock {
   border: 1px solid transparent;
 }
 
-.band.Top-Performer {
+.band.Top-Performance {
   background: var(--green-d);
   color: var(--green);
   border-color: rgba(29, 158, 92, 0.28);
@@ -2767,7 +2781,7 @@ body.table-fullscreen-lock {
   border-color: rgba(201, 127, 18, 0.28);
 }
 
-.band.Low-Performer {
+.band.Low-Performance {
   background: var(--red-d);
   color: var(--red);
   border-color: rgba(178, 42, 36, 0.28);
@@ -11923,6 +11937,7 @@ body.profile-modal-open {
    above the "Bakery support queue" title */
 #targetHubQueue {
   scroll-margin-top: 96px;
+  margin-bottom: clamp(30px, 3vw, 40px);
 }
 
 .focus-section-title {
@@ -12360,6 +12375,11 @@ body.profile-modal-open {
   color: var(--green);
 }
 
+.focus-qbadge--data {
+  background: rgba(201, 127, 18, 0.13);
+  color: #9A5E08;
+}
+
 .focus-qrow__scorecell {
   display: flex;
   align-items: center;
@@ -12568,6 +12588,87 @@ body.profile-modal-open {
   gap: 8px;
 }
 
+.focus-review-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(250px, 0.9fr);
+  margin: 2px 0 20px;
+  overflow: hidden;
+  border: 1px solid var(--card-border-h);
+  border-radius: 14px;
+  background: var(--card-2);
+}
+
+.focus-review-summary__lead,
+.focus-review-summary__action {
+  min-width: 0;
+  padding: 18px 20px;
+}
+
+.focus-review-summary__lead h3 {
+  margin: 3px 0 7px;
+  color: var(--text);
+  font-size: 1.22rem;
+  line-height: 1.2;
+}
+
+.focus-review-summary__lead p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.focus-review-summary__eyebrow {
+  display: block;
+  color: var(--muted-l);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.focus-review-summary__action {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border-left: 1px solid var(--card-border-h);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.focus-review-summary__action strong {
+  color: var(--text);
+  font-size: 0.96rem;
+  line-height: 1.3;
+}
+
+.focus-review-summary__action > span:last-child {
+  color: var(--muted-l);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.focus-review-summary__action--green { box-shadow: inset 4px 0 0 var(--green); }
+.focus-review-summary__action--amber { box-shadow: inset 4px 0 0 var(--amber); }
+.focus-review-summary__action--red { box-shadow: inset 4px 0 0 var(--red); }
+
+.focus-review-summary__context {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--card-border);
+  color: var(--muted-l);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.focus-review-summary__context strong {
+  color: var(--text-2);
+}
+
 .focus-reasons {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -12661,9 +12762,45 @@ body.profile-modal-open {
 }
 
 .focus-driver__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   margin-left: auto;
   font-size: 0.64rem;
   font-weight: 700;
+}
+
+.focus-driver__movement-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.focus-driver__movement-icon--up {
+  color: var(--green);
+}
+
+.focus-driver__movement-icon--down {
+  color: var(--red);
+}
+
+.focus-driver__movement-icon--neutral {
+  color: var(--muted-l);
+}
+
+.focus-driver__movement-copy {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.focus-driver__movement-copy span {
+  color: var(--muted);
+  font-weight: 500;
 }
 
 .focus-driver__bar {
@@ -12757,6 +12894,15 @@ body.profile-modal-open {
     grid-template-columns: 1fr 1fr;
   }
 
+  .focus-review-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .focus-review-summary__action {
+    border-top: 1px solid var(--card-border-h);
+    border-left: 0;
+  }
+
   .focus-reasons {
     grid-template-columns: 1fr 1fr;
   }
@@ -12778,4 +12924,778 @@ body.profile-modal-open {
   .focus-reasons {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Focus Bakeries: action-first summary ───────────────────────────── */
+/* Type scale: 0.62rem uppercase micro-labels → 0.75rem supporting text →
+   0.8rem body → 0.88rem row names → 1.2rem+ stat numbers. Numbers carry the
+   weight; labels stay quiet. */
+
+.focus-page-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.focus-action__eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.focus-page-intro h2 {
+  margin: 0;
+  font-size: 1.28rem;
+  letter-spacing: -0.02em;
+}
+
+.focus-page-intro>div>p:last-child {
+  margin: 6px 0 0;
+  color: var(--muted-l);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.focus-data-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -8px 0 16px;
+  color: var(--muted-l);
+  font-size: 0.72rem;
+}
+
+.focus-data-status > span,
+.focus-data-status > details {
+  padding: 6px 9px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--card-2);
+}
+
+.focus-data-status summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.focus-data-status p {
+  margin: 8px 0 4px;
+}
+
+.focus-data-status ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.focus-method {
+  width: min(360px, 100%);
+  flex: 0 0 auto;
+  border: 1px solid var(--card-border-h);
+  border-radius: 12px;
+  background: var(--card-2);
+}
+
+.focus-method summary {
+  padding: 10px 14px;
+  cursor: pointer;
+  color: var(--text-2);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.focus-method p {
+  margin: 0;
+  padding: 0 14px 12px;
+  color: var(--muted-l);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+/* ── Hero recommendation card ── */
+.focus-action {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: clamp(30px, 3vw, 42px);
+  border: 1px solid rgba(178, 42, 36, 0.18);
+  border-radius: 16px;
+  background: linear-gradient(155deg, rgba(178, 42, 36, 0.05), rgba(255, 255, 255, 0.96) 45%);
+  box-shadow: 0 12px 30px rgba(34, 31, 26, 0.07);
+}
+
+.focus-action::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), rgba(178, 42, 36, 0.2));
+}
+
+.focus-action--clear {
+  padding: 24px;
+  border-color: rgba(45, 139, 87, 0.28);
+  background: var(--green-d);
+}
+
+.focus-action--clear::before {
+  background: linear-gradient(90deg, var(--green), rgba(29, 158, 92, 0.2));
+}
+
+.focus-action--clear h3,
+.focus-action--clear p:last-child {
+  margin: 5px 0 0;
+}
+
+.focus-action__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 24px 14px;
+}
+
+.focus-action__head h3 {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+}
+
+.focus-action__location {
+  margin: 5px 0 0;
+  color: var(--muted-l);
+  font-size: 0.8rem;
+}
+
+.focus-action__cta,
+.focus-qrow__action button {
+  appearance: none;
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.focus-action__cta {
+  padding: 9px 16px;
+}
+
+.focus-action__cta:hover,
+.focus-qrow__action button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(178, 42, 36, 0.22);
+}
+
+.focus-action__cta:focus-visible,
+.focus-qrow__action button:focus-visible,
+.focus-qrow__name:focus-visible,
+.focus-chip:focus-visible,
+.focus-applied-filter:focus-visible {
+  outline: 3px solid rgba(30, 112, 196, 0.38);
+  outline-offset: 2px;
+}
+
+.focus-action__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 4px 24px 18px;
+}
+
+.focus-action__metrics>div {
+  min-width: 0;
+  padding: 2px 20px;
+  border-left: 1px solid var(--card-border-h);
+}
+
+.focus-action__metrics>div:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.focus-action__metrics dt {
+  margin-bottom: 6px;
+  color: var(--muted-l);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.focus-action__metrics dd {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
+.focus-action__metrics dd strong {
+  color: var(--text);
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-action__metrics dd strong em {
+  margin-left: 2px;
+  color: var(--muted-l);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.focus-action__metrics dd span {
+  color: var(--muted-l);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.focus-action__reason {
+  display: grid;
+  gap: 6px;
+  margin: 0 24px 20px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.focus-action__next {
+  color: #2E7D5B;
+  font-weight: 700;
+}
+
+/* ── Action list heading, summary and filters ── */
+.focus-queue__heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 12px;
+}
+
+.focus-queue__heading .focus-section-title {
+  margin: 0 0 3px;
+  color: var(--text);
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.focus-queue__heading p:last-child {
+  margin: 0;
+  color: var(--muted-l);
+  font-size: 0.8rem;
+}
+
+.focus-queue__summary {
+  flex: 0 0 auto;
+  max-width: 320px;
+  color: var(--text-2);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.focus-queue__summary span {
+  display: block;
+  color: var(--muted-l);
+}
+
+.focus-queue__bar {
+  align-items: flex-end;
+  gap: 16px;
+  margin: 14px 0 12px;
+}
+
+.focus-queue__chips {
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.focus-filter-group,
+.focus-applied-filters,
+.focus-tool-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.focus-filter-group>div,
+.focus-applied-filters {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.focus-filter-label,
+.focus-applied-filters>span,
+.focus-tool-label>span {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.focus-chip,
+.focus-applied-filter {
+  min-height: 30px;
+  padding: 5px 12px;
+  font-size: 0.74rem;
+}
+
+.focus-applied-filter {
+  border: 1px solid rgba(178, 42, 36, 0.32);
+  border-radius: 999px;
+  background: rgba(178, 42, 36, 0.06);
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.focus-queue__tools {
+  align-items: flex-end;
+}
+
+.focus-qsearch,
+.focus-tool-label .spark-sort-select {
+  min-height: 36px;
+  font-size: 0.8rem;
+}
+
+/* Match the custom sort trigger beside it so the tools read as one set. */
+.focus-qsearch {
+  width: 210px;
+  border-color: var(--card-border-h);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(34, 31, 26, 0.04) 0%, rgba(34, 31, 26, 0.01) 100%),
+    rgba(255, 255, 255, 0.96);
+}
+
+/* ── Collapsible secondary panels ── */
+.focus-secondary {
+  margin-top: 0;
+  border: 1px solid var(--card-border-h);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.focus-secondary + .focus-secondary {
+  margin-top: 20px;
+}
+
+.focus-secondary>summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  padding: 13px 16px 13px 40px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 750;
+  list-style: none;
+}
+
+.focus-secondary>summary::-webkit-details-marker {
+  display: none;
+}
+
+.focus-secondary>summary::before {
+  content: '\203A';
+  position: absolute;
+  top: 13px;
+  left: 17px;
+  color: var(--accent);
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.focus-secondary[open]>summary::before {
+  transform: rotate(90deg);
+}
+
+.focus-secondary>summary small {
+  color: var(--muted-l);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.focus-secondary[open]>summary {
+  border-bottom: 1px solid var(--card-border);
+}
+
+.focus-secondary>#focusAreaBoard,
+.focus-secondary>#targetInsights {
+  padding: 4px 16px 16px;
+}
+
+/* ── Ranked action list (table) ── */
+.focus-qlist {
+  min-width: 0;
+  border-radius: 14px;
+}
+
+.focus-qhead,
+.focus-qrow,
+.focus-qlist.has-delta .focus-qhead,
+.focus-qlist.has-delta .focus-qrow {
+  grid-template-columns: 84px minmax(118px, 1.3fr) minmax(90px, 0.85fr) minmax(76px, 0.7fr) minmax(138px, 1.2fr) minmax(86px, 0.75fr) 104px;
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.focus-qhead {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-l);
+  background: var(--bg);
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.focus-qrow {
+  align-items: start;
+  cursor: default;
+  background: transparent;
+}
+
+.focus-qrow:hover { background: rgba(178, 42, 36, 0.028); }
+
+.focus-qrow__urgency,
+.focus-qrow__performance,
+.focus-qrow__delta,
+.focus-qrow__fix,
+.focus-qrow__visit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.focus-qrow__urgency {
+  align-self: start;
+  gap: 2px;
+  padding: 8px 11px;
+  border-radius: 10px;
+}
+
+.focus-qrow__urgency strong,
+.focus-qrow__performance strong,
+.focus-qrow__delta strong,
+.focus-qrow__fix strong,
+.focus-qrow__visit strong {
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.focus-qrow__urgency strong {
+  color: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-qrow__tier {
+  margin-top: 2px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.focus-qrow__urgency strong em,
+.focus-qrow__performance strong em {
+  margin-left: 1px;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.focus-qrow__performance strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-qrow__performance small,
+.focus-qrow__delta small,
+.focus-qrow__fix small,
+.focus-qrow__visit small {
+  color: var(--muted-l);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.focus-qrow__who small {
+  color: var(--muted-l);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.focus-qrow__urgency small {
+  color: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+.focus-qrow__urgency small em {
+  font-style: normal;
+  font-weight: 600;
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+
+/* The base rules truncate these cells to one line; the redesigned row lets
+   long values wrap instead of clipping or overflowing the next column. */
+.focus-qrow__delta,
+.focus-qrow__fix {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.focus-qrow__name {
+  appearance: none;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 750;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: rgba(178, 42, 36, 0.32);
+  text-underline-offset: 3px;
+}
+
+.focus-qrow__name:hover {
+  color: var(--accent);
+}
+
+.focus-qbadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.focus-qrow__delta.is-negative strong,
+.focus-qrow__visit.is-due strong {
+  color: var(--red);
+}
+
+.focus-qrow__visit.is-due-soon strong {
+  color: var(--amber);
+}
+
+.focus-qrow__delta.is-positive strong,
+.focus-qrow__visit.is-complete strong {
+  color: var(--green);
+}
+
+.focus-qrow__action button {
+  width: 100%;
+  padding: 7px 8px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.focus-qmore {
+  margin-top: 12px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .focus-page-intro {
+    flex-direction: column;
+  }
+
+  .focus-method {
+    width: 100%;
+  }
+
+  .focus-action__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 16px;
+  }
+
+  .focus-action__metrics>div:nth-child(3) {
+    padding-left: 0;
+    border-left: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .focus-qwrap {
+    overflow: visible;
+  }
+
+  .focus-qlist {
+    min-width: 0;
+    border: none;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .focus-qhead {
+    display: none;
+  }
+
+  .focus-qrow,
+  .focus-qlist.has-delta .focus-qrow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "who action"
+      "urgency performance"
+      "delta visit"
+      "reason reason";
+    gap: 12px 18px;
+    margin-bottom: 12px;
+    padding: 16px;
+    border: 1px solid var(--card-border-h);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  .focus-qrow__who { grid-area: who; }
+  .focus-qrow__urgency { grid-area: urgency; }
+  .focus-qrow__performance { grid-area: performance; }
+  .focus-qrow__delta { grid-area: delta; }
+  .focus-qrow__fix { grid-area: reason; }
+  .focus-qrow__visit { grid-area: visit; }
+  .focus-qrow__action { grid-area: action; }
+
+  .focus-qrow__action button {
+    width: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .focus-action__head,
+  .focus-queue__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .focus-action__cta {
+    width: 100%;
+  }
+
+  .focus-action__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .focus-action__metrics>div,
+  .focus-action__metrics>div:nth-child(3) {
+    padding: 10px 0;
+    border-top: 1px solid var(--card-border);
+    border-left: none;
+  }
+
+  .focus-action__metrics>div:first-child {
+    border-top: none;
+  }
+
+  .focus-queue__summary {
+    max-width: none;
+    text-align: left;
+  }
+
+  .focus-queue__bar,
+  .focus-queue__chips,
+  .focus-queue__tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .focus-qsearch,
+  .focus-tool-label .spark-sort-select {
+    width: 100%;
+  }
+
+  .focus-qrow,
+  .focus-qlist.has-delta .focus-qrow {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "who"
+      "urgency"
+      "performance"
+      "delta"
+      "reason"
+      "visit"
+      "action";
+  }
+
+  .focus-qrow__action button {
+    width: 100%;
+  }
+}
+
+/* Keep navigation and the bakery-plan modal readable without relying on
+   hover tooltips or unusually small supporting text. */
+.target-subtab,
+#focusDetailModal .target-stat-card__label,
+#focusDetailModal .target-stat-card__sub,
+.focus-detail-nav__pos,
+.focus-reason__label,
+.focus-reason__sub,
+.focus-section-heading p,
+.focus-driver__head,
+.focus-driver__val em,
+.focus-driver__delta,
+.focus-driver__sub,
+.focus-actions li,
+.focus-detail__visitbtn,
+.focus-detail__novisit {
+  font-size: 0.82rem;
+}
+
+.focus-reason strong {
+  font-size: 0.9rem;
 }

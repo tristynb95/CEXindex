@@ -18,7 +18,7 @@ window.GAILS = window.GAILS || {};
 
   // Both score modes have two focus bands, but their boundaries differ. Give
   // the adjacent band the first 20 severity points and the lowest band the
-  // remaining 30 so equivalent band positions mean the same urgency in peer
+  // remaining 30 so equivalent band positions mean the same priority in peer
   // and benchmark views.
   function severityPoints(score, escapeLine, severeLine) {
     if (!isNumber(score) || !isNumber(escapeLine) || !isNumber(severeLine)) return 0;
@@ -54,7 +54,14 @@ window.GAILS = window.GAILS || {};
     return Math.min(WEIGHTS.persistence, sharePoints + streakPoints);
   }
 
-  function coveragePoints(visitedInPeriod, hasVisitEver) {
+  function coveragePoints(monthsSinceVisit, visitedInPeriod, hasVisitEver) {
+    if (isNumber(monthsSinceVisit)) {
+      if (monthsSinceVisit < 6) return 0;
+      return monthsSinceVisit < 12 ? 6 : WEIGHTS.coverage;
+    }
+    // Backwards-compatible fallback for callers that have not yet supplied a
+    // visit age. Focus Bakeries passes monthsSinceVisit so an old visit cannot
+    // be made to look current by an All Time period.
     if (visitedInPeriod) return 0;
     return hasVisitEver ? 6 : WEIGHTS.coverage;
   }
@@ -66,7 +73,7 @@ window.GAILS = window.GAILS || {};
     var severity = severityPoints(input.score, input.escapeLine, input.severeLine);
     var momentum = momentumPoints(input.trend);
     var persistence = persistencePoints(input.focusMonths, input.focusStreak, input.monthsWithData);
-    var coverage = coveragePoints(!!input.visitedInPeriod, !!input.hasVisitEver);
+    var coverage = coveragePoints(input.monthsSinceVisit, !!input.visitedInPeriod, !!input.hasVisitEver);
     var priority = clamp(severity + momentum + persistence + coverage, 0, 100);
 
     return {

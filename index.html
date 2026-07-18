@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -271,7 +271,7 @@
                 <option value="">&mdash; Select &mdash;</option>
               </select></div>
             <div class="filter-control"><label>Period</label><br><select id="rollingWindow">
-                <option value="0">All Months</option>
+                <option value="0">All Time</option>
                 <option value="current">This Month</option>
                 <option value="1" selected>Last Month</option>
                 <option value="3">Last 3 Months</option>
@@ -361,10 +361,10 @@
             <div class="filter-control"><label id="bandFilterLabel">Band</label><br><select id="bandFilter">
                 <option value="">All</option>
                 <optgroup label="— Peer Score Band">
-                  <option value="Top Performer">Top Performer</option>
+                  <option value="Top Performance">Top Performance</option>
                   <option value="Above Average">Above Average</option>
                   <option value="Below Average">Below Average</option>
-                  <option value="Low Performer">Low Performer</option>
+                  <option value="Low Performance">Low Performance</option>
                 </optgroup>
                 <optgroup label="— Benchmark Score Band">
                   <option value="abs:Exceeding">Exceeding</option>
@@ -739,7 +739,7 @@
                   <li><strong>Friendliness (25%)</strong> &mdash; Did the customer feel welcome?</li>
                   <li><strong>Efficiency (25%)</strong> &mdash; Did the customer feel they were served quickly?</li>
                   <li><strong>Avg Wait Time (5%)</strong> &mdash; Average wait time for drinks. Full marks (100 points)
-                    for 1:55 (115s) or less, then a straight-line penalty down to 0 points at 2:00 (120s) or slower.
+                    for 2:00 (120s) or less, then a straight-line penalty down to 0 points at 2:05 (125s) or slower.
                   </li>
                   <li><strong>Coffee Efficiency (5%)</strong> &mdash; How fast the order was completed. We display the %
                     under 2 mins (Target: 80% &lt; 2 min) in the KPI cards and tables, but the index score uses a
@@ -760,8 +760,8 @@
                 <h3>Our Standards (Floor-Based Penalties)</h3>
                 <p>Our standards are built on hitting specific benchmarks: <strong>55 or higher</strong> for Drink +
                   Meal NPS, <strong>90% or higher</strong> for customer feedback (Drink Quality, Efficiency,
-                  Friendliness), <strong>80% or higher</strong> for Coffee Efficiency, and a hard limit of <strong>1:55
-                    (115 seconds) or lower</strong> for Avg Wait Time. If a bakery meets or exceeds its benchmark, it
+                  Friendliness), <strong>80% or higher</strong> for Coffee Efficiency, and a hard limit of <strong>2:00
+                    (120 seconds) or lower</strong> for Avg Wait Time. If a bakery meets or exceeds its benchmark, it
                   receives full marks (100 points).</p>
                 <p>For the Benchmark Score, each scored KPI now has a floor. Scores between the benchmark and floor lose
                   points in a straight line; scores at or below the floor receive 0 points for that component:</p>
@@ -769,7 +769,7 @@
                   <li><strong>Drink + Meal NPS:</strong> 55 or higher = 100 points; 45 or lower = 0 points.</li>
                   <li><strong>Drink Quality, Efficiency, Friendliness:</strong> 90% or higher = 100 points; 80% or lower
                     = 0 points.</li>
-                  <li><strong>Avg Wait Time:</strong> 1:55 or faster = 100 points; 2:00 or slower = 0 points.</li>
+                  <li><strong>Avg Wait Time:</strong> 2:00 or faster = 100 points; 2:05 or slower = 0 points.</li>
                 </ul>
                 <div class="method-example">
                   <p><strong>Example (90% Benchmark):</strong> Hitting 90% gives 100. A score of 85% gives 50. A score
@@ -800,7 +800,7 @@
                 <div class="benchmarks benchmarks--quad">
                   <div class="benchmark exc">
                     <div class="bval">75&ndash;100</div>
-                    <div class="blabel">Top Performer</div>
+                    <div class="blabel">Top Performance</div>
                   </div>
                   <div class="benchmark gd">
                     <div class="bval">50&ndash;74</div>
@@ -812,7 +812,7 @@
                   </div>
                   <div class="benchmark na">
                     <div class="bval">0&ndash;24</div>
-                    <div class="blabel">Low Performer</div>
+                    <div class="blabel">Low Performance</div>
                   </div>
                 </div>
 
@@ -933,10 +933,10 @@
                       </div>
                     </div>
                     <p class="map-legend-key" id="networkMapLegendHint"><span
-                        style="color:var(--green);font-weight:600">&#9679; Top Performer</span> &nbsp;&middot;&nbsp;
+                        style="color:var(--green);font-weight:600">&#9679; Top Performance</span> &nbsp;&middot;&nbsp;
                       <span style="color:var(--blue);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp;
                       <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp;
-                      <span style="color:var(--red);font-weight:600">&#9679; Low Performer</span></p>
+                      <span style="color:var(--red);font-weight:600">&#9679; Low Performance</span></p>
                     <button type="button" class="map-fullscreen-btn" data-map-fullscreen="network" title="Full screen">
                       <svg class="map-fullscreen-btn__icon map-fullscreen-btn__expand" viewBox="0 0 20 20"
                         aria-hidden="true">
@@ -972,11 +972,11 @@
                 <button class="target-subtab active" type="button" data-target-subtab="summary">
                   <span class="target-subtab__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
-                      <path d="M5 12h14"></path>
-                      <path d="M12 5v14"></path>
+                      <circle cx="12" cy="12" r="7"></circle>
+                      <circle cx="12" cy="12" r="2.6"></circle>
                     </svg>
                   </span>
-                  <span>Summary</span>
+                  <span>Priorities</span>
                 </button>
                 <button class="target-subtab" type="button" data-target-subtab="priority">
                   <span class="target-subtab__icon" aria-hidden="true">
@@ -984,7 +984,7 @@
                       <path d="M7 12.5 10 15.5 17 8.5"></path>
                     </svg>
                   </span>
-                  <span>Support List</span>
+                  <span>All bakery data</span>
                 </button>
                 <button class="target-subtab" type="button" data-target-subtab="table">
                   <span class="target-subtab__icon" aria-hidden="true">
@@ -994,7 +994,7 @@
                       <path d="M5 17h14"></path>
                     </svg>
                   </span>
-                  <span>Performance Trends</span>
+                  <span>Monthly results</span>
                 </button>
                 <button class="target-subtab" type="button" data-target-subtab="graphs">
                   <span class="target-subtab__icon" aria-hidden="true">
@@ -1003,7 +1003,7 @@
                       <path d="M19 8h-4"></path>
                     </svg>
                   </span>
-                  <span>Trend Analysis</span>
+                  <span>Charts</span>
                 </button>
                 <button class="target-subtab" type="button" data-target-subtab="map">
                   <span class="target-subtab__icon" aria-hidden="true">
@@ -1012,7 +1012,7 @@
                       <circle cx="12" cy="11.5" r="1.7"></circle>
                     </svg>
                   </span>
-                  <span>Bakery Locations</span>
+                  <span>Map</span>
                 </button>
                 <button class="target-subtab" type="button" data-target-subtab="feedback">
                   <span class="target-subtab__icon" aria-hidden="true">
@@ -1022,27 +1022,45 @@
                       </path>
                     </svg>
                   </span>
-                  <span>Comment Cloud</span>
+                  <span>Customer comments</span>
                 </button>
               </div>
 
               <div class="target-subtab-panel active" data-target-subtab-panel="summary">
                 <div class="section">
-                  <h2>&#127793; Growth &amp; Support Hub</h2>
-                  <p class="target-hint">Ops areas ranked by support need, then every focus bakery ranked by where
-                    support will make the biggest difference. <strong>Performance bands</strong> (like Low Performer)
-                    describe where a bakery&rsquo;s score sits today; <strong>priority levels</strong> &mdash; High
-                    Priority, Medium Priority, Monitor &mdash; triage how quickly to step in,
-                    based on a <strong>support score</strong>: current score gap (50 points), recent falls (25),
-                    demonstrated time in focus (15), and visit coverage (10). Trend and persistence points are only
-                    added when enough scored history exists. Click an area to drill into its bakeries, and any bakery
-                    for its full performance breakdown.</p>
-                  <div id="targetSummary" class="target-stat-grid"></div>
+                  <div class="focus-page-intro">
+                    <div>
+              <h2>Priority Overview</h2>
+                      <p>Bakeries are ranked by current support priority, with the top priority highlighted below.</p>
+                    </div>
+                    <details class="focus-method">
+                      <summary>How support priority is calculated</summary>
+                      <p><strong>Support priority</strong> helps decide where to act first. It starts with a performance
+                        measure using up to the six most recent completed months: normally 60% from the latest month,
+                        25% from the previous month, and 15% from the average of months three to six. If a month is
+                        unavailable, the remaining weights are rebalanced. The priority score then combines the
+                        performance gap (up to 50 points), recent decline (25), recent time in focus (15), and
+                        routine-visit recency (10). A bakery becomes eligible after three consecutive usable completed
+                        monthly results.</p>
+                    </details>
+                  </div>
+                  <div id="focusDataStatus"></div>
                   <div id="focusSpotlight"></div>
-                  <div id="focusAreaBoard"></div>
                   <div id="targetHubQueue"></div>
-                  <h4 class="focus-section-title" id="targetInsightsTitle" style="margin-top:22px">Company-level intelligence</h4>
-                  <div id="targetInsights"></div>
+                  <details class="focus-secondary" id="focusAreaDetails">
+                    <summary>
+                      <span>Compare operations areas</span>
+                      <small>See which area has the greatest concentration of focus bakeries</small>
+                    </summary>
+                    <div id="focusAreaBoard"></div>
+                  </details>
+                  <details class="focus-secondary" id="focusInsightsDetails">
+                    <summary id="targetInsightsTitle">
+                      <span>Company-wide opportunities</span>
+                      <small>Explore shared coaching needs and quick wins</small>
+                    </summary>
+                    <div id="targetInsights"></div>
+                  </details>
                 </div>
               </div>
 
@@ -1078,8 +1096,8 @@
                     <div class="grid-2" style="margin-bottom:10px">
                       <div class="section" style="margin-bottom:0">
                         <h2 style="font-size:0.88rem">Improving vs Dipping</h2>
-                        <p class="chart-caption">Where data exists, the first month&rsquo;s movement is measured
-                          against the month before the selected period.</p>
+                        <p class="chart-caption">Monthly movement uses completed calendar months only; a missing month
+                          is left as a gap rather than silently skipped.</p>
                         <canvas id="targetMomentumChart" style="max-height:300px"></canvas>
                       </div>
                       <div class="section" style="margin-bottom:0">
@@ -1089,8 +1107,8 @@
                     </div>
                     <div class="section" style="margin-bottom:10px">
                       <h2 style="font-size:0.88rem">Ops Area Momentum &mdash; Focus Bakeries</h2>
-                      <p class="chart-caption">Average score change of each area&rsquo;s focus bakeries across the
-                        selected period. Areas with the biggest average score drop appear first.</p>
+                      <p class="chart-caption">Average score change of each area&rsquo;s focus bakeries across completed
+                        history. Areas with the biggest average score drop appear first.</p>
                       <div id="targetAreaMomentumWrap" style="position:relative">
                         <canvas id="targetAreaMomentum"></canvas>
                       </div>
@@ -1166,8 +1184,8 @@
                       </div>
                     </div>
                     <p class="target-hint" id="targetMapLegendHint"><span
-                        style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp;
-                      <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp;
+                        style="color:var(--red);font-weight:600">&#9679; Low Performance</span> &nbsp;&middot;&nbsp;
+                      <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp;
                       Click a pin for details. Imported site names are matched back to the correct GAIL's bakery before
                       plotting.</p>
                     <div class="map-body">
@@ -1184,8 +1202,8 @@
               <div class="target-subtab-panel" data-target-subtab-panel="feedback">
                 <div class="section">
                   <h2>Comment Cloud</h2>
-                  <p class="target-hint">Words drawn from customer reviews for <strong>Low Performer</strong> &amp;
-                    <strong>Below Average</strong> bakeries only. Date range follows the dashboard period filter.</p>
+                  <p class="target-hint">Words drawn from customer reviews for <strong>Low Performance</strong> &amp;
+                    <strong>Below Average</strong> bakeries only, using all available completed months.</p>
                   <div id="wcTargetStatus" class="status" style="margin-bottom:10px"></div>
                   <div class="wc-canvas-wrap">
                     <canvas id="wcTargetCanvas"></canvas>
@@ -1750,6 +1768,7 @@
   <script src="js/parser.js"></script>
   <script src="js/periods.js"></script>
   <script src="js/filters.js"></script>
+  <script src="js/focus-data.js"></script>
   <script src="js/tables.js"></script>
   <script src="js/drilldown.js"></script>
   <script src="js/charts.js"></script>

@@ -96,9 +96,9 @@ window.GAILS = window.GAILS || {};
     if (type === 'nps') {
       var range = parseNpsRange(title);
       if (range) {
-        if (range.min >= 60) return G.COL['Top Performer'];
+        if (range.min >= 60) return G.COL['Top Performance'];
         if (range.min >= 50) return G.COL['Above Average'];
-        return G.COL['Low Performer'];
+        return G.COL['Low Performance'];
       }
       return G.COL['Above Average'];
     }

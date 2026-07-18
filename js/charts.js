@@ -238,14 +238,14 @@ window.GAILS.renderTrendCharts = function (data) {
   }
 
   var trendNPS = RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.reduce(function (a, r) { return a + r.n; }, 0) / mr.length : null; });
-  G.makeChart('trendNPS', { type: 'line', data: { labels: RM, datasets: [{ data: trendNPS, borderColor: G.COL['Top Performer'], backgroundColor: G.COL['Top Performer'] + '22', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Avg NPS (D+M)' } } } } });
+  G.makeChart('trendNPS', { type: 'line', data: { labels: RM, datasets: [{ data: trendNPS, borderColor: G.COL['Top Performance'], backgroundColor: G.COL['Top Performance'] + '22', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Avg NPS (D+M)' } } } } });
 
   var trendKeys = [{ k: 'dr', l: 'Quality', c: '#1E70C4' }, { k: 'ef', l: 'Overall Efficiency', c: '#1D9E5C' }, { k: 'fr', l: 'Friendliness', c: '#C97F12' }, { k: 'ov', l: 'Overall', c: '#6B4FA8' }];
   G.makeChart('trendCX', { type: 'line', data: { labels: RM, datasets: trendKeys.map(function (tk) { return { label: tk.l, data: RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.reduce(function (a, r) { return a + r[tk.k]; }, 0) / mr.length : null; }), borderColor: tk.c, tension: 0.3, pointRadius: 3, borderWidth: 2 }; }) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Score %' } } } } });
 
   // NPS split trend: exposes the newer Coffee / Meal / All-response columns.
   var npsSplitKeys = [
-    { k: 'n', l: 'Drink + Meal', c: G.COL['Top Performer'], dash: [] },
+    { k: 'n', l: 'Drink + Meal', c: G.COL['Top Performance'], dash: [] },
     { k: 'nc', l: 'Coffee Only', c: '#1E70C4', dash: [5, 3] },
     { k: 'nm', l: 'Meal Only', c: '#C97F12', dash: [2, 3] },
     { k: 'na', l: 'All Responses', c: '#6B4FA8', dash: [7, 3] }
@@ -502,7 +502,7 @@ window.GAILS.renderTrendCharts = function (data) {
     G.makeChart('bakeryTracker', {
       type: 'line', data: {
         labels: RM, datasets: [
-          { label: scopeLabel + (isSingleBakery ? ' NPS (D+M)' : ' Avg NPS (D+M)'), data: trackerNps, borderColor: G.COL['Top Performer'], tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
+          { label: scopeLabel + (isSingleBakery ? ' NPS (D+M)' : ' Avg NPS (D+M)'), data: trackerNps, borderColor: G.COL['Top Performance'], tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
           { label: scopeLabel + (isSingleBakery ? ' Peer Score' : ' Avg Peer Score'), data: trackerCei, borderColor: '#1E70C4', tension: 0.3, pointRadius: 4, borderWidth: 2.5 },
           { label: scopeLabel + (isSingleBakery ? ' Benchmark Score' : ' Avg Benchmark Score'), data: trackerAbsCei, borderColor: '#6B4FA8', tension: 0.3, pointRadius: 4, borderWidth: 2, borderDash: [6, 3] }
         ].concat(selectedBakeries.length ? [

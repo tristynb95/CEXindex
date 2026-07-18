@@ -3,10 +3,10 @@
 // "Last visited" line in a map popup (see js/targets.js getPopupHtml).
 window.GAILS = window.GAILS || {};
 
-(function() {
+(function () {
   var lockedScrollY = 0;
   var CHART_ID = 'visitReportScoreChart';
-  var WAIT_TIME_TARGET_SECONDS = 115;
+  var WAIT_TIME_TARGET_SECONDS = 120;
 
   var escapeHtml = GAILS.escapeHtml;
 
@@ -50,7 +50,7 @@ window.GAILS = window.GAILS || {};
       list.style.minHeight = (list.offsetHeight + deficit) + 'px';
       window.scrollTo(scrollX, scrollY);
     }
-    window.requestAnimationFrame(function() {
+    window.requestAnimationFrame(function () {
       window.scrollTo(scrollX, scrollY);
     });
   }
@@ -75,7 +75,7 @@ window.GAILS = window.GAILS || {};
 
   function renderPhotoLinks(urls) {
     if (!Array.isArray(urls) || !urls.length) return '';
-    return '<div class="visit-report-photos">' + urls.map(function(url) {
+    return '<div class="visit-report-photos">' + urls.map(function (url) {
       return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener">Photo &#8599;</a>';
     }).join('') + '</div>';
   }
@@ -86,23 +86,23 @@ window.GAILS = window.GAILS || {};
     var comments = '';
     var photos = '';
 
-    section.fields.forEach(function(field) {
+    section.fields.forEach(function (field) {
       var value = data[field.key];
       if (field.type === 'ynna') {
         var failed = value === 'No';
         if (isHs && failed) hsIssues.push(field.label);
         rows.push(
           '<div class="visit-report-row' + (isHs && failed ? ' visit-report-row--flag' : '') + '">' +
-            '<span class="visit-report-row__label">' + escapeHtml(field.label) + '</span>' +
-            ynnaPill(value, isHs && failed) +
+          '<span class="visit-report-row__label">' + escapeHtml(field.label) + '</span>' +
+          ynnaPill(value, isHs && failed) +
           '</div>'
         );
       } else if (field.type === 'scale') {
         var scaleText = (value != null && value !== '') ? value + ' / 10' : '—';
         rows.push(
           '<div class="visit-report-row">' +
-            '<span class="visit-report-row__label">' + escapeHtml(field.label) + '</span>' +
-            '<span class="visit-report-row__value">' + escapeHtml(scaleText) + '</span>' +
+          '<span class="visit-report-row__label">' + escapeHtml(field.label) + '</span>' +
+          '<span class="visit-report-row__value">' + escapeHtml(scaleText) + '</span>' +
           '</div>'
         );
       } else if (field.type === 'number' && field.key === 'avgWaitTimeSeconds') {
@@ -110,15 +110,15 @@ window.GAILS = window.GAILS || {};
         var waitText = (value != null && value !== '') ? value + 's (target ≤ ' + WAIT_TIME_TARGET_SECONDS + 's)' : '—';
         rows.push(
           '<div class="visit-report-row' + (overTarget ? ' visit-report-row--flag' : '') + '">' +
-            '<span class="visit-report-row__label">' + escapeHtml(field.label) + '</span>' +
-            '<span class="visit-report-row__value' + (overTarget ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">' + escapeHtml(waitText) + '</span>' +
+          '<span class="visit-report-row__label">' + escapeHtml(field.label) + '</span>' +
+          '<span class="visit-report-row__value' + (overTarget ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">' + escapeHtml(waitText) + '</span>' +
           '</div>'
         );
       } else if (field.type === 'number') {
         rows.push(
           '<div class="visit-report-row">' +
-            '<span class="visit-report-row__label">' + escapeHtml(field.label) + '</span>' +
-            '<span class="visit-report-row__value">' + escapeHtml(value != null && value !== '' ? value : '—') + '</span>' +
+          '<span class="visit-report-row__label">' + escapeHtml(field.label) + '</span>' +
+          '<span class="visit-report-row__value">' + escapeHtml(value != null && value !== '' ? value : '—') + '</span>' +
           '</div>'
         );
       } else if (field.type === 'textarea') {
@@ -130,26 +130,26 @@ window.GAILS = window.GAILS || {};
 
     return '<div class="visit-report-section-wrapper">' +
       '<div class="visit-report-section' + (isHs ? ' visit-report-section--hs' : '') + '">' +
-        '<h4>' + escapeHtml(section.title) + (isHs ? ' <span class="visit-report-hs-tag">Health &amp; Safety</span>' : '') + '</h4>' +
-        rows.join('') + comments + photos +
+      '<h4>' + escapeHtml(section.title) + (isHs ? ' <span class="visit-report-hs-tag">Health &amp; Safety</span>' : '') + '</h4>' +
+      rows.join('') + comments + photos +
       '</div>' +
-    '</div>';
+      '</div>';
   }
 
   function buildHsSummaryHtml(hsIssues) {
     if (!hsIssues.length) {
       return '<div class="visit-report-section-wrapper">' +
         '<div class="visit-report-hs-banner visit-report-hs-banner--ok">' +
-          '&#9989; No Health &amp; Safety issues found on this visit.' +
+        '&#9989; No Health &amp; Safety issues found on this visit.' +
         '</div>' +
-      '</div>';
+        '</div>';
     }
     return '<div class="visit-report-section-wrapper">' +
       '<div class="visit-report-hs-banner visit-report-hs-banner--alert">' +
-        '<strong>&#9888; ' + hsIssues.length + ' Health &amp; Safety issue' + (hsIssues.length === 1 ? '' : 's') + ' found:</strong>' +
-        '<ul>' + hsIssues.map(function(label) { return '<li>' + escapeHtml(label) + '</li>'; }).join('') + '</ul>' +
+      '<strong>&#9888; ' + hsIssues.length + ' Health &amp; Safety issue' + (hsIssues.length === 1 ? '' : 's') + ' found:</strong>' +
+      '<ul>' + hsIssues.map(function (label) { return '<li>' + escapeHtml(label) + '</li>'; }).join('') + '</ul>' +
       '</div>' +
-    '</div>';
+      '</div>';
   }
 
   function buildHeaderStatsHtml(record) {
@@ -161,7 +161,7 @@ window.GAILS = window.GAILS || {};
       { label: 'Head Barista Present', value: record.headBaristaPresent || '—' },
       { label: 'Staff on Shift', value: record.numberOfStaff != null ? record.numberOfStaff : '—' }
     ];
-    return '<div class="drill-summary">' + cards.map(function(c) {
+    return '<div class="drill-summary">' + cards.map(function (c) {
       return '<div class="drill-card"><div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
         '<div class="drill-card__value" style="font-size:1.3rem">' + escapeHtml(c.value) + '</div></div>';
     }).join('') + '</div>';
@@ -170,7 +170,7 @@ window.GAILS = window.GAILS || {};
   function buildReportHtml(record) {
     var schema = window.GAILS_VISIT_SCHEMA;
     var hsIssues = [];
-    var sectionsHtml = schema.sections.map(function(section) {
+    var sectionsHtml = schema.sections.map(function (section) {
       return renderSection(section, record[section.key] || {}, hsIssues);
     }).join('');
 
@@ -189,9 +189,9 @@ window.GAILS = window.GAILS || {};
     var G = window.GAILS;
     if (!record.sectionScores || typeof G.makeChart !== 'function') return;
     var schema = window.GAILS_VISIT_SCHEMA;
-    var labels = schema.sections.map(function(s) { return s.title; });
-    var earned = schema.sections.map(function(s) { return (record.sectionScores[s.key] || {}).earned || 0; });
-    var max = schema.sections.map(function(s) { return (record.sectionScores[s.key] || {}).max || 0; });
+    var labels = schema.sections.map(function (s) { return s.title; });
+    var earned = schema.sections.map(function (s) { return (record.sectionScores[s.key] || {}).earned || 0; });
+    var max = schema.sections.map(function (s) { return (record.sectionScores[s.key] || {}).max || 0; });
 
     G.makeChart(CHART_ID, {
       type: 'bar',
@@ -232,7 +232,7 @@ window.GAILS = window.GAILS || {};
       { label: 'Auditor', value: record.auditorName || '—' },
       { label: 'Visit Type', value: record.isFollowUp ? 'Follow-Up' : 'CQV' }
     ];
-    return '<div class="drill-summary">' + cards.map(function(c) {
+    return '<div class="drill-summary">' + cards.map(function (c) {
       var colorStyle = c.color ? ' color:' + c.color + ';' : '';
       return '<div class="drill-card"><div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
         '<div class="drill-card__value" style="font-size:1.3rem;' + colorStyle + '">' + escapeHtml(c.value) + '</div></div>';
@@ -240,14 +240,14 @@ window.GAILS = window.GAILS || {};
   }
 
   function buildCqvScoreRowsHtml(scores) {
-    return Object.keys(scores || {}).map(function(name) {
+    return Object.keys(scores || {}).map(function (name) {
       var s = scores[name];
       var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
       var failing = s.pct < 70 || (isCritical && s.actual < s.target);
       return '<div class="visit-report-row' + (failing ? ' visit-report-row--flag' : '') + '">' +
         '<span class="visit-report-row__label">' + escapeHtml(name) + '</span>' +
         '<span class="visit-report-row__value' + (failing ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">' +
-          escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)' +
+        escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)' +
         '</span></div>';
     }).join('');
   }
@@ -260,10 +260,10 @@ window.GAILS = window.GAILS || {};
     if (!actionPlan || !actionPlan.length) {
       return '<p class="visit-report-note">No action items were flagged on this visit.</p>';
     }
-    return actionPlan.map(function(a) {
+    return actionPlan.map(function (a) {
       var label = a.questionLabel || a.sectionPath || 'Action item';
       var dueDate = a.dueDate;
-      
+
       // Clean up embedded due date in label if found
       var dueMatch = label.match(/\s*DUE\s*DATE\s+(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4})\b/i);
       if (dueMatch) {
@@ -285,24 +285,24 @@ window.GAILS = window.GAILS || {};
           : '') +
         (a.priority
           ? '<span style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px;' +
-              (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(34, 31, 26,0.06);') +
-            '">' + escapeHtml(a.priority) + '</span>'
+          (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(34, 31, 26,0.06);') +
+          '">' + escapeHtml(a.priority) + '</span>'
           : '') +
         '<span style="font-size:0.75rem; color:var(--muted-l); white-space:nowrap;">Due ' + escapeHtml(dueDate || '—') + '</span>' +
-      '</div>';
+        '</div>';
 
       return '<div class="visit-report-row-wrap" style="padding:14px 0; border-bottom:1px solid var(--card-border);' + (criticalTag ? ' border-left:3px solid #B22A24; padding-left:12px;' : '') + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">' +
-          '<div style="min-width:0; flex:1;">' +
-            '<div style="font-weight:700; color:var(--text); font-size:0.9rem;">' + escapeHtml(label) + '</div>' +
-            (cleanSection ? '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(cleanSection) + '</div>' : '') +
-            (a.findings ? '<p style="font-size:0.85rem; color:var(--text-2); margin:8px 0 0;">' + escapeHtml(a.findings) + '</p>' : '') +
-            (a.actionRequired ? '<div style="font-size:0.85rem; color:var(--text); margin-top:8px; padding:6px 10px; background:var(--accent-light); border-left:3px solid var(--accent); border-radius:4px; line-height:1.4;">' +
-              '<strong style="color:var(--accent);">Action required:</strong> ' + escapeHtml(a.actionRequired) + '</div>' : '') +
-          '</div>' +
-          metaHtml +
+        '<div style="min-width:0; flex:1;">' +
+        '<div style="font-weight:700; color:var(--text); font-size:0.9rem;">' + escapeHtml(label) + '</div>' +
+        (cleanSection ? '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(cleanSection) + '</div>' : '') +
+        (a.findings ? '<p style="font-size:0.85rem; color:var(--text-2); margin:8px 0 0;">' + escapeHtml(a.findings) + '</p>' : '') +
+        (a.actionRequired ? '<div style="font-size:0.85rem; color:var(--text); margin-top:8px; padding:6px 10px; background:var(--accent-light); border-left:3px solid var(--accent); border-radius:4px; line-height:1.4;">' +
+          '<strong style="color:var(--accent);">Action required:</strong> ' + escapeHtml(a.actionRequired) + '</div>' : '') +
         '</div>' +
-      '</div>';
+        metaHtml +
+        '</div>' +
+        '</div>';
     }).join('');
   }
 
@@ -318,8 +318,8 @@ window.GAILS = window.GAILS || {};
 
     var criticalFailHtml = cqvHasCriticalFail(record)
       ? '<div class="visit-report-section-wrapper"><div class="visit-report-hs-banner visit-report-hs-banner--alert">' +
-          '<strong>&#9888; A Critical Point was lost.</strong>' +
-        '</div></div>'
+      '<strong>&#9888; A Critical Point was lost.</strong>' +
+      '</div></div>'
       : '';
 
     var summaryHtml = record.summary
@@ -355,8 +355,8 @@ window.GAILS = window.GAILS || {};
     if (!record.sectionScores || typeof G.makeChart !== 'function') return;
     var names = Object.keys(record.sectionScores);
     if (!names.length) return;
-    var earned = names.map(function(n) { return record.sectionScores[n].actual || 0; });
-    var max = names.map(function(n) { return record.sectionScores[n].target || 0; });
+    var earned = names.map(function (n) { return record.sectionScores[n].actual || 0; });
+    var max = names.map(function (n) { return record.sectionScores[n].target || 0; });
 
     G.makeChart(CQV_CHART_ID, {
       type: 'bar',
@@ -379,7 +379,7 @@ window.GAILS = window.GAILS || {};
     });
   }
 
-  window.GAILS.openVisitReport = function(bakeryName) {
+  window.GAILS.openVisitReport = function (bakeryName) {
     var record = window.GAILS.getLastVisitRecord ? window.GAILS.getLastVisitRecord(bakeryName) : null;
     if (record && record.id) {
       window.GAILS.openVisitReportById(record.id);
@@ -408,7 +408,7 @@ window.GAILS = window.GAILS || {};
     lockBackgroundScroll();
   };
 
-  window.GAILS.closeVisitReport = function() {
+  window.GAILS.closeVisitReport = function () {
     var modal = document.getElementById('visitReportModal');
     if (!modal || modal.style.display === 'none') return;
     modal.style.display = 'none';
@@ -425,7 +425,7 @@ window.GAILS = window.GAILS || {};
     row.setAttribute('aria-expanded', row.classList.contains('expanded') ? 'true' : 'false');
   }
 
-  document.addEventListener('click', function(event) {
+  document.addEventListener('click', function (event) {
     var trigger = event.target && event.target.closest ? event.target.closest('[data-visit-report]') : null;
     if (trigger) {
       window.GAILS.openVisitReport(trigger.getAttribute('data-visit-report'));
@@ -444,7 +444,7 @@ window.GAILS = window.GAILS || {};
     }
   });
 
-  document.addEventListener('keydown', function(event) {
+  document.addEventListener('keydown', function (event) {
     if (event.key === 'Enter' || event.key === ' ') {
       var focused = event.target;
       if (focused && focused.classList && focused.classList.contains('visit-log-row')) {
@@ -515,7 +515,7 @@ window.GAILS = window.GAILS || {};
     var text = '';
     var fullHtml = '';
     if (schema && schema.sections) {
-      schema.sections.forEach(function(sec) {
+      schema.sections.forEach(function (sec) {
         var secData = v[sec.key] || {};
         var comment = secData.comments;
         if (comment && comment.trim()) {
@@ -524,7 +524,7 @@ window.GAILS = window.GAILS || {};
           fullHtml += '<p class="visit-log-row__note-item">' +
             '<span class="visit-log-row__note-label">' + escapeHtml(sec.title) + '</span>' +
             escapeHtml(comment.trim()) +
-          '</p>';
+            '</p>';
         }
       });
     }
@@ -544,8 +544,8 @@ window.GAILS = window.GAILS || {};
   function exportVisitLogCsv() {
     var data = window.GAILS._visitLogExport;
     if (!data || !data.rows || data.rows.length < 2) return;
-    var csv = data.rows.map(function(row) {
-      return row.map(function(cell) {
+    var csv = data.rows.map(function (row) {
+      return row.map(function (cell) {
         var s = cell == null ? '' : String(cell);
         return '"' + s.replace(/"/g, '""') + '"';
       }).join(',');
@@ -558,7 +558,7 @@ window.GAILS = window.GAILS || {};
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
+    setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
   }
 
   // Drives the "Group By" filter — Ops Area (default), Region, or Visit
@@ -701,7 +701,7 @@ window.GAILS = window.GAILS || {};
     return !(perms && perms.actions && perms.actions.logVisits === false);
   }
 
-  window.GAILS.openAddSiteVisitModal = function(presetBakery) {
+  window.GAILS.openAddSiteVisitModal = function (presetBakery) {
     if (!canLogVisits()) return;
     var modal = document.getElementById('addSiteVisitModal');
     var select = document.getElementById('addVisitBakery');
@@ -709,7 +709,7 @@ window.GAILS = window.GAILS || {};
 
     // Populate bakery list if it only has placeholder
     if (select.options.length <= 1 && window.GAILS.state && window.GAILS.state.BAKERIES) {
-      window.GAILS.state.BAKERIES.slice().sort().forEach(function(bName) {
+      window.GAILS.state.BAKERIES.slice().sort().forEach(function (bName) {
         var opt = document.createElement('option');
         opt.value = bName;
         opt.textContent = bName;
@@ -727,7 +727,7 @@ window.GAILS = window.GAILS || {};
 
     // Pre-select the bakery when launched from an unvisited-site card
     if (presetBakery) {
-      var hasOption = Array.prototype.some.call(select.options, function(o) { return o.value === presetBakery; });
+      var hasOption = Array.prototype.some.call(select.options, function (o) { return o.value === presetBakery; });
       if (hasOption) select.value = presetBakery;
     }
 
@@ -736,14 +736,14 @@ window.GAILS = window.GAILS || {};
       window.GAILS.syncCustomSelect('addVisitBakery');
       window.GAILS.syncCustomSelect('addVisitType');
     }
-    
+
     // Autofill date/time with local values
     var now = new Date();
     var yyyy = now.getFullYear();
     var mm = String(now.getMonth() + 1).padStart(2, '0');
     var dd = String(now.getDate()).padStart(2, '0');
     document.getElementById('addVisitDate').value = yyyy + '-' + mm + '-' + dd;
-    
+
     var hh = String(now.getHours()).padStart(2, '0');
     var min = String(now.getMinutes()).padStart(2, '0');
     document.getElementById('addVisitTime').value = hh + ':' + min;
@@ -755,14 +755,14 @@ window.GAILS = window.GAILS || {};
     lockBackgroundScroll();
   };
 
-  window.GAILS.closeAddSiteVisitModal = function() {
+  window.GAILS.closeAddSiteVisitModal = function () {
     var modal = document.getElementById('addSiteVisitModal');
     if (!modal) return;
     modal.style.display = 'none';
     unlockBackgroundScroll();
   };
 
-  window.GAILS.openVisitReportById = function(visitId) {
+  window.GAILS.openVisitReportById = function (visitId) {
     var record = window.GAILS._allVisitsObj ? window.GAILS._allVisitsObj[visitId] : null;
     var modal = document.getElementById('visitReportModal');
     var titleEl = document.getElementById('visitReportTitle');
@@ -795,32 +795,32 @@ window.GAILS = window.GAILS || {};
       modal.style.display = 'flex';
       bodyEl.scrollTop = 0;
       lockBackgroundScroll();
-      requestAnimationFrame(function() { drawCqvScoreChart(record); });
+      requestAnimationFrame(function () { drawCqvScoreChart(record); });
       return;
     }
 
     if (record.type === 'siteVisit') {
       titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
       subtitleEl.textContent = siteVisitKindLabel(record) + ' on ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
-      
+
       var stats = [
         { label: 'Logged By', value: record.meta && record.meta.updatedBy || '—' },
         { label: 'Coffee Partner', value: record.coffeePartner || '—' },
         { label: 'Barista', value: record.mod || '—' }
       ];
-      
-      var statsHtml = '<div class="drill-summary" style="margin-bottom:20px;">' + stats.map(function(c) {
+
+      var statsHtml = '<div class="drill-summary" style="margin-bottom:20px;">' + stats.map(function (c) {
         return '<div class="drill-card">' +
           '<div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
           '<div class="drill-card__value" style="font-size:1.05rem;">' + escapeHtml(c.value) + '</div></div>';
       }).join('') + '</div>';
 
-      bodyEl.innerHTML = statsHtml + 
+      bodyEl.innerHTML = statsHtml +
         '<div class="visit-report-section-wrapper">' +
-          '<div class="visit-report-section" style="margin-top:20px; background:rgba(34, 31, 26,0.01); border:1px solid var(--card-border); border-radius:12px; padding:20px;">' +
-            '<h4 style="margin-top:0; margin-bottom:10px; font-size:0.95rem; font-weight:700; color:var(--accent);">Visit Comments</h4>' +
-            '<p class="visit-report-comment" style="font-size:1rem; line-height:1.6; color:var(--text-2); white-space:pre-wrap; margin:0;">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
-          '</div>' +
+        '<div class="visit-report-section" style="margin-top:20px; background:rgba(34, 31, 26,0.01); border:1px solid var(--card-border); border-radius:12px; padding:20px;">' +
+        '<h4 style="margin-top:0; margin-bottom:10px; font-size:0.95rem; font-weight:700; color:var(--accent);">Visit Comments</h4>' +
+        '<p class="visit-report-comment" style="font-size:1rem; line-height:1.6; color:var(--text-2); white-space:pre-wrap; margin:0;">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
+        '</div>' +
         '</div>';
 
       modal.style.display = 'flex';
@@ -836,44 +836,44 @@ window.GAILS = window.GAILS || {};
     modal.style.display = 'flex';
     bodyEl.scrollTop = 0;
     lockBackgroundScroll();
-    requestAnimationFrame(function() { drawScoreChart(record); });
+    requestAnimationFrame(function () { drawScoreChart(record); });
   };
 
-  window.GAILS.deleteVisit = function(visitId) {
+  window.GAILS.deleteVisit = function (visitId) {
     var record = window.GAILS._allVisitsObj ? window.GAILS._allVisitsObj[visitId] : null;
     var bakeryName = record ? (window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery) : 'this';
     var dateText = record ? formatVisitDate(record.date) : '';
-    
+
     var modal = document.getElementById('deleteConfirmModal');
     var promptText = document.getElementById('deleteConfirmPromptText');
     var input = document.getElementById('deleteConfirmInput');
     var submitBtn = document.getElementById('deleteConfirmSubmitBtn');
-    
+
     if (!modal || !promptText || !input || !submitBtn) return;
-    
+
     promptText.textContent = 'Are you sure you want to permanently delete the check-in for ' + bakeryName + (dateText ? ' on ' + dateText : '') + '?';
     input.value = '';
     submitBtn.disabled = true;
-    
+
     modal.style.display = 'flex';
     lockBackgroundScroll();
-    
-    input.oninput = function() {
+
+    input.oninput = function () {
       submitBtn.disabled = input.value.trim().toLowerCase() !== 'delete record';
     };
-    
-    submitBtn.onclick = async function() {
+
+    submitBtn.onclick = async function () {
       if (input.value.trim().toLowerCase() !== 'delete record') return;
-      
+
       submitBtn.disabled = true;
       submitBtn.textContent = 'Deleting...';
-      
+
       var deleteBtn = document.querySelector('.visit-report-delete-btn');
       if (deleteBtn) {
         deleteBtn.disabled = true;
         deleteBtn.textContent = 'Deleting...';
       }
-      
+
       try {
         if (!window.GAILS_Firebase || typeof window.GAILS_Firebase.deleteSiteVisit !== 'function') {
           throw new Error('Database helper not loaded yet. Please try again.');
@@ -894,7 +894,7 @@ window.GAILS = window.GAILS || {};
     };
   };
 
-  window.GAILS.closeDeleteConfirmModal = function() {
+  window.GAILS.closeDeleteConfirmModal = function () {
     var modal = document.getElementById('deleteConfirmModal');
     if (modal) {
       modal.style.display = 'none';
@@ -911,7 +911,7 @@ window.GAILS = window.GAILS || {};
     var currentVal = select.value;
     select.innerHTML = '<option value="">' + placeholder + '</option>';
     var sorted = Array.from(itemsSet).sort();
-    sorted.forEach(function(item) {
+    sorted.forEach(function (item) {
       var opt = document.createElement('option');
       opt.value = item;
       opt.textContent = item;
@@ -946,7 +946,7 @@ window.GAILS = window.GAILS || {};
     return 'thisQuarter';
   }
 
-  window.GAILS.getVisitLogHeaderSummary = function() {
+  window.GAILS.getVisitLogHeaderSummary = function () {
     var G = window.GAILS;
     var searchEl = document.getElementById('visitLogSearch');
     var regionEl = document.getElementById('visitLogRegion');
@@ -978,16 +978,16 @@ window.GAILS = window.GAILS || {};
       };
       pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + ' \u00b7 ' +
         escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Ops Area') + '</span>');
-      
+
       if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
       if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
       if (opsVal) pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
-      
+
       var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
-      return title + 
-             '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' + 
-             pills.join('') + 
-             '</span>';
+      return title +
+        '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' +
+        pills.join('') +
+        '</span>';
     }
 
     var periodText = getPeriodLabel(periodVal);
@@ -1034,10 +1034,10 @@ window.GAILS = window.GAILS || {};
     }
 
     var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
-    return title + 
-           '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' + 
-           pills.join('') + 
-           '</span>';
+    return title +
+      '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' +
+      pills.join('') +
+      '</span>';
   };
 
   // Regions come straight from BAKERY_META (North Region / South Region /
@@ -1046,7 +1046,7 @@ window.GAILS = window.GAILS || {};
   function getVisitLogRegions() {
     var G = window.GAILS;
     var meta = (G && G.BAKERY_META) || {};
-    return [...new Set(Object.values(meta).map(function(v) { return v.r; }))].filter(function(r) { return r && r !== 'Other'; }).sort();
+    return [...new Set(Object.values(meta).map(function (v) { return v.r; }))].filter(function (r) { return r && r !== 'Other'; }).sort();
   }
 
   // Scoped to regionVal so the Ops Area dropdown only ever lists areas
@@ -1055,8 +1055,8 @@ window.GAILS = window.GAILS || {};
     var G = window.GAILS;
     var meta = (G && G.BAKERY_META) || {};
     return [...new Set(Object.values(meta)
-      .filter(function(v) { return !regionVal || v.r === regionVal; })
-      .map(function(v) { return v.o; })
+      .filter(function (v) { return !regionVal || v.r === regionVal; })
+      .map(function (v) { return v.o; })
     )].filter(Boolean).sort();
   }
 
@@ -1142,7 +1142,7 @@ window.GAILS = window.GAILS || {};
       return;
     }
 
-    panel.querySelectorAll('.filter-select.is-open').forEach(function(wrapper) {
+    panel.querySelectorAll('.filter-select.is-open').forEach(function (wrapper) {
       wrapper.classList.remove('is-open');
       var trigger = wrapper.querySelector('.filter-select__trigger');
       if (trigger) trigger.setAttribute('aria-expanded', 'false');
@@ -1156,7 +1156,7 @@ window.GAILS = window.GAILS || {};
     }
     document.body.style.overflow = '';
     document.body.classList.remove('visit-log-filter-open');
-    setTimeout(function() {
+    setTimeout(function () {
       if (!backdrop.classList.contains('is-open')) backdrop.hidden = true;
     }, 180);
   }
@@ -1173,7 +1173,7 @@ window.GAILS = window.GAILS || {};
 
   function setSelectValueIfPresent(el, val) {
     if (!el || typeof val !== 'string' || !val) return;
-    var has = Array.prototype.some.call(el.options, function(o) { return o.value === val; });
+    var has = Array.prototype.some.call(el.options, function (o) { return o.value === val; });
     if (has) el.value = val;
   }
 
@@ -1205,7 +1205,7 @@ window.GAILS = window.GAILS || {};
 
     if (saved.view === 'unvisited' || saved.view === 'history') {
       window.GAILS._activeVisitLogView = saved.view;
-      document.querySelectorAll('.visit-log-toggle-btn').forEach(function(b) {
+      document.querySelectorAll('.visit-log-toggle-btn').forEach(function (b) {
         b.classList.toggle('active', b.dataset.view === saved.view);
       });
     }
@@ -1227,7 +1227,7 @@ window.GAILS = window.GAILS || {};
 
     var groupNames = window.GAILS._visitLogCurrentGroupNames || [];
     var collapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
-    var allCollapsed = groupNames.length > 0 && groupNames.every(function(name) {
+    var allCollapsed = groupNames.length > 0 && groupNames.every(function (name) {
       return !!collapsedGroups[name];
     });
 
@@ -1240,15 +1240,15 @@ window.GAILS = window.GAILS || {};
     if (!groupNames.length) return;
 
     var collapsedGroups = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
-    var allCollapsed = groupNames.every(function(name) { return !!collapsedGroups[name]; });
+    var allCollapsed = groupNames.every(function (name) { return !!collapsedGroups[name]; });
     var shouldCollapse = !allCollapsed;
 
-    groupNames.forEach(function(name) {
+    groupNames.forEach(function (name) {
       if (shouldCollapse) collapsedGroups[name] = true;
       else delete collapsedGroups[name];
     });
 
-    document.querySelectorAll('#visitLogList .unvisited-manager-section').forEach(function(section) {
+    document.querySelectorAll('#visitLogList .unvisited-manager-section').forEach(function (section) {
       var name = section.getAttribute('data-group-name') || '';
       if (groupNames.indexOf(name) === -1) return;
       section.classList.toggle('collapsed', shouldCollapse);
@@ -1259,10 +1259,10 @@ window.GAILS = window.GAILS || {};
     syncVisitLogGroupToggle();
   }
 
-  window.GAILS.resetVisitLogCollapsedGroups = function() {
+  window.GAILS.resetVisitLogCollapsedGroups = function () {
     window.GAILS._visitLogCollapsedGroups = {};
 
-    document.querySelectorAll('#visitLogList .unvisited-manager-section').forEach(function(section) {
+    document.querySelectorAll('#visitLogList .unvisited-manager-section').forEach(function (section) {
       section.classList.remove('collapsed');
       var title = section.querySelector('.unvisited-manager-title');
       if (title) title.setAttribute('aria-expanded', 'true');
@@ -1276,12 +1276,12 @@ window.GAILS = window.GAILS || {};
     if (!summaryEl) return;
 
     var counts = {};
-    baseFiltered.forEach(function(v) {
+    baseFiltered.forEach(function (v) {
       var k = visitTypeKey(v);
       counts[k] = (counts[k] || 0) + 1;
     });
 
-    var chipsHtml = VISIT_TYPE_META.filter(function(m) { return counts[m.key]; }).map(function(m) {
+    var chipsHtml = VISIT_TYPE_META.filter(function (m) { return counts[m.key]; }).map(function (m) {
       var active = typeVal === m.key;
       var stateClass = active ? ' active' : (typeVal ? ' dimmed' : '');
       return '<button type="button" class="visit-log-summary__chip' + stateClass + '"' +
@@ -1291,7 +1291,7 @@ window.GAILS = window.GAILS || {};
         ' title="' + (active ? 'Clear visit type filter' : 'Show only: ' + escapeHtml(m.label)) + '">' +
         escapeHtml(m.label) +
         '<span class="visit-log-summary__chip-count">' + counts[m.key] + '</span>' +
-      '</button>';
+        '</button>';
     }).join('');
 
     var actionsHtml = '<span class="visit-log-summary__actions">' +
@@ -1316,13 +1316,13 @@ window.GAILS = window.GAILS || {};
       '<span class="visit-log-summary__total"><strong>' + unvisitedCount + '</strong> of ' + matchingSites + ' sites unvisited</span>' +
       '<span class="visit-log-summary__coverage">' + coverageText + '</span>' +
       '<span class="visit-log-summary__actions">' +
-        visitLogGroupToggleHtml(showGroupToggle) +
-        '<button type="button" class="visit-log-summary__export" title="Download the unvisited list as CSV">Export CSV</button>' +
+      visitLogGroupToggleHtml(showGroupToggle) +
+      '<button type="button" class="visit-log-summary__export" title="Download the unvisited list as CSV">Export CSV</button>' +
       '</span>';
     summaryEl.hidden = false;
   }
 
-  window.GAILS.renderVisitLog = function() {
+  window.GAILS.renderVisitLog = function () {
     var container = document.getElementById('visitLogList');
     var statusEl = document.getElementById('visitLogStatus');
     if (!container) return;
@@ -1367,25 +1367,25 @@ window.GAILS = window.GAILS || {};
       }
 
       if (mobileFilterBtn) {
-        mobileFilterBtn.addEventListener('click', function() {
+        mobileFilterBtn.addEventListener('click', function () {
           setVisitLogFiltersOpen(true);
         });
       }
       if (mobileFilterCloseBtn) {
-        mobileFilterCloseBtn.addEventListener('click', function() {
+        mobileFilterCloseBtn.addEventListener('click', function () {
           setVisitLogFiltersOpen(false);
         });
       }
       if (mobileFilterBackdrop) {
-        mobileFilterBackdrop.addEventListener('click', function() {
+        mobileFilterBackdrop.addEventListener('click', function () {
           setVisitLogFiltersOpen(false);
         });
       }
-      document.addEventListener('keydown', function(e) {
+      document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') setVisitLogFiltersOpen(false);
       });
       if (visitMobileFilterMedia) {
-        var closeVisitFilterOnDesktop = function(e) {
+        var closeVisitFilterOnDesktop = function (e) {
           if (!e.matches) setVisitLogFiltersOpen(false);
         };
         if (visitMobileFilterMedia.addEventListener) {
@@ -1397,12 +1397,12 @@ window.GAILS = window.GAILS || {};
 
       if (searchEl) {
         var searchDebounceId = null;
-        searchEl.addEventListener('input', function() {
+        searchEl.addEventListener('input', function () {
           clearTimeout(searchDebounceId);
-          searchDebounceId = setTimeout(function() { window.GAILS.renderVisitLog(); }, 220);
+          searchDebounceId = setTimeout(function () { window.GAILS.renderVisitLog(); }, 220);
         });
       }
-      if (regionEl) regionEl.addEventListener('change', function() {
+      if (regionEl) regionEl.addEventListener('change', function () {
         // Selected region narrowed/changed - the ops list must be rebuilt to
         // only offer areas that actually operate in that region.
         populateDropdown('visitLogOps', new Set(getVisitLogOps(regionEl.value)), 'All Areas');
@@ -1410,26 +1410,26 @@ window.GAILS = window.GAILS || {};
         syncVisitLogMobileFilterButton();
         window.GAILS.renderVisitLog();
       });
-      if (opsEl) opsEl.addEventListener('change', function() { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
-      if (periodEl) periodEl.addEventListener('change', function() { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (opsEl) opsEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (periodEl) periodEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var typeEl = document.getElementById('visitLogType');
       var ratingEl = document.getElementById('visitLogRating');
-      if (typeEl) typeEl.addEventListener('change', function() {
+      if (typeEl) typeEl.addEventListener('change', function () {
         syncCqvRatingVisibility();
         syncVisitLogMobileFilterButton();
         window.GAILS.renderVisitLog();
       });
-      if (ratingEl) ratingEl.addEventListener('change', function() { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (ratingEl) ratingEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       syncCqvRatingVisibility();
       var groupEl = document.getElementById('visitLogGroup');
-      if (groupEl) groupEl.addEventListener('change', function() { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (groupEl) groupEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var sortEl = document.getElementById('visitLogSort');
-      if (sortEl) sortEl.addEventListener('change', function() { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (sortEl) sortEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
 
       // Toggle views
-      document.querySelectorAll('.visit-log-toggle-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          document.querySelectorAll('.visit-log-toggle-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.visit-log-toggle-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.visit-log-toggle-btn').forEach(function (b) { b.classList.remove('active'); });
           btn.classList.add('active');
           window.GAILS._activeVisitLogView = btn.dataset.view;
           window.GAILS.renderVisitLog();
@@ -1440,7 +1440,7 @@ window.GAILS = window.GAILS || {};
       // clears it), export downloads the currently filtered list as CSV
       var summaryBarEl = document.getElementById('visitLogSummary');
       if (summaryBarEl) {
-        summaryBarEl.addEventListener('click', function(e) {
+        summaryBarEl.addEventListener('click', function (e) {
           if (e.target.closest && e.target.closest('.visit-log-summary__expand-all')) {
             toggleAllVisitLogGroups();
             return;
@@ -1454,7 +1454,7 @@ window.GAILS = window.GAILS || {};
           var typeSelect = document.getElementById('visitLogType');
           if (!typeSelect) return;
           var key = chip.dataset.type;
-          preserveScrollPosition(function() {
+          preserveScrollPosition(function () {
             typeSelect.value = (typeSelect.value === key) ? '' : key;
             if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect('visitLogType');
             syncCqvRatingVisibility();
@@ -1470,8 +1470,8 @@ window.GAILS = window.GAILS || {};
       // [data-visit-report-id] listener.)
       var listEl = document.getElementById('visitLogList');
       if (listEl) {
-        listEl.addEventListener('click', function(e) {
-          var closest = e.target.closest ? function(sel) { return e.target.closest(sel); } : function() { return null; };
+        listEl.addEventListener('click', function (e) {
+          var closest = e.target.closest ? function (sel) { return e.target.closest(sel); } : function () { return null; };
 
           var groupBtn = closest('.unvisited-manager-title');
           if (groupBtn) {
@@ -1503,7 +1503,7 @@ window.GAILS = window.GAILS || {};
       // Add Site Visit click
       var addBtn = document.getElementById('visitLogAddBtn');
       if (addBtn) {
-        addBtn.addEventListener('click', function() {
+        addBtn.addEventListener('click', function () {
           window.GAILS.openAddSiteVisitModal();
         });
       }
@@ -1511,12 +1511,12 @@ window.GAILS = window.GAILS || {};
       // Add Site Visit form submit
       var form = document.getElementById('addSiteVisitForm');
       if (form) {
-        form.addEventListener('submit', async function(e) {
+        form.addEventListener('submit', async function (e) {
           e.preventDefault();
           var submitBtn = document.getElementById('addVisitSubmitBtn');
           var errorEl = document.getElementById('addVisitError');
           if (!submitBtn) return;
-          
+
           submitBtn.disabled = true;
           var origText = submitBtn.textContent;
           submitBtn.textContent = 'Saving...';
@@ -1552,7 +1552,7 @@ window.GAILS = window.GAILS || {};
       }
 
       if (resetBtn) {
-        resetBtn.addEventListener('click', function() {
+        resetBtn.addEventListener('click', function () {
           try { localStorage.removeItem(VISIT_LOG_FILTER_STORAGE_KEY); } catch (e) { /* storage unavailable */ }
           if (searchEl) searchEl.value = '';
           if (regionEl) regionEl.value = '';
@@ -1645,7 +1645,7 @@ window.GAILS = window.GAILS || {};
     }
 
     // Convert object to array
-    var visitsList = visitIds.map(function(id) {
+    var visitsList = visitIds.map(function (id) {
       return Object.assign({ id: id }, allVisits[id]);
     });
 
@@ -1654,7 +1654,7 @@ window.GAILS = window.GAILS || {};
       // first, so the summary bar can keep showing every type's count while
       // one type is selected (unselected chips render dimmed), then the
       // type/rating filter on top for the list itself.
-      var baseFiltered = visitsList.filter(function(v) {
+      var baseFiltered = visitsList.filter(function (v) {
         if (!v.bakery || !v.date) return false;
 
         if (searchVal) {
@@ -1677,7 +1677,7 @@ window.GAILS = window.GAILS || {};
         return true;
       });
 
-      var filtered = baseFiltered.filter(function(v) {
+      var filtered = baseFiltered.filter(function (v) {
         if (typeVal && visitTypeKey(v) !== typeVal) return false;
         if (ratingVal && (v.type !== 'cqv' || cqvBand(v) !== ratingVal)) return false;
         return true;
@@ -1696,7 +1696,7 @@ window.GAILS = window.GAILS || {};
       // Group by whatever's selected in "Group By" (Ops Area / Region /
       // Visit Type) — same underlying list, just bucketed differently.
       var grouped = {};
-      filtered.forEach(function(v) {
+      filtered.forEach(function (v) {
         var key = getVisitGroupKey(v, groupVal);
         if (!grouped[key]) {
           grouped[key] = [];
@@ -1714,7 +1714,7 @@ window.GAILS = window.GAILS || {};
       // rendered rows are capped by the Show more pager.
       window.GAILS._visitLogExport = {
         filename: 'gails-visits-' + new Date().toISOString().slice(0, 10) + '.csv',
-        rows: [['Date', 'Time', 'Bakery', 'Region', 'Ops Area', 'Visit Type', 'Coffee Partner / Auditor', 'Score', 'Notes']].concat(filtered.map(function(v) {
+        rows: [['Date', 'Time', 'Bakery', 'Region', 'Ops Area', 'Visit Type', 'Coffee Partner / Auditor', 'Score', 'Notes']].concat(filtered.map(function (v) {
           var score = '';
           if (v.type === 'cqv') score = v.overallPct != null ? v.overallPct + '%' : '';
           else if (v.type !== 'siteVisit') score = v.score != null ? v.score + ' / ' + (v.scoreMax != null ? v.scoreMax : '') : '';
@@ -1734,11 +1734,11 @@ window.GAILS = window.GAILS || {};
 
       var remaining = renderLimit;
 
-      var html = groupsSorted.map(function(groupName) {
+      var html = groupsSorted.map(function (groupName) {
         var groupVisits = grouped[groupName];
 
         // Sort based on selected option within the group
-        groupVisits.sort(function(a, b) {
+        groupVisits.sort(function (a, b) {
           if (sortVal === 'nameAsc') {
             var labelA = (G.getBakeryMapLabel ? G.getBakeryMapLabel(a.bakery) : a.bakery) || '';
             var labelB = (G.getBakeryMapLabel ? G.getBakeryMapLabel(b.bakery) : b.bakery) || '';
@@ -1766,7 +1766,7 @@ window.GAILS = window.GAILS || {};
         var visibleVisits = groupVisits.length > remaining ? groupVisits.slice(0, remaining) : groupVisits;
         remaining -= visibleVisits.length;
 
-        var visitsHtml = visibleVisits.map(function(v) {
+        var visitsHtml = visibleVisits.map(function (v) {
           var scoreText = '—';
           var tagsHtml = '';
           var scoreColor = '#ffffff';
@@ -1809,47 +1809,47 @@ window.GAILS = window.GAILS || {};
 
           return '<div class="visit-log-row" data-visit-report-id="' + escapeHtml(v.id) + '" tabindex="0" role="button" aria-expanded="false" aria-label="Visit report for ' + escapeHtml(bakeryLabel) + '">' +
             '<div class="visit-log-row__date-col">' +
-              '<span class="visit-log-row__date">' + escapeHtml(shortDate) + '</span>' +
-              '<span class="visit-log-row__time">' + escapeHtml(v.time || '—') + '</span>' +
+            '<span class="visit-log-row__date">' + escapeHtml(shortDate) + '</span>' +
+            '<span class="visit-log-row__time">' + escapeHtml(v.time || '—') + '</span>' +
             '</div>' +
             '<div class="visit-log-row__bakery-col">' +
-              '<h3 class="visit-log-row__bakery">' + escapeHtml(bakeryLabel) + '</h3>' +
-              '<span class="visit-log-row__manager">Ops Area: ' + escapeHtml(rowOpsLabel) + '</span>' +
+            '<h3 class="visit-log-row__bakery">' + escapeHtml(bakeryLabel) + '</h3>' +
+            '<span class="visit-log-row__manager">Ops Area: ' + escapeHtml(rowOpsLabel) + '</span>' +
             '</div>' +
             '<div class="visit-log-row__partner" title="' + escapeHtml(v.type === 'cqv' ? 'Auditor: ' + partnerColText : partnerColText) + '">' + escapeHtml(partnerColText) + '</div>' +
             '<div class="visit-log-row__score-col" style="color:' + scoreColor + ';">' + escapeHtml(scoreText) + '</div>' +
             '<div class="visit-log-row__notes-col">' +
-              '<div class="visit-log-row__tags">' + tagsHtml + '</div>' +
-              '<p class="visit-log-row__notes-preview">' + escapeHtml(previewText) + '</p>' +
+            '<div class="visit-log-row__tags">' + tagsHtml + '</div>' +
+            '<p class="visit-log-row__notes-preview">' + escapeHtml(previewText) + '</p>' +
             '</div>' +
             '<div class="visit-log-row__action-col">' +
-              '<button type="button" class="visit-log-row__btn">View Report</button>' +
-              '<span class="visit-log-row__chevron" aria-hidden="true">' +
-                '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
-              '</span>' +
+            '<button type="button" class="visit-log-row__btn">View Report</button>' +
+            '<span class="visit-log-row__chevron" aria-hidden="true">' +
+            '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
+            '</span>' +
             '</div>' +
             // Direct grid child spanning all columns, so expanding adds a
             // panel BELOW the summary line instead of stretching the row.
             '<div class="visit-log-row__notes-full">' + notesFullHtml + '</div>' +
-          '</div>';
+            '</div>';
         }).join('');
 
         if (groupVal === 'none') {
           return '<div class="unvisited-manager-body">' +
             visitsHtml +
-          '</div>';
+            '</div>';
         }
 
         var isCollapsed = !!collapsedGroups[groupName];
         return '<div class="unvisited-manager-section' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
           '<button type="button" class="unvisited-manager-title" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
-            '<svg class="unvisited-manager-title__chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
-            '<span>' + escapeHtml(groupName) + ' (' + groupVisits.length + ' visits)</span>' +
+          '<svg class="unvisited-manager-title__chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
+          '<span>' + escapeHtml(groupName) + ' (' + groupVisits.length + ' visits)</span>' +
           '</button>' +
           '<div class="unvisited-manager-body">' +
-            visitsHtml +
+          visitsHtml +
           '</div>' +
-        '</div>';
+          '</div>';
       }).join('');
 
       if (filtered.length > renderLimit) {
@@ -1861,7 +1861,7 @@ window.GAILS = window.GAILS || {};
     } else if (view === 'unvisited') {
       // Determine which sites are unvisited in periodVal
       var visitedBakeries = new Set();
-      visitsList.forEach(function(v) {
+      visitsList.forEach(function (v) {
         if (v.bakery && v.date && isDateWithinMonths(v.date, periodVal)) {
           visitedBakeries.add(v.bakery);
         }
@@ -1872,7 +1872,7 @@ window.GAILS = window.GAILS || {};
       var totalUnvisited = 0;
       var matchingSites = 0;
 
-      allBakeries.forEach(function(bName) {
+      allBakeries.forEach(function (bName) {
         if (searchVal) {
           if (bName.toLowerCase().indexOf(searchVal) === -1) return;
         }
@@ -1902,7 +1902,7 @@ window.GAILS = window.GAILS || {};
       // Most recent visit per bakery across ALL history (not just the
       // selected period) so each unvisited card can say how stale it is.
       var lastVisitMap = {};
-      visitsList.forEach(function(v) {
+      visitsList.forEach(function (v) {
         if (!v.bakery || !v.date) return;
         var stamp = v.date + 'T' + (v.time || '00:00');
         if (!lastVisitMap[v.bakery] || stamp > lastVisitMap[v.bakery]) {
@@ -1938,8 +1938,8 @@ window.GAILS = window.GAILS || {};
 
       window.GAILS._visitLogExport = {
         filename: 'gails-unvisited-sites-' + new Date().toISOString().slice(0, 10) + '.csv',
-        rows: [['Bakery', 'Region', 'Ops Area', 'Last Visited']].concat(groupsSorted.reduce(function(rows, groupName) {
-          unvisitedMap[groupName].slice().sort().forEach(function(bName) {
+        rows: [['Bakery', 'Region', 'Ops Area', 'Last Visited']].concat(groupsSorted.reduce(function (rows, groupName) {
+          unvisitedMap[groupName].slice().sort().forEach(function (bName) {
             rows.push([
               bName,
               G.getBakeryRegion ? G.getBakeryRegion(bName) : '',
@@ -1952,22 +1952,22 @@ window.GAILS = window.GAILS || {};
       };
 
       var collapsedUnvisited = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
-      var html = groupsSorted.map(function(groupName) {
+      var html = groupsSorted.map(function (groupName) {
         var bakeries = unvisitedMap[groupName].sort();
         var count = bakeries.length;
 
-        var bakeryCardsHtml = bakeries.map(function(bName) {
+        var bakeryCardsHtml = bakeries.map(function (bName) {
           var reg = G.getBakeryRegion ? G.getBakeryRegion(bName) : '—';
           return '<div class="unvisited-bakery-item">' +
             '<div class="unvisited-bakery-item__info">' +
-              '<div style="font-weight:700; color:var(--text);">' + escapeHtml(bName) + '</div>' +
-              '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(reg) + '</div>' +
-              '<div class="unvisited-bakery-item__last">' + escapeHtml(lastVisitedLabel(bName)) + '</div>' +
+            '<div style="font-weight:700; color:var(--text);">' + escapeHtml(bName) + '</div>' +
+            '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(reg) + '</div>' +
+            '<div class="unvisited-bakery-item__last">' + escapeHtml(lastVisitedLabel(bName)) + '</div>' +
             '</div>' +
             (canLogVisits()
               ? '<button type="button" class="unvisited-log-btn" data-bakery="' + escapeHtml(bName) + '">+ Log Visit</button>'
               : '') +
-          '</div>';
+            '</div>';
         }).join('');
 
         if (groupVal === 'none') {
@@ -1977,15 +1977,15 @@ window.GAILS = window.GAILS || {};
         var isCollapsed = !!collapsedUnvisited[groupName];
         return '<div class="unvisited-manager-section' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
           '<button type="button" class="unvisited-manager-title" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
-            '<svg class="unvisited-manager-title__chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
-            '<span>' + escapeHtml(groupName) + ' (' + count + ' unvisited)</span>' +
+          '<svg class="unvisited-manager-title__chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
+          '<span>' + escapeHtml(groupName) + ' (' + count + ' unvisited)</span>' +
           '</button>' +
           '<div class="unvisited-manager-body">' +
-            '<div class="unvisited-bakeries-grid">' +
-              bakeryCardsHtml +
-            '</div>' +
+          '<div class="unvisited-bakeries-grid">' +
+          bakeryCardsHtml +
           '</div>' +
-        '</div>';
+          '</div>' +
+          '</div>';
       }).join('');
 
       container.innerHTML = html;

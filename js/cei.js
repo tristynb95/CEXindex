@@ -31,7 +31,7 @@ window.GAILS.ensureBands = function(r) {
   } else if (r.noData || r.c === null || r.c === undefined || isNaN(r.c)) {
     r.cb = 'No Data';
   } else {
-    r.cb = r.c >= 75 ? 'Top Performer' : r.c >= 50 ? 'Above Average' : r.c >= 25 ? 'Below Average' : 'Low Performer';
+    r.cb = r.c >= 75 ? 'Top Performance' : r.c >= 50 ? 'Above Average' : r.c >= 25 ? 'Below Average' : 'Low Performance';
   }
   if (r.incompletePeriod) {
     r.acb = 'Incomplete';
