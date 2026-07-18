@@ -33,6 +33,8 @@
       "apps-script/**",
       "tmp",
       "tmp/**",
+      "test",
+      "test/**",
       "admin-setup.html",
       "database.rules.json",
       "storage.rules",

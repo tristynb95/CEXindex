@@ -27,7 +27,7 @@ const VENDOR_GLOBALS = {
 // checkout reports ZERO errors. That way `npm run lint` is a meaningful gate —
 // anything it fails on is something you just introduced.
 //
-// no-undef is the rule worth having here. With ~19 classic scripts sharing one
+// no-undef is the rule worth having here. With ~20 classic scripts sharing one
 // window.GAILS namespace and a load order hand-maintained across 19 <script>
 // tags in index.html, it is what catches a typo'd or not-yet-loaded global.
 // It currently passes cleanly, so keep it at error.

@@ -364,7 +364,7 @@
                   <option value="Top Performer">Top Performer</option>
                   <option value="Above Average">Above Average</option>
                   <option value="Below Average">Below Average</option>
-                  <option value="Needs Support">Needs Support</option>
+                  <option value="Low Performer">Low Performer</option>
                 </optgroup>
                 <optgroup label="— Benchmark Score Band">
                   <option value="abs:Exceeding">Exceeding</option>
@@ -629,7 +629,7 @@
             <div class="grid-2">
               <div class="section">
                 <h2 id="trendAbsBandsTitle">Benchmark Score Bands by Month</h2>
-                <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Network progress against company
+                <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Company-wide progress against the
                   benchmarks over time &mdash; unlike the relative bands, this will shift as bakeries genuinely improve.
                 </p>
                 <canvas id="trendAbsBands"></canvas>
@@ -638,7 +638,7 @@
                 <h2 id="trendBandsTitle">Peer Score Bands by Month</h2>
                 <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">How bakeries rank against each other
                   each month &mdash; because the bands are set by quartile, the proportions stay broadly fixed even as
-                  the whole network improves.</p>
+                  the whole company improves.</p>
                 <canvas id="trendBands"></canvas>
               </div>
             </div>
@@ -728,7 +728,7 @@
                   </div>
                 </div>
                 <p class="method-note">Use <strong>Peer</strong> to see who's leading the pack. Use
-                  <strong>Benchmark</strong> to see if the whole network is genuinely hitting the standard.</p>
+                  <strong>Benchmark</strong> to see if the whole company is genuinely hitting the standard.</p>
 
                 <h3>The Recipe: What Makes Up the Score?</h3>
                 <p>We believe what the customer tells us matters most. That's why 90% of your score comes directly from
@@ -812,7 +812,7 @@
                   </div>
                   <div class="benchmark na">
                     <div class="bval">0&ndash;24</div>
-                    <div class="blabel">Needs Support</div>
+                    <div class="blabel">Low Performer</div>
                   </div>
                 </div>
 
@@ -936,7 +936,7 @@
                         style="color:var(--green);font-weight:600">&#9679; Top Performer</span> &nbsp;&middot;&nbsp;
                       <span style="color:var(--blue);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp;
                       <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp;
-                      <span style="color:var(--red);font-weight:600">&#9679; Needs Support</span></p>
+                      <span style="color:var(--red);font-weight:600">&#9679; Low Performer</span></p>
                     <button type="button" class="map-fullscreen-btn" data-map-fullscreen="network" title="Full screen">
                       <svg class="map-fullscreen-btn__icon map-fullscreen-btn__expand" viewBox="0 0 20 20"
                         aria-hidden="true">
@@ -984,7 +984,7 @@
                       <path d="M7 12.5 10 15.5 17 8.5"></path>
                     </svg>
                   </span>
-                  <span>Priority List</span>
+                  <span>Support List</span>
                 </button>
                 <button class="target-subtab" type="button" data-target-subtab="table">
                   <span class="target-subtab__icon" aria-hidden="true">
@@ -1028,8 +1028,20 @@
 
               <div class="target-subtab-panel active" data-target-subtab-panel="summary">
                 <div class="section">
-                  <h2>&#127919; Focus Bakery Summary</h2>
+                  <h2>&#127793; Growth &amp; Support Hub</h2>
+                  <p class="target-hint">Ops areas ranked by support need, then every focus bakery ranked by where
+                    support will make the biggest difference. <strong>Performance bands</strong> (like Low Performer)
+                    describe where a bakery&rsquo;s score sits today; <strong>priority levels</strong> &mdash; High
+                    Priority, Medium Priority, Monitor &mdash; triage how quickly to step in,
+                    based on a <strong>support score</strong>: current score gap (50 points), recent falls (25),
+                    demonstrated time in focus (15), and visit coverage (10). Trend and persistence points are only
+                    added when enough scored history exists. Click an area to drill into its bakeries, and any bakery
+                    for its full performance breakdown.</p>
                   <div id="targetSummary" class="target-stat-grid"></div>
+                  <div id="focusSpotlight"></div>
+                  <div id="focusAreaBoard"></div>
+                  <div id="targetHubQueue"></div>
+                  <h4 class="focus-section-title" id="targetInsightsTitle" style="margin-top:22px">Company-level intelligence</h4>
                   <div id="targetInsights"></div>
                 </div>
               </div>
@@ -1053,9 +1065,9 @@
                 <div class="section">
                   <h2>Performance Trends &mdash; Graphs</h2>
                   <p class="target-hint"><span style="color:var(--green);font-weight:600">&uarr; Improving</span> =
-                    +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&darr; Declining</span> =
+                    +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&darr; Dipping</span> =
                     &minus;3pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">&harr;
-                      Stable</span> = &plusmn;3pts</p>
+                      Steady</span> = &plusmn;3pts</p>
                   <div id="targetTrendGraphsEmpty" class="target-tab-empty" style="display:none"></div>
                   <div id="targetTrendGraphsContent">
                     <div id="trendSummaryCards" class="target-stat-grid"></div>
@@ -1065,12 +1077,22 @@
                     </div>
                     <div class="grid-2" style="margin-bottom:10px">
                       <div class="section" style="margin-bottom:0">
-                        <h2 style="font-size:0.88rem">Improving vs Declining</h2><canvas id="targetMomentumChart"
-                          style="max-height:300px"></canvas>
+                        <h2 style="font-size:0.88rem">Improving vs Dipping</h2>
+                        <p class="chart-caption">Where data exists, the first month&rsquo;s movement is measured
+                          against the month before the selected period.</p>
+                        <canvas id="targetMomentumChart" style="max-height:300px"></canvas>
                       </div>
                       <div class="section" style="margin-bottom:0">
                         <h2 style="font-size:0.88rem">Band Movement Over Time</h2><canvas id="targetBandFlow"
                           style="max-height:300px"></canvas>
+                      </div>
+                    </div>
+                    <div class="section" style="margin-bottom:10px">
+                      <h2 style="font-size:0.88rem">Ops Area Momentum &mdash; Focus Bakeries</h2>
+                      <p class="chart-caption">Average score change of each area&rsquo;s focus bakeries across the
+                        selected period. Areas with the biggest average score drop appear first.</p>
+                      <div id="targetAreaMomentumWrap" style="position:relative">
+                        <canvas id="targetAreaMomentum"></canvas>
                       </div>
                     </div>
                     <div class="section" style="margin-bottom:10px">
@@ -1162,7 +1184,7 @@
               <div class="target-subtab-panel" data-target-subtab-panel="feedback">
                 <div class="section">
                   <h2>Comment Cloud</h2>
-                  <p class="target-hint">Words drawn from customer reviews for <strong>Needs Support</strong> &amp;
+                  <p class="target-hint">Words drawn from customer reviews for <strong>Low Performer</strong> &amp;
                     <strong>Below Average</strong> bakeries only. Date range follows the dashboard period filter.</p>
                   <div id="wcTargetStatus" class="status" style="margin-bottom:10px"></div>
                   <div class="wc-canvas-wrap">
@@ -1308,7 +1330,7 @@
               <div class="visit-log-filters">
                 <div class="visit-log-filter-control">
                   <label for="visitLogSearch">Search</label>
-                  <input type="text" id="visitLogSearch" placeholder="Search bakery or partner..."
+                  <input type="search" id="visitLogSearch" placeholder="Search bakery or partner..."
                     class="visit-log-input" autocomplete="off">
                 </div>
                 <button type="button" id="visitLogMobileFilterBtn" class="visit-log-mobile-filter-btn"
@@ -1513,6 +1535,31 @@
     </div><!-- end dashboardContent -->
 
     <!-- DRILL-DOWN MODAL -->
+    <!-- FOCUS BAKERY DEEP-DIVE MODAL -->
+    <div id="focusDetailModal" class="drill-modal" style="display:none;"
+      onclick="if(event.target===this)GAILS.closeFocusDetail()">
+      <div class="drillInner focus-detail-inner">
+        <div class="drill-modal-header">
+          <div>
+            <h3 id="focusDetailTitle" class="drill-modal-title"></h3>
+            <p id="focusDetailSubtitle" class="drill-modal-subtitle"></p>
+          </div>
+          <div class="focus-detail__headright">
+            <span id="focusDetailBadges"></span>
+            <div class="focus-detail-nav" id="focusDetailNav" style="display:none">
+              <button type="button" class="focus-detail-nav__btn" id="focusDetailPrev"
+                onclick="GAILS.stepFocusDetail(-1)" aria-label="Previous bakery in the queue">&#8249;</button>
+              <span class="focus-detail-nav__pos" id="focusDetailPos"></span>
+              <button type="button" class="focus-detail-nav__btn" id="focusDetailNext"
+                onclick="GAILS.stepFocusDetail(1)" aria-label="Next bakery in the queue">&#8250;</button>
+            </div>
+            <button class="drill-close-btn" onclick="GAILS.closeFocusDetail()">&#10005; Close</button>
+          </div>
+        </div>
+        <div id="focusDetailBody" class="drill-modal-body"></div>
+      </div>
+    </div>
+
     <div id="drillModal" class="drill-modal" style="display:none;"
       onclick="if(event.target===this)GAILS.closeDrillDown()">
       <div class="drillInner">
@@ -1706,6 +1753,7 @@
   <script src="js/tables.js"></script>
   <script src="js/drilldown.js"></script>
   <script src="js/charts.js"></script>
+  <script src="js/support-score.js"></script>
   <script src="js/targets.js"></script>
   <script src="js/cqv-criticals.js"></script>
   <script src="js/cqv-shared.js"></script>

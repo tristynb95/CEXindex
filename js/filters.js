@@ -47,7 +47,7 @@ window.GAILS.getAvailableBands = function() {
       }
       var avgC = scoredRows.reduce(function(a, r) { return a + r.c; }, 0) / scoredRows.length;
       var avgAc = scoredRows.reduce(function(a, r) { return a + r.ac; }, 0) / scoredRows.length;
-      relative.add(avgC >= 75 ? 'Top Performer' : avgC >= 50 ? 'Above Average' : avgC >= 25 ? 'Below Average' : 'Needs Support');
+      relative.add(avgC >= 75 ? 'Top Performer' : avgC >= 50 ? 'Above Average' : avgC >= 25 ? 'Below Average' : 'Low Performer');
       absolute.add(avgAc >= 90 ? 'Exceeding' : avgAc >= 75 ? 'Meeting' : avgAc >= 60 ? 'Approaching' : 'Below Standard');
     });
   } else {

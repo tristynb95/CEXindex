@@ -98,7 +98,7 @@ window.GAILS = window.GAILS || {};
       if (range) {
         if (range.min >= 60) return G.COL['Top Performer'];
         if (range.min >= 50) return G.COL['Above Average'];
-        return G.COL['Needs Support'];
+        return G.COL['Low Performer'];
       }
       return G.COL['Above Average'];
     }

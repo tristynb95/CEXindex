@@ -10,7 +10,7 @@ exists only for tooling (ESLint); nothing is bundled, compiled, or minified.
 
 | Page | Entry script | Purpose |
 | --- | --- | --- |
-| `index.html` | `js/app.js` (+ 18 others) | The dashboard |
+| `index.html` | `js/app.js` (+ 19 others) | The dashboard |
 | `admin.html` | `js/admin-page.js` | Admin portal, CQV PDF import |
 | `profile.html` | `js/profile-page.js` | User profile |
 
@@ -32,6 +32,7 @@ they can rely on `window.GAILS` already existing.
 Shared code lives in one place per concern; prefer extending these over re-copying:
 
 - `js/utils.js` — `GAILS.escapeHtml`, month parsing, formatting, generic helpers.
+- `js/support-score.js` — the tested 0–100 support-priority calculation.
 - `js/cqv-criticals.js` — `GAILS.CQVCriticals`, the canonical zero-tolerance question list.
 - `js/cqv-shared.js` — `GAILS.CQVShared`, CQV band derivation and presentation.
 - `js/profile-menu.js` — the header profile popover (ES module).
@@ -47,7 +48,13 @@ A clean checkout reports **zero errors** (it does report warnings — those are
 pre-existing patterns that were reviewed and deliberately left alone). That means
 `npm run lint` is a usable gate: if it errors, it's something you just introduced.
 
-The rule that earns its keep is `no-undef`. With ~19 classic scripts sharing one
+The support-priority calculation also has a dependency-free Node test suite:
+
+```bash
+npm test
+```
+
+The rule that earns its keep is `no-undef`. With ~20 classic scripts sharing one
 namespace and a hand-maintained load order, it's what catches a typo'd global or a
 script that reads something before it's loaded. See `eslint.config.mjs` for why the
 other rules are demoted.

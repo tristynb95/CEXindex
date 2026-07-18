@@ -61,7 +61,8 @@
       menu.classList.add('filter-select__menu--searchable');
 
       searchInput = document.createElement('input');
-      searchInput.type = 'text';
+      // type=search so typing surfaces the in-field blue clear (✕) button
+      searchInput.type = 'search';
       searchInput.className = 'filter-select__search';
       searchInput.setAttribute('placeholder', 'Type to search…');
       searchInput.setAttribute('autocomplete', 'off');
