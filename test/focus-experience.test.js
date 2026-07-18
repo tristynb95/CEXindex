@@ -28,6 +28,23 @@ test('returns to the top Priorities view when Focus Bakeries is revisited', () =
   assert.match(app, /activateDashboardTab\(t\.dataset\.tab\);\s*scrollToTop\(\);/);
 });
 
+test('moves the Peer and Benchmark toggle to the top of compact filters', () => {
+  assert.match(app, /var globalIndexToggleMobileParent = document\.querySelector\('#filterControlsPanel \.filter-controls-body'\)/);
+  assert.match(app, /var useMobilePlacement = compactDashboardSidebarMedia\.matches/);
+  assert.match(app, /globalIndexToggleMobileParent\.insertBefore\(globalIndexToggle, globalIndexToggleMobileParent\.firstChild\)/);
+  assert.match(app, /globalIndexToggle\.classList\.toggle\('is-mobile-filter', useMobilePlacement\)/);
+  assert.match(styles, /\.header-index-toggle\.is-mobile-filter \{[\s\S]*?grid-column: 1 \/ -1/);
+  assert.match(styles, /\.header-index-toggle\.is-mobile-filter \.overview-rankings-toggle__btn\.active \{[\s\S]*?#B5312A[\s\S]*?#A32520/);
+});
+
+test('shows the active index type on the mobile filter button', () => {
+  assert.match(html, /id="filterSideTabLabel">Peer<\/span>/);
+  assert.match(app, /var indexLabel = state\.indexType === 'absolute' \? 'Benchmark' : 'Peer'/);
+  assert.match(app, /filterTabLabel\.textContent = indexLabel/);
+  assert.match(app, /'Open filters — ' \+ indexLabel \+ ' index'/);
+  assert.match(styles, /\.filter-side-tab \{[\s\S]*?width: auto;[\s\S]*?min-width: 104px/);
+});
+
 test('puts the recommendation and action list before secondary analysis', () => {
   const start = html.indexOf('class="target-subtab-panel active"');
   const end = html.indexOf('data-target-subtab-panel="priority"', start);

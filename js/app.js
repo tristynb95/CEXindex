@@ -194,6 +194,9 @@
   }
 
   var globalIndexToggle = document.getElementById('globalIndexToggle');
+  var globalIndexToggleDesktopParent = globalIndexToggle ? globalIndexToggle.parentNode : null;
+  var globalIndexToggleDesktopNextSibling = globalIndexToggle ? globalIndexToggle.nextSibling : null;
+  var globalIndexToggleMobileParent = document.querySelector('#filterControlsPanel .filter-controls-body');
   var tabsWithoutGlobalIndexToggle = {
     'table': true,
     'visit-log': true,
@@ -201,10 +204,44 @@
     'feedback': true
   };
 
+  function syncGlobalIndexTogglePlacement() {
+    if (!globalIndexToggle || !globalIndexToggleDesktopParent || !globalIndexToggleMobileParent) return;
+    var useMobilePlacement = compactDashboardSidebarMedia.matches;
+    globalIndexToggle.classList.toggle('is-mobile-filter', useMobilePlacement);
+
+    if (useMobilePlacement) {
+      if (globalIndexToggle.parentNode !== globalIndexToggleMobileParent) {
+        globalIndexToggleMobileParent.insertBefore(globalIndexToggle, globalIndexToggleMobileParent.firstChild);
+      }
+      return;
+    }
+
+    if (globalIndexToggle.parentNode !== globalIndexToggleDesktopParent) {
+      var desktopAnchorIsAvailable = globalIndexToggleDesktopNextSibling &&
+        globalIndexToggleDesktopNextSibling.parentNode === globalIndexToggleDesktopParent;
+      globalIndexToggleDesktopParent.insertBefore(
+        globalIndexToggle,
+        desktopAnchorIsAvailable ? globalIndexToggleDesktopNextSibling : null
+      );
+    }
+  }
+
+  syncGlobalIndexTogglePlacement();
+
   function updateGlobalIndexToggleVisibility(name) {
     if (!globalIndexToggle) return;
     globalIndexToggle.style.display = tabsWithoutGlobalIndexToggle[name] ? 'none' : 'inline-flex';
   }
+
+  function syncMobileFilterIndexLabel() {
+    var filterTab = document.getElementById('filterSideTab');
+    var filterTabLabel = document.getElementById('filterSideTabLabel');
+    var indexLabel = state.indexType === 'absolute' ? 'Benchmark' : 'Peer';
+    if (filterTabLabel) filterTabLabel.textContent = indexLabel;
+    if (filterTab) filterTab.setAttribute('aria-label', 'Open filters — ' + indexLabel + ' index');
+  }
+
+  syncMobileFilterIndexLabel();
 
   function updateDashboardActiveView(name) {
     if (dashboardActiveViewLabel) {
@@ -215,8 +252,8 @@
     }
     updateDashboardActiveIndex(name);
     updateGlobalIndexToggleVisibility(name);
-    // Expose the active tab so tab-specific layout tweaks (e.g. the mobile
-    // methodology title clearing the index-toggle notch) can be scoped in CSS.
+    syncMobileFilterIndexLabel();
+    // Expose the active tab so tab-specific layout tweaks can be scoped in CSS.
     document.body.dataset.dashTab = name;
   }
 
@@ -939,6 +976,7 @@
       state.rankingsMetric = nextMetric;
       state.targetMetric = nextMetric;
       _networkMapMetric = nextMetric;
+      syncMobileFilterIndexLabel();
       Array.from(document.querySelectorAll('[data-global-index]')).forEach(function (toggleBtn) {
         toggleBtn.classList.toggle('active', toggleBtn.dataset.globalIndex === nextMetric);
       });
@@ -1652,6 +1690,7 @@
 
   if (compactDashboardSidebarMedia && compactDashboardSidebarMedia.addEventListener) {
     compactDashboardSidebarMedia.addEventListener('change', function () {
+      syncGlobalIndexTogglePlacement();
       syncDashboardSidebarForViewport();
       syncDashboardKpis();
       renderHeaderSummary();
