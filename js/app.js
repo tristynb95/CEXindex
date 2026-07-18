@@ -279,13 +279,14 @@
     setDashboardSidebarCollapsed(desktopDashboardSidebarCollapsed);
   }
 
-  function activateTargetSubtab(name) {
+  function activateTargetSubtab(name, options) {
     var workspace = document.getElementById('targetTabWorkspace');
     if (!workspace) return;
+    var shouldScrollNav = !(options && options.scrollNav === false);
     workspace.querySelectorAll('.target-subtab').forEach(function (btn) {
       var isActive = btn.dataset.targetSubtab === name;
       btn.classList.toggle('active', isActive);
-      if (isActive) {
+      if (isActive && shouldScrollNav) {
         btn.scrollIntoView({
           behavior: 'smooth',
           block: 'nearest',
@@ -337,6 +338,9 @@
     document.querySelectorAll('.tab-content').forEach(function (panel) {
       panel.classList.toggle('active', panel === activePanel);
     });
+    if (name === 'target' && previousName && previousName !== 'target') {
+      activateTargetSubtab('summary', { scrollNav: false });
+    }
     updateDashboardActiveView(name);
     syncDashboardKpis(name);
     setFocusPeriodControls(name === 'target');

@@ -1101,22 +1101,20 @@ document.addEventListener('keydown', function (event) {
       { label: 'Above Average', color: '#1D9E5C' },
       { label: 'Below Average', color: '#C97F12' },
       { label: 'Low Performance', color: '#B22A24' },
-      { label: 'Incomplete', color: '#B3AA99' },
-      { label: 'No Data', color: '#B3AA99' }
+      { label: 'Not Scored', color: '#8d8d8d' }
     ],
     absolute: [
       { label: 'Exceeding', color: '#1E70C4' },
       { label: 'Meeting', color: '#1D9E5C' },
       { label: 'Approaching', color: '#C97F12' },
       { label: 'Below Standard', color: '#B22A24' },
-      { label: 'Incomplete', color: '#B3AA99' },
-      { label: 'No Data', color: '#B3AA99' }
+      { label: 'Not Scored', color: '#8d8d8d' }
     ]
   };
 
   var NETWORK_HINT = {
-    relative: '<span style="color:var(--green);font-weight:600">&#9679; Top Performance</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Low Performance</span>',
-    absolute: '<span style="color:var(--green);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span>'
+    relative: '<span style="color:var(--green);font-weight:600">&#9679; Top Performance</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Low Performance</span> &nbsp;&middot;&nbsp; <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span>',
+    absolute: '<span style="color:var(--green);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span>'
   };
 
   // The focus map is classified by support-priority tier, not performance band,
@@ -1414,10 +1412,10 @@ document.addEventListener('keydown', function (event) {
     var lastVisit = GAILS.getLastVisitDate ? GAILS.getLastVisitDate(item.b) : null;
 
     if (item.noData) {
-      var statusLabel = item.incompletePeriod ? 'Incomplete' : 'No Data';
+      var statusLabel = 'Not Scored';
       var statusCopy = item.incompletePeriod
-        ? 'Incomplete data for this selected period'
-        : 'No performance data for this period';
+        ? 'Some data is available, but not enough to calculate a score for this period'
+        : 'No performance data is available for this period';
       var noDataVisitLine = lastVisit
         ? '<button type="button" class="map-popup__visit map-popup__visit--link" data-visit-report="' + escapeHtml(item.b) + '">' + escapeHtml(formatLastVisitDate(lastVisit)) + ' &rarr;</button>'
         : '<div class="map-popup__visit">' + escapeHtml(formatLastVisitDate(lastVisit)) + '</div>';
@@ -1473,7 +1471,7 @@ document.addEventListener('keydown', function (event) {
     var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px"></span>';
     var scoreStr;
     if (item.noData) {
-      scoreStr = 'No data';
+      scoreStr = 'Not scored';
     } else {
       var s = bandField === 'acb' ? item.ac : item.c;
       scoreStr = s != null ? '' + s : '—';
@@ -1726,11 +1724,11 @@ document.addEventListener('keydown', function (event) {
     cfg._areaTooltipLayers = [];
     cfg._hoveredArea = null;
 
-    // The dashboard normally fills gaps with grey "No Data" pins so bakeries
+    // The dashboard normally fills gaps with grey "Not Scored" pins so bakeries
     // without a record for the selected period remain visible. Once a band is
     // selected, cfg.items has already been narrowed by getData(); merging the
     // full bakery directory back in would incorrectly turn every out-of-band
-    // bakery into a "No Data" pin.
+    // bakery into a "Not Scored" pin.
     var hasBandFilter = !!(GAILS.state && GAILS.state.bandFilter);
     var sourceItems = cfg.noDataFallback && !hasBandFilter ? buildMergedItems(cfg) : cfg.items;
 
@@ -1983,9 +1981,9 @@ document.addEventListener('keydown', function (event) {
     var msg = placed + ' of ' + total + ' baker' + (total === 1 ? 'y' : 'ies') + ' mapped.';
     var noDataCount = items.filter(function (it) { return it.noData; }).length;
     if (noDataCount === total) {
-      msg = 'No performance data yet for this period — showing ' + msg.charAt(0).toLowerCase() + msg.slice(1);
+      msg = 'No sites could be scored for this period — showing ' + msg.charAt(0).toLowerCase() + msg.slice(1);
     } else if (noDataCount > 0) {
-      msg += ' ' + noDataCount + ' site' + (noDataCount === 1 ? '' : 's') + ' with no data yet this period.';
+      msg += ' ' + noDataCount + ' site' + (noDataCount === 1 ? '' : 's') + ' not scored this period.';
     }
     if (statusEl) {
       var note = cfg.statusNote ? ' <span class="target-map-status__note">&middot; ' + cfg.statusNote + '</span>' : '';

@@ -21,6 +21,13 @@ test('locks the Focus period controls to a clear All Time display without changi
   assert.doesNotMatch(html, /id="focusPeriodContext"/);
 });
 
+test('returns to the top Priorities view when Focus Bakeries is revisited', () => {
+  assert.match(app, /function activateTargetSubtab\(name, options\)/);
+  assert.match(app, /var shouldScrollNav = !\(options && options\.scrollNav === false\)/);
+  assert.match(app, /if \(name === 'target' && previousName && previousName !== 'target'\) \{\s*activateTargetSubtab\('summary', \{ scrollNav: false \}\);/);
+  assert.match(app, /activateDashboardTab\(t\.dataset\.tab\);\s*scrollToTop\(\);/);
+});
+
 test('puts the recommendation and action list before secondary analysis', () => {
   const start = html.indexOf('class="target-subtab-panel active"');
   const end = html.indexOf('data-target-subtab-panel="priority"', start);
@@ -60,6 +67,19 @@ test('keeps performance and activity filters independent and reports results', (
   assert.match(targets, /Showing <strong>/);
   assert.match(targets, /All priority levels/);
   assert.match(targets, /Performance: /);
+});
+
+test('groups unavailable main-map results under one Not Scored state', () => {
+  const networkLegend = targets.slice(targets.indexOf('var NETWORK_LEGEND'), targets.indexOf('var NETWORK_HINT'));
+  const networkHint = html.match(/id="networkMapLegendHint"[\s\S]*?<\/p>/)[0];
+
+  assert.match(networkLegend, /label: 'Not Scored'/);
+  assert.doesNotMatch(networkLegend, /label: '(?:Incomplete|No Data)'/);
+  assert.match(networkHint, /Not Scored/);
+  assert.match(targets, /var statusLabel = 'Not Scored'/);
+  assert.match(targets, /Some data is available, but not enough to calculate a score/);
+  assert.match(targets, /No performance data is available for this period/);
+  assert.match(targets, /site' \+ \(noDataCount === 1 \? '' : 's'\) \+ ' not scored this period\.'/);
 });
 
 test('classifies the focus bakery map by support-priority tier, not performance band', () => {

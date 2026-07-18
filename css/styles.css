@@ -155,8 +155,8 @@ h4 {
 /* GAIL's red brand band, echoing the gailsbread.co.uk footer */
 .header {
   background: linear-gradient(180deg, #B5312A 0%, #A32520 100%);
-  padding: 10px 28px;
-  min-height: 64px;
+  padding: 8px 28px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   gap: 20px;
@@ -560,7 +560,7 @@ h4 {
 .container {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 18px 24px;
+  padding: 12px 24px;
   overflow-x: hidden;
 }
 
@@ -569,8 +569,8 @@ h4 {
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: var(--r-lg);
-  padding: 12px 16px;
-  margin-bottom: 20px;
+  padding: 7px 14px;
+  margin-bottom: 14px;
   display: block;
   box-shadow: var(--shadow-sm);
 }
@@ -592,15 +592,15 @@ h4 {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   display: block;
 }
 
 .filter-bar select,
 .filter-bar input[type="text"] {
   width: 100%;
-  min-height: 36px;
-  padding: 6px 10px;
+  min-height: 32px;
+  padding: 5px 10px;
   border: 1px solid var(--card-border-h);
   border-radius: 8px;
   font-size: 0.82rem;
@@ -643,8 +643,8 @@ h4 {
 
 .filter-select__trigger {
   width: 100%;
-  min-height: 36px;
-  padding: 8px 12px;
+  min-height: 32px;
+  padding: 6px 12px;
   border: 1px solid var(--card-border-h);
   border-radius: 8px;
   background:
@@ -1219,7 +1219,7 @@ h4 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .kpi {
@@ -1227,8 +1227,8 @@ h4 {
     radial-gradient(circle at top right, rgba(201, 127, 18, 0.05) 0%, transparent 36%),
     #FFFFFF;
   border-radius: 20px;
-  padding: 16px;
-  min-height: 148px;
+  padding: 13px;
+  min-height: 126px;
   text-align: left;
   box-shadow: 0 4px 16px rgba(48, 36, 22, 0.06);
   border: 1px solid rgba(34, 31, 26, 0.09);
@@ -1560,8 +1560,8 @@ h4 {
 .section {
   background: var(--card);
   border-radius: var(--r-lg);
-  padding: 22px 26px;
-  margin-bottom: 16px;
+  padding: 16px 22px;
+  margin-bottom: 12px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--card-border);
   transition: border-color 0.25s ease;
@@ -1574,7 +1574,7 @@ h4 {
 .section h2 {
   font-size: 0.9rem;
   font-weight: 700;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   color: var(--text);
   display: flex;
   align-items: center;
@@ -2620,7 +2620,7 @@ th {
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 9px 12px;
+  padding: 6px 12px;
   text-align: left;
   font-weight: 700;
   text-transform: uppercase;
@@ -2654,7 +2654,7 @@ th.sort-desc::after {
 }
 
 td {
-  padding: 8px 12px;
+  padding: 6px 12px;
   border-bottom: 1px solid rgba(34, 31, 26, 0.035);
   white-space: nowrap;
   color: var(--text-2);
@@ -9165,7 +9165,10 @@ a,
   font-size: 0.71rem;
 }
 
-/* Colour key floats centred between the toggles and the full-screen button */
+/* Colour key floats centred between the toggles and the full-screen button.
+   Desktop hides it (see the min-width rule below) because the on-map floating
+   legend already shows the same key; it stays visible on mobile, where that
+   floating legend is hidden instead. */
 .map-legend-key {
   margin: 0 auto;
   font-size: 0.72rem;
@@ -9173,7 +9176,19 @@ a,
   color: var(--muted-l);
 }
 
-/* Full-screen toggle button — matches the League Table's .table-fullscreen-btn */
+/* Desktop/tablet: drop the top-of-panel colour key on both maps — the on-map
+   floating legend (.map-legend, bottom-right) already carries it, so the key
+   here is redundant and only crowds the toggle row. Below 641px the floating
+   legend is hidden (see its @media rule), so these keys stay to own the job. */
+@media (min-width: 641px) {
+  .map-legend-key,
+  #targetMapLegendHint {
+    display: none;
+  }
+}
+
+/* Full-screen toggle button — matches the League Table's .table-fullscreen-btn.
+   margin-left:auto pins it to the far right of the control bar, past the toggles. */
 .map-fullscreen-btn {
   margin-left: auto;
   flex: 0 0 auto;
@@ -9189,12 +9204,6 @@ a,
   align-items: center;
   justify-content: center;
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
-}
-
-/* When the colour key is present it already claims the auto margin, so the
-   button just trails it rather than being pushed to a far edge. */
-.map-legend-key + .map-fullscreen-btn {
-  margin-left: 8px;
 }
 
 .map-fullscreen-btn:hover {
@@ -10853,8 +10862,8 @@ table.nps-splits-collapsed .nps-split-col {
   justify-content: center;
   gap: 8px;
   width: 100%;
-  min-height: 36px;
-  padding: 9px 16px;
+  min-height: 32px;
+  padding: 6px 16px;
   border-radius: 8px;
   font-family: var(--font);
   font-size: 0.8rem;
