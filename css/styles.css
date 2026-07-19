@@ -8665,10 +8665,6 @@ a,
     padding: 12px 14px;
   }
 
-  .header-brand__logo {
-    width: 88px;
-  }
-
   .header-brand__eyebrow {
     font-size: 0.62rem;
   }
@@ -8831,7 +8827,8 @@ a,
 }
 
 /* 2. Compact header on mobile — collapse to a single tight row:
-      [Logo]  [Dashboard title/sub]  [Sign Out]  (Admin hidden in kebab)  */
+      [Dashboard title/sub]  [Sign Out]  (Admin hidden in kebab)
+      Logo is dropped so the title/sub row gets the full width. */
 @media (max-width: 640px) {
   .header {
     padding: 10px 14px;
@@ -8850,8 +8847,7 @@ a,
   }
 
   .header-brand__logo {
-    width: 72px;
-    flex-shrink: 0;
+    display: none;
   }
 
   .header-brand__copy {
