@@ -8867,11 +8867,15 @@ a,
   }
 
   .header .sub {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
     font-size: 0.68rem;
-    line-height: 1.6;
+    line-height: 1.3;
   }
 
   /* Header actions: push to right, shrink to icon-sized buttons */
