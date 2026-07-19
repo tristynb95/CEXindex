@@ -985,7 +985,7 @@ window.GAILS = window.GAILS || {};
 
       var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
       return title +
-        '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' +
+        '<span style="margin-left:8px;">' +
         pills.join('') +
         '</span>';
     }
@@ -1035,7 +1035,7 @@ window.GAILS = window.GAILS || {};
 
     var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
     return title +
-      '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' +
+      '<span style="margin-left:8px;">' +
       pills.join('') +
       '</span>';
   };

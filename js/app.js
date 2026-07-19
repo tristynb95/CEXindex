@@ -141,7 +141,7 @@
     }
 
     headerSub.innerHTML = prefix +
-      '<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; vertical-align:middle; margin-left:8px;">' +
+      '<span style="margin-left:8px;">' +
       pills.join('') +
       '</span>';
   }
