@@ -8867,15 +8867,11 @@ a,
   }
 
   .header .sub {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
     font-size: 0.68rem;
-    line-height: 1.3;
+    line-height: 2;
   }
 
   /* Header actions: push to right, shrink to icon-sized buttons */
@@ -10886,6 +10882,7 @@ table.nps-splits-collapsed .nps-split-col {
   margin-right: 4px;
   display: inline-block;
   line-height: 1.3;
+  vertical-align: middle;
 }
 
 .header-pill-filter {
@@ -10899,6 +10896,7 @@ table.nps-splits-collapsed .nps-split-col {
   margin-right: 4px;
   display: inline-block;
   line-height: 1.3;
+  vertical-align: middle;
 }
 
 @media (max-width: 980px) {
