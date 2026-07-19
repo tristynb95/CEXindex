@@ -305,49 +305,22 @@ function _weaknessText(row) {
   return row.weakest.label + ' is ' + _driverStandingText(row.weakest.pct).toLowerCase();
 }
 
-// One action-first recommendation replaces the former wall of KPI and
-// spotlight cards. Secondary portfolio signals remain clickable, but the
-// first reading path is now bakery -> reason -> next action.
-function _renderHubSpotlight() {
-  if (!_hubState) return;
-  var esc = GAILS.escapeHtml;
-  var el = document.getElementById('focusSpotlight');
-  if (!el) return;
-  var rows = _hubState.rows;
-  if (!rows.length) {
-    el.innerHTML = '<section class="focus-action focus-action--clear" aria-labelledby="focusActionTitle">' +
-      '<p class="focus-action__eyebrow">Top Priority</p>' +
-      '<h3 id="focusActionTitle">No bakeries need focus for this selection</h3>' +
-      '<p>Every eligible bakery is outside the two focus performance bands through the latest completed month. Use the remaining filters to review a different part of the business.</p>' +
-      '</section>';
-    return;
-  }
+// The former standalone "Top Priority" card duplicated the action list's #1
+// row wholesale; its only unique content was the stacked "why" narrative and
+// the recommended next step. That narrative now lives inline on the highlighted
+// lead row of the action list (see _renderHubQueue), so the reading path stays
+// bakery -> reason -> next action without a redundant card above the table.
+function _focusReasons(r) {
+  var reasons = [_weaknessText(r)];
+  if (r.trend.direction === 'down') reasons.push(_trendText(r).toLowerCase() + ' since last month');
+  if (!r.visitedInPeriod) reasons.push(_visitText(r).toLowerCase());
+  if (r.focusStreak >= 3) reasons.push('in focus for ' + r.focusStreak + ' months running');
+  return reasons.slice(0, 3);
+}
 
-  var top = rows[0];
-  var reasons = [_weaknessText(top)];
-  if (top.trend.direction === 'down') reasons.push(_trendText(top).toLowerCase() + ' since last month');
-  if (!top.visitedInPeriod) reasons.push(_visitText(top).toLowerCase());
-  if (top.focusStreak >= 3) reasons.push('in focus for ' + top.focusStreak + ' months running');
-  var actionLabel = top.weakest ? 'Start with ' + top.weakest.label.toLowerCase() : 'Review the full bakery detail';
-  var scoreText = top.score !== null && top.score !== undefined ? top.score.toFixed(1) + '<em>/ 100</em>' : 'Not available';
-
-  el.innerHTML = '<section class="focus-action" aria-labelledby="focusActionTitle">' +
-    '<div class="focus-action__head">' +
-    '<div>' +
-    '<p class="focus-action__eyebrow">Top Priority</p>' +
-    '<h3 id="focusActionTitle">' + esc(top.name) + '</h3>' +
-    '<p class="focus-action__location">Operations area: ' + esc(top.ops) + ' &middot; ' + esc(GAILS.getBakeryRegion(top.name)) + '</p>' +
-    '</div>' +
-    '<button type="button" class="focus-action__cta" data-focus-detail="' + esc(top.name) + '">Review bakery <span aria-hidden="true">&rarr;</span></button>' +
-    '</div>' +
-    '<dl class="focus-action__metrics">' +
-    '<div><dt>Performance</dt><dd><strong>' + scoreText + '</strong><span>' + esc(top.rec[_hubState.bf]) + ' &middot; ' + esc(_thresholdText(top)) + '</span></dd></div>' +
-    '<div><dt>Support priority</dt><dd><strong>' + top.priority + '<em>/ 100</em></strong><span>' + esc(_priorityText(top)) + '</span></dd></div>' +
-    '<div><dt>Change since last month</dt><dd><strong>' + esc(_trendText(top)) + '</strong><span>Latest scored month</span></dd></div>' +
-    '<div><dt>Routine visit</dt><dd><strong>' + esc(_visitText(top)) + '</strong><span>' + (top.lastVisit ? 'Last recorded: ' + esc(_formatVisitDate(top.lastVisit)) : 'No routine visit date available') + '</span></dd></div>' +
-    '</dl>' +
-    '<div class="focus-action__reason"><span><strong>Why this bakery:</strong> ' + esc(reasons.slice(0, 3).join('; ')) + '.</span><strong class="focus-action__next">Recommended next step: ' + esc(actionLabel) + '.</strong></div>' +
-    '</section>';
+function _focusNextStep(r) {
+  // Keep the driver label in its proper case so acronyms (NPS) stay intact.
+  return r.weakest ? 'Start with ' + r.weakest.label : 'Review the full bakery detail';
 }
 
 function _renderFocusDataStatus(context, targets) {
@@ -479,7 +452,6 @@ function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
     severeLine: severeLine
   };
 
-  _renderHubSpotlight();
   _renderHubAreas();
 
   if (!queueEl) return;
@@ -698,6 +670,12 @@ function _renderHubQueue() {
   // as "bakery not found".
   var visible = (_hubState.expanded || searching) ? rows : rows.slice(0, LIMIT);
 
+  // The highest-priority row doubles as the "start here" anchor that the old
+  // Top Priority card used to be: it carries the stacked reasons and the next
+  // step inline. Only meaningful when the list is in its default priority order
+  // and not narrowed by a search, where "first row" genuinely means "worst".
+  var showLead = s.sort === 'priority' && !searching;
+
   grid.className = 'focus-qlist';
   grid.setAttribute('role', 'table');
   grid.setAttribute('aria-label', 'Bakery action list');
@@ -711,9 +689,10 @@ function _renderHubQueue() {
     '<span role="columnheader">Last visited</span>' +
     '<span role="columnheader">Action</span>' +
     '</div>' +
-    visible.map(function (r) {
+    visible.map(function (r, i) {
       var band = r.rec[bf];
       var score = (r.score !== null && r.score !== undefined) ? r.score : null;
+      var isLead = showLead && i === 0;
 
       var badges = '';
       if (r.dataStatus === 'provisional') badges += '<span class="focus-qbadge focus-qbadge--data">Incomplete data · provisional</span>';
@@ -727,7 +706,7 @@ function _renderHubQueue() {
       var trendClass = r.trend.direction === 'down' ? ' is-negative' : r.trend.direction === 'up' ? ' is-positive' : '';
       var visitStatus = _visitStatus(r);
 
-      return '<article class="focus-qrow" role="row">' +
+      return '<article class="focus-qrow' + (isLead ? ' focus-qrow--lead' : '') + '" role="row">' +
         '<span class="focus-qrow__urgency focus-tier--' + r.tier + '" role="cell" aria-label="Priority rank ' + r.rank + ', support score ' + r.priority + ' of 100, ' + esc(_TIER_LABEL[r.tier]) + '"><strong>#' + r.rank + '</strong><span class="focus-qrow__tier">' + esc(_TIER_LABEL[r.tier]) + '</span><small>' + r.priority + '<em> / 100</em></small></span>' +
         '<span class="focus-qrow__who" role="cell"><span class="focus-qrow__nameline"><button type="button" class="focus-qrow__name" data-focus-detail="' + esc(r.name) + '">' + esc(r.name) + '</button>' + badges + '</span><small>Operations area: ' + esc(r.ops) + ' &middot; ' + esc(G.getBakeryRegion(r.name)) + '</small></span>' +
         '<span class="focus-qrow__performance" role="cell"><strong>' + (score !== null ? score.toFixed(1) + '<em>/ 100</em>' : 'Not available') + '</strong><small>' + esc(band) + ' &middot; ' + esc(_thresholdText(r)) + '</small></span>' +
@@ -735,6 +714,11 @@ function _renderHubQueue() {
         '<span class="focus-qrow__fix" role="cell"><strong>' + esc(_weaknessText(r)) + '</strong><small>' + (r.weakest ? 'Review ' + esc(r.weakest.label) + ' first' : 'Open the bakery for more evidence') + '</small></span>' +
         '<span class="focus-qrow__visit ' + visitStatus.cls + '" role="cell"><strong>' + esc(visitStatus.label) + '</strong>' + (visitDetail ? '<small>' + esc(visitDetail) + '</small>' : '') + '</span>' +
         '<span class="focus-qrow__action" role="cell"><button type="button" data-focus-detail="' + esc(r.name) + '" aria-label="Review ' + esc(r.name) + '">Review bakery</button></span>' +
+        (isLead ? '<span class="focus-qrow__lead-why" role="cell">' +
+          '<span class="focus-qrow__lead-tag">Top priority</span>' +
+          '<span class="focus-qrow__lead-reason"><strong>Why this bakery:</strong> ' + esc(_focusReasons(r).join('; ')) + '.</span>' +
+          '<strong class="focus-qrow__lead-next">Recommended next step: ' + esc(_focusNextStep(r)) + '.</strong>' +
+          '</span>' : '') +
         '</article>';
     }).join('');
 

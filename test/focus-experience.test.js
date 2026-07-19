@@ -50,7 +50,6 @@ test('puts the recommendation and action list before secondary analysis', () => 
   const end = html.indexOf('data-target-subtab-panel="priority"', start);
   const summary = html.slice(start, end);
 
-  assert.ok(summary.indexOf('id="focusSpotlight"') < summary.indexOf('id="targetHubQueue"'));
   assert.ok(summary.indexOf('id="targetHubQueue"') < summary.indexOf('id="focusAreaDetails"'));
   assert.ok(summary.indexOf('id="focusAreaDetails"') < summary.indexOf('id="focusInsightsDetails"'));
   assert.match(summary, /How support priority is calculated/);
@@ -58,7 +57,7 @@ test('puts the recommendation and action list before secondary analysis', () => 
   assert.doesNotMatch(html, /<span>Where to focus<\/span>/);
   assert.match(summary, /<h2>Priority Overview<\/h2>/);
   assert.doesNotMatch(summary, /Focus bakery action plan|Focus bakery priorities/);
-  assert.match(summary, /top priority highlighted below/);
+  assert.doesNotMatch(summary, /top priority highlighted below/);
   assert.doesNotMatch(summary, /Start with the recommended bakery/);
   assert.match(summary, /six most recent completed months/);
   assert.match(summary, /remaining weights are rebalanced/);
@@ -67,7 +66,8 @@ test('puts the recommendation and action list before secondary analysis', () => 
 });
 
 test('uses plain-language performance, priority, trend and visit labels', () => {
-  assert.match(targets, /Top Priority/);
+  assert.match(targets, /Why this bakery:/);
+  assert.match(targets, /Recommended next step:/);
   assert.match(targets, /Support priority/);
   assert.match(targets, /Change since last month/);
   assert.match(targets, /Routine visit/);
@@ -131,7 +131,8 @@ test('shades focus-map territories by focus density (share of area in focus), no
 
 test('provides readable labels and a card layout on narrow screens', () => {
   assert.match(styles, /\.focus-qrow__who small[\s\S]*?font-size: 0\.75rem/);
-  assert.match(styles, /\.focus-action\s*\{[\s\S]*?margin-bottom: clamp\(30px, 3vw, 42px\)/);
+  assert.match(styles, /\.focus-qrow--lead\s*\{[\s\S]*?border-radius: 12px/);
+  assert.doesNotMatch(styles, /\.focus-qrow--lead\s*\{[\s\S]*?inset[^;]*var\(--accent\)/);
   assert.match(styles, /#targetHubQueue\s*\{[\s\S]*?margin-bottom: clamp\(30px, 3vw, 40px\)/);
   assert.match(styles, /\.focus-secondary \+ \.focus-secondary\s*\{[\s\S]*?margin-top: 20px/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?grid-template-areas:[\s\S]*?"who action"/);
@@ -270,9 +271,9 @@ test('renders a plain-language action card and accurate filtered count', () => {
 
   context._renderFocusHub(latest, latest, 'cb', 'c', 'Low Performance', 'Below Average', false);
 
-  assert.match(getElement('focusSpotlight').innerHTML, /Top Priority/);
-  assert.match(getElement('focusSpotlight').innerHTML, /Performance/);
-  assert.match(getElement('focusSpotlight').innerHTML, /Support priority/);
+  assert.match(getElement('focusQueueGrid').innerHTML, /focus-qrow--lead/);
+  assert.match(getElement('focusQueueGrid').innerHTML, /Why this bakery:/);
+  assert.match(getElement('focusQueueGrid').innerHTML, /Recommended next step:/);
   assert.match(getElement('focusQueueGrid').innerHTML, /Main focus/);
   assert.match(getElement('focusQueueGrid').innerHTML, /Last visited/);
   assert.doesNotMatch(getElement('focusQueueGrid').innerHTML, /focus-qdot/);

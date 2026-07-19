@@ -13014,15 +13014,6 @@ body.profile-modal-open {
   margin-bottom: 20px;
 }
 
-.focus-action__eyebrow {
-  margin: 0 0 6px;
-  color: var(--accent);
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
 .focus-page-intro h2 {
   margin: 0;
   font-size: 1.28rem;
@@ -13092,64 +13083,7 @@ body.profile-modal-open {
   line-height: 1.55;
 }
 
-/* ── Hero recommendation card ── */
-.focus-action {
-  position: relative;
-  overflow: hidden;
-  margin-bottom: clamp(30px, 3vw, 42px);
-  border: 1px solid rgba(178, 42, 36, 0.18);
-  border-radius: 16px;
-  background: linear-gradient(155deg, rgba(178, 42, 36, 0.05), rgba(255, 255, 255, 0.96) 45%);
-  box-shadow: 0 12px 30px rgba(34, 31, 26, 0.07);
-}
-
-.focus-action::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent), rgba(178, 42, 36, 0.2));
-}
-
-.focus-action--clear {
-  padding: 24px;
-  border-color: rgba(45, 139, 87, 0.28);
-  background: var(--green-d);
-}
-
-.focus-action--clear::before {
-  background: linear-gradient(90deg, var(--green), rgba(29, 158, 92, 0.2));
-}
-
-.focus-action--clear h3,
-.focus-action--clear p:last-child {
-  margin: 5px 0 0;
-}
-
-.focus-action__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 20px 24px 14px;
-}
-
-.focus-action__head h3 {
-  margin: 2px 0 0;
-  color: var(--text);
-  font-size: 1.4rem;
-  letter-spacing: -0.02em;
-}
-
-.focus-action__location {
-  margin: 5px 0 0;
-  color: var(--muted-l);
-  font-size: 0.8rem;
-}
-
-.focus-action__cta,
+/* ── Action list row buttons ── */
 .focus-qrow__action button {
   appearance: none;
   border: 1px solid var(--accent);
@@ -13164,99 +13098,17 @@ body.profile-modal-open {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.focus-action__cta {
-  padding: 9px 16px;
-}
-
-.focus-action__cta:hover,
 .focus-qrow__action button:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 14px rgba(178, 42, 36, 0.22);
 }
 
-.focus-action__cta:focus-visible,
 .focus-qrow__action button:focus-visible,
 .focus-qrow__name:focus-visible,
 .focus-chip:focus-visible,
 .focus-applied-filter:focus-visible {
   outline: 3px solid rgba(30, 112, 196, 0.38);
   outline-offset: 2px;
-}
-
-.focus-action__metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 0;
-  padding: 4px 24px 18px;
-}
-
-.focus-action__metrics>div {
-  min-width: 0;
-  padding: 2px 20px;
-  border-left: 1px solid var(--card-border-h);
-}
-
-.focus-action__metrics>div:first-child {
-  padding-left: 0;
-  border-left: none;
-}
-
-.focus-action__metrics dt {
-  margin-bottom: 6px;
-  color: var(--muted-l);
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.focus-action__metrics dd {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-}
-
-.focus-action__metrics dd strong {
-  color: var(--text);
-  font-size: 1.2rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
-}
-
-.focus-action__metrics dd strong em {
-  margin-left: 2px;
-  color: var(--muted-l);
-  font-size: 0.72rem;
-  font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-.focus-action__metrics dd span {
-  color: var(--muted-l);
-  font-size: 0.74rem;
-  line-height: 1.4;
-}
-
-.focus-action__reason {
-  display: grid;
-  gap: 6px;
-  margin: 0 24px 20px;
-  padding: 12px 16px;
-  border-left: 3px solid var(--accent);
-  border-radius: 0 10px 10px 0;
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--text-2);
-  font-size: 0.82rem;
-  line-height: 1.5;
-}
-
-.focus-action__next {
-  color: #2E7D5B;
-  font-weight: 700;
 }
 
 /* ── Action list heading, summary and filters ── */
@@ -13620,6 +13472,64 @@ body.profile-modal-open {
   white-space: nowrap;
 }
 
+/* The #1 row absorbs the retired Top Priority card: a soft accent wash marks it
+   as the "start here" anchor, lifted a touch off the list, with the reasons +
+   next step in their own panel beneath the columns. */
+.focus-qrow--lead {
+  position: relative;
+  margin-bottom: 12px;
+  border-bottom: none;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(178, 42, 36, 0.07), rgba(178, 42, 36, 0.012) 62%);
+  box-shadow: 0 8px 22px rgba(34, 31, 26, 0.07);
+}
+
+.focus-qrow--lead:hover {
+  background: linear-gradient(160deg, rgba(178, 42, 36, 0.09), rgba(178, 42, 36, 0.02) 62%);
+}
+
+.focus-qrow__lead-why {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 13px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--text-2);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.focus-qrow__lead-tag {
+  justify-self: start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.focus-qrow__lead-reason strong {
+  color: var(--text);
+}
+
+.focus-qrow__lead-next {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: #2E7D5B;
+  font-weight: 700;
+}
+
+.focus-qrow__lead-next::before {
+  content: '\2192';
+  font-weight: 800;
+}
+
 .focus-qmore {
   margin-top: 12px;
 }
@@ -13632,16 +13542,6 @@ body.profile-modal-open {
 
   .focus-method {
     width: 100%;
-  }
-
-  .focus-action__metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: 16px;
-  }
-
-  .focus-action__metrics>div:nth-child(3) {
-    padding-left: 0;
-    border-left: none;
   }
 }
 
@@ -13669,7 +13569,8 @@ body.profile-modal-open {
       "who action"
       "urgency performance"
       "delta visit"
-      "reason reason";
+      "reason reason"
+      "lead lead";
     gap: 12px 18px;
     margin-bottom: 12px;
     padding: 16px;
@@ -13685,6 +13586,7 @@ body.profile-modal-open {
   .focus-qrow__fix { grid-area: reason; }
   .focus-qrow__visit { grid-area: visit; }
   .focus-qrow__action { grid-area: action; }
+  .focus-qrow__lead-why { grid-area: lead; }
 
   .focus-qrow__action button {
     width: auto;
@@ -13692,29 +13594,9 @@ body.profile-modal-open {
 }
 
 @media (max-width: 640px) {
-  .focus-action__head,
   .focus-queue__heading {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .focus-action__cta {
-    width: 100%;
-  }
-
-  .focus-action__metrics {
-    grid-template-columns: 1fr;
-  }
-
-  .focus-action__metrics>div,
-  .focus-action__metrics>div:nth-child(3) {
-    padding: 10px 0;
-    border-top: 1px solid var(--card-border);
-    border-left: none;
-  }
-
-  .focus-action__metrics>div:first-child {
-    border-top: none;
   }
 
   .focus-queue__summary {
@@ -13744,7 +13626,8 @@ body.profile-modal-open {
       "delta"
       "reason"
       "visit"
-      "action";
+      "action"
+      "lead";
   }
 
   .focus-qrow__action button {
