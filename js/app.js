@@ -505,51 +505,6 @@
     return '<span class="kpi__delta ' + cls + '">' + arrow + ' ' + display + ' ' + ref + '</span>';
   }
 
-  function kpiGapText(val, gapMetric) {
-    if (!gapMetric) return '';
-    var r = Math.round(val);
-    var gap, next;
-    if (gapMetric === 'nps') {
-      if (val < 45) { gap = 45 - r; next = 'Watch'; }
-      else if (val < 55) { gap = 55 - r; next = 'On Target'; }
-      else if (val <= 60) { gap = 61 - r; next = 'Exceeding'; }
-      else return '';
-      return gap + ' pts from ' + next;
-    }
-    if (gapMetric === 'cei') {
-      if (val < 25) { gap = 25 - r; next = 'Below Average'; }
-      else if (val < 50) { gap = 50 - r; next = 'Above Average'; }
-      else if (val < 75) { gap = 75 - r; next = 'Top Performance'; }
-      else return '';
-      return gap + ' pts from ' + next;
-    }
-    if (gapMetric === 'acei') {
-      if (val < 60) { gap = 60 - r; next = 'Approaching'; }
-      else if (val < 75) { gap = 75 - r; next = 'Meeting'; }
-      else if (val < 90) { gap = 90 - r; next = 'Exceeding'; }
-      else return '';
-      return gap + ' pts from ' + next;
-    }
-    if (gapMetric === 'pct90') {
-      if (val < 90) return (90 - r) + '% below target';
-      return '';
-    }
-    if (gapMetric === 'ts') {
-      if (val < 80) return (80 - r) + '% below target';
-      return '';
-    }
-    if (gapMetric === 'o5') {
-      var disp = parseFloat(val.toFixed(1));
-      if (disp > 1) return '+' + (disp - 1).toFixed(1) + '% above target';
-      return '';
-    }
-    if (gapMetric === 'at') {
-      if (val > G.BENCHMARKS.at) return '+' + Math.round(val - G.BENCHMARKS.at) + 's over target';
-      return '';
-    }
-    return '';
-  }
-
   // ========== KPI VALUE FIT ==========
   // Long values (e.g. "2,129,172" on Total Drinks) overflow the card at the
   // stylesheet font size. Shrink each value just enough to fit its card,
@@ -618,7 +573,6 @@
           + '<div class="kpi__title">' + metric.title + '</div>'
           + '<div class="kpi__meta">'
           + '<span class="kpi__meta-text">' + metric.meta + '</span>'
-          + '<span class="kpi__gap">&nbsp;</span>'
           + '</div>'
           + '</article>';
       }).join('');
@@ -665,7 +619,6 @@
         title: config.title,
         meta: config.meta,
         delta: kpiDeltaHtml(config.value, prior, config.priorKey, config.invert, config.deltaFormat),
-        gap: kpiGapText(config.value, config.gapMetric),
         tone: status.tone,
         status: status.status,
         primary: !!config.primary
@@ -686,7 +639,7 @@
     var atCard = at === null
       ? {
         value: '—', eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 2:00.',
-        delta: '', gap: '', tone: 'kpi-muted', status: 'No Data', primary: false
+        delta: '', tone: 'kpi-muted', status: 'No Data', primary: false
       }
       : buildMetricCard({
         value: at,
@@ -695,7 +648,6 @@
         title: 'Avg Wait Time',
         meta: 'Target: ≤ 2:00.',
         priorKey: 'at',
-        gapMetric: 'at',
         deltaFormat: G.formatSecs,
         invert: true,
         good: G.BENCHMARKS.at,
@@ -717,7 +669,6 @@
         title: 'NPS (Drink & Meal)',
         meta: 'Target: 55',
         priorKey: 'n',
-        gapMetric: 'nps',
         bands: [
           { test: function (val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
           { test: function (val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
@@ -738,7 +689,6 @@
         title: 'Benchmark Score',
         meta: 'vs company benchmark.',
         priorKey: 'ac',
-        gapMetric: 'acei',
         good: 75,
         warn: 60,
         labels: { good: 'On Target', warn: 'Near', bad: 'Below' },
@@ -753,7 +703,6 @@
         title: 'Peer Score',
         meta: 'vs bakery peer set.',
         priorKey: 'c',
-        gapMetric: 'cei',
         good: 62.5,
         warn: 37.5,
         labels: { good: 'Leading', warn: 'Mid-Pack', bad: 'Lagging' },
@@ -770,7 +719,6 @@
         title: 'Drink Quality',
         meta: 'Target: 90%.',
         priorKey: 'dr',
-        gapMetric: 'pct90',
         good: 90,
         warn: 80,
         bands: [
@@ -789,7 +737,6 @@
         title: 'Efficiency',
         meta: 'Target: 90%.',
         priorKey: 'ef',
-        gapMetric: 'pct90',
         good: 90,
         warn: 80,
         bands: [
@@ -808,7 +755,6 @@
         title: 'Friendliness',
         meta: 'Target: 90%.',
         priorKey: 'fr',
-        gapMetric: 'pct90',
         good: 90,
         warn: 80,
         bands: [
@@ -827,7 +773,6 @@
         title: 'Coffee Efficiency',
         meta: 'Target: 80% < 2 min.',
         priorKey: 'ts',
-        gapMetric: 'ts',
         good: 80,
         warn: 70,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' },
@@ -846,7 +791,6 @@
         title: 'Orders >5 Min',
         meta: 'Target: < 1%.',
         priorKey: 'o5',
-        gapMetric: 'o5',
         bands: [
           { test: function (v) { return v < 0.5; }, tone: 'kpi-green', status: 'Exceeding' },
           { test: function (v) { return v <= 1.0; }, tone: 'kpi-green', status: 'On Target' },
@@ -871,7 +815,6 @@
         + (metric.delta ? metric.delta : '')
         + '<div class="kpi__meta">'
         + '<span class="kpi__meta-text">' + metric.meta + '</span>'
-        + '<span class="kpi__gap">' + (metric.gap ? metric.gap : '&nbsp;') + '</span>'
         + '</div>'
         + '</article>';
     }).join('');
