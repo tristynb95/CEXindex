@@ -1433,14 +1433,6 @@ h4 {
   margin-left: 1px;
 }
 
-.kpi__gap {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted-l);
-  font-size: 0.63rem;
-  font-variant-numeric: tabular-nums;
-}
-
 @media (min-width: 1280px) {
   .dashboard-workspace[data-sidebar-collapsed="true"] .kpi-row {
     grid-template-columns: repeat(8, minmax(0, 1fr));
