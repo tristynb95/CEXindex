@@ -866,6 +866,23 @@ window.GAILS.openFocusDetail = function (name) {
     scoreSummary += ' A previous completed month is not available for comparison.';
   }
 
+  // Four simple stat cards give an at-a-glance read before the fuller
+  // narrative summary below.
+  h += '<div class="focus-quickstats" aria-label="Quick stats">' +
+    '<div class="focus-quickstat"><span class="focus-quickstat__label">Current score</span>' +
+    '<strong class="focus-quickstat__value">' + (score !== null ? score : '—') + '</strong>' +
+    '<span class="focus-quickstat__sub">' + esc(band) + '</span></div>' +
+    '<div class="focus-quickstat"><span class="focus-quickstat__label">Time in focus</span>' +
+    '<strong class="focus-quickstat__value">' + row.focusStreak + '</strong>' +
+    '<span class="focus-quickstat__sub">' + (row.focusStreak === 1 ? 'month running' : 'months running') + '</span></div>' +
+    '<div class="focus-quickstat"><span class="focus-quickstat__label">Biggest opportunity</span>' +
+    '<strong class="focus-quickstat__value">' + (firstDriver ? esc(firstDriver.label) : 'No data') + '</strong>' +
+    '<span class="focus-quickstat__sub">' + (firstDriver ? esc(_driverGapText(firstDriver)) : '') + '</span></div>' +
+    '<div class="focus-quickstat"><span class="focus-quickstat__label">Last visit</span>' +
+    '<strong class="focus-quickstat__value">' + (row.lastVisit ? esc(_formatVisitDate(row.lastVisit)) : 'Never') + '</strong>' +
+    '<span class="focus-quickstat__sub">' + esc(_visitText(row)) + '</span></div>' +
+    '</div>';
+
   // One answer-first summary replaces the former six KPI cards and four
   // overlapping reason cards. It says what is happening and where to start.
   h += '<section class="focus-review-summary" aria-label="Bakery support summary">' +

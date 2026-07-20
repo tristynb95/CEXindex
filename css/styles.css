@@ -12663,6 +12663,51 @@ body.profile-modal-open {
   gap: 8px;
 }
 
+.focus-quickstats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin: 2px 0 16px;
+}
+
+.focus-quickstat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--card-border-h);
+  border-radius: 12px;
+  background: var(--card-2);
+}
+
+.focus-quickstat__label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-l);
+}
+
+.focus-quickstat__value {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 1.14rem;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.focus-quickstat__sub {
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .focus-review-summary {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(250px, 0.9fr);
@@ -12982,6 +13027,10 @@ body.profile-modal-open {
     grid-template-columns: 1fr 1fr;
   }
 
+  .focus-quickstats {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .focus-detail__headright {
     flex-wrap: wrap;
   }
@@ -12997,6 +13046,10 @@ body.profile-modal-open {
 
 @media (max-width: 420px) {
   .focus-reasons {
+    grid-template-columns: 1fr;
+  }
+
+  .focus-quickstats {
     grid-template-columns: 1fr;
   }
 }
