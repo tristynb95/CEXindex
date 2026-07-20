@@ -131,7 +131,7 @@ test('shades focus-map territories by focus density (share of area in focus), no
 
 test('provides readable labels and a card layout on narrow screens', () => {
   assert.match(styles, /\.focus-qrow__who small[\s\S]*?font-size: 0\.75rem/);
-  assert.match(styles, /\.focus-qrow--lead\s*\{[\s\S]*?border-radius: 12px/);
+  assert.match(styles, /\.focus-qrow--lead\s*\{[\s\S]*?border-radius: 0 12px 0 12px/);
   assert.doesNotMatch(styles, /\.focus-qrow--lead\s*\{[\s\S]*?inset[^;]*var\(--accent\)/);
   assert.match(styles, /#targetHubQueue\s*\{[\s\S]*?margin-bottom: clamp\(30px, 3vw, 40px\)/);
   assert.match(styles, /\.focus-secondary \+ \.focus-secondary\s*\{[\s\S]*?margin-top: 20px/);
@@ -140,9 +140,18 @@ test('provides readable labels and a card layout on narrow screens', () => {
 });
 
 test('simplifies the bakery review and uses benchmark-based RAG analysis', () => {
-  assert.match(targets, /class="focus-review-summary"/);
+  assert.match(targets, /class="focus-review-summary focus-at-a-glance"/);
+  assert.doesNotMatch(html, /id="focusDetailSummary"/);
+  assert.match(targets, /class="focus-month-table-heading" data-table-fullscreen-anchor="true"/);
   assert.match(targets, /At a glance/);
-  assert.match(targets, /Start here/);
+  assert.match(targets, /if \(row\.tier === 'critical'\) return 'High Priority'/);
+  assert.match(targets, /if \(row\.tier === 'high'\) return 'Medium Priority'/);
+  assert.match(targets, /return 'Monitor'/);
+  assert.doesNotMatch(targets, /support need/);
+  assert.doesNotMatch(targets, /Start here/);
+  assert.match(targets, /class="focus-review-summary__facts"/);
+  assert.match(targets, /<small>Focus run<\/small>/);
+  assert.match(targets, /<small>Routine visit<\/small>/);
   assert.match(targets, /Bar colour shows target status · length shows progress to target/);
   assert.match(targets, /Math\.round\(d\.attainment\)/);
   assert.match(targets, /focus-driver__movement-icon--/);
@@ -156,6 +165,33 @@ test('simplifies the bakery review and uses benchmark-based RAG analysis', () =>
   assert.match(styles, /\.focus-review-summary/);
   assert.match(styles, /\.focus-driver__movement-icon--up/);
   assert.match(styles, /\.focus-driver__movement-icon--down/);
+  assert.match(styles, /#focusDetailModal \.drill-modal-title \{[\s\S]*?font-size: 1\.45rem/);
+  assert.match(styles, /#focusDetailBody \{[\s\S]*?padding: 22px 24px 24px;[\s\S]*?gap: 22px/);
+  assert.match(styles, /\.focus-review-summary \{[\s\S]*?background: var\(--card\)/);
+  assert.match(styles, /\.focus-review-summary__facts \{[\s\S]*?grid-template-columns: repeat\(5/);
+  assert.doesNotMatch(styles, /\.focus-review-summary__action/);
+  assert.match(styles, /#focusDetailModal \.focus-detail-section--trend > \.focus-at-a-glance \{[\s\S]*?margin-bottom: 22px/);
+  assert.doesNotMatch(targets, /focus-quickstats|focus-quickstat/);
+  assert.match(targets, /class="focus-detail-section focus-detail-section--trend"/);
+  assert.match(targets, /class="focus-detail-section focus-detail-section--trend">' \+\s*summaryHtml \+\s*'<h4 class="focus-section-title">Score trend vs company average/);
+  assert.match(targets, /class="focus-detail-section focus-detail-section--drivers"/);
+  assert.match(targets, /class="focus-detail-section focus-detail-section--actions"/);
+  assert.match(targets, /class="focus-detail-section focus-detail-section--history"/);
+  assert.match(styles, /#focusDetailModal \.focus-detail-section \{[\s\S]*?gap: 8px/);
+  assert.ok(targets.indexOf('At a glance') < targets.indexOf('Score trend vs company average'));
+  assert.ok(targets.indexOf('Score trend vs company average') < targets.indexOf('Where to focus first'));
+  assert.ok(targets.indexOf('Where to focus first') < targets.indexOf('Suggested next steps'));
+  assert.ok(targets.indexOf('Suggested next steps') < targets.indexOf('Historical results'));
+  assert.match(targets, /<details class="focus-history-disclosure">/);
+  assert.match(targets, /<strong>Historical results<\/strong>/);
+  assert.match(styles, /\.focus-actions \{[\s\S]*?gap: 0;[\s\S]*?border: 1px solid var\(--card-border\)/);
+  assert.match(styles, /\.focus-history-disclosure \{[\s\S]*?background: var\(--card\)/);
+  assert.match(styles, /\.focus-history-disclosure > summary \{/);
+  assert.match(styles, /\.focus-history-disclosure__body \{[\s\S]*?background: var\(--card\)/);
+  assert.match(styles, /\.focus-detail__visitbtn \{[\s\S]*?background: var\(--card\);[\s\S]*?color: var\(--text-2\)/);
+  assert.match(styles, /\.focus-detail__visitbtn:hover \{[\s\S]*?background: var\(--accent-light\);[\s\S]*?color: var\(--accent\)/);
+  assert.match(styles, /\.focus-chart-wrap \{[\s\S]*?height: 195px/);
+  assert.doesNotMatch(styles, /\.focus-quickstats?\b|\.focus-quickstat__/);
   assert.doesNotMatch(styles, /\.focus-driver__rag--red/);
 });
 
@@ -298,9 +334,15 @@ test('renders a plain-language action card and accurate filtered count', () => {
 
   context.GAILS.openFocusDetail('Henley');
   const review = getElement('focusDetailBody').innerHTML;
-  assert.match(review, /class="focus-review-summary"/);
-  assert.match(review, /(?:support need|Monitor this bakery)/);
-  assert.match(review, /Start here/);
+  assert.match(review, /class="focus-review-summary focus-at-a-glance"/);
+  assert.match(review, /At a glance/);
+  assert.match(review, /(?:High Priority|Medium Priority|Monitor)/);
+  assert.doesNotMatch(review, /Start here|Focus history:|Current run:/);
+  assert.doesNotMatch(review, /No routine visit has been logged for this bakery yet/);
+  assert.match(review, /<small>Score<\/small>/);
+  assert.match(review, /<small>Latest change<\/small>/);
+  assert.match(review, /<small>Focus run<\/small>/);
+  assert.match(review, /<small>Routine visit<\/small>/);
   assert.match(review, /Target 2:00/);
   assert.match(review, /Coffee Efficiency/);
   assert.match(review, /Average Wait Time/);
@@ -315,4 +357,7 @@ test('renders a plain-language action card and accurate filtered count', () => {
   assert.match(review, /style="color:var\(--red\)"/);
   assert.doesNotMatch(review, /target-stat-card/);
   assert.doesNotMatch(review, /focus-reason/);
+  assert.doesNotMatch(review, /focus-quickstat/);
+  assert.ok(review.indexOf('At a glance') < review.indexOf('Score trend vs company average'));
+  assert.ok(review.indexOf('Where to focus first') < review.indexOf('Suggested next steps'));
 });

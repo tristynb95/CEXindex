@@ -163,7 +163,7 @@ window.GAILS = window.GAILS || {};
     ];
     return '<div class="drill-summary">' + cards.map(function (c) {
       return '<div class="drill-card"><div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
-        '<div class="drill-card__value" style="font-size:1.3rem">' + escapeHtml(c.value) + '</div></div>';
+        '<div class="drill-card__value">' + escapeHtml(c.value) + '</div></div>';
     }).join('') + '</div>';
   }
 
@@ -235,7 +235,7 @@ window.GAILS = window.GAILS || {};
     return '<div class="drill-summary">' + cards.map(function (c) {
       var colorStyle = c.color ? ' color:' + c.color + ';' : '';
       return '<div class="drill-card"><div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
-        '<div class="drill-card__value" style="font-size:1.3rem;' + colorStyle + '">' + escapeHtml(c.value) + '</div></div>';
+        '<div class="drill-card__value" style="' + colorStyle + '">' + escapeHtml(c.value) + '</div></div>';
     }).join('') + '</div>';
   }
 
@@ -371,7 +371,7 @@ window.GAILS = window.GAILS || {};
     return '<div class="drill-summary">' + cards.map(function (c) {
       var colorStyle = c.color ? ' color:' + c.color + ';' : '';
       return '<div class="drill-card"><div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
-        '<div class="drill-card__value" style="font-size:1.3rem;' + colorStyle + '">' + escapeHtml(c.value) + '</div></div>';
+        '<div class="drill-card__value" style="' + colorStyle + '">' + escapeHtml(c.value) + '</div></div>';
     }).join('') + '</div>';
   }
 
@@ -532,7 +532,8 @@ window.GAILS = window.GAILS || {};
 
     actionsEl.innerHTML = navigationHtml +
       '<button type="button" class="drill-close-btn visit-report-print-btn" onclick="window.print()">&#128438; Print</button>' +
-      '<button class="drill-close-btn" onclick="GAILS.closeVisitReport()">&#10005; Close</button>';
+      '<button type="button" class="modal-close-btn" onclick="GAILS.closeVisitReport()"' +
+      ' aria-label="Close visit report" title="Close">&#10005;</button>';
   }
 
   window.GAILS.openAdjacentVisit = function (direction) {
@@ -1242,17 +1243,17 @@ window.GAILS = window.GAILS || {};
         { label: 'Barista', value: record.mod || '—' }
       ];
 
-      var statsHtml = '<div class="drill-summary" style="margin-bottom:20px;">' + stats.map(function (c) {
+      var statsHtml = '<div class="drill-summary">' + stats.map(function (c) {
         return '<div class="drill-card">' +
           '<div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
-          '<div class="drill-card__value" style="font-size:1.05rem;">' + escapeHtml(c.value) + '</div></div>';
+          '<div class="drill-card__value">' + escapeHtml(c.value) + '</div></div>';
       }).join('') + '</div>';
 
       bodyEl.innerHTML = statsHtml +
         '<div class="visit-report-section-wrapper">' +
-        '<div class="visit-report-section" style="margin-top:20px; background:rgba(34, 31, 26,0.01); border:1px solid var(--card-border); border-radius:12px; padding:20px;">' +
-        '<h4 style="margin-top:0; margin-bottom:10px; font-size:0.95rem; font-weight:700; color:var(--accent);">Visit Comments</h4>' +
-        '<p class="visit-report-comment" style="font-size:1rem; line-height:1.6; color:var(--text-2); white-space:pre-wrap; margin:0;">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
+        '<div class="visit-report-section visit-report-section--comments">' +
+        '<h4>Visit Comments</h4>' +
+        '<p class="visit-report-comment visit-report-comment--primary">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
         '</div>' +
         '</div>';
 

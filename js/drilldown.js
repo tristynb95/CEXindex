@@ -284,7 +284,7 @@ window.GAILS = window.GAILS || {};
 
     body.innerHTML = content;
     lockBackgroundScroll();
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
     resetDrillScroll();
     G.makeSortable(body);
   };

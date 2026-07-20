@@ -19,7 +19,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=20260720-focus-glance-8">
 </head>
 
 <body>
@@ -939,19 +939,20 @@
                       <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp;
                       <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp;
                       <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span></p>
-                    <button type="button" class="map-fullscreen-btn" data-map-fullscreen="network" title="Full screen">
-                      <svg class="map-fullscreen-btn__icon map-fullscreen-btn__expand" viewBox="0 0 20 20"
+                    <button type="button" class="fullscreen-toggle-btn map-fullscreen-btn" data-map-fullscreen="network"
+                      aria-label="Open full screen map view" aria-pressed="false" title="Open full screen">
+                      <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__expand" viewBox="0 0 20 20"
                         aria-hidden="true">
                         <path d="M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12" fill="none" stroke="currentColor"
                           stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
                       </svg>
-                      <svg class="map-fullscreen-btn__icon map-fullscreen-btn__collapse" viewBox="0 0 20 20"
+                      <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__collapse" viewBox="0 0 20 20"
                         aria-hidden="true">
                         <path d="M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4" fill="none" stroke="currentColor"
                           stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
                       </svg>
-                      <span class="map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open full
-                        screen</span><span class="map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit full
+                      <span class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open full
+                        screen</span><span class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit full
                         screen</span>
                     </button>
                   </div>
@@ -1165,20 +1166,20 @@
                               data-target-map-visit="unvisited">Unvisited</button>
                           </div>
                         </div>
-                        <button type="button" class="map-fullscreen-btn" data-map-fullscreen="target"
-                          title="Full screen">
-                          <svg class="map-fullscreen-btn__icon map-fullscreen-btn__expand" viewBox="0 0 20 20"
+                        <button type="button" class="fullscreen-toggle-btn map-fullscreen-btn" data-map-fullscreen="target"
+                          aria-label="Open full screen map view" aria-pressed="false" title="Open full screen">
+                          <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__expand" viewBox="0 0 20 20"
                             aria-hidden="true">
                             <path d="M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12" fill="none" stroke="currentColor"
                               stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
                           </svg>
-                          <svg class="map-fullscreen-btn__icon map-fullscreen-btn__collapse" viewBox="0 0 20 20"
+                          <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__collapse" viewBox="0 0 20 20"
                             aria-hidden="true">
                             <path d="M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4" fill="none" stroke="currentColor"
                               stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
                           </svg>
-                          <span class="map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open full
-                            screen</span><span class="map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit
+                          <span class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open full
+                            screen</span><span class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit
                             full screen</span>
                         </button>
                       </div>
@@ -1581,7 +1582,8 @@
               <button type="button" class="focus-detail-nav__btn" id="focusDetailNext"
                 onclick="GAILS.stepFocusDetail(1)" aria-label="Next bakery in the queue">&#8250;</button>
             </div>
-            <button class="drill-close-btn" onclick="GAILS.closeFocusDetail()">&#10005; Close</button>
+            <button type="button" class="modal-close-btn" onclick="GAILS.closeFocusDetail()"
+              aria-label="Close focus bakery details" title="Close">&#10005;</button>
           </div>
         </div>
         <div id="focusDetailBody" class="drill-modal-body"></div>
@@ -1590,13 +1592,14 @@
 
     <div id="drillModal" class="drill-modal" style="display:none;"
       onclick="if(event.target===this)GAILS.closeDrillDown()">
-      <div class="drillInner">
+      <div class="drillInner overview-drill-inner">
         <div id="drillHeader">
           <div>
             <h3 id="drillTitle"></h3>
             <p id="drillSubtitle"></p>
           </div>
-          <button class="drill-close-btn" onclick="GAILS.closeDrillDown()">&#10005; Close</button>
+          <button type="button" class="modal-close-btn" onclick="GAILS.closeDrillDown()"
+            aria-label="Close report details" title="Close">&#10005;</button>
         </div>
         <div id="drillBody"></div>
       </div>
@@ -1619,7 +1622,8 @@
             </div>
             <button type="button" class="drill-close-btn visit-report-print-btn" onclick="window.print()">&#128438;
               Print</button>
-            <button class="drill-close-btn" onclick="GAILS.closeVisitReport()">&#10005; Close</button>
+            <button type="button" class="modal-close-btn" onclick="GAILS.closeVisitReport()"
+              aria-label="Close visit report" title="Close">&#10005;</button>
           </div>
         </div>
         <div id="visitReportBody" class="drill-modal-body visit-report-body"></div>
@@ -1636,7 +1640,8 @@
             <p class="form-modal__subtitle">Record a check-in or NBO visit, and manage this site's follow-up actions.
             </p>
           </div>
-          <button class="drill-close-btn" onclick="GAILS.closeAddSiteVisitModal()">&#10005; Close</button>
+          <button type="button" class="modal-close-btn" onclick="GAILS.closeAddSiteVisitModal()"
+            aria-label="Close log visit form" title="Close">&#10005;</button>
         </div>
 
         <form id="addSiteVisitForm" class="form-modal__form">
@@ -1731,7 +1736,8 @@
             <h3 id="addFollowUpTitle" class="form-modal__title">Add follow-up</h3>
             <p class="form-modal__subtitle">A task to complete at a site before the next visit.</p>
           </div>
-          <button class="drill-close-btn" onclick="GAILS.closeFollowUpModal()">&#10005; Close</button>
+          <button type="button" class="modal-close-btn" onclick="GAILS.closeFollowUpModal()"
+            aria-label="Close follow-up form" title="Close">&#10005;</button>
         </div>
 
         <form id="addFollowUpForm" class="form-modal__form">
@@ -1788,7 +1794,8 @@
             <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">This action is permanent and cannot be
               undone.</p>
           </div>
-          <button class="drill-close-btn" onclick="GAILS.closeDeleteConfirmModal()">&#10005;</button>
+          <button type="button" class="modal-close-btn" onclick="GAILS.closeDeleteConfirmModal()"
+            aria-label="Close delete confirmation" title="Close">&#10005;</button>
         </div>
 
         <div style="padding: 20px 30px 25px; display: flex; flex-direction: column; gap: 15px;">
@@ -1822,8 +1829,8 @@
             <h3 id="unmappedSitesTitle">Sites Not Mapped</h3>
             <p id="unmappedSitesSubtitle">These bakeries do not currently have map coordinates.</p>
           </div>
-          <button type="button" class="map-unmapped-panel__close"
-            onclick="GAILS.closeUnmappedSitesModal()">&#10005;</button>
+          <button type="button" class="modal-close-btn" onclick="GAILS.closeUnmappedSitesModal()"
+            aria-label="Close unmapped sites" title="Close">&#10005;</button>
         </div>
         <div class="map-unmapped-panel__body">
           <div id="unmappedSitesSummary" class="target-stat-grid"></div>
@@ -1864,7 +1871,7 @@
   <script src="js/drilldown.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/support-score.js"></script>
-  <script src="js/targets.js"></script>
+  <script src="js/targets.js?v=20260720-focus-priority-11"></script>
   <script src="js/cqv-criticals.js"></script>
   <script src="js/cqv-shared.js"></script>
   <script src="js/nbo-shared.js"></script>

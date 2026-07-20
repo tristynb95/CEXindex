@@ -251,7 +251,9 @@ function _countFocusStreak(hist, bf, highBand, lowBand) {
 }
 
 function _priorityText(row) {
-  return _TIER_LABEL[row.tier] + (row.tier === 'watch' ? '' : ' priority');
+  if (row.tier === 'critical') return 'High Priority';
+  if (row.tier === 'high') return 'Medium Priority';
+  return 'Monitor';
 }
 
 function _trendText(row) {
@@ -853,60 +855,51 @@ window.GAILS.openFocusDetail = function (name) {
   var score = rec[cf] !== null && rec[cf] !== undefined && !isNaN(rec[cf]) ? rec[cf] : null;
   var scoreGap = score !== null ? Math.max(0, _hubState.escapeLine - score) : null;
   var drivers = _driverList(rec);
-  var firstDriver = drivers.length ? drivers[0] : null;
-  var supportHeading = row.tier === 'watch' ? 'Monitor this bakery' : _TIER_LABEL[row.tier] + ' support need';
-  var scoreSummary = score !== null
-    ? 'Performance is <strong>' + score + ' out of 100</strong> (' + esc(band) + ').'
-    : 'A performance score is not available.';
-  if (scoreGap !== null && scoreGap > 0) scoreSummary += ' It is <strong>' + scoreGap.toFixed(1) + ' points below</strong> the next band.';
+  var supportHeading = _priorityText(row);
+  var movementText = 'No comparison';
+  var movementClass = '';
   if (trend.prev && trend.ceiChange !== null && trend.ceiChange !== undefined && !isNaN(trend.ceiChange)) {
-    if (Math.round(trend.ceiChange * 10) === 0) scoreSummary += ' It is unchanged since last month.';
-    else scoreSummary += ' It is <strong>' + (trend.ceiChange < 0 ? 'down ' : 'up ') + Math.abs(trend.ceiChange).toFixed(1) + ' points</strong> since last month.';
-  } else {
-    scoreSummary += ' A previous completed month is not available for comparison.';
+    if (Math.round(trend.ceiChange * 10) === 0) movementText = 'No change';
+    else {
+      movementText = (trend.ceiChange < 0 ? '&darr; ' : '&uarr; ') + Math.abs(trend.ceiChange).toFixed(1) + ' pts';
+      movementClass = trend.ceiChange < 0 ? ' focus-review-summary__fact--down' : ' focus-review-summary__fact--up';
+    }
   }
 
-  // Four simple stat cards give an at-a-glance read before the fuller
-  // narrative summary below.
-  h += '<div class="focus-quickstats" aria-label="Quick stats">' +
-    '<div class="focus-quickstat"><span class="focus-quickstat__label">Current score</span>' +
-    '<strong class="focus-quickstat__value">' + (score !== null ? score : '—') + '</strong>' +
-    '<span class="focus-quickstat__sub">' + esc(band) + '</span></div>' +
-    '<div class="focus-quickstat"><span class="focus-quickstat__label">Time in focus</span>' +
-    '<strong class="focus-quickstat__value">' + row.focusStreak + '</strong>' +
-    '<span class="focus-quickstat__sub">' + (row.focusStreak === 1 ? 'month running' : 'months running') + '</span></div>' +
-    '<div class="focus-quickstat"><span class="focus-quickstat__label">Biggest opportunity</span>' +
-    '<strong class="focus-quickstat__value">' + (firstDriver ? esc(firstDriver.label) : 'No data') + '</strong>' +
-    '<span class="focus-quickstat__sub">' + (firstDriver ? esc(_driverGapText(firstDriver)) : '') + '</span></div>' +
-    '<div class="focus-quickstat"><span class="focus-quickstat__label">Last visit</span>' +
-    '<strong class="focus-quickstat__value">' + (row.lastVisit ? esc(_formatVisitDate(row.lastVisit)) : 'Never') + '</strong>' +
-    '<span class="focus-quickstat__sub">' + esc(_visitText(row)) + '</span></div>' +
-    '</div>';
-
-  // One answer-first summary replaces the former six KPI cards and four
-  // overlapping reason cards. It says what is happening and where to start.
-  h += '<section class="focus-review-summary" aria-label="Bakery support summary">' +
+  // Keep this summary deliberately terse. The detailed opportunity and target
+  // values already appear in the driver section below.
+  var summaryHtml = '<section class="focus-review-summary focus-at-a-glance" aria-label="Bakery support summary">' +
     '<div class="focus-review-summary__lead"><span class="focus-review-summary__eyebrow">At a glance</span>' +
-    '<h3>' + esc(supportHeading) + '</h3><p>' + scoreSummary + '</p></div>' +
-    (firstDriver
-      ? '<div class="focus-review-summary__action focus-review-summary__action--' + firstDriver.rag + '">' +
-      '<span class="focus-review-summary__eyebrow">Start here</span><strong>' + esc(firstDriver.label) + '</strong>' +
-      '<span>' + esc(_fmtDriverValue(firstDriver)) + ' · ' + esc(_driverGapText(firstDriver)) + '</span></div>'
-      : '') +
-    '<div class="focus-review-summary__context">' +
-    '<span><strong>Focus history:</strong> ' + row.focusMonths + ' of the latest ' + row.monthsWithData + ' completed months with data</span>' +
-    '<span><strong>Current run:</strong> ' + row.focusStreak + ' ' + (row.focusStreak === 1 ? 'month' : 'months') + '</span>' +
-    '<span><strong>Routine visit:</strong> ' + esc(_visitText(row)) + '</span>' +
+    '<h3>' + esc(supportHeading) + '</h3></div>' +
+    '<div class="focus-review-summary__facts">' +
+    '<span class="focus-review-summary__fact"><small>Score</small><strong>' + (score !== null ? score + ' / 100' : 'Not available') + '</strong></span>' +
+    '<span class="focus-review-summary__fact"><small>To next band</small><strong>' + (scoreGap !== null && scoreGap > 0 ? scoreGap.toFixed(1) + ' pts' : 'In band') + '</strong></span>' +
+    '<span class="focus-review-summary__fact' + movementClass + '"><small>Latest change</small><strong>' + movementText + '</strong></span>' +
+    '<span class="focus-review-summary__fact"><small>Focus run</small><strong>' + row.focusStreak + ' ' + (row.focusStreak === 1 ? 'month' : 'months') + '</strong></span>' +
+    '<span class="focus-review-summary__fact"><small>Routine visit</small><strong>' + esc(_visitText(row)) + '</strong></span>' +
     '</div></section>';
-
+  // Build the recommendations now, then place them immediately after the
+  // diagnostic section so the evidence leads naturally into the actions.
+  var actions = [];
+  drivers.slice(0, 2).forEach(function (d) { if (_DRIVER_ACTIONS[d.key]) actions.push(_DRIVER_ACTIONS[d.key]); });
+  if (trend.streak >= 3) actions.push('Score has dipped ' + trend.streak + ' months running — partner with the ops manager on a reset plan with a clear review date.');
+  if (!row.lastVisit) actions.push('No routine visit has ever been logged here — schedule one to verify what the data is showing on the ground.');
+  else if (!row.visitedInPeriod) actions.push('A routine visit is due — schedule one to verify what the data is showing on the ground.');
+  if (row.quickWin) actions.push('This bakery is within touching distance of graduating out of focus — small gains here pay off fastest.');
   // Trend chart
   if (FM.length >= 2) {
-    h += '<h4 class="focus-section-title">Score trend vs company average</h4><div class="focus-chart-wrap"><canvas id="focusDetailChart"></canvas></div>';
+    h += '<section class="focus-detail-section focus-detail-section--trend">' +
+      summaryHtml +
+      '<h4 class="focus-section-title">Score trend vs company average</h4>' +
+      '<div class="focus-chart-wrap"><canvas id="focusDetailChart"></canvas></div></section>';
+  } else {
+    h += summaryHtml;
   }
 
   // Driver diagnosis
   if (drivers.length) {
-    h += '<div class="focus-section-heading"><h4 class="focus-section-title">Where to improve first</h4><p>Bar colour shows target status · length shows progress to target</p></div><div class="focus-drivers">' +
+    h += '<section class="focus-detail-section focus-detail-section--drivers">' +
+      '<div class="focus-section-heading"><h4 class="focus-section-title">Where to focus first</h4><p>Bar colour shows target status · length shows progress to target</p></div><div class="focus-drivers">' +
       drivers.map(function (d) {
         var valStr = _fmtDriverValue(d);
         var benchStr = d.fmt === 'secs' ? G.formatSecs(d.bench) : d.fmt === 'pct' ? d.bench + '%' : '' + d.bench;
@@ -925,23 +918,25 @@ window.GAILS.openFocusDetail = function (name) {
           '<div class="focus-driver__bar" aria-label="' + Math.round(d.attainment) + '% of benchmark · ' + esc(_driverRagText(d.rag)) + '"><div class="focus-driver__fill" style="width:' + Math.max(2, Math.round(d.attainment)) + '%;background:' + barColor + '"></div></div>' +
           '<div class="focus-driver__sub"><span>' + esc(_driverGapText(d)) + '</span></div>' +
           '</div>';
-      }).join('') + '</div>';
+      }).join('') + '</div></section>';
   }
 
-  // Recommended actions
-  var actions = [];
-  drivers.slice(0, 2).forEach(function (d) { if (_DRIVER_ACTIONS[d.key]) actions.push(_DRIVER_ACTIONS[d.key]); });
-  if (trend.streak >= 3) actions.push('Score has dipped ' + trend.streak + ' months running — partner with the ops manager on a reset plan with a clear review date.');
-  if (!row.lastVisit) actions.push('No routine visit has ever been logged here — schedule one to verify what the data is showing on the ground.');
-  else if (!row.visitedInPeriod) actions.push('A routine visit is due — schedule one to verify what the data is showing on the ground.');
-  if (row.quickWin) actions.push('This bakery is within touching distance of graduating out of focus — small gains here pay off fastest.');
   if (actions.length) {
-    h += '<h4 class="focus-section-title">Suggested next steps</h4><ul class="focus-actions">' +
-      actions.map(function (a) { return '<li>' + a + '</li>'; }).join('') + '</ul>';
+    h += '<section class="focus-detail-section focus-detail-section--actions">' +
+      '<h4 class="focus-section-title">Suggested next steps</h4><ul class="focus-actions">' +
+      actions.map(function (a) { return '<li>' + a + '</li>'; }).join('') + '</ul></section>';
   }
 
-  // Month-by-month table
-  h += '<h4 class="focus-section-title">Month by month</h4><div class="table-wrap"><table class="focus-month-table"><thead><tr>' +
+  // Dense historical evidence stays available without dominating the default
+  // action view. Opening the disclosure retains the aligned full-screen tool.
+  h += '<section class="focus-detail-section focus-detail-section--history">' +
+    '<details class="focus-history-disclosure">' +
+    '<summary><span><strong>Historical results</strong><small>' + FM.length + ' months of scores and service metrics</small></span>' +
+    '<span class="focus-history-disclosure__chevron" aria-hidden="true">›</span></summary>' +
+    '<div class="focus-history-disclosure__body">' +
+    '<div class="focus-month-table-heading" data-table-fullscreen-anchor="true">' +
+    '<h4 class="focus-section-title">Month by month</h4></div>' +
+    '<div class="table-wrap"><table class="focus-month-table"><thead><tr>' +
     '<th>Month</th><th>' + (isAbsolute ? 'Benchmark' : 'Peer') + ' score (0–100)</th><th>Band</th><th>Drink + Meal NPS</th><th>Drink quality</th><th>Customer-rated efficiency</th><th>Friendliness</th><th>Within 2 minutes</th><th>Average drink wait</th><th>Responses</th>' +
     '</tr></thead><tbody>' +
     FM.map(function (m, i) {
@@ -959,15 +954,13 @@ window.GAILS.openFocusDetail = function (name) {
         '<td' + G.metricRagStyle('ts', r.ts) + '>' + (r.ts !== null && r.ts !== undefined ? r.ts + '%' : '—') + '</td>' +
         '<td' + G.metricRagStyle('at', r.at) + '>' + G.formatSecs(r.at) + '</td>' +
         '<td>' + (r.v !== null && r.v !== undefined ? r.v : '—') + '</td></tr>';
-    }).join('') + '</tbody></table></div>';
+    }).join('') + '</tbody></table></div></div></details></section>';
 
   // Visit link
   if (row.lastVisit) {
     var vd = new Date(row.lastVisit + 'T00:00:00');
     var vdStr = isNaN(vd.getTime()) ? row.lastVisit : vd.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     h += '<button type="button" class="focus-detail__visitbtn" data-visit-report="' + esc(name) + '">Open latest visit report — ' + esc(vdStr) + ' →</button>';
-  } else {
-    h += '<p class="focus-detail__novisit">No routine visit has been logged for this bakery yet.</p>';
   }
 
   body.innerHTML = h;
@@ -985,10 +978,10 @@ window.GAILS.openFocusDetail = function (name) {
     G.makeChart('focusDetailChart', {
       type: 'line', data: {
         labels: FM, datasets: [
-          { label: name, data: trend.hist.map(function (r) { return r && !r.noData && !r.incompletePeriod ? r[cf] : null; }), borderColor: bandColor, backgroundColor: 'rgba(178, 42, 36, 0.10)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5, spanGaps: false },
-          { label: 'Company average', data: allAvgByMonth, borderColor: 'rgba(146, 137, 120, 0.55)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2, borderDash: [6, 4] }
+          { label: name, data: trend.hist.map(function (r) { return r && !r.noData && !r.incompletePeriod ? r[cf] : null; }), borderColor: bandColor, backgroundColor: 'rgba(178, 42, 36, 0.10)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: false },
+          { label: 'Company average', data: allAvgByMonth, borderColor: 'rgba(146, 137, 120, 0.55)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 1.5, borderWidth: 1.75, borderDash: [6, 4] }
         ]
-      }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { min: 0, max: 100 }, x: { ticks: { font: { size: 10 } } } }, maintainAspectRatio: false }
+      }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, boxHeight: 10 } } }, scales: { y: { min: 0, max: 100, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } }, maintainAspectRatio: false }
     });
   }
 };
@@ -1221,7 +1214,7 @@ document.addEventListener('keydown', function (event) {
   // ---- Priority-mode area shading (focus map) ----------------------------
   // Territories are shaded by FOCUS DENSITY — the share of the area's bakeries
   // (focus and not) that are currently in focus — so the map shows which ops
-  // areas have the greatest concentration of support need. Blue = a small share
+  // areas have the greatest concentration of priority bakeries. Blue = a small share
   // in focus (healthy area), through green and amber, to red = a large share in
   // focus. This matches the network map's convention that red = worse.
   var DENSITY_BANDS = [

@@ -1035,10 +1035,22 @@
       });
     }
 
+    function updateFullscreenButton(panel) {
+      if (!panel) return;
+      var button = panel.querySelector('[data-map-fullscreen]');
+      if (!button) return;
+      var active = panel.classList.contains('is-fullscreen');
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      button.setAttribute('aria-label', active ? 'Exit full screen map view' : 'Open full screen map view');
+      button.setAttribute('title', active ? 'Exit full screen' : 'Open full screen');
+    }
+
     function enterFullscreen(panel) {
       mountFilters(panel.dataset.mapKey);
       panel.classList.add('is-fullscreen');
       document.body.classList.add('map-fullscreen-active');
+      updateFullscreenButton(panel);
       invalidate(panel.dataset.mapKey);
     }
     function exitFullscreen(panel) {
@@ -1047,6 +1059,7 @@
         document.body.classList.remove('map-fullscreen-active');
       }
       unmountFilters();
+      updateFullscreenButton(panel);
       invalidate(panel.dataset.mapKey);
     }
 
@@ -1054,6 +1067,7 @@
       var panelId = btn.dataset.mapFullscreen === 'network' ? 'networkMapPanel' : 'targetMapPanel';
       var panel = document.getElementById(panelId);
       if (!panel) return;
+      updateFullscreenButton(panel);
       btn.addEventListener('click', function () {
         if (panel.classList.contains('is-fullscreen')) {
           exitFullscreen(panel);

@@ -100,6 +100,8 @@ window.GAILS.makeSortable = function (container) {
 (function () {
   var SHELL_SELECTOR = '.table-fullscreen-shell';
   var HOST_SELECTOR = '.table-fullscreen-host, .table-wrap, .admin-table-wrap, .drill-table-wrap';
+  var EXPAND_ICON_PATH = 'M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12';
+  var RESTORE_ICON_PATH = 'M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4';
   var shellCounter = 0;
   var fallbackShell = null;
 
@@ -143,6 +145,11 @@ window.GAILS.makeSortable = function (container) {
     button.setAttribute('aria-pressed', active ? 'true' : 'false');
     button.setAttribute('aria-label', active ? 'Exit full screen table view' : 'Open full screen table view');
     button.setAttribute('title', active ? 'Exit full screen' : 'Open full screen');
+
+    var iconPath = button.querySelector('[data-fullscreen-icon-path]');
+    if (iconPath) {
+      iconPath.setAttribute('d', active ? RESTORE_ICON_PATH : EXPAND_ICON_PATH);
+    }
 
     var label = button.querySelector('[data-table-fullscreen-label]');
     if (label) {
@@ -288,17 +295,18 @@ window.GAILS.makeSortable = function (container) {
 
     var button = document.createElement('button');
     button.type = 'button';
-    button.className = 'table-fullscreen-btn';
+    button.className = 'fullscreen-toggle-btn table-fullscreen-btn';
     button.setAttribute('data-table-fullscreen-button', 'true');
     button.setAttribute('aria-controls', shell.id);
 
     var icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    icon.setAttribute('class', 'table-fullscreen-btn__icon');
+    icon.setAttribute('class', 'fullscreen-toggle-btn__icon table-fullscreen-btn__icon');
     icon.setAttribute('viewBox', '0 0 20 20');
     icon.setAttribute('aria-hidden', 'true');
 
     var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12');
+    path.setAttribute('d', EXPAND_ICON_PATH);
+    path.setAttribute('data-fullscreen-icon-path', 'true');
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke', 'currentColor');
     path.setAttribute('stroke-linecap', 'square');
@@ -307,7 +315,7 @@ window.GAILS.makeSortable = function (container) {
     icon.appendChild(path);
 
     var label = document.createElement('span');
-    label.className = 'table-fullscreen-btn__label';
+    label.className = 'fullscreen-toggle-btn__label table-fullscreen-btn__label';
     label.setAttribute('data-table-fullscreen-label', 'true');
     label.textContent = 'Open full screen';
 
