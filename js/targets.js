@@ -364,7 +364,9 @@ function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
     var trend = _computeBakeryTrend(rec.b, cf, FM);
     var recentTrend = _computeBakeryTrend(rec.b, cf, recentFM);
     var focusMonths = recentTrend.valid.filter(function (r) { return r[bf] === highBand || r[bf] === lowBand; }).length;
-    var focusStreak = _countFocusStreak(recentTrend.hist, bf, highBand, lowBand);
+    // Persistence scoring uses the six-month decision window, but the visible
+    // run should describe the bakery's full uninterrupted focus history.
+    var focusStreak = _countFocusStreak(trend.hist, bf, highBand, lowBand);
     var lastVisit = G.getLastVisitDate ? G.getLastVisitDate(rec.b) : null;
     var monthsSinceVisit = _monthsSinceVisit({ lastVisit: lastVisit });
     var visitedInPeriod = monthsSinceVisit !== null && monthsSinceVisit < _VISIT_DUE_MONTHS;
@@ -975,12 +977,27 @@ window.GAILS.openFocusDetail = function (name) {
       var recs = G.state.ALL.filter(function (r) { return r.m === m && !r.noData && !r.incompletePeriod && r[cf] !== null && r[cf] !== undefined && !isNaN(r[cf]); });
       return recs.length ? recs.reduce(function (a, r) { return a + r[cf]; }, 0) / recs.length : null;
     });
+    var trendDatasets = [
+      { label: name, data: trend.hist.map(function (r) { return r && !r.noData && !r.incompletePeriod ? r[cf] : null; }), borderColor: bandColor, backgroundColor: 'rgba(178, 42, 36, 0.10)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: false },
+      { label: 'Company average', data: allAvgByMonth, borderColor: 'rgba(146, 137, 120, 0.55)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 1.5, borderWidth: 1.75, borderDash: [6, 4] }
+    ];
+    if (isAbsolute) {
+      trendDatasets.push({
+        label: 'Exit focus threshold (' + _hubState.escapeLine + ')',
+        data: FM.map(function () { return _hubState.escapeLine; }),
+        borderColor: 'rgba(29, 158, 92, 0.82)',
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        borderWidth: 1.75,
+        borderDash: [7, 5]
+      });
+    }
     G.makeChart('focusDetailChart', {
       type: 'line', data: {
-        labels: FM, datasets: [
-          { label: name, data: trend.hist.map(function (r) { return r && !r.noData && !r.incompletePeriod ? r[cf] : null; }), borderColor: bandColor, backgroundColor: 'rgba(178, 42, 36, 0.10)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: false },
-          { label: 'Company average', data: allAvgByMonth, borderColor: 'rgba(146, 137, 120, 0.55)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 1.5, borderWidth: 1.75, borderDash: [6, 4] }
-        ]
+        labels: FM, datasets: trendDatasets
       }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, boxHeight: 10 } } }, scales: { y: { min: 0, max: 100, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } }, maintainAspectRatio: false }
     });
   }

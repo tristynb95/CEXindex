@@ -152,6 +152,11 @@ test('simplifies the bakery review and uses benchmark-based RAG analysis', () =>
   assert.match(targets, /class="focus-review-summary__facts"/);
   assert.match(targets, /<small>Focus run<\/small>/);
   assert.match(targets, /<small>Routine visit<\/small>/);
+  assert.match(targets, /var focusStreak = _countFocusStreak\(trend\.hist, bf, highBand, lowBand\)/);
+  assert.doesNotMatch(targets, /_countFocusStreak\(recentTrend\.hist/);
+  assert.match(targets, /if \(isAbsolute\) \{\s*trendDatasets\.push/);
+  assert.match(targets, /label: 'Exit focus threshold \(' \+ _hubState\.escapeLine \+ '\)'/);
+  assert.match(targets, /data: FM\.map\(function \(\) \{ return _hubState\.escapeLine; \}\)/);
   assert.match(targets, /Bar colour shows target status · length shows progress to target/);
   assert.match(targets, /Math\.round\(d\.attainment\)/);
   assert.match(targets, /focus-driver__movement-icon--/);
@@ -304,6 +309,11 @@ test('renders a plain-language action card and accurate filtered count', () => {
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(root, 'js', 'support-score.js'), 'utf8'), context);
   vm.runInContext(targets, context);
+
+  assert.equal(context._countFocusStreak(
+    Array.from({ length: 9 }, () => ({ cb: 'Low Performance' })),
+    'cb', 'Low Performance', 'Below Average'
+  ), 9);
 
   context._renderFocusHub(latest, latest, 'cb', 'c', 'Low Performance', 'Below Average', false);
 
