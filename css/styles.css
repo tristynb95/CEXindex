@@ -2675,6 +2675,63 @@ canvas {
   box-shadow: none;
 }
 
+/* Frozen identity pane: rank + bakery stay pinned while the metric columns
+   scroll. Opaque backgrounds match each surface (cream wrap, darker header)
+   so scrolled columns can never bleed through. */
+.league-table th:first-child,
+.league-table td:first-child {
+  position: sticky;
+  left: 0;
+  width: 48px;
+  min-width: 48px;
+  background: var(--bg-2);
+}
+
+.league-table th:nth-child(2),
+.league-table td:nth-child(2) {
+  position: sticky;
+  left: 48px;
+  background: var(--bg-2);
+  /* Elevation edge on the frozen pane's outer boundary */
+  box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
+}
+
+.league-table th:first-child,
+.league-table th:nth-child(2) {
+  background: var(--bg);
+  z-index: 3;
+}
+
+.league-table td:first-child,
+.league-table td:nth-child(2) {
+  z-index: 1;
+}
+
+.league-table tr:hover td:first-child,
+.league-table tr:hover td:nth-child(2) {
+  /* Opaque equivalent of the row-hover tint over the cream surface */
+  background: #F9F3ED;
+}
+
+/* Phones: keep only the rank column frozen */
+@media (max-width: 640px) {
+
+  .league-table th:nth-child(2),
+  .league-table td:nth-child(2) {
+    position: static;
+    box-shadow: none;
+  }
+
+  .league-table th:first-child,
+  .league-table td:first-child {
+    box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
+  }
+
+  .league-table th:first-child {
+    z-index: 3;
+  }
+}
+
 .table-wrap--panel {
   max-height: min(46vh, 460px);
   overflow-y: auto;
@@ -5396,37 +5453,84 @@ body.table-fullscreen-lock {
 .drill-table-wrap {
   border: 1px solid var(--card-border-h);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.55);
+  background: #FFFFFF;
   overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* Slimmer scrollbars, inset from the rounded corners so they never collide */
+.drill-table-wrap::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.drill-table-wrap::-webkit-scrollbar-track {
+  margin: 10px;
 }
 
 .drill-table {
   width: max(100%, 1320px);
 }
 
+/* Frozen identity pane: rank + bakery stay pinned while metrics scroll.
+   Sticky cells need OPAQUE surfaces — `background: inherit` resolves to
+   transparent and lets scrolled columns bleed through. */
 .drill-table th:first-child,
 .drill-table td:first-child {
   position: sticky;
   left: 0;
-  background: inherit;
-  box-shadow: 10px 0 18px rgba(255, 255, 255, 0.24);
+  width: 48px;
+  min-width: 48px;
+  background: #FFFFFF;
 }
 
-.drill-table th:first-child {
+.drill-table th:nth-child(2),
+.drill-table td:nth-child(2) {
+  position: sticky;
+  left: 48px;
+  min-width: 220px;
+  background: #FFFFFF;
+  /* The elevation edge sits on the frozen pane's outer boundary */
+  box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
+}
+
+.drill-table th:first-child,
+.drill-table th:nth-child(2) {
+  background: var(--bg);
   z-index: 3;
 }
 
-#drillBody .drill-table th:first-child {
+#drillBody .drill-table th:first-child,
+#drillBody .drill-table th:nth-child(2) {
   z-index: 4;
 }
 
-.drill-table td:first-child {
+.drill-table td:first-child,
+.drill-table td:nth-child(2) {
   z-index: 1;
 }
 
-.drill-table td:nth-child(2),
-.drill-table th:nth-child(2) {
-  min-width: 220px;
+.drill-table tr:hover td:first-child,
+.drill-table tr:hover td:nth-child(2) {
+  /* Opaque equivalent of the translucent row-hover tint */
+  background: #FDF9F9;
+}
+
+/* Phones: one frozen column is plenty — release the bakery column and
+   return the pane edge to the rank column */
+@media (max-width: 640px) {
+
+  .drill-table th:nth-child(2),
+  .drill-table td:nth-child(2) {
+    position: static;
+    min-width: 170px;
+    box-shadow: none;
+  }
+
+  .drill-table th:first-child,
+  .drill-table td:first-child {
+    box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
+  }
 }
 
 .drill-table td:nth-child(3),
@@ -14909,6 +15013,10 @@ summary:focus-visible,
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(77, 70, 60, 0.42);
   background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Respect reduced-motion preferences across every animation and transition */
