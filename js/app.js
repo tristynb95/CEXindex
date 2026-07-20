@@ -13,7 +13,7 @@
   var sectionPageTitle = document.getElementById('sectionPageTitle');
   var compactDashboardSidebarMedia = window.matchMedia('(max-width: 980px)');
   var desktopDashboardSidebarCollapsed = false;
-  var _networkMapMetric = 'relative';
+  var _networkMapMetric = 'absolute';
   var dashboardTabLabels = {
     overview: 'Overview',
     trends: 'Trends',
@@ -673,7 +673,7 @@
           { test: function (val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
           { test: function (val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
           { test: function (val) { return val <= 60; }, tone: 'kpi-green', status: 'On Target' },
-          { test: function (val) { return val > 60; }, tone: 'kpi-green', status: 'Exceeding' }
+          { test: function (val) { return val > 60; }, tone: 'kpi-blue', status: 'Exceeding' }
         ],
         labels: { good: 'Exceeding', warn: 'Watch', bad: 'Below' },
         primary: true
@@ -689,9 +689,13 @@
         title: 'Benchmark Score',
         meta: 'vs company benchmark.',
         priorKey: 'ac',
-        good: 75,
-        warn: 60,
-        labels: { good: 'On Target', warn: 'Near', bad: 'Below' },
+        bands: [
+          { test: function (val) { return val > 92; }, tone: 'kpi-blue', status: 'Exceeding' },
+          { test: function (val) { return val >= 75; }, tone: 'kpi-green', status: 'Meeting' },
+          { test: function (val) { return val >= 60; }, tone: 'kpi-amber', status: 'Approaching' },
+          { test: function (val) { return val < 60; }, tone: 'kpi-red', status: 'Below Standard' }
+        ],
+        labels: { good: 'Meeting', warn: 'Approaching', bad: 'Below Standard' },
         primary: true
       }));
     } else {
@@ -722,7 +726,7 @@
         good: 90,
         warn: 80,
         bands: [
-          { test: function (val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function (val) { return val > 92; }, tone: 'kpi-blue', status: 'Exceeding' },
           { test: function (val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
           { test: function (val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
           { test: function (val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
@@ -740,7 +744,7 @@
         good: 90,
         warn: 80,
         bands: [
-          { test: function (val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function (val) { return val > 92; }, tone: 'kpi-blue', status: 'Exceeding' },
           { test: function (val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
           { test: function (val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
           { test: function (val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
@@ -758,7 +762,7 @@
         good: 90,
         warn: 80,
         bands: [
-          { test: function (val) { return val >= 93; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function (val) { return val > 92; }, tone: 'kpi-blue', status: 'Exceeding' },
           { test: function (val) { return val >= 90; }, tone: 'kpi-green', status: 'On Target' },
           { test: function (val) { return val >= 80; }, tone: 'kpi-amber', status: 'Watch' },
           { test: function (val) { return val < 80; }, tone: 'kpi-red', status: 'Below' }
@@ -777,7 +781,7 @@
         warn: 70,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' },
         bands: [
-          { test: function (v) { return v > 80; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function (v) { return v > 80; }, tone: 'kpi-blue', status: 'Exceeding' },
           { test: function (v) { return v >= 70 && v <= 80; }, tone: 'kpi-green', status: 'On Target' },
           { test: function (v) { return v >= 60 && v < 70; }, tone: 'kpi-amber', status: 'Watch' },
           { test: function (v) { return v < 60; }, tone: 'kpi-red', status: 'Below' }
@@ -792,7 +796,7 @@
         meta: 'Target: < 1%.',
         priorKey: 'o5',
         bands: [
-          { test: function (v) { return v < 0.5; }, tone: 'kpi-green', status: 'Exceeding' },
+          { test: function (v) { return v < 0.5; }, tone: 'kpi-blue', status: 'Exceeding' },
           { test: function (v) { return v <= 1.0; }, tone: 'kpi-green', status: 'On Target' },
           { test: function (v) { return v < 2.5; }, tone: 'kpi-amber', status: 'Watch' },
           { test: function (v) { return v >= 2.5; }, tone: 'kpi-red', status: 'Below' }
@@ -910,7 +914,7 @@
   });
 
   // ========== GLOBAL INDEX TYPE TOGGLE (header) ==========
-  _networkMapMetric = 'relative';
+  _networkMapMetric = state.indexType;
   Array.from(document.querySelectorAll('[data-global-index]')).forEach(function (btn) {
     btn.addEventListener('click', function () {
       var nextMetric = btn.dataset.globalIndex === 'absolute' ? 'absolute' : 'relative';

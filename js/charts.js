@@ -95,8 +95,14 @@ window.GAILS.renderOverviewCharts = function (data) {
   // CEI band split by selected lens
   var bandSplitTitle = document.getElementById('overviewBandSplitTitle');
   if (bandSplitTitle) bandSplitTitle.textContent = 'Index Band Split (' + metricLabel + ')';
-  var bandCounts = bandNames.map(function (bn) { return data.filter(function (d) { return d[bandKey] === bn; }).length; });
-  G.makeChart('overviewBandSplit', { type: 'doughnut', data: { labels: bandNames, datasets: [{ data: bandCounts, backgroundColor: bandNames.map(function (bn) { return colorMap[bn]; }), borderWidth: 2, borderColor: 'rgba(255, 255, 255,0.6)' }] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, onClick: function (evt, elements) { if (elements.length > 0) { var idx = elements[0].index; var band = bandNames[idx]; var bakeries = data.filter(function (d) { return d[bandKey] === band; }); G.showDrillDown(band, bakeries.length + ' bakeries in this band', bakeries, rankingsMetric); } } } });
+  // "Incomplete" and "No Data" are both unscored states, already sharing the
+  // same grey in colorMap — fold them into a single "Not Scored" slice.
+  var pieBandNames = bandNames.filter(function (bn) { return bn !== 'Incomplete' && bn !== 'No Data'; });
+  var pieLabels = pieBandNames.concat(['Not Scored']);
+  var pieColors = pieBandNames.map(function (bn) { return colorMap[bn]; }).concat([colorMap['Incomplete'] || colorMap['No Data'] || '#B3AA99']);
+  var pieCounts = pieBandNames.map(function (bn) { return data.filter(function (d) { return d[bandKey] === bn; }).length; })
+    .concat([data.filter(function (d) { return d[bandKey] === 'Incomplete' || d[bandKey] === 'No Data'; }).length]);
+  G.makeChart('overviewBandSplit', { type: 'doughnut', data: { labels: pieLabels, datasets: [{ data: pieCounts, backgroundColor: pieColors, borderWidth: 2, borderColor: 'rgba(255, 255, 255,0.6)' }] }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, onClick: function (evt, elements) { if (elements.length > 0) { var idx = elements[0].index; var band = pieLabels[idx]; var bakeries = band === 'Not Scored' ? data.filter(function (d) { return d[bandKey] === 'Incomplete' || d[bandKey] === 'No Data'; }) : data.filter(function (d) { return d[bandKey] === band; }); G.showDrillDown(band, bakeries.length + ' bakeries in this band', bakeries, rankingsMetric); } } } });
 
   // NPS vs CEI
   var npsScatterTitle = document.getElementById('npsScatterTitle');
