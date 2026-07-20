@@ -13,7 +13,7 @@
   <meta name="theme-color" content="#B5312A">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
@@ -21,7 +21,7 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   </script>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=20260720-visual-refresh-8">
 </head>
 
 <body>
@@ -595,11 +595,11 @@
 
                 <!-- DELETE CONFIRMATION MODAL -->
                 <div id="deleteConfirmModal" class="modal-overlay" style="display:none;">
-                  <div class="visit-detail-panel" style="max-width: 460px; border-top: 5px solid #B22A24; padding: 25px 28px;">
+                  <div class="visit-detail-panel" style="max-width: 460px; padding: 25px 28px;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 18px;">
                       <div>
-                        <h3 style="font-size:1.3rem;font-weight:700;color:#B22A24;margin:0;">Delete Visit Record</h3>
-                        <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">This action is permanent and cannot be undone.</p>
+                        <h3 style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Delete Visit Record</h3>
+                        <p style="font-size:0.86rem;color:var(--muted-l);margin:5px 0 0 0;">This action is permanent and cannot be undone.</p>
                       </div>
                       <button type="button" id="deleteConfirmClose" class="modal-close-btn"
                         aria-label="Close delete confirmation" title="Close">&#10005;</button>
@@ -628,8 +628,8 @@
                   <div class="visit-detail-panel" style="max-width: 480px; padding: 25px 28px;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 18px;">
                       <div>
-                        <h3 id="cqvConfirmTitle" style="font-size:1.3rem;font-weight:700;color:var(--accent);margin:0;">Confirm CQV Details</h3>
-                        <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">Parsed from the PDF &mdash; check these match before saving.</p>
+                        <h3 id="cqvConfirmTitle" style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Confirm CQV Details</h3>
+                        <p style="font-size:0.86rem;color:var(--muted-l);margin:5px 0 0 0;">Parsed from the PDF &mdash; check these match before saving.</p>
                       </div>
                       <button type="button" id="cqvConfirmClose" class="modal-close-btn"
                         aria-label="Close import confirmation" title="Close">&#10005;</button>

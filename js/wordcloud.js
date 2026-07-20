@@ -545,7 +545,7 @@ window.GAILS = window.GAILS || {};
       for (var shrink = 0; shrink < layout.shrinkPasses; shrink++) {
         var attemptSize = Math.max(layout.minSize, size - shrink * layout.shrinkStep);
         var weight = attemptSize > layout.maxSize * 0.62 ? '700' : attemptSize > layout.minSize + 7 ? '600' : '400';
-        ctx.font = weight + ' ' + attemptSize + 'px "Space Grotesk", Inter, system-ui, sans-serif';
+        ctx.font = weight + ' ' + attemptSize + 'px Inter, system-ui, sans-serif';
 
         var metrics = measureWord(ctx, item.word, attemptSize);
         var maxWordWidth = Math.max(48, cssW - layout.edgePadX * 2 - 4);
@@ -554,7 +554,7 @@ window.GAILS = window.GAILS || {};
           if (fittedSize < attemptSize) {
             attemptSize = fittedSize;
             weight = attemptSize > layout.maxSize * 0.62 ? '700' : attemptSize > layout.minSize + 7 ? '600' : '400';
-            ctx.font = weight + ' ' + attemptSize + 'px "Space Grotesk", Inter, system-ui, sans-serif';
+            ctx.font = weight + ' ' + attemptSize + 'px Inter, system-ui, sans-serif';
             metrics = measureWord(ctx, item.word, attemptSize);
           }
         }

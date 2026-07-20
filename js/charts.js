@@ -17,9 +17,9 @@ if (typeof Chart !== 'undefined') {
 
   setSafe(Chart, 'defaults.color', '#757575');
   setSafe(Chart, 'defaults.borderColor', 'rgba(34, 31, 26,0.07)');
-  setSafe(Chart, 'defaults.font.family', '"Space Grotesk", Inter, system-ui, sans-serif');
+  setSafe(Chart, 'defaults.font.family', 'Inter, system-ui, sans-serif');
   setSafe(Chart, 'defaults.plugins.legend.labels.color', '#757575');
-  setSafe(Chart, 'defaults.plugins.legend.labels.font.family', '"Space Grotesk", Inter, system-ui, sans-serif');
+  setSafe(Chart, 'defaults.plugins.legend.labels.font.family', 'Inter, system-ui, sans-serif');
   setSafe(Chart, 'defaults.plugins.legend.labels.usePointStyle', true);
   setSafe(Chart, 'defaults.plugins.tooltip.backgroundColor', '#FFFFFF');
   setSafe(Chart, 'defaults.plugins.tooltip.titleColor', '#221F1A');

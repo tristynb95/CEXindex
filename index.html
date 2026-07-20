@@ -14,12 +14,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?v=20260720-focus-glance-8">
+  <link rel="stylesheet" href="css/styles.css?v=20260720-visual-refresh-8">
 </head>
 
 <body>
@@ -230,7 +230,7 @@
       <div class="icon">&#128202;</div>
       <h3>Load NPS &amp; Coffee Data</h3>
       <p>Drag &amp; drop your <strong>NPS + Coffee Data.xlsx</strong> file here</p>
-      <p style="font-size:0.74rem;color:var(--muted)">Each sheet should be a month (e.g. &ldquo;March 2025&rdquo;) with
+      <p class="upload-zone__hint">Each sheet should be a month (e.g. &ldquo;March 2025&rdquo;) with
         columns: Bakery, Rank, NPS Score, Volume, speed metrics, Overall, Friendliness, Drink (or Quality), Efficiency
         (or Overall Efficiency)</p>
       <button class="btn" id="browseBtn">Browse for file</button>
@@ -436,10 +436,8 @@
           <div class="dashboard-sidebar__head">
             <div>
               <p class="dashboard-sidebar__label">Main Menu</p>
-              <h2 class="dashboard-sidebar__title">Dashboard views</h2>
-              <p class="dashboard-sidebar__copy">Collapse the side menu when you want more room for charts, tables, and
-                maps.</p>
-            </div>
+              <h2 class="dashboard-sidebar__title">Menu</h2>
+                          </div>
             <button type="button" id="dashboardSidebarToggle" class="dashboard-sidebar__toggle"
               aria-controls="dashboardNav" aria-expanded="true" aria-label="Collapse menu">
               <span class="dashboard-sidebar__toggle-icon" aria-hidden="true"></span>
@@ -592,11 +590,11 @@
             </div>
             <div class="grid-2 overview-rankings-grid">
               <div class="section overview-card overview-card--top">
-                <h2 id="top10Title" style="color:var(--green)">Top 10 Bakeries by Peer Score</h2><canvas id="top10Chart"
+                <h2 id="top10Title">Top 10 Bakeries by Peer Score</h2><canvas id="top10Chart"
                   style="max-height:360px"></canvas>
               </div>
               <div class="section overview-card overview-card--bottom">
-                <h2 id="bot10Title" style="color:var(--red)">Bottom 10 Bakeries by Peer Score</h2><canvas
+                <h2 id="bot10Title">Bottom 10 Bakeries by Peer Score</h2><canvas
                   id="bot10Chart" style="max-height:360px"></canvas>
               </div>
             </div>
@@ -615,13 +613,13 @@
             <div class="grid-2">
               <div class="section">
                 <h2 id="trendNpsSplitTitle">NPS Split by Month</h2>
-                <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Compares the headline Drink + Meal NPS
+                <p class="chart-caption">Compares the headline Drink + Meal NPS
                   against Coffee-only, Meal-only, and all-response NPS where the source file provides those splits.</p>
                 <canvas id="trendNpsSplit"></canvas>
               </div>
               <div class="section">
                 <h2 id="trendWaitPressureTitle">Coffee Timing Mix by Month</h2>
-                <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Shows where coffee orders land across
+                <p class="chart-caption">Shows where coffee orders land across
                   timing bands, with customer-rated efficiency overlaid to connect operational speed with the guest
                   experience.</p>
                 <canvas id="trendWaitPressure"></canvas>
@@ -630,14 +628,14 @@
             <div class="grid-2">
               <div class="section">
                 <h2 id="trendAbsBandsTitle">Benchmark Score Bands by Month</h2>
-                <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Company-wide progress against the
+                <p class="chart-caption">Company-wide progress against the
                   benchmarks over time &mdash; unlike the relative bands, this will shift as bakeries genuinely improve.
                 </p>
                 <canvas id="trendAbsBands"></canvas>
               </div>
               <div class="section">
                 <h2 id="trendBandsTitle">Peer Score Bands by Month</h2>
-                <p style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">How bakeries rank against each other
+                <p class="chart-caption">How bakeries rank against each other
                   each month &mdash; because the bands are set by quartile, the proportions stay broadly fixed even as
                   the whole company improves.</p>
                 <canvas id="trendBands"></canvas>
@@ -654,7 +652,7 @@
             </div>
             <div class="section">
               <h2>Bakery Tracker</h2>
-              <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Use the bakery filter above to compare
+              <p class="chart-caption">Use the bakery filter above to compare
                 monthly trends. One bakery shows its actual monthly datapoints; multiple bakeries show a combined
                 monthly average; no bakery selected shows the all-bakeries average.</p>
               <div id="bakeryTrackerStatus" class="status" style="margin:0 0 10px">Showing all-bakeries averages.</div>
@@ -666,27 +664,23 @@
           <!-- SPEED vs NPS -->
           <div class="tab-content" id="tab-speed">
             <div class="section hero-section">
-              <h2 style="font-size:1.05rem;text-align:center;margin-bottom:4px">Does Making Coffee Faster Improve
+              <h2 class="hero-section__title">Does Making Coffee Faster Improve
                 Customer Satisfaction?</h2>
-              <p style="text-align:center;font-size:0.84rem;color:var(--muted);margin-bottom:16px">We compared every
+              <p class="hero-section__lead">We compared every
                 bakery&rsquo;s coffee speed against their NPS. The answer is clear.</p>
               <div class="grid-2">
                 <div style="text-align:center">
-                  <div
-                    style="display:inline-block;background:rgba(178, 42, 36,0.15);color:var(--red);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:700;margin-bottom:8px;border:1px solid rgba(178, 42, 36,0.3)">
-                    &#10007; No meaningful relationship</div>
+                  <div class="verdict-pill verdict-pill--bad">&#10007; No meaningful relationship</div>
                   <canvas id="speedVsNps"></canvas>
                 </div>
                 <div style="text-align:center">
-                  <div
-                    style="display:inline-block;background:rgba(29, 158, 92,0.13);color:var(--green);padding:5px 14px;border-radius:20px;font-size:0.74rem;font-weight:700;margin-bottom:8px;border:1px solid rgba(29, 158, 92,0.28)">
-                    &#10003; Strong relationship</div>
+                  <div class="verdict-pill verdict-pill--good">&#10003; Strong relationship</div>
                   <canvas id="effVsNps"></canvas>
                 </div>
               </div>
             </div>
             <div class="section hero-section">
-              <h2 style="text-align:center">NPS by Efficiency Quartile vs Overall Efficiency Quartile</h2>
+              <h2 class="hero-section__title">NPS by Efficiency Quartile vs Overall Efficiency Quartile</h2>
               <canvas id="quartileCompare" style="max-height:360px"></canvas>
               <div class="callout-grid">
                 <div class="callout red">
@@ -702,7 +696,7 @@
               </div>
             </div>
             <div class="section hero-section">
-              <h2 style="text-align:center">Every Speed Metric Tells the Same Story</h2>
+              <h2 class="hero-section__title">Every Speed Metric Tells the Same Story</h2>
               <canvas id="corrCompare" style="max-height:300px"></canvas>
             </div>
           </div>
@@ -934,8 +928,8 @@
                       </div>
                     </div>
                     <p class="map-legend-key" id="networkMapLegendHint"><span
-                        style="color:var(--green);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp;
-                      <span style="color:var(--blue);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp;
+                        style="color:var(--blue);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp;
+                      <span style="color:var(--green);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp;
                       <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp;
                       <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp;
                       <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span></p>
@@ -1790,8 +1784,8 @@
         style="max-width: 460px; height: auto; background: var(--card); border: 1px solid var(--card-border-h); box-shadow: var(--shadow-md);">
         <div class="drill-modal-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
           <div>
-            <h3 style="font-size:1.3rem;font-weight:700;color:#B22A24;margin:0;">Delete Check-in</h3>
-            <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">This action is permanent and cannot be
+            <h3 style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Delete Check-in</h3>
+            <p style="font-size:0.86rem;color:var(--muted-l);margin:5px 0 0 0;">This action is permanent and cannot be
               undone.</p>
           </div>
           <button type="button" class="modal-close-btn" onclick="GAILS.closeDeleteConfirmModal()"

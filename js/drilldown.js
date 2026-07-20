@@ -74,12 +74,6 @@ window.GAILS = window.GAILS || {};
     return renderTableControls(true) + renderTableWrap(G, columns, rows);
   }
 
-  function colorWithAlpha(hex, alpha) {
-    var match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
-    if (!match) return 'rgba(178, 42, 36,' + alpha + ')';
-    return 'rgba(' + parseInt(match[1], 16) + ',' + parseInt(match[2], 16) + ',' + parseInt(match[3], 16) + ',' + alpha + ')';
-  }
-
   function parseNpsRange(title) {
     // Titles arrive as "NPS 60–70" or, since the Drink + Meal relabel, "NPS (D+M) 60–70".
     var match = /^NPS(?:\s*\(D\+M\))?\s+(-?\d+)(?:\s*[–-]\s*(-?\d+))?$/i.exec(title || '');
@@ -104,10 +98,6 @@ window.GAILS = window.GAILS || {};
     }
     if (type === 'relative') return '#B22A24';
     return '#0E8074';
-  }
-
-  function getHeaderBackground(accent) {
-    return 'linear-gradient(180deg, ' + colorWithAlpha(accent, 0.18) + ' 0%, rgba(34, 31, 26,0.01) 100%)';
   }
 
   function commonColumns() {
@@ -201,7 +191,9 @@ window.GAILS = window.GAILS || {};
 
     titleEl.textContent = title;
     subtitleEl.textContent = subtitle;
-    header.style.background = getHeaderBackground(accent);
+    // Colour carries meaning through the top accent border only — the header
+    // itself stays a clean white surface (Focus Bakery modal template style).
+    header.style.background = '';
     if (inner) inner.style.setProperty('--drill-accent', accent);
 
     var baseColumns = commonColumns();

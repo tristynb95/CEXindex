@@ -1124,8 +1124,8 @@ document.addEventListener('keydown', function (event) {
   };
 
   var NETWORK_HINT = {
-    relative: '<span style="color:var(--green);font-weight:600">&#9679; Top Performance</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Low Performance</span> &nbsp;&middot;&nbsp; <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span>',
-    absolute: '<span style="color:var(--green);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp; <span style="color:var(--blue);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span>'
+    relative: '<span style="color:var(--blue);font-weight:600">&#9679; Top Performance</span> &nbsp;&middot;&nbsp; <span style="color:var(--green);font-weight:600">&#9679; Above Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Below Average</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Low Performance</span> &nbsp;&middot;&nbsp; <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span>',
+    absolute: '<span style="color:var(--blue);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp; <span style="color:var(--green);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp; <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp; <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span>'
   };
 
   // The focus map is classified by support-priority tier, not performance band,
@@ -1380,18 +1380,20 @@ document.addEventListener('keydown', function (event) {
     }[band] || 0;
   }
 
+  // Brand-palette marker colours (same hues as ABSCOL/legends) so the map
+  // pins match every badge, chip and chart instead of generic Material tones.
   var VIBRANT_MAP_COLORS = {
-    'Top Performance': '#1976d2',
-    'Above Average': '#00b853',
-    'Below Average': '#f57c00',
-    'Low Performance': '#d32f2f',
-    'Exceeding': '#1976d2',
-    'Meeting': '#00b853',
-    'Approaching': '#f57c00',
-    'Below Standard': '#d32f2f',
+    'Top Performance': '#1E70C4',
+    'Above Average': '#1D9E5C',
+    'Below Average': '#C97F12',
+    'Low Performance': '#B22A24',
+    'Exceeding': '#1E70C4',
+    'Meeting': '#1D9E5C',
+    'Approaching': '#C97F12',
+    'Below Standard': '#B22A24',
     'Incomplete': '#8d8d8d',
     'No Data': '#8d8d8d',
-    'Default': '#d32f2f'
+    'Default': '#B22A24'
   };
 
   // Higher tiers draw last so their pins sit on top when markers overlap.

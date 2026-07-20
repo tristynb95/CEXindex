@@ -559,17 +559,17 @@
         { eyebrow: 'NPS', title: 'NPS (Drink & Meal)', meta: 'Target: 55', primary: true }
       ];
       if (wantAbs) {
-        dashMetrics.push({ eyebrow: 'Index', title: 'Benchmark Score', meta: 'vs company benchmark.', primary: true });
+        dashMetrics.push({ eyebrow: 'Index', title: 'Benchmark Score', meta: 'vs company benchmark', primary: true });
       } else {
         dashMetrics.push({ eyebrow: 'Index', title: 'Peer Score', meta: 'vs bakery peer set.', primary: true });
       }
       dashMetrics.push(
-        { eyebrow: 'SHINE', title: 'Drink Quality', meta: 'Target: 90%.' },
-        { eyebrow: 'SHINE', title: 'Efficiency', meta: 'Target: 90%.' },
-        { eyebrow: 'SHINE', title: 'Friendliness', meta: 'Target: 90%.' },
-        { eyebrow: 'KV Link', title: 'Coffee Efficiency', meta: 'Target: 80% < 2 min.' },
-        { eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 2:00.' },
-        { eyebrow: 'KV Link', title: 'Orders >5 Min', meta: 'Target: < 1%.' }
+        { eyebrow: 'SHINE', title: 'Drink Quality', meta: 'Target: 90%' },
+        { eyebrow: 'SHINE', title: 'Efficiency', meta: 'Target: 90%' },
+        { eyebrow: 'SHINE', title: 'Friendliness', meta: 'Target: 90%' },
+        { eyebrow: 'KV Link', title: 'Coffee Efficiency', meta: 'Target: 80% < 2 min' },
+        { eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 2:00' },
+        { eyebrow: 'KV Link', title: 'Orders >5 Min', meta: 'Target: < 1%' }
       );
       dashboardKpiRow.innerHTML = dashMetrics.map(function (metric) {
         return '<article class="kpi kpi-muted' + (metric.primary ? ' kpi--primary' : '') + '">'
@@ -646,7 +646,7 @@
     var at = atRows.length ? atRows.reduce(function (a, r) { return a + r.at; }, 0) / atRows.length : null;
     var atCard = at === null
       ? {
-        value: '—', eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 2:00.',
+        value: '—', eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 2:00',
         delta: '', tone: 'kpi-muted', status: 'No Data', primary: false
       }
       : buildMetricCard({
@@ -654,7 +654,7 @@
         display: G.formatSecs(at),
         eyebrow: 'KV Link',
         title: 'Avg Wait Time',
-        meta: 'Target: ≤ 2:00.',
+        meta: 'Target: ≤ 2:00',
         priorKey: 'at',
         deltaFormat: G.formatSecs,
         invert: true,
@@ -695,7 +695,7 @@
         display: Math.round(acei).toString(),
         eyebrow: 'Index',
         title: 'Benchmark Score',
-        meta: 'vs company benchmark.',
+        meta: 'vs company benchmark',
         priorKey: 'ac',
         bands: [
           { test: function (val) { return val > 92; }, tone: 'kpi-blue', status: 'Exceeding' },
@@ -729,7 +729,7 @@
         display: Math.round(dr) + '%',
         eyebrow: 'SHINE',
         title: 'Drink Quality',
-        meta: 'Target: 90%.',
+        meta: 'Target: 90%',
         priorKey: 'dr',
         good: 90,
         warn: 80,
@@ -747,7 +747,7 @@
         display: Math.round(ef) + '%',
         eyebrow: 'SHINE',
         title: 'Efficiency',
-        meta: 'Target: 90%.',
+        meta: 'Target: 90%',
         priorKey: 'ef',
         good: 90,
         warn: 80,
@@ -765,7 +765,7 @@
         display: Math.round(fr) + '%',
         eyebrow: 'SHINE',
         title: 'Friendliness',
-        meta: 'Target: 90%.',
+        meta: 'Target: 90%',
         priorKey: 'fr',
         good: 90,
         warn: 80,
@@ -783,7 +783,7 @@
         display: Math.round(ts) + '%',
         eyebrow: 'KV Link',
         title: 'Coffee Efficiency',
-        meta: 'Target: 80% < 2 min.',
+        meta: 'Target: 80% < 2 min',
         priorKey: 'ts',
         good: 80,
         warn: 70,
@@ -801,7 +801,7 @@
         display: o5.toFixed(1) + '%',
         eyebrow: 'KV Link',
         title: 'Orders >5 Min',
-        meta: 'Target: < 1%.',
+        meta: 'Target: < 1%',
         priorKey: 'o5',
         bands: [
           { test: function (v) { return v < 0.5; }, tone: 'kpi-blue', status: 'Exceeding' },
