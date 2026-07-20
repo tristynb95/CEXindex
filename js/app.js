@@ -378,6 +378,10 @@
     if (name === 'target' && previousName && previousName !== 'target') {
       activateTargetSubtab('summary', { scrollNav: false });
     }
+    var enteringVisitLog = name === 'visit-log' && previousName && previousName !== 'visit-log';
+    if (enteringVisitLog && G.resetVisitLogView) {
+      G.resetVisitLogView();
+    }
     updateDashboardActiveView(name);
     syncDashboardKpis(name);
     setFocusPeriodControls(name === 'target');
@@ -420,6 +424,10 @@
     if (name === 'visit-log') {
       requestAnimationFrame(function () {
         if (typeof G.renderVisitLog === 'function') G.renderVisitLog();
+        // The list only exists after this render, so the page can grow taller
+        // than it was when the nav handler scrolled up — pin to the top again
+        // once the history rows are in the DOM.
+        if (enteringVisitLog) scrollToTop();
       });
       return activePanel;
     }

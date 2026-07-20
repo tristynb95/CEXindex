@@ -4001,6 +4001,12 @@ body.table-fullscreen-lock {
   color: #B22A24;
 }
 
+/* NBO Coffee Visits share the purple used for NBO visit types in the visit log. */
+.admin-table-badge--nbo {
+  background: rgba(107, 79, 168, 0.12);
+  color: #6B4FA8;
+}
+
 .visit-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -7093,8 +7099,60 @@ body.table-fullscreen-lock {
 
 .visit-report-header-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.visit-report-history-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.visit-report-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: var(--card-2);
+  border: 1px solid var(--card-border-h);
+  border-radius: 9px;
+  color: var(--text-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.18rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.visit-report-nav-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(178, 42, 36, 0.08);
+}
+
+.visit-report-nav-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visit-report-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.visit-report-history-pos {
+  min-width: 42px;
+  color: var(--muted-l);
+  font-size: 0.64rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
 }
 
 #visitReportModal .visit-report-header-actions .drill-close-btn {
@@ -7104,10 +7162,20 @@ body.table-fullscreen-lock {
   box-shadow: 0 1px 2px rgba(34, 31, 26, 0.06);
 }
 
-#visitReportModal .visit-report-header-actions .drill-close-btn:hover {
+#visitReportModal .visit-report-header-actions .drill-close-btn:not(:disabled):hover {
   background: #f7f7f5;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(178, 42, 36, 0.12), 0 2px 6px rgba(34, 31, 26, 0.08);
+}
+
+#visitReportModal .visit-report-header-actions .drill-close-btn:disabled {
+  background: #f4f3f0;
+  border-color: rgba(34, 31, 26, 0.1);
+  color: var(--muted-l);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
 }
 
 #visitReportModal .visit-report-header-actions .drill-close-btn:focus-visible {
@@ -7222,6 +7290,7 @@ body.table-fullscreen-lock {
     color: #444;
   }
 
+  #visitReportModal .visit-report-history-nav,
   #visitReportModal .visit-report-print-btn,
   #visitReportModal .drill-close-btn {
     display: none !important;
@@ -8563,7 +8632,23 @@ a,
      easy thumb reach at the top of the sheet. */
   #visitReportModal .visit-report-header-actions {
     order: -1;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #visitReportModal .visit-report-history-nav {
+    display: flex;
+    grid-column: 1 / -1;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 0 8px;
+    margin: 0 0 2px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(34, 31, 26, 0.14);
+  }
+
+  #visitReportModal .visit-report-header-actions .drill-close-btn {
+    width: 100%;
   }
 
   #visitReportModal .visit-report-print-btn,
@@ -9745,7 +9830,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
 .visit-log-select {
   appearance: none;
   background: var(--bg);
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--card-border-h);
   border-radius: 8px;
   padding: 8px 12px;
   font: inherit;
@@ -9753,6 +9838,17 @@ body.visit-log-filter-open .mobile-bottom-nav {
   color: var(--text);
   width: 100%;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Every editable field across the Bakery Reports section and its modals
+   (search, dates, times, Coffee Partner / Barista, notes, follow-up rows)
+   shares the Focus Bakeries search surface, so text inputs and the custom
+   select triggers beside them read as one set. Kept off .visit-log-select
+   because that rule layers its own chevron background-image. */
+.visit-log-input {
+  background:
+    linear-gradient(180deg, rgba(34, 31, 26, 0.04) 0%, rgba(34, 31, 26, 0.01) 100%),
+    rgba(255, 255, 255, 0.96);
 }
 
 .visit-log-select {
@@ -10560,6 +10656,659 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-light);
+}
+
+.visit-log-summary__add-task {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.visit-log-summary__add-task:hover {
+  filter: brightness(1.05);
+}
+
+/* ── Form modals (Log Visit, Add follow-up) ─────────────────────────
+   .drillInner is sized for the full-screen drilldown (100vh, no inner
+   scroll). Form modals instead size to their content, cap at the
+   viewport, and scroll the body between a fixed header and footer so
+   the submit button is always reachable. */
+.drillInner.form-modal {
+  width: min(96vw, 620px);
+  height: auto;
+  max-height: calc(100vh - 40px);
+}
+
+/* Log Visit runs two columns, so it gets the extra width. */
+.drillInner.form-modal--wide {
+  width: min(96vw, 1080px);
+}
+
+.form-modal__header {
+  padding: 22px 30px 18px;
+  border-bottom: 1px solid var(--card-border);
+  flex-shrink: 0;
+}
+
+.form-modal__title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.form-modal__subtitle {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+.form-modal__form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  /* min-height:0 is what allows the body below to actually scroll
+     instead of overflowing the flex column. */
+  min-height: 0;
+}
+
+.form-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 22px 30px 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.form-modal__body--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 0;
+  padding: 0;
+}
+
+.form-modal__col {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 0;
+  padding: 22px 28px 26px;
+}
+
+.form-modal__col--aside {
+  border-left: 1px solid var(--card-border);
+  background: rgba(34, 31, 26, 0.015);
+  align-self: stretch;
+}
+
+.form-modal__col-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin: 0 0 2px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted-l);
+}
+
+.form-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-modal__notes {
+  min-height: 132px;
+  resize: vertical;
+}
+
+.form-modal__notes--short {
+  min-height: 80px;
+}
+
+.form-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 15px 30px;
+  border-top: 1px solid var(--card-border);
+  background: var(--card);
+  flex-shrink: 0;
+}
+
+.form-modal__error {
+  display: none;
+  margin-right: auto;
+  color: var(--red);
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.form-modal__submit {
+  flex-shrink: 0;
+  padding: 11px 30px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* Sizing only — the base styles leave the select trigger shorter than the
+   inputs beside it (32px vs 38px) and its menu options taller than the
+   trigger's own text (14.4px options under a 13.1px trigger), which is what
+   reads as disproportionate. Colours, borders and shadows are inherited from
+   the base .filter-select styles unchanged. */
+.form-modal .filter-select__trigger {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+/* Option rows land at ~36px so they share the inputs' rhythm, and the panel
+   stays short enough to sit inside the modal body rather than running past
+   its edge. */
+.form-modal .filter-select__menu {
+  max-height: 252px;
+}
+
+.form-modal .filter-select__search {
+  padding: 7px 10px;
+  font-size: 0.82rem;
+}
+
+.form-modal .filter-select__option {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+
+/* The Bakery Reports filter bar (shared by Visit History / Unvisited Sites /
+   Follow-ups) has the same mismatch: its selects render at 32px against a
+   38px search box and reset button, with menu options in a larger font than
+   the trigger itself. Sizing only, as above — colours are left alone.
+   Scoped to >=721px so the mobile filter drawer keeps its own sizing, which
+   is tuned for touch targets (see the max-width:720px block above). */
+@media (min-width: 721px) {
+  .visit-log-filters .filter-select__trigger {
+    min-height: 38px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  .visit-log-filters .filter-select__menu {
+    max-height: 252px;
+  }
+
+  .visit-log-filters .filter-select__search {
+    padding: 7px 10px;
+    font-size: 0.82rem;
+  }
+
+  .visit-log-filters .filter-select__option {
+    padding: 8px 10px;
+    font-size: 0.85rem;
+  }
+
+  /* Main dashboard filter bar (Month / Period / Band): the selects render at
+     32px next to 36-38px multiselect triggers and the reset button. Match the
+     .bakery-ms__trigger sitting beside them. Same >=721px scoping so the
+     mobile panel keeps its 42px touch targets (see max-width:720px above). */
+  .filter-controls .filter-select__trigger {
+    min-height: 36px;
+    padding: 8px 12px;
+  }
+
+  .filter-controls .filter-select__menu {
+    max-height: 252px;
+  }
+
+  .filter-controls .filter-select__option {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+  }
+}
+
+/* Focus Bakeries action-list toolbar: the "Sort by" trigger sits next to
+   .focus-qsearch (37px) but renders at 32px. The existing rule above targets
+   .spark-sort-select — the *native* select, which js/custom-selects.js hides
+   and replaces — so it never reached the visible trigger. */
+.focus-tool-label .filter-select__trigger {
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+}
+
+.focus-tool-label .filter-select__menu {
+  max-height: 252px;
+}
+
+.focus-tool-label .filter-select__option {
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
+/* League Table "Sort by" — a standalone toolbar control with no field beside
+   it, so it takes the same 36px trigger as the dashboard filter bar. */
+.league-table-toolbar .filter-select__trigger {
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
+.league-table-toolbar .filter-select__menu {
+  max-height: 252px;
+}
+
+.league-table-toolbar .filter-select__option {
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 860px) {
+  .form-modal__body--split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form-modal__col--aside {
+    border-left: none;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .form-modal__col {
+    padding: 20px 22px 22px;
+  }
+
+  .form-modal__header,
+  .form-modal__footer {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+}
+
+/* ── Follow-up Actions ──────────────────────────────────────────────
+   Site-scoped tasks with optional deadlines: raised on a check-in or
+   ad-hoc, ticked off later, listed in the Follow-ups view. Overdue is
+   signalled with a tinted pill (never a red side rail). */
+
+/* Due-date pill — shared by the Log Visit checklist and the Follow-ups list. */
+.follow-up-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.follow-up-pill--overdue,
+.follow-up-pill--today {
+  background: var(--red-d);
+  color: var(--red);
+}
+
+.follow-up-pill--soon {
+  background: var(--gold-d);
+  color: var(--gold);
+}
+
+.follow-up-pill--future {
+  background: rgba(34, 31, 26, 0.06);
+  color: var(--muted-l);
+}
+
+.follow-up-pill--done {
+  background: var(--teal-d);
+  color: var(--teal);
+}
+
+/* Priority reads as metadata rather than an alarm: a coloured dot + label,
+   so it doesn't compete with the solid due-date pill next to it (which is
+   the more actionable signal, especially when overdue). */
+.follow-up-priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted-l);
+}
+
+.follow-up-priority::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.follow-up-priority--high {
+  color: var(--red);
+}
+
+.follow-up-priority--medium {
+  color: var(--gold);
+}
+
+.follow-up-priority--low {
+  color: var(--teal);
+}
+
+.follow-up-item--done .follow-up-priority {
+  color: var(--muted-l);
+}
+
+/* Log Visit modal: tick-off checklist for existing open tasks. */
+.follow-up-checklist,
+.follow-up-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.follow-up-checklist__hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 0 0 2px;
+}
+
+.follow-up-checklist__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* A site with a long backlog shouldn't push the builder out of view —
+     the list scrolls within the column instead. */
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.follow-up-empty {
+  font-size: 0.8rem;
+  color: var(--muted-l);
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--card-border-h);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.follow-up-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--card);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.follow-up-check:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.follow-up-check__box {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.follow-up-check__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.follow-up-check__title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Log Visit modal: builder for raising new tasks on this visit. */
+.follow-up-builder__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Two lines per row — the action on top, priority + deadline beneath — so
+   all three fit the narrow follow-ups column without cramping. */
+.follow-up-builder__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title  remove"
+    "meta   meta";
+  gap: 8px;
+  align-items: center;
+}
+
+.follow-up-builder__title {
+  grid-area: title;
+}
+
+.follow-up-builder__meta {
+  grid-area: meta;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.follow-up-builder__remove {
+  grid-area: remove;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--muted-l);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.follow-up-builder__remove:hover {
+  color: var(--red);
+  border-color: var(--red);
+  background: var(--red-d);
+}
+
+.follow-up-builder__add {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.follow-up-builder__add:hover {
+  text-decoration: underline;
+}
+
+/* Follow-ups view: the task list. */
+.follow-up-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.follow-up-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(34, 31, 26, 0.04));
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.follow-up-item:hover {
+  border-color: var(--card-border-h, var(--card-border));
+  box-shadow: var(--shadow-md, 0 4px 14px rgba(34, 31, 26, 0.08));
+}
+
+.follow-up-item--done {
+  background: rgba(34, 31, 26, 0.015);
+  box-shadow: none;
+}
+
+.follow-up-item--done .follow-up-item__title {
+  color: var(--muted-l);
+  text-decoration: line-through;
+}
+
+.follow-up-item__check {
+  margin-top: 1px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--card-border-h, var(--muted-l));
+  background: var(--card);
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.follow-up-item__check:hover {
+  border-color: var(--teal);
+}
+
+.follow-up-item__check.checked {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+.follow-up-item__body {
+  min-width: 0;
+}
+
+.follow-up-item__title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.follow-up-item__detail {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  margin-top: 4px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.follow-up-item__meta {
+  font-size: 0.72rem;
+  color: var(--muted-l);
+  margin-top: 6px;
+}
+
+.follow-up-item__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.follow-up-item__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.follow-up-item__action {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-2);
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  padding: 7px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.follow-up-item__action:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.follow-up-item__action--danger:hover {
+  color: var(--red);
+  border-color: var(--red);
+  background: var(--red-d);
+}
+
+@media (max-width: 560px) {
+  /* The builder row already stacks its meta line, so it needs no change here;
+     only the priority/date pair collapses to one column on narrow screens. */
+  .follow-up-builder__meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .follow-up-item {
+    grid-template-columns: auto 1fr;
+  }
+
+  .follow-up-item__side {
+    grid-column: 2 / 3;
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 4px;
+  }
 }
 
 /* ── Expandable visit rows ──

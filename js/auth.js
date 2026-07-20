@@ -117,6 +117,76 @@ window.GAILS_Firebase = {
       throw new Error('Your role does not allow deleting visits.');
     }
     await remove(ref(db, 'routineVisits/' + visitId));
+  },
+  // ---- Follow-up Actions ----
+  // Site-scoped tasks raised on a visit (or ad-hoc) and ticked off later. The
+  // same logVisits permission that gates check-ins gates raising/ticking a
+  // task; the database rules enforce the identical check server-side.
+  saveFollowUpAction: async function(task) {
+    if (!auth.currentUser) throw new Error('You must be signed in to add a follow-up.');
+    var perms = window.GAILS && window.GAILS.permissions;
+    if (perms && perms.actions && perms.actions.logVisits === false) {
+      throw new Error('Your role does not allow adding follow-ups.');
+    }
+    var who = auth.currentUser.email || auth.currentUser.uid;
+    var nowIsoStr = nowIso();
+    var newRef = push(ref(db, 'followUpActions'));
+    var payload = Object.assign({
+      bakery: '',
+      title: '',
+      detail: '',
+      dueDate: null,
+      // none | low | medium | high — 'none' is the default, and is also what
+      // tasks created before priority existed are treated as on read.
+      priority: 'none',
+      status: 'open',
+      sourceVisitId: null,
+      completedAt: null,
+      completedBy: null
+    }, task, {
+      createdAt: nowIsoStr,
+      createdBy: who,
+      meta: { updatedAt: nowIsoStr, updatedBy: who }
+    });
+    await set(newRef, payload);
+    return newRef.key;
+  },
+  completeFollowUpAction: async function(taskId, done) {
+    if (!auth.currentUser) throw new Error('You must be signed in to update a follow-up.');
+    var perms = window.GAILS && window.GAILS.permissions;
+    if (perms && perms.actions && perms.actions.logVisits === false) {
+      throw new Error('Your role does not allow updating follow-ups.');
+    }
+    var who = auth.currentUser.email || auth.currentUser.uid;
+    var nowIsoStr = nowIso();
+    await update(ref(db, 'followUpActions/' + taskId), {
+      status: done ? 'done' : 'open',
+      completedAt: done ? nowIsoStr : null,
+      completedBy: done ? who : null,
+      'meta/updatedAt': nowIsoStr,
+      'meta/updatedBy': who
+    });
+  },
+  updateFollowUpAction: async function(taskId, patch) {
+    if (!auth.currentUser) throw new Error('You must be signed in to update a follow-up.');
+    var perms = window.GAILS && window.GAILS.permissions;
+    if (perms && perms.actions && perms.actions.logVisits === false) {
+      throw new Error('Your role does not allow updating follow-ups.');
+    }
+    var who = auth.currentUser.email || auth.currentUser.uid;
+    var nowIsoStr = nowIso();
+    await update(ref(db, 'followUpActions/' + taskId), Object.assign({}, patch, {
+      'meta/updatedAt': nowIsoStr,
+      'meta/updatedBy': who
+    }));
+  },
+  deleteFollowUpAction: async function(taskId) {
+    if (!auth.currentUser) throw new Error('You must be signed in to delete a follow-up.');
+    var perms = window.GAILS && window.GAILS.permissions;
+    if (perms && perms.actions && perms.actions.logVisits === false) {
+      throw new Error('Your role does not allow deleting follow-ups.');
+    }
+    await remove(ref(db, 'followUpActions/' + taskId));
   }
 };
 
@@ -147,6 +217,7 @@ const confirmInvitationBtn = document.getElementById('confirmInvitationBtn');
 let siteMetaUnsubscribe = null;
 let dashboardDataUnsubscribe = null;
 let routineVisitsUnsubscribe = null;
+let followUpActionsUnsubscribe = null;
 let _freshLogin = false;
 let pendingInvitationUserRef = null;
 
@@ -305,10 +376,24 @@ function applyLastVisitDates(visitsObj) {
   }
 }
 
+function applyFollowUpActions(actionsObj) {
+  if (!window.GAILS) return;
+  window.GAILS._followUpActionsObj = actionsObj || {};
+  // Only re-render when the Follow-ups view is on screen; the visit history and
+  // unvisited views don't read this node.
+  if (window.GAILS._activeVisitLogView === 'followups' && typeof window.GAILS.renderVisitLog === 'function') {
+    window.GAILS.renderVisitLog();
+  }
+}
+
 function stopRoutineVisitsSync() {
   if (routineVisitsUnsubscribe) {
     routineVisitsUnsubscribe();
     routineVisitsUnsubscribe = null;
+  }
+  if (followUpActionsUnsubscribe) {
+    followUpActionsUnsubscribe();
+    followUpActionsUnsubscribe = null;
   }
 }
 
@@ -318,6 +403,11 @@ function startRoutineVisitsSync() {
     applyLastVisitDates(snapshot.exists() ? snapshot.val() : {});
   }, function(error) {
     console.error('Failed to sync routine visits for map tooltips:', error);
+  });
+  followUpActionsUnsubscribe = onValue(ref(db, 'followUpActions'), function(snapshot) {
+    applyFollowUpActions(snapshot.exists() ? snapshot.val() : {});
+  }, function(error) {
+    console.error('Failed to sync follow-up actions:', error);
   });
 }
 

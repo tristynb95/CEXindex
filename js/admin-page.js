@@ -108,6 +108,7 @@ const cqvConfirmModal     = document.getElementById('cqvConfirmModal');
 const cqvConfirmClose     = document.getElementById('cqvConfirmClose');
 const cqvConfirmCancel    = document.getElementById('cqvConfirmCancel');
 const cqvConfirmSubmitBtn = document.getElementById('cqvConfirmSubmitBtn');
+const cqvConfirmTitle     = document.getElementById('cqvConfirmTitle');
 const cqvConfirmBakery    = document.getElementById('cqvConfirmBakery');
 const cqvConfirmDate      = document.getElementById('cqvConfirmDate');
 const cqvConfirmWarning   = document.getElementById('cqvConfirmWarning');
@@ -1198,16 +1199,22 @@ function renderVisits() {
       scoreText = '';
     } else if (v.type === 'cqv') {
       scoreText = (v.overallPct != null) ? v.overallPct + '%' : '—';
+    } else if (v.type === 'nbo') {
+      // Derived percentage — NBO PDFs print no score and get no RAG band.
+      scoreText = window.GAILS.NBOShared.pctText(v);
     } else {
       scoreText = (v.score != null && v.score !== '') ? (v.score + (v.scoreMax ? ' / ' + v.scoreMax : '')) : '—';
     }
     var isSiteVisit = v.type === 'siteVisit';
     var isCqv = v.type === 'cqv';
+    var isNbo = v.type === 'nbo';
     var typeBadge = isCqv
       ? '<span class="admin-table-badge admin-table-badge--cqv">' + (v.isFollowUp ? 'CQV Follow-Up' : 'CQV') + '</span>'
-      : isSiteVisit
-        ? '<span class="admin-table-badge admin-table-badge--adhoc">' + escapeHtml(siteVisitKindLabel(v)) + '</span>'
-        : '<span class="admin-table-badge admin-table-badge--routine">Routine</span>';
+      : isNbo
+        ? '<span class="admin-table-badge admin-table-badge--nbo">NBO Visit ' + escapeHtml(v.visitNumber || 1) + '</span>'
+        : isSiteVisit
+          ? '<span class="admin-table-badge admin-table-badge--adhoc">' + escapeHtml(siteVisitKindLabel(v)) + '</span>'
+          : '<span class="admin-table-badge admin-table-badge--routine">Routine</span>';
 
     return '<tr>'
       + '<td>' + escapeHtml(formatVisitDate(v.date)) + '</td>'
@@ -1215,7 +1222,7 @@ function renderVisits() {
       + '  <div class="admin-table__title">' + escapeHtml(v.bakery || 'Unknown') + '</div>'
       + '  ' + typeBadge
       + '</div></td>'
-      + '<td>' + escapeHtml(isCqv ? (v.auditorName || '—') : (v.coffeePartner || '—')) + '</td>'
+      + '<td>' + escapeHtml((isCqv || isNbo) ? (v.auditorName || '—') : (v.coffeePartner || '—')) + '</td>'
       + '<td>' + escapeHtml(scoreText) + '</td>'
       + '<td>' + escapeHtml(v.mod || '—') + '</td>'
       + '<td><div class="admin-table__actions admin-table__actions--icons">'
@@ -1296,11 +1303,39 @@ function cqvSummaryHtml(record, warnings) {
   return lines.map(function(l) { return '<div>' + l + '</div>'; }).join('');
 }
 
+// An NBO Coffee Visit PDF prints no score of its own — the percentage shown
+// here is derived from the Yes/No answers (see js/nbo-shared.js) and carries no
+// RAG band, so it's stated plainly rather than colour-coded.
+function nboSummaryHtml(record, warnings) {
+  var counts = record.counts || {};
+  var total = (record.questions || []).length;
+  var coachingCount = (record.questions || []).filter(function(q) { return q.note; }).length;
+  var lines = [];
+  lines.push('<strong>NBO Coffee Visit ' + escapeHtml(record.visitNumber || 1) + '</strong> &mdash; '
+    + '<strong>' + escapeHtml(window.GAILS.NBOShared.pctText(record)) + '</strong> (derived from the Yes/No answers; the PDF has no score of its own).');
+  if (record.auditorName) {
+    lines.push('Auditor: <strong>' + escapeHtml(record.auditorName) + '</strong>');
+  }
+  lines.push(total + ' question' + (total === 1 ? '' : 's') + ' parsed &mdash; '
+    + '<span style="color:#1D9E5C; font-weight:700;">' + (counts.yes || 0) + ' Yes</span>, '
+    + '<span style="color:#B22A24; font-weight:700;">' + (counts.no || 0) + ' No</span>'
+    + (counts.na ? ', ' + counts.na + ' N/A' : '') + '.');
+  lines.push(coachingCount + ' coaching note' + (coachingCount === 1 ? '' : 's') + ' captured.');
+  if (warnings && warnings.length) {
+    lines.push('<span style="color:var(--gold);">' + warnings.length + ' item' + (warnings.length === 1 ? '' : 's')
+      + ' couldn\'t be fully parsed &mdash; the original PDF stays attached as the source of truth.</span>');
+  }
+  return lines.map(function(l) { return '<div>' + l + '</div>'; }).join('');
+}
+
 function openCqvConfirmModal(record, warnings, file) {
+  var isNbo = record.type === 'nbo';
   state.cqvPending = { record: record, warnings: warnings || [], file: file };
   cqvConfirmBakery.innerHTML = bakeryOptionsHtml(guessBakeryMatch(record.bakery));
   cqvConfirmDate.value = record.date || '';
-  cqvConfirmSummary.innerHTML = cqvSummaryHtml(record, warnings);
+  if (cqvConfirmTitle) cqvConfirmTitle.textContent = isNbo ? 'Confirm NBO Visit Details' : 'Confirm CQV Details';
+  cqvConfirmSubmitBtn.textContent = isNbo ? 'Save NBO Visit' : 'Save CQV';
+  cqvConfirmSummary.innerHTML = isNbo ? nboSummaryHtml(record, warnings) : cqvSummaryHtml(record, warnings);
   if (warnings && warnings.length) {
     cqvConfirmWarning.style.display = 'block';
     cqvConfirmWarning.className = 'admin-message is-info';
@@ -1326,17 +1361,31 @@ async function handleCqvFile(file) {
   if (cqvImportBrowseBtn) cqvImportBrowseBtn.disabled = true;
   try {
     var bytes = await readFileAsBytes(file);
-    if (!window.GAILS.CQV || typeof window.GAILS.CQV.buildRecordFromPdf !== 'function') {
-      throw new Error('CQV parser did not load. Refresh the page and try again.');
+    if (!window.GAILS.CQV || typeof window.GAILS.CQV.buildRecordFromPdf !== 'function'
+        || !window.GAILS.NBO || typeof window.GAILS.NBO.buildRecordFromPdf !== 'function') {
+      throw new Error('PDF parsers did not load. Refresh the page and try again.');
     }
-    var result = await window.GAILS.CQV.buildRecordFromPdf(bytes.buffer);
-    if (result.record.overallPct == null && result.record.score == null && !result.record.questions.length) {
-      throw new Error('Could not find any CQV score data in this PDF. Make sure it\'s the standard GoAudits CQV export.');
+
+    // Both report types come out of GoAudits and share the same text-layout
+    // extraction, so the pages are read once and the title on the cover
+    // decides which parser gets them. The user never has to say which it is.
+    var pages = await window.GAILS.CQV.extractPageLines(bytes.buffer);
+    var result;
+    if (window.GAILS.NBO.looksLikeNboPdf(pages)) {
+      result = window.GAILS.NBO.parsePages(pages);
+      if (!result.record.questions.length) {
+        throw new Error('This looks like an NBO Coffee Visit, but no questions could be read from it. Make sure it\'s the standard GoAudits export.');
+      }
+    } else {
+      result = window.GAILS.CQV.parsePages(pages);
+      if (result.record.overallPct == null && result.record.score == null && !result.record.questions.length) {
+        throw new Error('Could not find any CQV score data in this PDF. Make sure it\'s the standard GoAudits CQV or NBO Coffee Visit export.');
+      }
     }
     clearMessage(cqvImportMsg);
     openCqvConfirmModal(result.record, result.warnings, file);
   } catch (err) {
-    console.error('Failed to parse CQV PDF:', err);
+    console.error('Failed to parse visit PDF:', err);
     setMessage(cqvImportMsg, 'error', 'Could not read that PDF: ' + err.message);
   } finally {
     if (cqvImportBrowseBtn) cqvImportBrowseBtn.disabled = false;
@@ -1415,13 +1464,20 @@ async function saveCqvRecord() {
     return;
   }
 
+  // NBO Visit 1 and Visit 2 are distinct reports, so a duplicate is only a
+  // duplicate when the visit number matches too — otherwise saving Visit 2
+  // after Visit 1 on the same day would be blocked.
+  var isNbo = pending.record.type === 'nbo';
+  var typeLabel = isNbo ? ('NBO Coffee Visit ' + (pending.record.visitNumber || 1)) : 'CQV';
   var duplicate = state.visits.find(function(v) {
-    return v.type === 'cqv' && v.bakery === bakery && v.date === date;
+    if (v.bakery !== bakery || v.date !== date) return false;
+    if (isNbo) return v.type === 'nbo' && (v.visitNumber || 1) === (pending.record.visitNumber || 1);
+    return v.type === 'cqv';
   });
   if (duplicate) {
     cqvConfirmWarning.style.display = 'block';
     cqvConfirmWarning.className = 'admin-message is-error';
-    cqvConfirmWarning.textContent = 'A CQV for ' + bakery + ' on ' + formatVisitDate(date) + ' is already saved. Delete that record first if you need to replace it.';
+    cqvConfirmWarning.textContent = 'A ' + typeLabel + ' for ' + bakery + ' on ' + formatVisitDate(date) + ' is already saved. Delete that record first if you need to replace it.';
     return;
   }
 
@@ -1432,7 +1488,7 @@ async function saveCqvRecord() {
   try {
     var newRef = push(ref(db, 'routineVisits'));
     var pathSafeBakery = bakery.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-    var storagePath = 'cqvPdfs/' + pathSafeBakery + '/' + newRef.key + '-' + pending.file.name.replace(/[^a-z0-9.\-]+/gi, '_');
+    var storagePath = (isNbo ? 'nboPdfs/' : 'cqvPdfs/') + pathSafeBakery + '/' + newRef.key + '-' + pending.file.name.replace(/[^a-z0-9.\-]+/gi, '_');
     var fileRef = storageRef(storage, storagePath);
 
     var bytes = await readFileAsBytes(pending.file);
@@ -1456,12 +1512,12 @@ async function saveCqvRecord() {
 
     await set(newRef, record);
     closeCqvConfirmModal();
-    setMessage(visitMsg, 'success', 'Saved CQV for ' + bakery + ' on ' + formatVisitDate(date) + '.');
+    setMessage(visitMsg, 'success', 'Saved ' + typeLabel + ' for ' + bakery + ' on ' + formatVisitDate(date) + '.');
   } catch (err) {
-    console.error('Failed to save CQV:', err);
+    console.error('Failed to save visit PDF:', err);
     cqvConfirmWarning.style.display = 'block';
     cqvConfirmWarning.className = 'admin-message is-error';
-    cqvConfirmWarning.textContent = 'Could not save this CQV: ' + err.message;
+    cqvConfirmWarning.textContent = 'Could not save this ' + typeLabel + ': ' + err.message;
   } finally {
     cqvConfirmSubmitBtn.disabled = false;
     cqvConfirmSubmitBtn.textContent = originalText;
@@ -1484,11 +1540,12 @@ function scaleOptionsHtml(value) {
   return out;
 }
 
+// NBO Coffee Visit 1 and 2 are NOT site-visit kinds — they arrive as PDF
+// imports (type: 'nbo', see js/nbo-parser.js), not as manually logged
+// check-ins, so they're deliberately absent from this list.
 var SITE_VISIT_KIND_LABELS = {
   checkin: 'Check-in',
-  nboOpening: 'NBO: Opening',
-  nbo2wk: 'NBO: 2WK Check-in',
-  nbo4wk: 'NBO: 4WK Check-in'
+  nboOpening: 'NBO: Opening'
 };
 
 function siteVisitKindLabel(v) {

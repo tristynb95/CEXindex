@@ -1338,10 +1338,20 @@
               </div>
 
               <!-- VIEW TOGGLE BUTTONS -->
-              <div class="visit-log-toggle" role="group" aria-label="Check-in view"
+              <div id="visitLogViewToggle" class="visit-log-toggle" role="group" aria-label="Check-in view"
                 style="margin-bottom:20px; display:flex; gap:8px;">
                 <button type="button" class="visit-log-toggle-btn active" data-view="history">Visit History</button>
                 <button type="button" class="visit-log-toggle-btn" data-view="unvisited">Unvisited Sites</button>
+                <button type="button" class="visit-log-toggle-btn" data-view="followups">Follow-up Tasks</button>
+              </div>
+
+              <!-- FOLLOW-UPS STATUS SUB-FILTER (only shown in the Follow-ups view) -->
+              <div id="followUpStatusToggle" class="visit-log-toggle follow-up-status-toggle" role="group"
+                aria-label="Follow-up status" style="margin-bottom:20px; display:none; gap:8px;">
+                <button type="button" class="visit-log-toggle-btn active" data-status="open">Open</button>
+                <button type="button" class="visit-log-toggle-btn" data-status="overdue">Overdue</button>
+                <button type="button" class="visit-log-toggle-btn" data-status="done">Done</button>
+                <button type="button" class="visit-log-toggle-btn" data-status="all">All</button>
               </div>
 
               <!-- STANDALONE VISIT LOG FILTERS -->
@@ -1426,8 +1436,8 @@
                         <option value="routine">Routine Coffee Visit</option>
                         <option value="siteVisit">Check-in</option>
                         <option value="nboOpening">NBO: Opening</option>
-                        <option value="nbo2wk">NBO: 2WK Check-in</option>
-                        <option value="nbo4wk">NBO: 4WK Check-in</option>
+                        <option value="nboVisit1">NBO: Coffee Visit 1</option>
+                        <option value="nboVisit2">NBO: Coffee Visit 2</option>
                         <option value="cqv">CQV</option>
                         <option value="cqvFollowUp">CQV Follow-Up</option>
                       </select>
@@ -1602,6 +1612,11 @@
             <p class="drill-modal-subtitle" id="visitReportSubtitle"></p>
           </div>
           <div class="visit-report-header-actions">
+            <div class="visit-report-history-nav" role="group" aria-label="Bakery visit history">
+              <button type="button" class="visit-report-nav-btn" aria-label="Previous visit" disabled>&#8249;</button>
+              <span class="visit-report-history-pos" aria-label="Visit 1 of 1">1 of 1</span>
+              <button type="button" class="visit-report-nav-btn" aria-label="Next visit" disabled>&#8250;</button>
+            </div>
             <button type="button" class="drill-close-btn visit-report-print-btn" onclick="window.print()">&#128438;
               Print</button>
             <button class="drill-close-btn" onclick="GAILS.closeVisitReport()">&#10005; Close</button>
@@ -1614,74 +1629,150 @@
     <!-- ADD SITE VISIT MODAL -->
     <div id="addSiteVisitModal" class="drill-modal" style="display:none;"
       onclick="if(event.target===this)GAILS.closeAddSiteVisitModal()">
-      <div class="drillInner" style="max-width: 550px;">
-        <div class="drill-modal-header" style="border-bottom: 1px solid rgba(34, 31, 26, 0.05); padding-bottom: 15px;">
+      <div class="drillInner form-modal form-modal--wide">
+        <div class="drill-modal-header form-modal__header">
           <div>
-            <h3 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0;">Log Visit</h3>
-            <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0 0;">Record a check-in or NBO visit with
-              comments.</p>
+            <h3 class="form-modal__title">Log Visit</h3>
+            <p class="form-modal__subtitle">Record a check-in or NBO visit, and manage this site's follow-up actions.
+            </p>
           </div>
           <button class="drill-close-btn" onclick="GAILS.closeAddSiteVisitModal()">&#10005; Close</button>
         </div>
 
-        <form id="addSiteVisitForm"
-          style="display:flex;flex-direction:column;gap:15px;margin-top:20px;padding:0 30px 30px;">
-          <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
-            <label
-              style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Bakery</label>
-            <select id="addVisitBakery" required class="visit-log-select" data-searchable="true">
-              <option value="">-- Select Bakery --</option>
-            </select>
+        <form id="addSiteVisitForm" class="form-modal__form">
+          <div class="form-modal__body form-modal__body--split">
+            <!-- LEFT: the visit itself -->
+            <section class="form-modal__col">
+              <h4 class="form-modal__col-title">Visit details</h4>
+
+              <div class="filter-control form-field">
+                <label class="form-field__label" for="addVisitBakery">Bakery</label>
+                <select id="addVisitBakery" required class="visit-log-select" data-searchable="true">
+                  <option value="">-- Select Bakery --</option>
+                </select>
+              </div>
+
+              <div class="filter-control form-field">
+                <label class="form-field__label" for="addVisitType">Visit Type</label>
+                <select id="addVisitType" required class="visit-log-select">
+                  <option value="checkin">Check-in</option>
+                  <option value="nboOpening">NBO: Opening</option>
+                </select>
+              </div>
+
+              <div class="form-field-row">
+                <div class="filter-control form-field">
+                  <label class="form-field__label" for="addVisitDate">Visit Date</label>
+                  <input type="date" id="addVisitDate" required class="visit-log-input">
+                </div>
+                <div class="filter-control form-field">
+                  <label class="form-field__label" for="addVisitTime">Visit Time</label>
+                  <input type="time" id="addVisitTime" required class="visit-log-input">
+                </div>
+              </div>
+
+              <div class="form-field-row">
+                <div class="filter-control form-field">
+                  <label class="form-field__label" for="addVisitPartner">Coffee Partner</label>
+                  <input type="text" id="addVisitPartner" placeholder="Enter name..." class="visit-log-input">
+                </div>
+                <div class="filter-control form-field">
+                  <label class="form-field__label" for="addVisitMod">Barista</label>
+                  <input type="text" id="addVisitMod" placeholder="Enter name..." class="visit-log-input">
+                </div>
+              </div>
+
+              <div class="filter-control form-field form-field--grow">
+                <label class="form-field__label" for="addVisitComments">Comments / Notes</label>
+                <textarea id="addVisitComments" required placeholder="Write your notes here..."
+                  class="visit-log-input form-modal__notes"></textarea>
+              </div>
+            </section>
+
+            <!-- RIGHT: follow-up actions for this site -->
+            <section class="form-modal__col form-modal__col--aside">
+              <h4 class="form-modal__col-title">Follow-ups</h4>
+
+              <!-- OPEN FOLLOW-UPS FOR THIS SITE (populated when a bakery is chosen) -->
+              <div id="addVisitOpenTasks" class="follow-up-checklist" hidden>
+                <label class="form-field__label">Open follow-ups for this site</label>
+                <p class="follow-up-checklist__hint">Tick any that are now complete — they'll be closed off when you
+                  save.</p>
+                <div id="addVisitOpenTasksList" class="follow-up-checklist__list"></div>
+              </div>
+
+              <!-- Shown instead of the checklist when the site has nothing open -->
+              <p id="addVisitNoOpenTasks" class="follow-up-empty">No open follow-ups for this site.</p>
+
+              <!-- RAISE NEW FOLLOW-UP ACTIONS ON THIS VISIT -->
+              <div class="follow-up-builder">
+                <label class="form-field__label">Add follow-up actions</label>
+                <p class="follow-up-checklist__hint">Anything that needs doing at this site before the next visit.</p>
+                <div id="addVisitNewTasks" class="follow-up-builder__rows"></div>
+                <button type="button" id="addVisitNewTaskBtn" class="follow-up-builder__add">+ Add another</button>
+              </div>
+            </section>
           </div>
 
-          <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
-            <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Visit
-              Type</label>
-            <select id="addVisitType" required class="visit-log-select">
-              <option value="checkin">Check-in</option>
-              <option value="nboOpening">NBO: Opening</option>
-              <option value="nbo2wk">NBO: 2WK Check-in</option>
-              <option value="nbo4wk">NBO: 4WK Check-in</option>
-            </select>
+          <div class="form-modal__footer">
+            <div id="addVisitError" class="form-modal__error"></div>
+            <button type="submit" id="addVisitSubmitBtn" class="btn form-modal__submit">Save Visit</button>
           </div>
+        </form>
+      </div>
+    </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
-            <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
-              <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Visit
-                Date</label>
-              <input type="date" id="addVisitDate" required class="visit-log-input">
+    <!-- ADD / EDIT FOLLOW-UP ACTION MODAL -->
+    <div id="addFollowUpModal" class="drill-modal" style="display:none;"
+      onclick="if(event.target===this)GAILS.closeFollowUpModal()">
+      <div class="drillInner form-modal">
+        <div class="drill-modal-header form-modal__header">
+          <div>
+            <h3 id="addFollowUpTitle" class="form-modal__title">Add follow-up</h3>
+            <p class="form-modal__subtitle">A task to complete at a site before the next visit.</p>
+          </div>
+          <button class="drill-close-btn" onclick="GAILS.closeFollowUpModal()">&#10005; Close</button>
+        </div>
+
+        <form id="addFollowUpForm" class="form-modal__form">
+          <div class="form-modal__body">
+            <input type="hidden" id="followUpEditId" value="">
+            <div class="filter-control form-field">
+              <label class="form-field__label" for="followUpBakery">Bakery</label>
+              <select id="followUpBakery" required class="visit-log-select" data-searchable="true">
+                <option value="">-- Select Bakery --</option>
+              </select>
             </div>
-            <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
-              <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Visit
-                Time</label>
-              <input type="time" id="addVisitTime" required class="visit-log-input">
+            <div class="filter-control form-field">
+              <label class="form-field__label" for="followUpTitle">Action</label>
+              <input type="text" id="followUpTitle" required placeholder="What needs doing?" class="visit-log-input">
+            </div>
+            <div class="form-field-row">
+              <div class="filter-control form-field">
+                <label class="form-field__label" for="followUpPriority">Priority</label>
+                <select id="followUpPriority" class="visit-log-select">
+                  <option value="none" selected>No priority</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div class="filter-control form-field">
+                <label class="form-field__label" for="followUpDueDate">Deadline (optional)</label>
+                <input type="date" id="followUpDueDate" class="visit-log-input">
+              </div>
+            </div>
+            <div class="filter-control form-field">
+              <label class="form-field__label" for="followUpDetail">Detail (optional)</label>
+              <textarea id="followUpDetail" placeholder="Any extra context..."
+                class="visit-log-input form-modal__notes form-modal__notes--short"></textarea>
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
-            <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
-              <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Coffee
-                Partner</label>
-              <input type="text" id="addVisitPartner" placeholder="Enter name..." class="visit-log-input">
-            </div>
-            <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
-              <label
-                style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Barista</label>
-              <input type="text" id="addVisitMod" placeholder="Enter name..." class="visit-log-input">
-            </div>
+          <div class="form-modal__footer">
+            <div id="followUpError" class="form-modal__error"></div>
+            <button type="submit" id="followUpSubmitBtn" class="btn form-modal__submit">Save follow-up</button>
           </div>
-
-          <div class="filter-control" style="display:flex;flex-direction:column;gap:6px;">
-            <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted-l);">Comments /
-              Notes</label>
-            <textarea id="addVisitComments" required placeholder="Write your notes here..." class="visit-log-input"
-              style="min-height:100px;resize:vertical;"></textarea>
-          </div>
-
-          <div id="addVisitError" style="color:var(--red);font-size:0.8rem;display:none;"></div>
-
-          <button type="submit" id="addVisitSubmitBtn" class="btn"
-            style="padding:12px;font-size:0.95rem;font-weight:700;margin-top:10px;">Save Visit</button>
         </form>
       </div>
     </div>
@@ -1776,6 +1867,7 @@
   <script src="js/targets.js"></script>
   <script src="js/cqv-criticals.js"></script>
   <script src="js/cqv-shared.js"></script>
+  <script src="js/nbo-shared.js"></script>
   <script src="js/visit-report.js"></script>
   <script src="js/upload.js"></script>
   <script src="js/custom-selects.js"></script>

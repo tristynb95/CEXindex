@@ -1,8 +1,9 @@
 // Storage rules for project cexindex. Deployed from this file — see the
 // "storage" key in firebase.json. Deploy with:  firebase deploy --only storage
 //
-// Used by the CQV PDF import (js/cqv-parser.js + the CQV import zone in
-// admin.html / js/admin-page.js), which uploads to cqvPdfs/.
+// Used by the visit PDF import (js/cqv-parser.js and js/nbo-parser.js + the
+// import zone in admin.html / js/admin-page.js), which uploads CQV reports to
+// cqvPdfs/ and NBO Coffee Visit reports to nboPdfs/.
 //
 // NOTE on admin-only writes: database.rules.json restricts writes
 // (dashboardData, routineVisits, etc.) to admins via a lookup against the
@@ -20,6 +21,12 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /cqvPdfs/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+    }
+    match /nboPdfs/{allPaths=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null
         && request.resource.size < 25 * 1024 * 1024

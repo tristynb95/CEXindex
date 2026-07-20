@@ -312,7 +312,7 @@
 
   G.initCustomSelects = function(root) {
     var scope = root || document;
-    scope.querySelectorAll('.filter-bar select, .visit-log-filters select, .visit-log-filter-control select, #addSiteVisitModal select').forEach(buildCustomSelect);
+    scope.querySelectorAll('.filter-bar select, .visit-log-filters select, .visit-log-filter-control select, #addSiteVisitModal select, #addFollowUpModal select').forEach(buildCustomSelect);
   };
 
   G.syncCustomSelect = function(input) {
