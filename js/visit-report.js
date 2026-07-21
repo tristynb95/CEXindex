@@ -229,7 +229,7 @@ window.GAILS = window.GAILS || {};
       { label: 'Overall Score', value: scoreText },
       { label: 'Rating', value: band || '—', color: bandColor },
       { label: 'Points', value: (record.score != null) ? record.score + ' / ' + (record.scoreMax != null ? record.scoreMax : '—') : '—' },
-      { label: 'Auditor', value: record.auditorName || '—' },
+      { label: 'Coffee Partner', value: record.auditorName || '—' },
       { label: 'Visit Type', value: record.isFollowUp ? 'Follow-Up' : 'CQV' }
     ];
     return '<div class="drill-summary">' + cards.map(function (c) {
@@ -364,7 +364,7 @@ window.GAILS = window.GAILS || {};
     var cards = [
       { label: 'Score', value: nboPctText(record) },
       { label: 'Visit', value: 'Coffee Visit ' + (record.visitNumber || 1) },
-      { label: 'Auditor', value: record.auditorName || '—' },
+      { label: 'Coffee Partner', value: record.auditorName || '—' },
       { label: 'Met', value: scorable.yes + ' of ' + scorable.total },
       { label: 'To Work On', value: String(counts.no || 0), color: (counts.no ? '#B22A24' : null) }
     ];
