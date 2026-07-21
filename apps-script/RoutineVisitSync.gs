@@ -38,6 +38,9 @@ var QUESTION_MAP = {
   'Time': { field: 'time' },
   'Coffee Partner': { field: 'coffeePartner' },
   'Head Barista Present': { field: 'headBaristaPresent' },
+  // The form question was renamed from "MOD" to "Barista"; both titles map
+  // to the same stored field so submissions from either form version sync.
+  'Barista': { field: 'mod' },
   'MOD': { field: 'mod' },
   'Number of Staff': { field: 'numberOfStaff', parse: Number },
 

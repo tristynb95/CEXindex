@@ -141,7 +141,7 @@
     }
 
     headerSub.innerHTML = prefix +
-      '<span style="margin-left:8px;">' +
+      '<span class="header-sub-pillwrap">' +
       pills.join('') +
       '</span>';
   }

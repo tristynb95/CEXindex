@@ -157,7 +157,7 @@ window.GAILS = window.GAILS || {};
     var cards = [
       { label: 'Score', value: scoreText },
       { label: 'Coffee Partner', value: record.coffeePartner || '—' },
-      { label: 'MOD', value: record.mod || '—' },
+      { label: 'Barista', value: record.mod || '—' },
       { label: 'Head Barista Present', value: record.headBaristaPresent || '—' },
       { label: 'Staff on Shift', value: record.numberOfStaff != null ? record.numberOfStaff : '—' }
     ];
@@ -313,7 +313,7 @@ window.GAILS = window.GAILS || {};
       : '';
 
     var pdfHtml = record.pdfUrl
-      ? '<div class="visit-report-section-wrapper"><a class="drill-close-btn" style="display:inline-block; text-decoration:none;" href="' + escapeHtml(record.pdfUrl) + '" target="_blank" rel="noopener">&#128196; View Original CQV PDF &#8599;</a></div>'
+      ? '<div class="visit-report-section-wrapper"><a class="visit-report-pdf-btn" href="' + escapeHtml(record.pdfUrl) + '" target="_blank" rel="noopener">&#128196; View Original CQV PDF &#8599;</a></div>'
       : '';
 
     var criticalFailHtml = cqvHasCriticalFail(record)
@@ -397,7 +397,7 @@ window.GAILS = window.GAILS || {};
     var questions = record.questions || [];
 
     var pdfHtml = record.pdfUrl
-      ? '<div class="visit-report-section-wrapper"><a class="drill-close-btn" style="display:inline-block; text-decoration:none;" href="' + escapeHtml(record.pdfUrl) + '" target="_blank" rel="noopener">&#128196; View Original NBO PDF &#8599;</a></div>'
+      ? '<div class="visit-report-section-wrapper"><a class="visit-report-pdf-btn" href="' + escapeHtml(record.pdfUrl) + '" target="_blank" rel="noopener">&#128196; View Original NBO PDF &#8599;</a></div>'
       : '';
 
     // Coaching notes are the point of the report, so they're lifted out of the
@@ -1406,12 +1406,17 @@ window.GAILS = window.GAILS || {};
     if (view === 'followups') {
       var statusLabels = { 'open': 'Open', 'overdue': 'Overdue', 'done': 'Done', 'all': 'All' };
       var followStatus = window.GAILS._followUpStatusFilter || 'open';
-      pills.push('<span class="header-pill-core">Follow-up Tasks · ' + escapeHtml(statusLabels[followStatus] || 'Open') + '</span>');
+      if (window.innerWidth <= 980) {
+        pills.push('<span class="header-pill-core">Follow-up Tasks</span>');
+        pills.push('<span class="header-pill-core">' + escapeHtml(statusLabels[followStatus] || 'Open') + '</span>');
+      } else {
+        pills.push('<span class="header-pill-core">Follow-up Tasks · ' + escapeHtml(statusLabels[followStatus] || 'Open') + '</span>');
+      }
       if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
       if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
       if (opsVal) pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
       var fuTitle = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
-      return fuTitle + '<span style="margin-left:8px;">' + pills.join('') + '</span>';
+      return fuTitle + '<span class="header-sub-pillwrap">' + pills.join('') + '</span>';
     }
 
     if (view === 'unvisited') {
@@ -1421,8 +1426,13 @@ window.GAILS = window.GAILS || {};
         'region': 'Grouped by Region',
         'none': 'Ungrouped'
       };
-      pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + ' \u00b7 ' +
-        escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Ops Area') + '</span>');
+      if (window.innerWidth <= 980) {
+        pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + '</span>');
+        pills.push('<span class="header-pill-core">' + escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Ops Area') + '</span>');
+      } else {
+        pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + ' \u00b7 ' +
+          escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Ops Area') + '</span>');
+      }
 
       if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
       if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
@@ -1430,7 +1440,7 @@ window.GAILS = window.GAILS || {};
 
       var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
       return title +
-        '<span style="margin-left:8px;">' +
+        '<span class="header-sub-pillwrap">' +
         pills.join('') +
         '</span>';
     }
@@ -1449,8 +1459,17 @@ window.GAILS = window.GAILS || {};
       'type': 'Sorted by Type'
     };
 
-    var coreConfigText = periodText + ' · ' + (groupLabels[groupVal] || 'Grouped') + ' · ' + (sortLabels[sortVal] || 'Sorted');
-    pills.push('<span class="header-pill-core">' + escapeHtml(coreConfigText) + '</span>');
+    // Phones: separate pills so they wrap individually next to the title
+    // instead of one long bubble dropping below it. Desktop keeps the
+    // single combined capsule.
+    if (window.innerWidth <= 980) {
+      pills.push('<span class="header-pill-core">' + escapeHtml(periodText) + '</span>');
+      pills.push('<span class="header-pill-core">' + escapeHtml(groupLabels[groupVal] || 'Grouped') + '</span>');
+      pills.push('<span class="header-pill-core">' + escapeHtml(sortLabels[sortVal] || 'Sorted') + '</span>');
+    } else {
+      var coreConfigText = periodText + ' · ' + (groupLabels[groupVal] || 'Grouped') + ' · ' + (sortLabels[sortVal] || 'Sorted');
+      pills.push('<span class="header-pill-core">' + escapeHtml(coreConfigText) + '</span>');
+    }
 
     if (searchVal) {
       pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
@@ -1480,7 +1499,7 @@ window.GAILS = window.GAILS || {};
 
     var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
     return title +
-      '<span style="margin-left:8px;">' +
+      '<span class="header-sub-pillwrap">' +
       pills.join('') +
       '</span>';
   };

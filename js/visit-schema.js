@@ -10,7 +10,7 @@ window.GAILS_VISIT_SCHEMA = {
     { key: 'time', label: 'Visit time', type: 'time' },
     { key: 'coffeePartner', label: 'Coffee Partner', type: 'text' },
     { key: 'headBaristaPresent', label: 'Head Barista Present', type: 'ynna' },
-    { key: 'mod', label: 'MOD', type: 'text' },
+    { key: 'mod', label: 'Barista', type: 'text' },
     { key: 'numberOfStaff', label: 'Number of Staff', type: 'number' },
     { key: 'score', label: 'Score', type: 'number' },
     { key: 'scoreMax', label: 'Score (out of)', type: 'number' }
