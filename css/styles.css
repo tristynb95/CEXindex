@@ -1560,9 +1560,12 @@ h4 {
 
 /* ══════════════════════════════════════ SECTION CARDS ══ */
 .section {
+  /* Side padding as a variable so full-bleed children (tables on phones) can
+     cancel exactly the padding in force, whatever a tab has overridden it to */
+  --section-pad-x: 22px;
   background: var(--card);
   border-radius: var(--r-lg);
-  padding: 16px 22px;
+  padding: 16px var(--section-pad-x);
   margin-bottom: 12px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--card-border);
@@ -2713,22 +2716,111 @@ canvas {
   background: #F9F3ED;
 }
 
-/* Phones: keep only the rank column frozen */
+/* Phones: keep the whole rank + bakery pane frozen — unsticking either one
+   lets its header scroll away while the cells below stay put, so names ride up
+   into the header band. Tighten the pane instead so the metric columns still
+   get a usable slice of a narrow screen; long names wrap rather than truncate. */
 @media (max-width: 640px) {
-
-  .league-table th:nth-child(2),
-  .league-table td:nth-child(2) {
-    position: static;
-    box-shadow: none;
-  }
 
   .league-table th:first-child,
   .league-table td:first-child {
-    box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
+    width: 36px;
+    min-width: 36px;
+    padding-left: 8px;
+    padding-right: 8px;
   }
 
-  .league-table th:first-child {
-    z-index: 3;
+  .league-table th:nth-child(2),
+  .league-table td:nth-child(2) {
+    left: 36px;
+    max-width: 128px;
+    padding-left: 8px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Focus Bakeries support-priority table: keep the row identity visible while
+   the metric columns scroll, matching the League Table's frozen pane. The
+   rank column is wider here because its heading is "Priority" rather than #. */
+.table-wrap--support-priority {
+  position: relative;
+  isolation: isolate;
+  background: var(--bg-2);
+}
+
+.support-priority-table {
+  --support-priority-rank-width: 116px;
+  border-collapse: collapse;
+}
+
+.support-priority-table thead {
+  position: static;
+}
+
+.support-priority-table th {
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+  background-clip: border-box;
+  box-shadow: none;
+}
+
+.support-priority-table th:first-child,
+.support-priority-table td:first-child {
+  position: sticky;
+  left: 0;
+  width: var(--support-priority-rank-width);
+  min-width: var(--support-priority-rank-width);
+  max-width: var(--support-priority-rank-width);
+  background: var(--bg-2);
+}
+
+.support-priority-table th:nth-child(2),
+.support-priority-table td:nth-child(2) {
+  position: sticky;
+  left: var(--support-priority-rank-width);
+  background: var(--bg-2);
+  box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
+}
+
+.support-priority-table th:first-child,
+.support-priority-table th:nth-child(2) {
+  background: var(--bg);
+  z-index: 3;
+}
+
+.support-priority-table td:first-child,
+.support-priority-table td:nth-child(2) {
+  z-index: 1;
+}
+
+.support-priority-table tr:hover td:first-child,
+.support-priority-table tr:hover td:nth-child(2) {
+  background: #F9F3ED;
+}
+
+@media (max-width: 640px) {
+  /* The header reads "#" here, so the column only has to hold two digits */
+  .support-priority-table {
+    --support-priority-rank-width: 36px;
+  }
+
+  .support-priority-table th:first-child,
+  .support-priority-table td:first-child {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .support-priority-table th:nth-child(2),
+  .support-priority-table td:nth-child(2) {
+    width: 128px;
+    min-width: 128px;
+    max-width: 128px;
+    padding-left: 8px;
+    padding-right: 8px;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }
 
@@ -2767,7 +2859,8 @@ th.sortable:hover {
 }
 
 th.sortable::after {
-  content: ' \2195';
+  /* NBSP so the arrow never wraps onto a line of its own when a header wraps */
+  content: '\00a0\2195';
   color: rgba(122, 113, 98, 0.65);
   font-size: 0.82em;
 }
@@ -2780,6 +2873,21 @@ th.sort-asc::after {
 th.sort-desc::after {
   content: ' \2193';
   color: var(--accent);
+}
+
+/* The period qualifier under a header label ("prior calendar month → latest
+   scored month"). Block rather than a <br> so it can be dropped on phones,
+   where a sentence per header turns the header band into a tower. */
+.th-sublabel {
+  display: block;
+  font-weight: 400;
+  font-size: 0.6rem;
+}
+
+/* Header labels with a phone-sized alternative: "Priority" over a column of
+   single digits is eight characters of column width for one character of data */
+.th-label-short {
+  display: none;
 }
 
 td {
@@ -5516,20 +5624,35 @@ body.table-fullscreen-lock {
   background: #FDF9F9;
 }
 
-/* Phones: one frozen column is plenty — release the bakery column and
-   return the pane edge to the rank column */
+/* Phones: keep the whole pane frozen — unsticking the bakery column only
+   releases it horizontally, its header still sticks to the top, so the header
+   scrolls away and the names ride up into the header band. Tighten the pane
+   instead; long names wrap rather than truncate. */
 @media (max-width: 640px) {
-
-  .drill-table th:nth-child(2),
-  .drill-table td:nth-child(2) {
-    position: static;
-    min-width: 170px;
-    box-shadow: none;
-  }
 
   .drill-table th:first-child,
   .drill-table td:first-child {
-    box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
+    width: 36px;
+    min-width: 36px;
+  }
+
+  .drill-table th:nth-child(2),
+  .drill-table td:nth-child(2) {
+    left: 36px;
+    width: 132px;
+    min-width: 132px;
+    max-width: 132px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* Size columns to their content instead of splitting a fixed 1320px between
+     them — with wrapped headers that fits more of them on screen. Must be
+     max-content, not auto: auto squeezes the columns to fit the modal and the
+     headers tower up to six lines. */
+  .drill-table {
+    width: max-content;
+    min-width: 100%;
   }
 }
 
@@ -5538,6 +5661,18 @@ body.table-fullscreen-lock {
 .drill-table td:nth-child(4),
 .drill-table th:nth-child(4) {
   min-width: 150px;
+}
+
+/* Phones: that 150px floor is desktop sizing — two columns of it is half the
+   screen. Must follow the rule above to win on source order. */
+@media (max-width: 640px) {
+
+  .drill-table th:nth-child(3),
+  .drill-table td:nth-child(3),
+  .drill-table th:nth-child(4),
+  .drill-table td:nth-child(4) {
+    min-width: 0;
+  }
 }
 
 .drill-table td {
@@ -6787,7 +6922,8 @@ body.table-fullscreen-lock {
 
 /* ── Focus Bakeries Redesign ─────────────────── */
 #tab-target .section {
-  padding: 16px 20px;
+  --section-pad-x: 20px;
+  padding: 16px var(--section-pad-x);
   margin-bottom: 10px;
 }
 
@@ -8937,7 +9073,8 @@ a,
 
   /* Section padding */
   .section {
-    padding: 16px 18px;
+    --section-pad-x: 18px;
+    padding: 16px var(--section-pad-x);
   }
 
   /* Keep-clear zone: the Relative/Absolute toggle notch hangs ~47px down
@@ -9306,6 +9443,88 @@ a,
     background-clip: border-box;
     box-shadow: none;
   }
+}
+
+/* ── Phones: spend the width on data, not on chrome ──
+   Every wide table here (league, support priority, trends, drill-downs) has
+   more columns than a 360px screen can show, so all of them get the same three
+   moves: run edge-to-edge inside the card, tighten the cell gutters, and let
+   long header labels wrap — otherwise a header like "NPS (Drink & Meal)" sets
+   a 180px column for a two-digit number. Must sit after the 980px block above
+   so the full-bleed corners win. */
+@media (max-width: 640px) {
+
+  /* Full-bleed cancels exactly the card's side padding, which the Focus tab
+     overrides to 20px — hence the variable rather than a literal. Modal-hosted
+     tables (drill-down, focus history, unmapped sites) sit in their own padded
+     panels and keep their inset. */
+  .section .table-wrap {
+    margin-left: calc(var(--section-pad-x, 18px) * -1);
+    margin-right: calc(var(--section-pad-x, 18px) * -1);
+    width: auto;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .table-wrap--league {
+    clip-path: none;
+  }
+
+  /* In the fullscreen shell there is no card padding to cancel, so the same
+     margins would hang the table off both edges. */
+  .table-fullscreen-shell:fullscreen .table-wrap,
+  .table-fullscreen-shell:-webkit-full-screen .table-wrap,
+  .table-fullscreen-shell.is-fullscreen-fallback .table-wrap {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .table-wrap th,
+  .table-wrap td,
+  .drill-table-wrap th,
+  .drill-table-wrap td {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  /* Sit every label on the same line as the data below it, wrapped or not.
+     Slightly smaller and tighter than desktop: uppercase headers at 0.67rem
+     with wide tracking cost an extra wrapped line on most columns. */
+  .table-wrap th,
+  .admin-table-wrap th,
+  .drill-table-wrap th {
+    vertical-align: bottom;
+    line-height: 1.25;
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* Wrap from column three on: the first two are the identity columns (rank +
+     bakery, month + score), which size themselves and read badly broken up. */
+  .table-wrap th:nth-child(n+3),
+  .admin-table-wrap th:nth-child(n+3),
+  .drill-table-wrap th:nth-child(n+3) {
+    white-space: normal;
+    /* A label longer than the cap must break, not spill over the next column */
+    overflow-wrap: anywhere;
+    max-width: 104px;
+  }
+
+  /* The period qualifiers are a sentence each — a dozen wrapped lines per
+     header. The table's own caption already explains the periods. */
+  .th-sublabel {
+    display: none;
+  }
+
+  .th-label-full {
+    display: none;
+  }
+
+  .th-label-short {
+    display: inline;
+  }
+
 }
 
 /* ── Login screen on very small screens ── */

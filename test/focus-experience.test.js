@@ -333,14 +333,20 @@ test('renders a plain-language action card and accurate filtered count', () => {
   context._renderTargetTable(latest.slice().reverse(), 'cb', 'c', 'Low Performance', false);
   const allBakeryTable = getElement('targetTable').innerHTML;
   const expectedTop = context._hubState.rows[0];
-  assert.match(allBakeryTable, /<th>Priority<\/th>/);
+  // "Priority" on desktop, "#" on phones — see .th-label-full/.th-label-short
+  assert.match(allBakeryTable, /<th><span class="th-label-full">Priority<\/span><span class="th-label-short">#<\/span><\/th>/);
+  assert.match(allBakeryTable, /class="table-wrap table-wrap--support-priority"/);
+  assert.match(allBakeryTable, /class="support-priority-table nps-splits-collapsed"/);
   assert.doesNotMatch(allBakeryTable, /<th>Support Urgency<\/th>/);
   assert.match(allBakeryTable, /Average Drinks Per Month/);
   assert.match(allBakeryTable, /<tbody><tr><td style="font-weight:700">1<\/td>/);
   assert.doesNotMatch(allBakeryTable, /title="Performance gap/);
   assert.ok(allBakeryTable.indexOf(expectedTop.name) < allBakeryTable.indexOf(expectedTop.name === 'Henley' ? 'Highgate' : 'Henley'));
   assert.match(allBakeryTable, /12345/);
+  assert.doesNotMatch(allBakeryTable, /LOW VOL/);
   assert.doesNotMatch(allBakeryTable, /Ranked lowest Score first/);
+  assert.match(styles, /\.support-priority-table th:first-child,[\s\S]*?position: sticky;[\s\S]*?left: 0;/);
+  assert.match(styles, /\.support-priority-table th:nth-child\(2\),[\s\S]*?position: sticky;[\s\S]*?left: var\(--support-priority-rank-width\);/);
 
   context.GAILS.openFocusDetail('Henley');
   const review = getElement('focusDetailBody').innerHTML;
