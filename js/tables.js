@@ -438,6 +438,30 @@ document.addEventListener('click', function (e) {
   window.GAILS.syncNpsSplitTables();
 }, true);
 
+// Phones drop the frozen rank + bakery pane on these two tables (see the
+// max-width: 640px block in styles.css), so tapping a row marks it and the
+// mark travels with the row while the metric columns scroll past. One mark at
+// a time per table; tapping the marked row clears it. The mark does not
+// survive a re-render, so sorting starts clean.
+var ROW_MARK_TABLES = '.league-table, .support-priority-table';
+
+document.addEventListener('click', function (e) {
+  if (!window.matchMedia || !window.matchMedia('(max-width: 640px)').matches) return;
+  var target = e.target && e.target.closest ? e.target : null;
+  if (!target) return;
+  // Bakery names are buttons that open the detail modal — leave those alone
+  if (target.closest('button, a, input, select')) return;
+  var cell = target.closest('td');
+  var row = cell ? cell.parentElement : null;
+  var table = row && row.closest ? row.closest(ROW_MARK_TABLES) : null;
+  if (!table) return;
+  var wasMarked = row.classList.contains('is-row-marked');
+  table.querySelectorAll('tr.is-row-marked').forEach(function (marked) {
+    marked.classList.remove('is-row-marked');
+  });
+  if (!wasMarked) row.classList.add('is-row-marked');
+});
+
 window.GAILS.renderLeagueTable = function (data) {
   var G = GAILS;
   var sortKey = document.getElementById('sortBy').value;

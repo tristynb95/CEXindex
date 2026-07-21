@@ -2824,6 +2824,77 @@ canvas {
   }
 }
 
+/* ── Phones: no frozen pane, tap a row to trace it instead ──
+   A frozen rank + bakery pane costs half a 360px screen. Releasing it hands
+   that width back to the metrics; tapping a row marks it so it stays findable
+   as the columns scroll past. Only the horizontal freeze goes: the header
+   cells must stay `sticky` (left: auto, never position: static) or they scroll
+   away while the rest of the header band stays pinned. */
+@media (max-width: 640px) {
+
+  .league-table th:first-child,
+  .league-table th:nth-child(2),
+  .support-priority-table th:first-child,
+  .support-priority-table th:nth-child(2) {
+    left: auto;
+    box-shadow: none;
+  }
+
+  .league-table td:first-child,
+  .league-table td:nth-child(2),
+  .support-priority-table td:first-child,
+  .support-priority-table td:nth-child(2) {
+    position: static;
+    box-shadow: none;
+  }
+
+  /* Those opaque cell backgrounds existed only so scrolled columns could not
+     bleed through the frozen pane; without the pane they only mask the mark. */
+  .league-table td:first-child,
+  .league-table td:nth-child(2),
+  .support-priority-table td:first-child,
+  .support-priority-table td:nth-child(2) {
+    background: transparent;
+  }
+
+  /* There is no pointer to hover with, yet touch browsers leave :hover on the
+     last row tapped — so unmarking a row would drop it into a permanent wash
+     instead of returning it to normal. The mark below is what shows a row is
+     picked; the two pane-era :first-child/:nth-child(2) selectors need naming
+     explicitly to be outranked. */
+  .league-table tr:hover td,
+  .league-table tr:hover td:first-child,
+  .league-table tr:hover td:nth-child(2),
+  .support-priority-table tr:hover td,
+  .support-priority-table tr:hover td:first-child,
+  .support-priority-table tr:hover td:nth-child(2) {
+    background: transparent;
+  }
+
+  .league-table tbody tr,
+  .support-priority-table tbody tr {
+    cursor: pointer;
+  }
+
+  /* One flat opaque tone on every cell of the marked row — #F4E4DE is the 10%
+     accent tint already composited over the table surface (--bg-2). A
+     translucent tint would stack differently per cell: the row-hover tint,
+     which touch browsers keep alive on the tapped row, lands on some cells and
+     not others, so the mark came out two-tone. The :hover copies of the
+     selectors are what outrank those hover rules. */
+  .league-table tbody tr.is-row-marked td,
+  .league-table tbody tr.is-row-marked:hover td,
+  .support-priority-table tbody tr.is-row-marked td,
+  .support-priority-table tbody tr.is-row-marked:hover td {
+    background: #F4E4DE;
+    /* Hairlines bracket the row across its full width. On the cells, not the
+       row: box-shadow on a <tr> is unreliable under border-collapse. */
+    box-shadow: inset 0 1px 0 rgba(178, 42, 36, 0.22),
+      inset 0 -1px 0 rgba(178, 42, 36, 0.22);
+    color: var(--text);
+  }
+}
+
 .table-wrap--panel {
   max-height: min(46vh, 460px);
   overflow-y: auto;
