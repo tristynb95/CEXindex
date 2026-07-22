@@ -683,9 +683,11 @@ window.GAILS = window.GAILS || {};
   }
 
   // Assembles a visit's notes once for the row preview, the expanded inline
-  // view, and the CSV export. Routine visits keep their per-section labels in
-  // the expanded HTML; the flat text joins sections for preview/export.
-  function buildVisitNotes(v, schema) {
+  // view, and the export. Routine visits keep their per-section labels in the
+  // expanded HTML; the flat text joins sections, labelling them only when
+  // `labelSections` is set — the row preview is too short to spend space on
+  // labels, but an exported cell is unreadable without them.
+  function buildVisitNotes(v, schema, labelSections) {
     // An NBO visit has no summary paragraph — its notes ARE the per-question
     // coaching notes, so they're joined here labelled by question.
     if (v.type === 'nbo') {
@@ -714,7 +716,7 @@ window.GAILS = window.GAILS || {};
         var comment = secData.comments;
         if (comment && comment.trim()) {
           if (text) text += ' | ';
-          text += comment.trim();
+          text += (labelSections ? sec.title + ': ' : '') + comment.trim();
           fullHtml += '<p class="visit-log-row__note-item">' +
             '<span class="visit-log-row__note-label">' + escapeHtml(sec.title) + '</span>' +
             escapeHtml(comment.trim()) +
@@ -735,10 +737,119 @@ window.GAILS = window.GAILS || {};
 
   // Downloads whatever the last render put in _visitLogExport — i.e. exactly
   // the rows the active filters produced, not just the ones rendered so far.
-  function exportVisitLogCsv() {
-    var data = window.GAILS._visitLogExport;
-    if (!data || !data.rows || data.rows.length < 2) return;
-    var csv = data.rows.map(function (row) {
+  var EXPORT_NUMBER_FORMATS = {
+    date: 'dd mmm yyyy',
+    percent: '0%',
+    number: '0'
+  };
+
+  function exportOptionText(sel) {
+    var opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
+    return opt ? opt.text : '';
+  }
+
+  // Filter selects use an empty value for "no filter", so the readable
+  // "All regions"-style label has to be supplied rather than read off.
+  function exportFilterLabel(id, allLabel) {
+    var el = document.getElementById(id);
+    if (!el) return allLabel;
+    return el.value ? exportOptionText(el) : allLabel;
+  }
+
+  // The rows every view's Report Info tab opens with — an exported file that
+  // has been emailed on still has to explain what it is and what it covers.
+  function baseExportMeta() {
+    var searchEl = document.getElementById('visitLogSearch');
+    var search = searchEl ? searchEl.value.trim() : '';
+    var meta = [
+      ['Generated', new Date().toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      })],
+      ['Period', exportFilterLabel('visitLogPeriod', 'All Time')],
+      ['Region', exportFilterLabel('visitLogRegion', 'All regions')],
+      ['Ops Area', exportFilterLabel('visitLogOps', 'All ops areas')]
+    ];
+    if (search) meta.push(['Search', search]);
+    return meta;
+  }
+
+  function buildExportFilename(label) {
+    return 'GAILs ' + label + ' ' + new Date().toISOString().slice(0, 10) + '.xlsx';
+  }
+
+  // Blank cells return null so aoa_to_sheet leaves them genuinely empty
+  // rather than writing an empty string that Excel then treats as text.
+  function exportCellValue(value, type) {
+    if (value == null || value === '') return null;
+    if (type === 'date') {
+      var d = new Date(String(value).slice(0, 10) + 'T00:00:00');
+      return isNaN(d.getTime()) ? String(value) : d;
+    }
+    if (type === 'percent' || type === 'number') {
+      var n = Number(value);
+      return isNaN(n) ? String(value) : n;
+    }
+    return String(value);
+  }
+
+  function exportCellText(value, type) {
+    var v = exportCellValue(value, type);
+    if (v == null) return '';
+    if (v instanceof Date) {
+      return v.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    if (type === 'percent' && typeof v === 'number') return Math.round(v * 100) + '%';
+    return String(v);
+  }
+
+  function buildExportDataSheet(data) {
+    var X = window.XLSX;
+    var header = data.columns.map(function (col) { return col.label; });
+    var body = data.rows.map(function (row) {
+      return row.map(function (cell, i) {
+        return exportCellValue(cell, data.columns[i] ? data.columns[i].type : 'text');
+      });
+    });
+    var ws = X.utils.aoa_to_sheet([header].concat(body), { cellDates: true });
+    var range = X.utils.decode_range(ws['!ref']);
+
+    data.columns.forEach(function (col, c) {
+      var fmt = EXPORT_NUMBER_FORMATS[col.type];
+      if (!fmt) return;
+      for (var r = 1; r <= range.e.r; r++) {
+        var cell = ws[X.utils.encode_cell({ r: r, c: c })];
+        if (cell && cell.t !== 's') cell.z = fmt;
+      }
+    });
+
+    ws['!cols'] = data.columns.map(function (col) { return { wch: col.width || 16 }; });
+    // The free SheetJS build can't write bold headers or frozen panes, so the
+    // autofilter does that job: it marks row 1 as the header and lets people
+    // slice the export without restructuring it.
+    ws['!autofilter'] = {
+      ref: X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: range.e.r, c: range.e.c } })
+    };
+    return ws;
+  }
+
+  function buildExportInfoSheet(data) {
+    var X = window.XLSX;
+    var ws = X.utils.aoa_to_sheet([[data.title], []].concat(data.meta || []));
+    ws['!cols'] = [{ wch: 22 }, { wch: 54 }];
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+    return ws;
+  }
+
+  function exportVisitLogCsvFallback(data) {
+    var lines = [[data.title]]
+      .concat(data.meta || [])
+      .concat([[], data.columns.map(function (col) { return col.label; })])
+      .concat(data.rows.map(function (row) {
+        return row.map(function (cell, i) {
+          return exportCellText(cell, data.columns[i] ? data.columns[i].type : 'text');
+        });
+      }));
+    var csv = lines.map(function (row) {
       return row.map(function (cell) {
         var s = cell == null ? '' : String(cell);
         return '"' + s.replace(/"/g, '""') + '"';
@@ -748,11 +859,44 @@ window.GAILS = window.GAILS || {};
     var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     var link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = data.filename;
+    link.download = data.filename.replace(/\.xlsx$/, '.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+  }
+
+  // Downloads whatever the last render put in _visitLogExport — i.e. exactly
+  // the rows the active filters produced, not just the ones rendered so far.
+  function exportVisitLogFile() {
+    var data = window.GAILS._visitLogExport;
+    if (!data || !data.rows || !data.rows.length) return;
+    if (!window.XLSX) {
+      exportVisitLogCsvFallback(data);
+      return;
+    }
+    var wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, buildExportInfoSheet(data), 'Report Info');
+    window.XLSX.utils.book_append_sheet(wb, buildExportDataSheet(data), data.sheetName);
+    window.XLSX.writeFile(wb, data.filename);
+  }
+
+  // Comparator behind the "Sort By" filter, shared by the rendered groups and
+  // the export so a downloaded file lists visits in the same order as the view.
+  function visitLogSorter(sortVal) {
+    var G = window.GAILS;
+    function bakeryLabel(v) {
+      return (G.getBakeryMapLabel ? G.getBakeryMapLabel(v.bakery) : v.bakery) || '';
+    }
+    return function (a, b) {
+      if (sortVal === 'nameAsc') return bakeryLabel(a).localeCompare(bakeryLabel(b));
+      if (sortVal === 'nameDesc') return bakeryLabel(b).localeCompare(bakeryLabel(a));
+      if (sortVal === 'type') return visitTypeLabel(a).localeCompare(visitTypeLabel(b));
+      // Default: date descending
+      var dateA = a.date + 'T' + (a.time || '00:00');
+      var dateB = b.date + 'T' + (b.time || '00:00');
+      return dateB.localeCompare(dateA);
+    };
   }
 
   // Drives the "Group By" filter — Ops Area (default), Region, or Visit
@@ -944,6 +1088,8 @@ window.GAILS = window.GAILS || {};
   // inventing a level for them.
   var PRIORITY_ORDER = { high: 0, medium: 1, low: 2, none: 3 };
   var PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low', none: 'None' };
+
+  var FOLLOW_UP_STATUS_LABELS = { open: 'Open', overdue: 'Overdue', done: 'Done', all: 'All' };
 
   function normalizePriority(value) {
     var v = String(value || '').toLowerCase();
@@ -1404,7 +1550,7 @@ window.GAILS = window.GAILS || {};
     var pills = [];
 
     if (view === 'followups') {
-      var statusLabels = { 'open': 'Open', 'overdue': 'Overdue', 'done': 'Done', 'all': 'All' };
+      var statusLabels = FOLLOW_UP_STATUS_LABELS;
       var followStatus = window.GAILS._followUpStatusFilter || 'open';
       if (window.innerWidth <= 980) {
         pills.push('<span class="header-pill-core">Follow-up Tasks</span>');
@@ -1779,7 +1925,7 @@ window.GAILS = window.GAILS || {};
 
     var actionsHtml = '<span class="visit-log-summary__actions">' +
       visitLogGroupToggleHtml(showGroupToggle) +
-      '<button type="button" class="visit-log-summary__export" title="Download the filtered list as CSV">Export CSV</button>' +
+      '<button type="button" class="visit-log-summary__export" title="Download the filtered list as a formatted Excel workbook">Export Excel</button>' +
       '</span>';
 
     summaryEl.innerHTML =
@@ -1800,7 +1946,7 @@ window.GAILS = window.GAILS || {};
       '<span class="visit-log-summary__coverage">' + coverageText + '</span>' +
       '<span class="visit-log-summary__actions">' +
       visitLogGroupToggleHtml(showGroupToggle) +
-      '<button type="button" class="visit-log-summary__export" title="Download the unvisited list as CSV">Export CSV</button>' +
+      '<button type="button" class="visit-log-summary__export" title="Download the unvisited list as a formatted Excel workbook">Export Excel</button>' +
       '</span>';
     summaryEl.hidden = false;
   }
@@ -1817,7 +1963,7 @@ window.GAILS = window.GAILS || {};
       '<span class="visit-log-summary__actions">' +
       addBtn +
       visitLogGroupToggleHtml(showGroupToggle) +
-      '<button type="button" class="visit-log-summary__export" title="Download the follow-up list as CSV">Export CSV</button>' +
+      '<button type="button" class="visit-log-summary__export" title="Download the follow-up list as a formatted Excel workbook">Export Excel</button>' +
       '</span>';
     summaryEl.hidden = false;
   }
@@ -1963,7 +2109,7 @@ window.GAILS = window.GAILS || {};
             return;
           }
           if (e.target.closest && e.target.closest('.visit-log-summary__export')) {
-            exportVisitLogCsv();
+            exportVisitLogFile();
             return;
           }
           var chip = e.target.closest ? e.target.closest('.visit-log-summary__chip') : null;
@@ -2371,15 +2517,42 @@ window.GAILS = window.GAILS || {};
       window.GAILS._visitLogCurrentGroupNames = groupVal === 'none' ? [] : groupsSorted.slice();
       renderVisitLogSummary(baseFiltered, filtered.length, typeVal, groupVal !== 'none');
 
-      // CSV export always mirrors the full filtered list, even when the
-      // rendered rows are capped by the Show more pager.
+      // The export always mirrors the full filtered list, even when the
+      // rendered rows are capped by the Show more pager, and repeats the
+      // on-screen ordering so the file reads like the view it came from.
       window.GAILS._visitLogExport = {
-        filename: 'gails-visits-' + new Date().toISOString().slice(0, 10) + '.csv',
-        rows: [['Date', 'Time', 'Bakery', 'Region', 'Ops Area', 'Visit Type', 'Coffee Partner / Auditor', 'Score', 'Notes']].concat(filtered.map(function (v) {
-          var score = '';
-          if (v.type === 'cqv') score = v.overallPct != null ? v.overallPct + '%' : '';
-          else if (v.type === 'nbo') score = GAILS.NBOShared.overallPct(v) != null ? GAILS.NBOShared.overallPct(v) + '%' : '';
-          else if (v.type !== 'siteVisit') score = v.score != null ? v.score + ' / ' + (v.scoreMax != null ? v.scoreMax : '') : '';
+        title: 'GAIL’s — Visit Log',
+        sheetName: 'Visits',
+        filename: buildExportFilename('Visit Log'),
+        meta: baseExportMeta().concat([
+          ['Visit Type', exportFilterLabel('visitLogType', 'All types')],
+          ['CQV Rating', exportFilterLabel('visitLogRating', 'All ratings')],
+          ['Sorted by', exportFilterLabel('visitLogSort', 'Date')],
+          ['Visits exported', filtered.length]
+        ]),
+        columns: [
+          { label: 'Date', type: 'date', width: 13 },
+          { label: 'Time', type: 'text', width: 7 },
+          { label: 'Bakery', type: 'text', width: 26 },
+          { label: 'Region', type: 'text', width: 16 },
+          { label: 'Ops Area', type: 'text', width: 18 },
+          { label: 'Visit Type', type: 'text', width: 20 },
+          { label: 'Coffee Partner / Auditor', type: 'text', width: 24 },
+          // Scores land as a real percentage across every visit type so the
+          // column sorts; routine visits keep their raw points alongside.
+          { label: 'Score %', type: 'percent', width: 9 },
+          { label: 'Points', type: 'number', width: 8 },
+          { label: 'Points Available', type: 'number', width: 15 },
+          { label: 'Notes', type: 'text', width: 70 }
+        ],
+        rows: groupsSorted.reduce(function (rows, groupName) {
+          return rows.concat(grouped[groupName].slice().sort(visitLogSorter(sortVal)));
+        }, []).map(function (v) {
+          var pct = null;
+          if (v.type === 'cqv') pct = v.overallPct;
+          else if (v.type === 'nbo') pct = GAILS.NBOShared.overallPct(v);
+          else if (v.type !== 'siteVisit' && v.score != null && v.scoreMax) pct = (v.score / v.scoreMax) * 100;
+          var isRoutine = v.type !== 'cqv' && v.type !== 'nbo' && v.type !== 'siteVisit';
           return [
             v.date,
             v.time || '',
@@ -2388,10 +2561,12 @@ window.GAILS = window.GAILS || {};
             G.getBakeryOps ? G.getBakeryOps(v.bakery) : '',
             visitTypeLabel(v),
             (v.type === 'cqv' || v.type === 'nbo') ? (v.auditorName || '') : (v.coffeePartner || ''),
-            score,
-            buildVisitNotes(v, schema).text
+            pct != null ? pct / 100 : '',
+            isRoutine ? v.score : '',
+            isRoutine ? v.scoreMax : '',
+            buildVisitNotes(v, schema, true).text
           ];
-        }))
+        })
       };
 
       var remaining = renderLimit;
@@ -2400,27 +2575,7 @@ window.GAILS = window.GAILS || {};
         var groupVisits = grouped[groupName];
 
         // Sort based on selected option within the group
-        groupVisits.sort(function (a, b) {
-          if (sortVal === 'nameAsc') {
-            var labelA = (G.getBakeryMapLabel ? G.getBakeryMapLabel(a.bakery) : a.bakery) || '';
-            var labelB = (G.getBakeryMapLabel ? G.getBakeryMapLabel(b.bakery) : b.bakery) || '';
-            return labelA.localeCompare(labelB);
-          }
-          if (sortVal === 'nameDesc') {
-            var labelA = (G.getBakeryMapLabel ? G.getBakeryMapLabel(a.bakery) : a.bakery) || '';
-            var labelB = (G.getBakeryMapLabel ? G.getBakeryMapLabel(b.bakery) : b.bakery) || '';
-            return labelB.localeCompare(labelA);
-          }
-          if (sortVal === 'type') {
-            var labelA = visitTypeLabel(a);
-            var labelB = visitTypeLabel(b);
-            return labelA.localeCompare(labelB);
-          }
-          // Default: date descending
-          var dateA = a.date + 'T' + (a.time || '00:00');
-          var dateB = b.date + 'T' + (b.time || '00:00');
-          return dateB.localeCompare(dateA);
-        });
+        groupVisits.sort(visitLogSorter(sortVal));
 
         // Pagination: spend the remaining row budget on this group; anything
         // beyond it stays reachable via the Show more button after the list.
@@ -2606,18 +2761,40 @@ window.GAILS = window.GAILS || {};
       renderUnvisitedSummary(totalUnvisited, matchingSites, groupVal !== 'none');
 
       window.GAILS._visitLogExport = {
-        filename: 'gails-unvisited-sites-' + new Date().toISOString().slice(0, 10) + '.csv',
-        rows: [['Bakery', 'Region', 'Ops Area', 'Last Visited']].concat(groupsSorted.reduce(function (rows, groupName) {
+        title: 'GAIL’s — Unvisited Sites',
+        sheetName: 'Unvisited Sites',
+        filename: buildExportFilename('Unvisited Sites'),
+        meta: baseExportMeta().concat([
+          ['Sites matching filters', matchingSites],
+          ['Unvisited in period', totalUnvisited],
+          ['Coverage', matchingSites > 0
+            ? Math.round(((matchingSites - totalUnvisited) / matchingSites) * 100) + '%'
+            : '—']
+        ]),
+        columns: [
+          { label: 'Bakery', type: 'text', width: 26 },
+          { label: 'Region', type: 'text', width: 16 },
+          { label: 'Ops Area', type: 'text', width: 18 },
+          // "Last Visit" spans all history, not just the selected period, so a
+          // blank date genuinely means never — hence the explicit flag column.
+          { label: 'Last Visit', type: 'date', width: 13 },
+          { label: 'Days Since', type: 'number', width: 11 },
+          { label: 'Ever Visited', type: 'text', width: 12 }
+        ],
+        rows: groupsSorted.reduce(function (rows, groupName) {
           unvisitedMap[groupName].slice().sort().forEach(function (bName) {
+            var lastIso = lastVisitMap[bName] ? lastVisitMap[bName].split('T')[0] : '';
             rows.push([
               bName,
               G.getBakeryRegion ? G.getBakeryRegion(bName) : '',
               G.getBakeryOps ? G.getBakeryOps(bName) : '',
-              lastVisitMap[bName] ? lastVisitMap[bName].split('T')[0] : 'Never visited'
+              lastIso,
+              lastIso ? daysSince(lastIso) : '',
+              lastIso ? 'Yes' : 'No'
             ]);
           });
           return rows;
-        }, []))
+        }, [])
       };
 
       var collapsedUnvisited = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
@@ -2709,8 +2886,34 @@ window.GAILS = window.GAILS || {};
       var taskGroupsSorted = Object.keys(taskGroups).sort();
 
       window.GAILS._visitLogExport = {
-        filename: 'gails-follow-ups-' + new Date().toISOString().slice(0, 10) + '.csv',
-        rows: [['Bakery', 'Region', 'Ops Area', 'Action', 'Detail', 'Priority', 'Due Date', 'Status', 'Added', 'Completed']].concat(filteredTasks.map(function (t) {
+        title: 'GAIL’s — Follow-Up Actions',
+        sheetName: 'Follow-Ups',
+        filename: buildExportFilename('Follow-Up Actions'),
+        meta: baseExportMeta().concat([
+          ['Status filter', FOLLOW_UP_STATUS_LABELS[followStatus] || 'All'],
+          ['Tasks exported', filteredTasks.length],
+          ['Open (all statuses)', openCount],
+          ['Overdue (all statuses)', overdueCount]
+        ]),
+        columns: [
+          { label: 'Bakery', type: 'text', width: 26 },
+          { label: 'Region', type: 'text', width: 16 },
+          { label: 'Ops Area', type: 'text', width: 18 },
+          { label: 'Action', type: 'text', width: 34 },
+          { label: 'Detail', type: 'text', width: 60 },
+          { label: 'Priority', type: 'text', width: 10 },
+          { label: 'Due Date', type: 'date', width: 13 },
+          { label: 'Days Overdue', type: 'number', width: 13 },
+          { label: 'Status', type: 'text', width: 10 },
+          { label: 'Added', type: 'date', width: 12 },
+          { label: 'Completed', type: 'date', width: 13 }
+        ],
+        // Bakery groups are ordered on screen; the export follows the same
+        // sequence so the two can be read side by side.
+        rows: taskGroupsSorted.reduce(function (rows, groupName) {
+          return rows.concat(taskGroups[groupName]);
+        }, []).map(function (t) {
+          var due = dueMeta(t.dueDate);
           return [
             G.getBakeryMapLabel ? G.getBakeryMapLabel(t.bakery) : t.bakery,
             G.getBakeryRegion ? G.getBakeryRegion(t.bakery) : '',
@@ -2719,11 +2922,12 @@ window.GAILS = window.GAILS || {};
             t.detail || '',
             PRIORITY_LABELS[normalizePriority(t.priority)],
             t.dueDate || '',
-            taskIsDone(t) ? 'Done' : 'Open',
+            taskIsOverdue(t) ? Math.abs(due.days) : '',
+            taskIsDone(t) ? 'Done' : (taskIsOverdue(t) ? 'Overdue' : 'Open'),
             t.createdAt ? t.createdAt.slice(0, 10) : '',
             t.completedAt ? t.completedAt.slice(0, 10) : ''
           ];
-        }))
+        })
       };
 
       if (filteredTasks.length === 0) {
