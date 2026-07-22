@@ -892,7 +892,7 @@ window.GAILS.openFocusDetail = function (name) {
   if (FM.length >= 2) {
     h += '<section class="focus-detail-section focus-detail-section--trend">' +
       summaryHtml +
-      '<h4 class="focus-section-title">Score trend vs company average</h4>' +
+      '<h4 class="focus-section-title">Score trend vs selection and company average</h4>' +
       '<div class="focus-chart-wrap"><canvas id="focusDetailChart"></canvas></div></section>';
   } else {
     h += summaryHtml;
@@ -973,14 +973,41 @@ window.GAILS.openFocusDetail = function (name) {
   _updateDetailNav(name);
 
   if (FM.length >= 2) {
-    var allAvgByMonth = FM.map(function (m) {
-      var recs = G.state.ALL.filter(function (r) { return r.m === m && !r.noData && !r.incompletePeriod && r[cf] !== null && r[cf] !== undefined && !isNaN(r[cf]); });
-      return recs.length ? recs.reduce(function (a, r) { return a + r[cf]; }, 0) / recs.length : null;
+    // Two benchmarks in one pass: the whole estate, and the bakery's current
+    // selection — whatever the region/ops/bakery filters resolve to. The
+    // selection average spans every bakery in scope, focus and non-focus alike,
+    // so it reads as the local bar rather than a focus-only average.
+    var st = G.state || {};
+    var regionFilter = st.regionFilter || [], opsFilter = st.opsFilter || [], searchBakery = st.searchBakery || [];
+    var isFiltered = regionFilter.length > 0 || opsFilter.length > 0 || searchBakery.length > 0;
+    var selPeers = {};
+    var allAvgByMonth = [], selAvgByMonth = [];
+    function inSelection(b) {
+      if (regionFilter.length && regionFilter.indexOf(G.getBakeryRegion(b)) < 0) return false;
+      if (opsFilter.length && opsFilter.indexOf(G.getBakeryOps(b)) < 0) return false;
+      if (searchBakery.length && !searchBakery.some(function (s) { return b.toLowerCase().indexOf(String(s).toLowerCase()) >= 0; })) return false;
+      return true;
+    }
+    FM.forEach(function (m) {
+      var allSum = 0, allN = 0, selSum = 0, selN = 0;
+      G.state.ALL.forEach(function (r) {
+        if (r.m !== m || r.noData || r.incompletePeriod) return;
+        var v = r[cf];
+        if (v === null || v === undefined || isNaN(v)) return;
+        allSum += v; allN++;
+        if (inSelection(r.b)) { selSum += v; selN++; selPeers[r.b] = 1; }
+      });
+      allAvgByMonth.push(allN ? allSum / allN : null);
+      selAvgByMonth.push(selN ? selSum / selN : null);
     });
     var trendDatasets = [
-      { label: name, data: trend.hist.map(function (r) { return r && !r.noData && !r.incompletePeriod ? r[cf] : null; }), borderColor: bandColor, backgroundColor: 'rgba(178, 42, 36, 0.10)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: false },
-      { label: 'Company average', data: allAvgByMonth, borderColor: 'rgba(146, 137, 120, 0.55)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 1.5, borderWidth: 1.75, borderDash: [6, 4] }
+      { label: name, data: trend.hist.map(function (r) { return r && !r.noData && !r.incompletePeriod ? r[cf] : null; }), borderColor: bandColor, backgroundColor: 'rgba(178, 42, 36, 0.10)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: false }
     ];
+    // Unfiltered, this duplicates the company average; one bakery duplicates its own line.
+    if (isFiltered && Object.keys(selPeers).length >= 2) {
+      trendDatasets.push({ label: 'Selection average', data: selAvgByMonth, borderColor: 'rgba(43, 108, 176, 0.85)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 1.5, borderWidth: 1.75, borderDash: [3, 3] });
+    }
+    trendDatasets.push({ label: 'Company average', data: allAvgByMonth, borderColor: 'rgba(146, 137, 120, 0.55)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 1.5, borderWidth: 1.75, borderDash: [6, 4] });
     if (isAbsolute) {
       trendDatasets.push({
         label: 'Exit focus threshold (' + _hubState.escapeLine + ')',

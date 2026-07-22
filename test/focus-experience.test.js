@@ -178,13 +178,13 @@ test('simplifies the bakery review and uses benchmark-based RAG analysis', () =>
   assert.match(styles, /#focusDetailModal \.focus-detail-section--trend > \.focus-at-a-glance \{[\s\S]*?margin-bottom: 22px/);
   assert.doesNotMatch(targets, /focus-quickstats|focus-quickstat/);
   assert.match(targets, /class="focus-detail-section focus-detail-section--trend"/);
-  assert.match(targets, /class="focus-detail-section focus-detail-section--trend">' \+\s*summaryHtml \+\s*'<h4 class="focus-section-title">Score trend vs company average/);
+  assert.match(targets, /class="focus-detail-section focus-detail-section--trend">' \+\s*summaryHtml \+\s*'<h4 class="focus-section-title">Score trend vs selection and company average/);
   assert.match(targets, /class="focus-detail-section focus-detail-section--drivers"/);
   assert.match(targets, /class="focus-detail-section focus-detail-section--actions"/);
   assert.match(targets, /class="focus-detail-section focus-detail-section--history"/);
   assert.match(styles, /#focusDetailModal \.focus-detail-section \{[\s\S]*?gap: 8px/);
-  assert.ok(targets.indexOf('At a glance') < targets.indexOf('Score trend vs company average'));
-  assert.ok(targets.indexOf('Score trend vs company average') < targets.indexOf('Where to focus first'));
+  assert.ok(targets.indexOf('At a glance') < targets.indexOf('Score trend vs selection and company average'));
+  assert.ok(targets.indexOf('Score trend vs selection and company average') < targets.indexOf('Where to focus first'));
   assert.ok(targets.indexOf('Where to focus first') < targets.indexOf('Suggested next steps'));
   assert.ok(targets.indexOf('Suggested next steps') < targets.indexOf('Historical results'));
   assert.match(targets, /<details class="focus-history-disclosure">/);
@@ -374,6 +374,6 @@ test('renders a plain-language action card and accurate filtered count', () => {
   assert.doesNotMatch(review, /target-stat-card/);
   assert.doesNotMatch(review, /focus-reason/);
   assert.doesNotMatch(review, /focus-quickstat/);
-  assert.ok(review.indexOf('At a glance') < review.indexOf('Score trend vs company average'));
+  assert.ok(review.indexOf('At a glance') < review.indexOf('Score trend vs selection and company average'));
   assert.ok(review.indexOf('Where to focus first') < review.indexOf('Suggested next steps'));
 });
