@@ -9625,17 +9625,20 @@ a,
 /* ── Phones: spend the width on data, not on chrome ──
    Every wide table here (league, support priority, trends, drill-downs) has
    more columns than a 360px screen can show, so all of them get the same three
-   moves: run edge-to-edge inside the card, tighten the cell gutters, and let
-   long header labels wrap — otherwise a header like "NPS (Drink & Meal)" sets
-   a 180px column for a two-digit number. Must sit after the 980px block above
-   so the full-bleed corners win. */
+   moves: tighten the cell gutters, let long header labels wrap, and — for the
+   floating tables below — keep the card's side padding instead of running
+   edge-to-edge, otherwise a header like "NPS (Drink & Meal)" sets a 180px
+   column for a two-digit number. Must sit after the 980px block above so
+   these rules win. */
 @media (max-width: 640px) {
 
   /* Full-bleed cancels exactly the card's side padding, which the Focus tab
      overrides to 20px — hence the variable rather than a literal. Modal-hosted
      tables (drill-down, focus history, unmapped sites) sit in their own padded
-     panels and keep their inset. */
-  .section .table-wrap {
+     panels and keep their inset, and so does .table-wrap--floating: the
+     league table, focus bakery tables, and trend table stay inset like the
+     overview drill-down modal's tables rather than touching the section edge. */
+  .section .table-wrap:not(.table-wrap--floating) {
     margin-left: calc(var(--section-pad-x, 18px) * -1);
     margin-right: calc(var(--section-pad-x, 18px) * -1);
     width: auto;
@@ -9644,8 +9647,16 @@ a,
     border-right: none;
   }
 
-  .table-wrap--league {
+  .table-wrap--league:not(.table-wrap--floating) {
     clip-path: none;
+  }
+
+  /* Floating tables: match the drill-down modal's table surface — a white,
+     rounded card inset from the section edge — instead of the flatter
+     full-bleed treatment above. */
+  .table-wrap--floating {
+    background: #FFFFFF;
+    border-color: var(--card-border-h);
   }
 
   /* In the fullscreen shell there is no card padding to cancel, so the same
