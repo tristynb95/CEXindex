@@ -490,7 +490,7 @@ window.GAILS.renderTrendCharts = function (data) {
         + tableTitle
         + '</h3><p class="tracker-table-header__copy">'
         + tableDescription
-        + '</p></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th>NPS (D+M)</th><th>Peer Score</th><th>Benchmark Score</th><th>Responses</th>' + (selectedBakeries.length ? '<th>All Bakeries Avg NPS (D+M)</th>' : '') + '</tr></thead><tbody>' +
+        + '</p></div></div><div class="table-wrap table-wrap--floating"><table><thead><tr><th>Month</th><th>NPS (D+M)</th><th>Peer Score</th><th>Benchmark Score</th><th>Responses</th>' + (selectedBakeries.length ? '<th>All Bakeries Avg NPS (D+M)</th>' : '') + '</tr></thead><tbody>' +
         trackerTableRows.slice().reverse().map(function (row) {
           return '<tr>'
             + '<td>' + row.month + '</td>'

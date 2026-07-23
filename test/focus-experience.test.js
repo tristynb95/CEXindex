@@ -335,7 +335,7 @@ test('renders a plain-language action card and accurate filtered count', () => {
   const expectedTop = context._hubState.rows[0];
   // "Priority" on desktop, "#" on phones — see .th-label-full/.th-label-short
   assert.match(allBakeryTable, /<th><span class="th-label-full">Priority<\/span><span class="th-label-short">#<\/span><\/th>/);
-  assert.match(allBakeryTable, /class="table-wrap table-wrap--support-priority"/);
+  assert.match(allBakeryTable, /class="table-wrap table-wrap--support-priority table-wrap--floating"/);
   assert.match(allBakeryTable, /class="support-priority-table nps-splits-collapsed"/);
   assert.doesNotMatch(allBakeryTable, /<th>Support Urgency<\/th>/);
   assert.match(allBakeryTable, /Average Drinks Per Month/);
