@@ -1830,6 +1830,33 @@
       </div>
     </div>
 
+    <!-- SAVE CONFIRMATION MODAL -->
+    <div id="saveConfirmModal" class="drill-modal" style="display:none;"
+      onclick="if(event.target===this)GAILS.closeSaveConfirmModal()">
+      <div class="drillInner"
+        style="max-width: 440px; height: auto; background: var(--card); border: 1px solid var(--card-border-h); box-shadow: var(--shadow-md);">
+        <div class="drill-modal-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
+          <div>
+            <h3 id="saveConfirmTitle" style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Confirm</h3>
+            <p id="saveConfirmSubtitle" style="font-size:0.86rem;color:var(--muted-l);margin:5px 0 0 0;">Please review before saving.</p>
+          </div>
+          <button type="button" class="modal-close-btn" onclick="GAILS.closeSaveConfirmModal()"
+            aria-label="Close confirmation" title="Close">&#10005;</button>
+        </div>
+
+        <div style="padding: 20px 30px 25px; display: flex; flex-direction: column; gap: 20px;">
+          <p id="saveConfirmMessage" style="font-size:0.92rem; line-height: 1.5; color: var(--text-2); margin: 0;">
+          </p>
+
+          <div style="display:flex; gap:12px; justify-content: flex-end;">
+            <button type="button" class="drill-close-btn" onclick="GAILS.closeSaveConfirmModal()"
+              style="padding: 9px 15px;">Cancel</button>
+            <button type="button" id="saveConfirmBtn" class="btn" style="padding: 10px 22px;">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="unmappedSitesModal" class="modal-overlay map-unmapped-modal" style="display:none;"
       onclick="if(event.target===this)GAILS.closeUnmappedSitesModal()">
       <div class="map-unmapped-panel glass-panel">

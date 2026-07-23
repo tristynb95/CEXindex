@@ -630,6 +630,13 @@ window.GAILS = window.GAILS || {};
       return;
     }
     if (event.key !== 'Escape') return;
+    // Close the topmost dialog first so Escape backs out of the confirm
+    // step without also dismissing the form behind it.
+    var saveConfirm = document.getElementById('saveConfirmModal');
+    if (saveConfirm && saveConfirm.style.display !== 'none') {
+      window.GAILS.closeSaveConfirmModal();
+      return;
+    }
     window.GAILS.closeVisitReport();
   });
 
@@ -1485,6 +1492,47 @@ window.GAILS = window.GAILS || {};
     }
   };
 
+  // Lightweight "are you sure?" dialog shown before a log or action is saved,
+  // themed to match the delete-confirm modal. The triggering form modal stays
+  // open behind it and keeps the background-scroll lock, so this helper
+  // deliberately never touches lock/unlock.
+  window.GAILS.openSaveConfirmModal = function (opts) {
+    opts = opts || {};
+    var modal = document.getElementById('saveConfirmModal');
+    var titleEl = document.getElementById('saveConfirmTitle');
+    var subtitleEl = document.getElementById('saveConfirmSubtitle');
+    var messageEl = document.getElementById('saveConfirmMessage');
+    var confirmBtn = document.getElementById('saveConfirmBtn');
+
+    // If the markup is missing for any reason, fail open so saving still works.
+    if (!modal || !confirmBtn) {
+      if (typeof opts.onConfirm === 'function') opts.onConfirm();
+      return;
+    }
+
+    if (titleEl) titleEl.textContent = opts.title || 'Confirm';
+    if (subtitleEl) {
+      subtitleEl.textContent = opts.subtitle || '';
+      subtitleEl.style.display = opts.subtitle ? '' : 'none';
+    }
+    if (messageEl) messageEl.textContent = opts.message || 'Are you sure you want to save this?';
+    confirmBtn.textContent = opts.confirmLabel || 'Confirm';
+    confirmBtn.disabled = false;
+
+    modal.style.display = 'flex';
+
+    // Fresh handler on every open so callbacks never stack across invocations.
+    confirmBtn.onclick = function () {
+      window.GAILS.closeSaveConfirmModal();
+      if (typeof opts.onConfirm === 'function') opts.onConfirm();
+    };
+  };
+
+  window.GAILS.closeSaveConfirmModal = function () {
+    var modal = document.getElementById('saveConfirmModal');
+    if (modal) modal.style.display = 'none';
+  };
+
   function populateDropdown(selectId, itemsSet, placeholder) {
     var select = document.getElementById(selectId);
     if (!select) return;
@@ -2207,8 +2255,8 @@ window.GAILS = window.GAILS || {};
       // Add Site Visit form submit
       var form = document.getElementById('addSiteVisitForm');
       if (form) {
-        form.addEventListener('submit', async function (e) {
-          e.preventDefault();
+        // The actual save, run only once the user confirms the dialog.
+        var submitAddSiteVisit = async function () {
           var submitBtn = document.getElementById('addVisitSubmitBtn');
           var errorEl = document.getElementById('addVisitError');
           if (!submitBtn) return;
@@ -2273,6 +2321,25 @@ window.GAILS = window.GAILS || {};
             submitBtn.disabled = false;
             submitBtn.textContent = origText;
           }
+        };
+
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          // Native validation has already passed, so the required fields are set.
+          var bakeryVal = document.getElementById('addVisitBakery').value;
+          var dateVal = document.getElementById('addVisitDate').value;
+          var bakeryLabel = (window.GAILS.getBakeryMapLabel
+            ? window.GAILS.getBakeryMapLabel(bakeryVal) : bakeryVal) || 'this bakery';
+          var dateLabel = dateVal ? formatVisitDate(dateVal) : '';
+
+          window.GAILS.openSaveConfirmModal({
+            title: 'Confirm Check-in',
+            subtitle: 'Log this visit to the bakery report.',
+            message: 'Save this check-in for ' + bakeryLabel
+              + (dateLabel ? ' on ' + dateLabel : '') + '?',
+            confirmLabel: 'Save check-in',
+            onConfirm: submitAddSiteVisit
+          });
         });
       }
 
@@ -2312,8 +2379,8 @@ window.GAILS = window.GAILS || {};
       // Standalone add/edit follow-up form.
       var followUpForm = document.getElementById('addFollowUpForm');
       if (followUpForm) {
-        followUpForm.addEventListener('submit', async function (e) {
-          e.preventDefault();
+        // The actual save, run only once the user confirms the dialog.
+        var submitFollowUp = async function () {
           var submitBtn = document.getElementById('followUpSubmitBtn');
           var errorEl = document.getElementById('followUpError');
           if (!submitBtn) return;
@@ -2349,6 +2416,26 @@ window.GAILS = window.GAILS || {};
             submitBtn.disabled = false;
             submitBtn.textContent = origText;
           }
+        };
+
+        followUpForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var editId = document.getElementById('followUpEditId').value;
+          var bakeryVal = document.getElementById('followUpBakery').value;
+          var titleVal = document.getElementById('followUpTitle').value.trim();
+          var bakeryLabel = (window.GAILS.getBakeryMapLabel
+            ? window.GAILS.getBakeryMapLabel(bakeryVal) : bakeryVal) || 'this bakery';
+
+          window.GAILS.openSaveConfirmModal({
+            title: editId ? 'Confirm Changes' : 'Confirm Action',
+            subtitle: editId
+              ? 'Update this follow-up action.'
+              : 'Add this follow-up action.',
+            message: (editId ? 'Save changes to "' : 'Add the action "')
+              + titleVal + '" for ' + bakeryLabel + '?',
+            confirmLabel: editId ? 'Save changes' : 'Add action',
+            onConfirm: submitFollowUp
+          });
         });
       }
 
