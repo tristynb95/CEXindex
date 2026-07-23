@@ -23,6 +23,8 @@ window.GAILS = window.GAILS || {};
   var lastTargetPrevWcParamsKey = null;
   var lastTargetPrevPeriodLabel = '';
   var resizeTimer = null;
+  var mainMonthCount = 1;         // how many of the most recent closed months to include (default: latest month only)
+  var mainMonthSliderBound = false;
   var targetMonthCount = 1;       // how many of the most recent closed months to include (default: latest month only)
   var targetMonthSliderBound = false;
 
@@ -154,17 +156,17 @@ window.GAILS = window.GAILS || {};
     };
   }
 
-  // ── Focus Word Cloud Month Range Slider ─────────────────────────────────────
+  // ── Word Cloud Month Range Slider ────────────────────────────────────────
 
   function formatMonthRangeLabel(months) {
     if (!months || !months.length) return '';
     return months.length === 1 ? months[0] : months[0] + '–' + months[months.length - 1];
   }
 
-  function updateTargetMonthRangeUI(allMonths, count, selectedMonths) {
-    var wrap = document.getElementById('wcTargetMonthRange');
-    var slider = document.getElementById('wcTargetMonthSlider');
-    var labelEl = document.getElementById('wcTargetMonthRangeLabel');
+  function updateMonthRangeUI(wrapId, sliderId, labelId, allMonths, count, selectedMonths) {
+    var wrap = document.getElementById(wrapId);
+    var slider = document.getElementById(sliderId);
+    var labelEl = document.getElementById(labelId);
     if (!wrap) return;
 
     if (!allMonths || !allMonths.length) {
@@ -196,15 +198,14 @@ window.GAILS = window.GAILS || {};
     }
   }
 
-  function bindTargetMonthRangeControls() {
-    if (targetMonthSliderBound) return;
-    var slider = document.getElementById('wcTargetMonthSlider');
-    var wrap = document.getElementById('wcTargetMonthRange');
-    if (!slider || !wrap) return;
-    targetMonthSliderBound = true;
+  // Wires a month-range slider + presets to onChange(count). Returns true once bound.
+  function bindMonthRangeControls(wrapId, sliderId, labelId, onChange) {
+    var slider = document.getElementById(sliderId);
+    var wrap = document.getElementById(wrapId);
+    if (!slider || !wrap) return false;
 
     slider.addEventListener('input', function () {
-      var labelEl = document.getElementById('wcTargetMonthRangeLabel');
+      var labelEl = document.getElementById(labelId);
       if (labelEl) {
         var count = parseInt(slider.value, 10) || 1;
         var max = parseInt(slider.max, 10) || 1;
@@ -214,16 +215,32 @@ window.GAILS = window.GAILS || {};
     });
 
     slider.addEventListener('change', function () {
-      targetMonthCount = parseInt(slider.value, 10) || 1;
-      window.GAILS.fetchTargetWordCloud();
+      onChange(parseInt(slider.value, 10) || 1);
     });
 
     wrap.querySelectorAll('.wc-month-range__preset').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var months = btn.getAttribute('data-months');
-        targetMonthCount = months === 'all' ? 9999 : parseInt(months, 10);
-        window.GAILS.fetchTargetWordCloud();
+        onChange(months === 'all' ? 9999 : parseInt(months, 10));
       });
+    });
+
+    return true;
+  }
+
+  function bindMainMonthRangeControls() {
+    if (mainMonthSliderBound) return;
+    mainMonthSliderBound = bindMonthRangeControls('wcMonthRange', 'wcMonthSlider', 'wcMonthRangeLabel', function (count) {
+      mainMonthCount = count;
+      window.GAILS.fetchWordCloud();
+    });
+  }
+
+  function bindTargetMonthRangeControls() {
+    if (targetMonthSliderBound) return;
+    targetMonthSliderBound = bindMonthRangeControls('wcTargetMonthRange', 'wcTargetMonthSlider', 'wcTargetMonthRangeLabel', function (count) {
+      targetMonthCount = count;
+      window.GAILS.fetchTargetWordCloud();
     });
   }
 
@@ -719,6 +736,8 @@ window.GAILS = window.GAILS || {};
     var canvas   = document.getElementById('wcCanvas');
     var emptyEl  = document.getElementById('wcEmpty');
 
+    bindMainMonthRangeControls();
+
     // Build request body first so we can compare params before hitting the network
     var body = {};
     if (G && typeof G.getData === 'function' && state && state.ALL && state.ALL.length) {
@@ -729,13 +748,26 @@ window.GAILS = window.GAILS || {};
       });
       if (bakeries.length > 0) body.bakery_locations = bakeries;
     }
-    if (state && state.selectedMonths && state.selectedMonths.length) {
-      body.start_date = monthLabelToIso(state.selectedMonths[0], false);
-      body.end_date   = monthLabelToIso(state.selectedMonths[state.selectedMonths.length - 1], true);
+
+    var allClosedMonths = (G && typeof G.getFocusClosedMonths === 'function' && state)
+      ? G.getFocusClosedMonths(new Date(), state.ALL)
+      : [];
+    // Clamp the slider selection to the months actually available, defaulting
+    // to the latest closed month so the cloud shows current data out of the box.
+    mainMonthCount = Math.max(1, Math.min(mainMonthCount || 1, allClosedMonths.length || 1));
+    var wcMonths = allClosedMonths.length
+      ? allClosedMonths.slice(Math.max(0, allClosedMonths.length - mainMonthCount))
+      : [];
+    if (wcMonths.length) {
+      body.start_date = monthLabelToIso(wcMonths[0], false);
+      body.end_date   = monthLabelToIso(wcMonths[wcMonths.length - 1], true);
     }
+    updateMonthRangeUI('wcMonthRange', 'wcMonthSlider', 'wcMonthRangeLabel', allClosedMonths, mainMonthCount, wcMonths);
 
     var paramsKey = buildWcParamsKey(body);
-    var prevInfo  = buildPrevPeriodInfo(state && state.selectedMonths, state && state.MONTHS);
+    // Compare against the equivalent preceding window (e.g. latest month vs the
+    // month before it) so the drift panel shows how comments have shifted.
+    var prevInfo  = buildPrevPeriodInfo(wcMonths, allClosedMonths);
 
     // Skip the API call if filters haven't changed and we already have a result
     if (!force && paramsKey === lastWcParamsKey && lastWordData !== null) {
@@ -873,7 +905,7 @@ window.GAILS = window.GAILS || {};
       if (bakeries.length === 0) {
         // No focus bakeries -- show empty state without hitting the API
         var emptyKey = buildWcParamsKey(body);
-        updateTargetMonthRangeUI([], 1, []);
+        updateMonthRangeUI('wcTargetMonthRange', 'wcTargetMonthSlider', 'wcTargetMonthRangeLabel', [], 1, []);
         if (!force && emptyKey === lastTargetWcParamsKey && lastTargetWordData !== null) return;
         if (statusEl) { statusEl.textContent = 'No eligible focus bakeries through the latest completed month.'; statusEl.className = 'status'; }
         if (emptyEl)  emptyEl.style.display = '';
@@ -899,7 +931,7 @@ window.GAILS = window.GAILS || {};
       body.start_date = monthLabelToIso(focusMonths[0], false);
       body.end_date   = monthLabelToIso(focusMonths[focusMonths.length - 1], true);
     }
-    updateTargetMonthRangeUI(allClosedMonths, targetMonthCount, focusMonths);
+    updateMonthRangeUI('wcTargetMonthRange', 'wcTargetMonthSlider', 'wcTargetMonthRangeLabel', allClosedMonths, targetMonthCount, focusMonths);
 
     var paramsKey = buildWcParamsKey(body);
     // Compare against the equivalent preceding window (e.g. latest month vs the
