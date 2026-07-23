@@ -23,8 +23,7 @@ window.GAILS = window.GAILS || {};
   var lastTargetPrevWcParamsKey = null;
   var lastTargetPrevPeriodLabel = '';
   var resizeTimer = null;
-  var mainMonthCount = 1;         // how many of the most recent closed months to include (default: latest month only)
-  var mainMonthSliderBound = false;
+  var MAIN_MONTH_COUNT = 1;       // main comment cloud always shows the latest completed month only
   var targetMonthCount = 1;       // how many of the most recent closed months to include (default: latest month only)
   var targetMonthSliderBound = false;
 
@@ -226,14 +225,6 @@ window.GAILS = window.GAILS || {};
     });
 
     return true;
-  }
-
-  function bindMainMonthRangeControls() {
-    if (mainMonthSliderBound) return;
-    mainMonthSliderBound = bindMonthRangeControls('wcMonthRange', 'wcMonthSlider', 'wcMonthRangeLabel', function (count) {
-      mainMonthCount = count;
-      window.GAILS.fetchWordCloud();
-    });
   }
 
   function bindTargetMonthRangeControls() {
@@ -736,8 +727,6 @@ window.GAILS = window.GAILS || {};
     var canvas   = document.getElementById('wcCanvas');
     var emptyEl  = document.getElementById('wcEmpty');
 
-    bindMainMonthRangeControls();
-
     // Build request body first so we can compare params before hitting the network
     var body = {};
     if (G && typeof G.getData === 'function' && state && state.ALL && state.ALL.length) {
@@ -752,17 +741,13 @@ window.GAILS = window.GAILS || {};
     var allClosedMonths = (G && typeof G.getFocusClosedMonths === 'function' && state)
       ? G.getFocusClosedMonths(new Date(), state.ALL)
       : [];
-    // Clamp the slider selection to the months actually available, defaulting
-    // to the latest closed month so the cloud shows current data out of the box.
-    mainMonthCount = Math.max(1, Math.min(mainMonthCount || 1, allClosedMonths.length || 1));
     var wcMonths = allClosedMonths.length
-      ? allClosedMonths.slice(Math.max(0, allClosedMonths.length - mainMonthCount))
+      ? allClosedMonths.slice(Math.max(0, allClosedMonths.length - MAIN_MONTH_COUNT))
       : [];
     if (wcMonths.length) {
       body.start_date = monthLabelToIso(wcMonths[0], false);
       body.end_date   = monthLabelToIso(wcMonths[wcMonths.length - 1], true);
     }
-    updateMonthRangeUI('wcMonthRange', 'wcMonthSlider', 'wcMonthRangeLabel', allClosedMonths, mainMonthCount, wcMonths);
 
     var paramsKey = buildWcParamsKey(body);
     // Compare against the equivalent preceding window (e.g. latest month vs the
