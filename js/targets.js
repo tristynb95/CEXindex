@@ -229,15 +229,16 @@ function _driverRagText(tone) {
   return 'Needs attention';
 }
 
-function _driverDeltaHtml(d, change) {
+function _driverDeltaHtml(d, change, prevLabel) {
   if (change === null || change === undefined || isNaN(change)) return '';
+  var vsText = 'vs ' + (prevLabel || 'last month');
   var rounded = d.key === 'at' ? Math.round(change) : Math.round(change * 10) / 10;
-  if (rounded === 0) return '<span class="focus-driver__movement-icon focus-driver__movement-icon--neutral" role="img" aria-label="No change">→</span><span class="focus-driver__movement-copy">No change <span>vs last month</span></span>';
+  if (rounded === 0) return '<span class="focus-driver__movement-icon focus-driver__movement-icon--neutral" role="img" aria-label="No change">→</span><span class="focus-driver__movement-copy">No change <span>' + vsText + '</span></span>';
   var improved = d.key === 'at' ? change < 0 : change > 0;
   var movement = d.key === 'at'
     ? Math.abs(rounded) + 's ' + (change < 0 ? 'faster' : 'slower')
     : Math.abs(rounded).toFixed(1) + ' pts';
-  return '<span class="focus-driver__movement-icon focus-driver__movement-icon--' + (improved ? 'up' : 'down') + '" role="img" aria-label="' + (improved ? 'Improved' : 'Declined') + '">' + (improved ? '↑' : '↓') + '</span><span class="focus-driver__movement-copy">' + movement + ' <span>vs last month</span></span>';
+  return '<span class="focus-driver__movement-icon focus-driver__movement-icon--' + (improved ? 'up' : 'down') + '" role="img" aria-label="' + (improved ? 'Improved' : 'Declined') + '">' + (improved ? '↑' : '↓') + '</span><span class="focus-driver__movement-copy">' + movement + ' <span>' + vsText + '</span></span>';
 }
 
 function _countFocusStreak(hist, bf, highBand, lowBand) {
@@ -856,7 +857,14 @@ window.GAILS.openFocusDetail = function (name) {
 
   var score = rec[cf] !== null && rec[cf] !== undefined && !isNaN(rec[cf]) ? rec[cf] : null;
   var scoreGap = score !== null ? Math.max(0, _hubState.escapeLine - score) : null;
-  var drivers = _driverList(rec);
+  // The KPI bars are a latest-month diagnostic, so they read from the most
+  // recent actual month (matching the month-by-month table below) rather than
+  // the six-month weighted snapshot used for the headline support decision.
+  // This also keeps each bar's value consistent with its own "vs" delta.
+  var latestRec = trend.latest || rec;
+  var asOfLabel = (trend.latest && trend.latest.m) ? trend.latest.m : (rec.m || null);
+  var prevLabel = (trend.prev && trend.prev.m) ? trend.prev.m : null;
+  var drivers = _driverList(latestRec);
   var supportHeading = _priorityText(row);
   var movementText = 'No comparison';
   var movementClass = '';
@@ -901,14 +909,16 @@ window.GAILS.openFocusDetail = function (name) {
   // Driver diagnosis
   if (drivers.length) {
     h += '<section class="focus-detail-section focus-detail-section--drivers">' +
-      '<div class="focus-section-heading"><h4 class="focus-section-title">Where to focus first</h4><p>Bar colour shows target status · length shows progress to target</p></div><div class="focus-drivers">' +
+      '<div class="focus-section-heading"><h4 class="focus-section-title">Where to focus first</h4><p>' +
+      (asOfLabel ? '<strong>' + esc(asOfLabel) + '</strong> figures' + (prevLabel ? ' · change shown vs ' + esc(prevLabel) : '') + ' · ' : '') +
+      'Bar colour shows target status · length shows progress to target</p></div><div class="focus-drivers">' +
       drivers.map(function (d) {
         var valStr = _fmtDriverValue(d);
         var benchStr = d.fmt === 'secs' ? G.formatSecs(d.bench) : d.fmt === 'pct' ? d.bench + '%' : '' + d.bench;
         var deltaHtml = '';
         if (trend.latest && trend.prev && trend.latest[d.key] !== null && trend.latest[d.key] !== undefined && trend.prev[d.key] !== null && trend.prev[d.key] !== undefined) {
           var dv = trend.latest[d.key] - trend.prev[d.key];
-          deltaHtml = _driverDeltaHtml(d, dv);
+          deltaHtml = _driverDeltaHtml(d, dv, prevLabel);
         }
         var barColor = G.metricRagColor(d.key, d.value);
         return '<div class="focus-driver">' +

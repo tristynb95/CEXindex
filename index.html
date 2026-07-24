@@ -862,6 +862,15 @@
                     <option value="nm">NPS Meal</option>
                     <option value="na">NPS (All)</option>
                   </select></label>
+                <button type="button" id="leagueTableFilterBtn" class="league-table-toolbar__filter-btn"
+                  aria-label="Open filters">
+                  <svg class="league-table-toolbar__filter-icon" viewBox="0 0 24 24" aria-hidden="true"
+                    focusable="false" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <path d="M3 7h18M7 12h10M11 17h2" />
+                  </svg>
+                  <span class="league-table-toolbar__filter-label">Filters</span>
+                  <span class="league-table-toolbar__filter-badge" id="leagueTableFilterBadge" hidden></span>
+                </button>
               </div>
               <div class="table-wrap table-wrap--league table-wrap--floating">
                 <table class="league-table nps-splits-collapsed" data-nps-splits>
