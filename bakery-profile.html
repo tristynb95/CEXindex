@@ -234,6 +234,33 @@
     </main>
   </div>
 
+  <div id="bakeryNoteDeleteModal" class="bakery-profile-modal" role="alertdialog" aria-modal="true"
+    aria-labelledby="bakeryNoteDeleteTitle" aria-describedby="bakeryNoteDeleteCopy" hidden>
+    <button type="button" id="bakeryNoteDeleteBackdrop" class="bakery-profile-modal__backdrop"
+      aria-label="Cancel deleting this note"></button>
+    <section class="bakery-profile-modal__dialog">
+      <div class="bakery-profile-modal__head">
+        <div>
+          <p class="bakery-profile-eyebrow">Coffee team record</p>
+          <h2 id="bakeryNoteDeleteTitle">Delete this note?</h2>
+          <p id="bakeryNoteDeleteCopy" class="bakery-profile-modal__copy">The note by
+            <strong id="bakeryNoteDeleteAuthor">a team member</strong> is removed from this bakery's shared
+            history for everyone. This cannot be undone.</p>
+        </div>
+        <button type="button" id="bakeryNoteDeleteClose" class="modal-close-btn"
+          aria-label="Close delete note confirmation" title="Close">&#10005;</button>
+      </div>
+
+      <blockquote id="bakeryNoteDeletePreview" class="bakery-profile-modal__quote"></blockquote>
+      <div id="bakeryNoteDeleteMessage" class="bakery-profile-form-message" role="status" hidden></div>
+
+      <div class="bakery-profile-modal__actions">
+        <button type="button" id="bakeryNoteDeleteCancel" class="bakery-profile-secondary-btn">Cancel</button>
+        <button type="button" id="bakeryNoteDeleteConfirm" class="bakery-profile-danger-btn">Delete note</button>
+      </div>
+    </section>
+  </div>
+
   <div id="bakeryTaskModal" class="bakery-profile-modal" role="dialog" aria-modal="true"
     aria-labelledby="bakeryTaskModalTitle" hidden>
     <button type="button" id="bakeryTaskModalBackdrop" class="bakery-profile-modal__backdrop"
