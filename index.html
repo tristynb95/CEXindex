@@ -737,11 +737,12 @@
                     for 2:00 (120s) or less, then a straight-line penalty down to 0 points at 2:05 (125s) or slower.
                   </li>
                   <li><strong>Coffee Efficiency (5%)</strong> &mdash; How fast the order was completed. We display the %
-                    under 2 mins (Target: 80% &lt; 2 min) in the KPI cards and tables, but the index score uses a
-                    progressive 5-tier scale: <strong>1.0x</strong> for under 2 mins, <strong>0.5x</strong> for 2–3
-                    mins, <strong>0.25x</strong> for 3–4 mins, <strong>0.1x</strong> for 4–5 mins, and a
-                    <strong>-5.0x</strong> penalty for orders over 5 mins. If orders over 5 mins reach
-                    <strong>1.5%</strong>, the component score is halved; if they reach <strong>2.5%</strong>, the
+                    under 2 mins (Target: 70% &lt; 2 min) in the KPI cards and tables, but the index score blends the
+                    three company benchmarks: <strong>70% within 2 mins</strong> (50% of the score), <strong>90%
+                    within 3 mins</strong> (30%), and <strong>under 1% over 5 mins</strong> (20%). Each benchmark earns
+                    full marks when met and falls in a straight line to 0 at its floor (50% for the 2-min band, 70% for
+                    the 3-min band, and 2.5% for the over-5-min band). As a guardrail, if orders over 5 mins reach
+                    <strong>1.5%</strong> the component score is capped at 50; if they reach <strong>2.5%</strong>, the
                     component scores 0.</li>
                 </ul>
 
@@ -755,7 +756,8 @@
                 <h3>Our Standards (Floor-Based Penalties)</h3>
                 <p>Our standards are built on hitting specific benchmarks: <strong>55 or higher</strong> for Drink +
                   Meal NPS, <strong>90% or higher</strong> for customer feedback (Drink Quality, Efficiency,
-                  Friendliness), <strong>80% or higher</strong> for Coffee Efficiency, and a hard limit of <strong>2:00
+                  Friendliness), <strong>70% of drinks within 2 mins</strong> (with <strong>90% within 3 mins</strong>
+                  and <strong>under 1% over 5 mins</strong>) for Coffee Efficiency, and a hard limit of <strong>2:00
                     (120 seconds) or lower</strong> for Avg Wait Time. If a bakery meets or exceeds its benchmark, it
                   receives full marks (100 points).</p>
                 <p>For the Benchmark Score, each scored KPI now has a floor. Scores between the benchmark and floor lose

@@ -28,7 +28,7 @@ window.GAILS = window.GAILS || {};
 
   // RAG thresholds matched to the league table (window.GAILS.renderLeagueTable)
   function stdRagColor(value) { return value >= 90 ? 'var(--green)' : value >= 80 ? 'var(--amber)' : 'var(--red)'; }
-  function s2RagColor(value) { return value >= 75 ? 'var(--green)' : value >= 60 ? 'var(--amber)' : 'var(--red)'; }
+  function s2RagColor(value) { return value >= 70 ? 'var(--green)' : value >= 60 ? 'var(--amber)' : 'var(--red)'; }
   function o5RagColor(value) { return value >= 2.5 ? 'var(--red)' : value > 1 ? 'var(--amber)' : 'var(--green)'; }
 
   function renderRagMetric(value, suffix, colorFn) {

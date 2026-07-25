@@ -567,7 +567,7 @@
         { eyebrow: 'SHINE', title: 'Drink Quality', meta: 'Target: 90%' },
         { eyebrow: 'SHINE', title: 'Efficiency', meta: 'Target: 90%' },
         { eyebrow: 'SHINE', title: 'Friendliness', meta: 'Target: 90%' },
-        { eyebrow: 'KV Link', title: 'Coffee Efficiency', meta: 'Target: 80% < 2 min' },
+        { eyebrow: 'KV Link', title: 'Coffee Efficiency', meta: 'Target: 70% < 2 min' },
         { eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 2:00' },
         { eyebrow: 'KV Link', title: 'Orders >5 Min', meta: 'Target: < 1%' }
       );
@@ -783,10 +783,10 @@
         display: Math.round(ts) + '%',
         eyebrow: 'KV Link',
         title: 'Coffee Efficiency',
-        meta: 'Target: 80% < 2 min',
+        meta: 'Target: 70% < 2 min',
         priorKey: 'ts',
-        good: 80,
-        warn: 70,
+        good: 70,
+        warn: 60,
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' },
         bands: [
           { test: function (v) { return v > 80; }, tone: 'kpi-blue', status: 'Exceeding' },

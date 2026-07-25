@@ -43,7 +43,9 @@ window.GAILS.ensureBands = function(r) {
   return r;
 };
 
-// Coffee Efficiency score = % of drinks delivered under 2 min (company standard: 80%)
+// Coffee Efficiency headline = % of drinks delivered under 2 min (company
+// standard: 70%). The index score also weighs the 90% < 3 min and < 1% > 5 min
+// benchmarks — see computeCoffeeEfficiencyComponent.
 // Re-rank ts and ap from raw s2 values — use after multi-month aggregation
 window.GAILS.recomputeTimelinessRanks = function(records) {
   var G = GAILS;
@@ -154,21 +156,38 @@ window.GAILS.computeAbsoluteWaitComponent = function(seconds) {
   return Math.max(0, Math.min(100, ((GAILS.BENCHMARK_FLOORS.at - seconds) / (GAILS.BENCHMARK_FLOORS.at - GAILS.BENCHMARKS.at)) * 100));
 };
 
+// Coffee Efficiency absolute score reflects the three company benchmarks:
+//   • 70% of drinks served within 2 minutes  (headline speed target)
+//   • 90% of drinks served within 3 minutes  (safety-net target)
+//   • under 1% of orders over 5 minutes       (slow-order guardrail)
+// Each benchmark earns a sub-score — full marks at target, straight-line down
+// to a floor — and the three blend 50/30/20. The over-5-min tail also applies
+// a hard cap so a bakery with too many very slow orders can't score well on
+// the faster bands alone. (s4/% within 4 min is no longer part of the standard
+// but is kept in the signature for call-site compatibility.)
 window.GAILS.computeCoffeeEfficiencyComponent = function(s2, s3, s4, o5) {
   var s2Val = s2 || 0;
   var s3Val = s3 || 0;
-  var s4Val = s4 || 0;
   var o5Val = o5 || 0;
-  var t4_5 = Math.max(0, 100 - s4Val - o5Val);
-  var rawTs = s2Val * 1.0
-            + Math.max(0, s3Val - s2Val) * 0.5
-            + Math.max(0, s4Val - s3Val) * 0.25
-            + t4_5 * 0.1
-            - o5Val * 5.0;
-  var score = Math.max(0, Math.min(100, Math.round(rawTs * 10) / 10));
+
+  function attainment(value, floor, target) {
+    if (value >= target) return 100;
+    if (value <= floor) return 0;
+    return ((value - floor) / (target - floor)) * 100;
+  }
+
+  var within2 = attainment(s2Val, 50, 70);   // 70% target, 0 at 50%
+  var within3 = attainment(s3Val, 70, 90);   // 90% target, 0 at 70%
+  // Fewer slow orders is better, so invert: full marks at/under 1%, 0 at/over 2.5%.
+  var tail = attainment(2.5 - o5Val, 0, 1.5); // 1% target (2.5-1), 0 at 2.5%
+
+  var score = within2 * 0.5 + within3 * 0.3 + tail * 0.2;
+
+  // Hard guardrail on the >5 min tail, anchored on the <1% benchmark.
   if (o5Val >= 2.5) return 0;
-  if (o5Val >= 1.5) return Math.round(score * 5) / 10;
-  return score;
+  if (o5Val >= 1.5) score = Math.min(score, 50);
+
+  return Math.max(0, Math.min(100, Math.round(score * 10) / 10));
 };
 
 // Compute CEI for a month's records

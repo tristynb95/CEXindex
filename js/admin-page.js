@@ -30,6 +30,9 @@ const newEmailInput   = document.getElementById('newEmailInput');
 const roleSelect      = document.getElementById('newRoleSelect');
 const createMsg       = document.getElementById('createMsg');
 const usersMsg        = document.getElementById('usersMsg');
+const reportVisibilityToggle = document.getElementById('reportVisibilityToggle');
+const reportVisibilityState  = document.getElementById('reportVisibilityState');
+const reportVisibilityMsg    = document.getElementById('reportVisibilityMsg');
 const profileMenu     = document.querySelector('[data-profile-menu]');
 const profileMenuBtn  = document.getElementById('adminProfileMenuBtn');
 const profileMenuPopover = document.getElementById('adminProfileMenuPopover');
@@ -141,12 +144,14 @@ const state = {
   roles: {},        // custom roles synced from roles/ in Firebase
   editingRoleId: null,
   permissions: normalizePermissions(BUILTIN_ROLES.viewer.permissions),
-  isAdmin: false
+  isAdmin: false,
+  reportVisibilityEnabled: false
 };
 
 let usersUnsubscribe = null;
 let visitsUnsubscribe = null;
 let rolesUnsubscribe = null;
+let appSettingsUnsubscribe = null;
 
 // ── Role helpers ──
 function canView(areaKey) {
@@ -194,6 +199,32 @@ function roleOptionsHtml(selected) {
     return '<option value="' + escapeHtml(role.id) + '" ' + (role.id === selected ? 'selected' : '') + '>'
       + escapeHtml(role.def.name || role.id) + '</option>';
   }).join('');
+}
+
+// The ops areas a user can be scoped to are the ops areas mapped in the site
+// directory — the same source as the site table's manager autocomplete. An
+// empty value means "not scoped": the user sees every site's Bakery Reports.
+function opsAreaList() {
+  return [...new Set(Object.values(state.siteMetaDraft || {}).map(function(e) {
+    return e && e.o;
+  }).filter(Boolean))].sort();
+}
+
+function opsAreaOptionsHtml(selected) {
+  var current = selected || '';
+  // A stored ops area that no longer exists in the directory must still be
+  // offered, so re-saving the user doesn't silently drop their scoping.
+  var areas = opsAreaList();
+  if (current && areas.indexOf(current) === -1) areas = areas.concat(current).sort();
+  return '<option value=""' + (current === '' ? ' selected' : '') + '>None — sees all sites</option>'
+    + areas.map(function(area) {
+      return '<option value="' + escapeHtml(area) + '"' + (area === current ? ' selected' : '') + '>'
+        + escapeHtml(area) + '</option>';
+    }).join('');
+}
+
+function opsAreaLabel(opsArea) {
+  return opsArea ? opsArea : 'All sites';
 }
 
 function populateRoleSelects() {
@@ -813,18 +844,27 @@ function renderUsers() {
     var roleHtml, statusHtml, actionsHtml;
 
     if (isEditing) {
-      roleHtml = '<select data-user-role="' + escapeHtml(user.uid) + '" ' + dis + '>'
+      roleHtml = '<div class="admin-user-access">'
+        + '<label class="admin-user-access__field"><span class="admin-user-access__label">Role</span>'
+        + '<select data-user-role="' + escapeHtml(user.uid) + '" ' + dis + '>'
           + roleOptionsHtml(user.role)
-        + '</select>';
+        + '</select></label>'
+        + '<label class="admin-user-access__field"><span class="admin-user-access__label">Bakery Reports scope</span>'
+        + '<select data-user-ops="' + escapeHtml(user.uid) + '" ' + dis + '>'
+          + opsAreaOptionsHtml(user.opsArea)
+        + '</select></label>'
+        + '</div>';
       statusHtml = '<div class="admin-status-note" style="color:var(--accent);">Editing access settings</div>';
       actionsHtml = '<div class="admin-table__actions">'
-        + '<button type="button" class="admin-inline-btn" data-action="save-user-role" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Save Role</button>'
+        + '<button type="button" class="admin-inline-btn" data-action="save-user-role" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Save Access</button>'
         + '<button type="button" class="admin-inline-btn" data-action="cancel-edit-user">Cancel</button>'
         + '<button type="button" class="admin-inline-btn" data-action="send-password-reset" data-uid="' + escapeHtml(user.uid) + '" data-email="' + escapeHtml(user.email) + '" ' + dis + '>' + resetLabel + '</button>'
         + '<button type="button" class="admin-inline-danger" data-action="revoke-user" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Remove</button>'
       + '</div>';
     } else {
-      roleHtml = '<div class="' + roleClass + '">' + escapeHtml(roleDisplayName(user.role)) + '</div>';
+      roleHtml = '<div class="' + roleClass + '">' + escapeHtml(roleDisplayName(user.role)) + '</div>'
+        + '<div class="admin-status-note admin-user-scope' + (user.opsArea ? ' admin-user-scope--restricted' : '') + '">Reports: '
+        + escapeHtml(opsAreaLabel(user.opsArea)) + '</div>';
       var status = isCurrent
         ? 'Current session'
         : (isPending ? 'Invitation sent' : (hasDeliveryError ? 'Email not delivered' : 'Active access'));
@@ -2033,7 +2073,9 @@ async function saveUserRole(uid) {
   if (!user || uid === currentUserId()) return;
   var select = userList.querySelector('[data-user-role="' + uid + '"]');
   var nextRole = select ? select.value : user.role;
-  await update(ref(db, 'users/' + uid), { role: nextRole });
+  var opsSelect = userList.querySelector('[data-user-ops="' + uid + '"]');
+  var nextOpsArea = opsSelect ? opsSelect.value : (user.opsArea || '');
+  await update(ref(db, 'users/' + uid), { role: nextRole, opsArea: nextOpsArea });
   // Only full admins may write the admins/ mirror (rules enforce this too).
   if (state.isAdmin) {
     if (nextRole === 'admin') {
@@ -2076,8 +2118,31 @@ function removeSite(name) {
   renderDataControls();
 }
 
+// Reflects appSettings/reportVisibility onto the toggle. Only users who can
+// edit the Users area may flip it; everyone else sees it read-only.
+function renderReportVisibility() {
+  if (!reportVisibilityToggle) return;
+  var enabled = !!state.reportVisibilityEnabled;
+  reportVisibilityToggle.checked = enabled;
+  reportVisibilityToggle.disabled = !canEdit('users');
+  if (reportVisibilityState) {
+    reportVisibilityState.textContent = enabled
+      ? 'On — assigned ops managers see only their own ops area in Bakery Reports.'
+      : 'Off — everyone sees every site’s visits and follow-ups.';
+  }
+}
+
 function ensurePortalSync() {
   if (usersUnsubscribe || rolesUnsubscribe) return;
+
+  if (!appSettingsUnsubscribe) appSettingsUnsubscribe = onValue(ref(db, 'appSettings/reportVisibility'), function(snapshot) {
+    var val = snapshot.exists() ? snapshot.val() : null;
+    state.reportVisibilityEnabled = !!(val && val.enabled);
+    renderReportVisibility();
+  }, function(err) {
+    console.error('Failed to sync report visibility setting:', err);
+  });
+
   if (canView('users')) {
     usersUnsubscribe = onValue(ref(db, 'users'), function(snapshot) {
       state.users = [];
@@ -2090,6 +2155,7 @@ function ensurePortalSync() {
             lastName: users[uid].lastName || '',
             email: users[uid].email || 'Unknown',
             role: users[uid].role || 'viewer',
+            opsArea: users[uid].opsArea || '',
             invitation: users[uid].invitation || null
           };
         }).sort(function(a, b) {
@@ -2497,7 +2563,7 @@ userList.addEventListener('click', async function(e) {
       await saveUserRole(uid);
       state.editingUserUid = null;
       renderUsers();
-      setMessage(usersMsg, 'success', 'User role updated successfully.');
+      setMessage(usersMsg, 'success', 'User access updated successfully.');
     }
     if (action === 'revoke-user') {
       await revokeUser(uid);
@@ -2510,6 +2576,28 @@ userList.addEventListener('click', async function(e) {
     if (btn) btn.disabled = false;
   }
 });
+
+if (reportVisibilityToggle) {
+  reportVisibilityToggle.addEventListener('change', async function() {
+    if (!canEdit('users')) { renderReportVisibility(); return; }
+    var next = reportVisibilityToggle.checked;
+    reportVisibilityToggle.disabled = true;
+    clearMessage(reportVisibilityMsg);
+    try {
+      await set(ref(db, 'appSettings/reportVisibility'), { enabled: next });
+      setMessage(reportVisibilityMsg, 'success', next
+        ? 'Ops managers with an assigned area are now restricted to their own sites.'
+        : 'Restriction turned off — everyone can see all Bakery Reports again.');
+    } catch (err) {
+      console.error('Failed to update report visibility setting:', err);
+      setMessage(reportVisibilityMsg, 'error', 'Could not update this setting: ' + err.message);
+      // Restore the checkbox to the last known-good value on failure.
+      renderReportVisibility();
+    } finally {
+      reportVisibilityToggle.disabled = !canEdit('users');
+    }
+  });
+}
 
 if (roleForm) {
   roleForm.addEventListener('submit', function(e) {

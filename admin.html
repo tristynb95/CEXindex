@@ -313,6 +313,23 @@
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
+                    <h3>Bakery Reports Visibility</h3>
+                    <p>When on, users with an assigned Bakery Reports scope only see visits and follow-ups for their own ops area. Users left unassigned — and admins — always see every site.</p>
+                  </div>
+                </div>
+                <label class="admin-toggle-row">
+                  <input type="checkbox" id="reportVisibilityToggle">
+                  <span class="admin-toggle-row__body">
+                    <span class="admin-toggle-row__title">Restrict ops managers to their own sites</span>
+                    <span class="admin-toggle-row__desc" id="reportVisibilityState">Loading current setting…</span>
+                  </span>
+                </label>
+                <div id="reportVisibilityMsg" class="admin-message" style="display:none;"></div>
+              </div>
+
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
                     <h3>Invite User</h3>
                     <p>Create their dashboard access and email them a secure link to choose a password.</p>
                   </div>

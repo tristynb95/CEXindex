@@ -10,6 +10,29 @@ window.GAILS = window.GAILS || {};
 
   var escapeHtml = GAILS.escapeHtml;
 
+  // ── Bakery Reports visibility scope ──
+  // When an admin turns the master switch on (appSettings/reportVisibility) and
+  // a user has an assigned ops area (users/{uid}.opsArea), that user only sees
+  // Bakery Reports for their own ops area. Admins, users with no assignment, and
+  // everyone when the switch is off, see every site. This is a client-side
+  // visibility control applied to the Bakery Reports tab only — see the auth
+  // flow in js/auth.js which populates GAILS.userOpsArea and
+  // GAILS.reportVisibilityEnabled.
+  function reportScopeActive() {
+    var G = window.GAILS;
+    return !G.isAdmin && !!G.reportVisibilityEnabled && !!G.userOpsArea;
+  }
+
+  function reportBakeryAllowed(bakery) {
+    if (!reportScopeActive()) return true;
+    var G = window.GAILS;
+    return (G.getBakeryOps ? G.getBakeryOps(bakery) : '') === G.userOpsArea;
+  }
+
+  // Exposed so the Bakery Reports scope is unit-testable and reusable.
+  window.GAILS.reportBakeryAllowed = reportBakeryAllowed;
+  window.GAILS.reportScopeActive = reportScopeActive;
+
   function lockBackgroundScroll() {
     lockedScrollY = window.scrollY || window.pageYOffset || 0;
     document.documentElement.classList.add('drill-modal-open');
@@ -1061,7 +1084,11 @@ window.GAILS = window.GAILS || {};
   // into window.GAILS._followUpActionsObj by js/auth.js.
   function getFollowUpList() {
     var obj = window.GAILS._followUpActionsObj || {};
-    return Object.keys(obj).map(function (id) { return Object.assign({ id: id }, obj[id]); });
+    return Object.keys(obj).map(function (id) { return Object.assign({ id: id }, obj[id]); })
+      // Scoped ops managers only see follow-ups for their own ops area. This is
+      // the single source for the Follow-ups view and the Log Visit modal's
+      // open-task checklist, so both inherit the scope.
+      .filter(function (t) { return reportBakeryAllowed(t.bakery); });
   }
 
   function getOpenFollowUpsForBakery(bakery) {
@@ -1220,7 +1247,7 @@ window.GAILS = window.GAILS || {};
 
     // Populate bakery list if it only has placeholder
     if (select.options.length <= 1 && window.GAILS.state && window.GAILS.state.BAKERIES) {
-      window.GAILS.state.BAKERIES.slice().sort().forEach(function (bName) {
+      window.GAILS.state.BAKERIES.slice().sort().filter(reportBakeryAllowed).forEach(function (bName) {
         var opt = document.createElement('option');
         opt.value = bName;
         opt.textContent = bName;
@@ -1289,7 +1316,7 @@ window.GAILS = window.GAILS || {};
 
     // Populate bakery list once (mirrors openAddSiteVisitModal).
     if (select.options.length <= 1 && window.GAILS.state && window.GAILS.state.BAKERIES) {
-      window.GAILS.state.BAKERIES.slice().sort().forEach(function (bName) {
+      window.GAILS.state.BAKERIES.slice().sort().filter(reportBakeryAllowed).forEach(function (bName) {
         var opt = document.createElement('option');
         opt.value = bName;
         opt.textContent = bName;
@@ -1727,6 +1754,24 @@ window.GAILS = window.GAILS || {};
       window.GAILS.syncCustomSelect('visitLogRegion');
       window.GAILS.syncCustomSelect('visitLogOps');
     }
+    applyReportScopeToFilters();
+  }
+
+  // A scoped ops manager only has one ops area, so the Region and Ops Area
+  // filters can only narrow their already-scoped list to nothing — hide them
+  // and clear any stale values. Restores them when scoping is off.
+  function applyReportScopeToFilters() {
+    var scoped = reportScopeActive();
+    ['visitLogRegion', 'visitLogOps'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var control = el.closest ? el.closest('.visit-log-filter-control') : null;
+      if (scoped && el.value) {
+        el.value = '';
+        if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect(id);
+      }
+      if (control) control.style.display = scoped ? 'none' : '';
+    });
   }
 
   function getVisitLogActiveFilterCount() {
@@ -2020,6 +2065,10 @@ window.GAILS = window.GAILS || {};
     var container = document.getElementById('visitLogList');
     var statusEl = document.getElementById('visitLogStatus');
     if (!container) return;
+
+    // Keep the Region/Ops filters hidden/shown in step with the visibility
+    // scope so a live master-switch toggle takes effect without a reload.
+    applyReportScopeToFilters();
 
     var allVisits = window.GAILS._allVisitsObj || {};
     var visitIds = Object.keys(allVisits);
@@ -2538,10 +2587,12 @@ window.GAILS = window.GAILS || {};
       headerSub.innerHTML = window.GAILS.getVisitLogHeaderSummary();
     }
 
-    // Convert object to array
+    // Convert object to array. Scoped ops managers only see visits for their
+    // own ops area; filtering here means the history list, the summary chip
+    // counts, and every grouping downstream all respect the scope.
     var visitsList = visitIds.map(function (id) {
       return Object.assign({ id: id }, allVisits[id]);
-    });
+    }).filter(function (v) { return reportBakeryAllowed(v.bakery); });
 
     if (view === 'history') {
       // Filter history in two stages: everything except visit type/rating
@@ -2778,7 +2829,9 @@ window.GAILS = window.GAILS || {};
         }
       });
 
-      var allBakeries = G.state && G.state.BAKERIES || [];
+      // Scoped ops managers only see their own ops area's sites in the
+      // unvisited list (and its counts).
+      var allBakeries = (G.state && G.state.BAKERIES || []).filter(reportBakeryAllowed);
       var unvisitedMap = {};
       var totalUnvisited = 0;
       var matchingSites = 0;

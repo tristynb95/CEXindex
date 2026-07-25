@@ -427,7 +427,7 @@ window.GAILS.ABS_BAND_NAMES = ['Exceeding', 'Meeting', 'Approaching', 'Below Sta
 
 // ========== CEI WEIGHTS & BENCHMARKS ==========
 window.GAILS.CEI_WEIGHTS = { nps: 0.15, ef: 0.25, dr: 0.25, fr: 0.25, time: 0.05, at: 0.05 };
-window.GAILS.BENCHMARKS = { nps: 55, ef: 90, dr: 90, fr: 90, time: 80, at: 120 };
+window.GAILS.BENCHMARKS = { nps: 55, ef: 90, dr: 90, fr: 90, time: 70, at: 120 };
 window.GAILS.BENCHMARK_FLOORS = { nps: 45, ef: 80, dr: 80, fr: 80, at: 125 };
 
 // One shared RAG model for the league table, Focus review and KPI cards.
@@ -442,7 +442,7 @@ window.GAILS.metricRagTone = function (metric, value) {
     return value >= 90 ? 'green' : value >= 80 ? 'amber' : 'red';
   }
   if (metric === 'ts' || metric === 's2' || metric === 'time') {
-    return value >= 75 ? 'green' : value >= 60 ? 'amber' : 'red';
+    return value >= 70 ? 'green' : value >= 60 ? 'amber' : 'red';
   }
   if (metric === 'o5') return value <= 1 ? 'green' : value < 2.5 ? 'amber' : 'red';
   if (metric === 'at') {

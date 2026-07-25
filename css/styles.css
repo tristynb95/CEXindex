@@ -4897,6 +4897,79 @@ body.table-fullscreen-lock {
   color: var(--muted-l);
 }
 
+/* Per-user access editor: stacks the Role and Bakery Reports scope selects. */
+.admin-user-access {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.admin-user-access__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.admin-user-access__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-l);
+}
+
+/* Read-only scope note under a user's role pill. */
+.admin-user-scope {
+  margin-top: 4px;
+}
+
+.admin-user-scope--restricted {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Master on/off row for the Bakery Reports visibility control. */
+.admin-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-2, rgba(0, 0, 0, 0.015));
+  cursor: pointer;
+}
+
+.admin-toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.admin-toggle-row input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.admin-toggle-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-toggle-row__title {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.admin-toggle-row__desc {
+  font-size: 0.8rem;
+  color: var(--muted-l);
+}
+
 .admin-table__actions {
   display: flex;
   flex-wrap: wrap;

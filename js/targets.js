@@ -167,7 +167,7 @@ var _DRIVER_ACTIONS = {
   ef: 'Review peak-hour deployment and the barista rota. Customer-rated efficiency carries 25% of the experience index, so gains here have a meaningful impact.',
   fr: 'Coach the team on warm greetings and handover moments — observe service interactions during the next routine visit.',
   n: 'Read this bakery’s recent customer comments in the Comment Cloud tab and agree one specific service fix with the BM.',
-  ts: 'Track drink delivery times at peak — the standard is 80% of drinks served within 2 minutes.',
+  ts: 'Track drink delivery times at peak — the standard is 70% of drinks served within 2 minutes (and 90% within 3).',
   at: 'Average wait is above the 2:00 standard — review queue flow, batching and order sequencing at peak.'
 };
 
@@ -371,7 +371,11 @@ function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
     var lastVisit = G.getLastVisitDate ? G.getLastVisitDate(rec.b) : null;
     var monthsSinceVisit = _monthsSinceVisit({ lastVisit: lastVisit });
     var visitedInPeriod = monthsSinceVisit !== null && monthsSinceVisit < _VISIT_DUE_MONTHS;
-    var drivers = _driverList(rec);
+    // "Main focus" reads from the latest actual month, so the metric named on the
+    // row matches the one the deep-dive modal leads with under "Where to focus
+    // first" (and the month-by-month table). The weighted snapshot drives the
+    // support decision/score; the weakest-driver callout is a latest-month fact.
+    var drivers = _driverList(trend.latest || rec);
     var p = G.computeSupportPriority({
       score: rec[cf], trend: trend, focusMonths: focusMonths, focusStreak: focusStreak,
       monthsWithData: recentTrend.monthsTracked, visitedInPeriod: visitedInPeriod,

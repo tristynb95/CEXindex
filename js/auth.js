@@ -218,6 +218,7 @@ let siteMetaUnsubscribe = null;
 let dashboardDataUnsubscribe = null;
 let routineVisitsUnsubscribe = null;
 let followUpActionsUnsubscribe = null;
+let appSettingsUnsubscribe = null;
 let _freshLogin = false;
 let pendingInvitationUserRef = null;
 
@@ -411,6 +412,27 @@ function startRoutineVisitsSync() {
   });
 }
 
+// The Bakery Reports visibility master switch. Live-synced so an admin toggling
+// it in the portal takes effect without the ops manager reloading. Paired with
+// the per-user opsArea (set at sign-in) to scope Bakery Reports client-side.
+function stopReportVisibilitySync() {
+  if (appSettingsUnsubscribe) {
+    appSettingsUnsubscribe();
+    appSettingsUnsubscribe = null;
+  }
+}
+
+function startReportVisibilitySync() {
+  stopReportVisibilitySync();
+  appSettingsUnsubscribe = onValue(ref(db, 'appSettings/reportVisibility'), function(snapshot) {
+    var val = snapshot.exists() ? snapshot.val() : null;
+    window.GAILS.reportVisibilityEnabled = !!(val && val.enabled);
+    if (typeof window.GAILS.renderVisitLog === 'function') window.GAILS.renderVisitLog();
+  }, function(error) {
+    console.error('Failed to sync report visibility setting:', error);
+  });
+}
+
 function clearLoginForm() {
   if (loginForm) loginForm.reset();
   if (emailInput) emailInput.value = '';
@@ -584,16 +606,21 @@ onAuthStateChanged(auth, async (user) => {
             console.warn('Could not write login activity log:', logErr);
           }
         }
+        // Scopes Bakery Reports client-side: the user's assigned ops area, and
+        // the master switch (live-synced), are read by js/visit-report.js.
+        window.GAILS.userOpsArea = (userProfile && userProfile.opsArea) || '';
         showApp(isAdmin, permissions);
         applyDashboardTabPermissions(permissions);
         startSiteMetaSync();
         startRoutineVisitsSync();
+        startReportVisibilitySync();
         await loadSharedDashboardData(isAdmin || permissions.admin.dataset === 'edit');
       } else {
         loginError.textContent = "You don't have access to this dashboard. Contact your administrator.";
         loginError.style.display = 'block';
         stopSiteMetaSync();
         stopRoutineVisitsSync();
+        stopReportVisibilitySync();
         await signOut(auth);
         showApp(undefined);
       }
@@ -603,6 +630,7 @@ onAuthStateChanged(auth, async (user) => {
       loginError.style.display = 'block';
       stopSiteMetaSync();
       stopRoutineVisitsSync();
+      stopReportVisibilitySync();
       await signOut(auth);
       showApp(undefined);
     }
@@ -610,6 +638,8 @@ onAuthStateChanged(auth, async (user) => {
     stopSiteMetaSync();
     stopDashboardDataSync();
     stopRoutineVisitsSync();
+    stopReportVisibilitySync();
+    window.GAILS.userOpsArea = '';
     applySiteMeta(null);
     clearLoginForm();
     updateProfileMenu(null);
