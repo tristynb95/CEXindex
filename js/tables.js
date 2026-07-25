@@ -229,7 +229,7 @@ window.GAILS.makeSortable = function (container) {
   }
 
   function ensureHost(table) {
-    if (!table || !table.parentElement) return null;
+    if (!table || !table.parentElement || table.getAttribute('data-table-fullscreen') === 'off') return null;
 
     var host = table.closest(HOST_SELECTOR);
     if (host) {
@@ -242,6 +242,12 @@ window.GAILS.makeSortable = function (container) {
     table.parentElement.insertBefore(host, table);
     host.appendChild(table);
     return host;
+  }
+
+  function hostAllowsFullscreen(host) {
+    if (!host || !host.querySelector) return false;
+    var table = host.querySelector('table');
+    return !table || table.getAttribute('data-table-fullscreen') !== 'off';
   }
 
   function findInlineToolbarAnchor(host) {
@@ -345,11 +351,11 @@ window.GAILS.makeSortable = function (container) {
       return;
     }
 
-    if (root.matches && root.matches(SHELL_SELECTOR)) {
+    if (root.matches && root.matches(SHELL_SELECTOR) && hostAllowsFullscreen(root)) {
       attachButton(root);
     }
 
-    if (root.matches && root.matches(HOST_SELECTOR)) {
+    if (root.matches && root.matches(HOST_SELECTOR) && hostAllowsFullscreen(root)) {
       attachButton(ensureShell(root));
     }
 
@@ -449,7 +455,7 @@ document.addEventListener('click', function (e) {
   if (!window.matchMedia || !window.matchMedia('(max-width: 640px)').matches) return;
   var target = e.target && e.target.closest ? e.target : null;
   if (!target) return;
-  // Bakery names are buttons that open the detail modal — leave those alone
+  // Bakery names are profile links — leave those interactions alone.
   if (target.closest('button, a, input, select')) return;
   var cell = target.closest('td');
   var row = cell ? cell.parentElement : null;
@@ -482,17 +488,23 @@ window.GAILS.renderLeagueTable = function (data) {
   var hasVal = function (v) { return v !== null && v !== undefined && !isNaN(v); };
   var numOrDash = function (v) { return hasVal(v) ? v : '—'; };
   var pctOrDash = function (v) { return hasVal(v) ? v + '%' : '—'; };
-  var visibleRank = 0;
   document.getElementById('tableBody').innerHTML = sorted.map(function (b) {
     var rankEligible = !b.noData && !b.incompletePeriod;
-    var rankLabel = rankEligible ? ++visibleRank : '&mdash;';
+    var rankLabel = rankEligible && b.companyRank
+      ? b.companyRank
+      : '&mdash;';
+    var topPercentLabel = rankEligible && b.companyTopPercent
+      ? 'Top ' + b.companyTopPercent + '%'
+      : '&mdash;';
     return '<tr data-rank-eligible="' + rankEligible + '">' +
       '<td style="font-weight:600">' + rankLabel + '</td>' +
-      '<td style="font-weight:500">' + b.b + '</td>' +
+      '<td style="font-weight:500">' + G.bakeryProfileLink(b.b, {
+        returnUrl: 'index.html#table',
+        returnLabel: 'League Table'
+      }) + '</td>' +
+      '<td style="font-weight:600">' + topPercentLabel + '</td>' +
       '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryRegion(b.b) + '</td>' +
       '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(b.b) + '</td>' +
-      '<td style="font-weight:700">' + numOrDash(b.c) + '</td>' +
-      '<td><span class="band ' + G.bc(b.cb) + '">' + b.cb + '</span></td>' +
       '<td style="font-weight:600">' + numOrDash(b.ac) + '</td>' +
       '<td><span class="band ' + absBandClass(b.acb) + '">' + b.acb + '</span></td>' +
       '<td><span class="conf ' + G.bc(b.co) + '">' + b.co + '</span></td>' +

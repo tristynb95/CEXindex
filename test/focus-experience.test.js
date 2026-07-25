@@ -28,20 +28,27 @@ test('returns to the top Priorities view when Focus Bakeries is revisited', () =
   assert.match(app, /activateDashboardTab\(t\.dataset\.tab\);\s*scrollToTop\(\);/);
 });
 
-test('moves the Peer and Benchmark toggle to the top of compact filters', () => {
-  assert.match(app, /var globalIndexToggleMobileParent = document\.querySelector\('#filterControlsPanel \.filter-controls-body'\)/);
-  assert.match(app, /var useMobilePlacement = compactDashboardSidebarMedia\.matches/);
-  assert.match(app, /globalIndexToggleMobileParent\.insertBefore\(globalIndexToggle, globalIndexToggleMobileParent\.firstChild\)/);
-  assert.match(app, /globalIndexToggle\.classList\.toggle\('is-mobile-filter', useMobilePlacement\)/);
-  assert.match(styles, /\.header-index-toggle\.is-mobile-filter \{[\s\S]*?grid-column: 1 \/ -1/);
-  assert.match(styles, /\.header-index-toggle\.is-mobile-filter \.overview-rankings-toggle__btn\.active \{[\s\S]*?#B5312A[\s\S]*?#A32520/);
+test('preserves a profile-return hash through the final dashboard startup sync', () => {
+  assert.match(app, /var target = String\(window\.location\.hash \|\| ''\)\.replace\(\/\^\#\(\?:tab-\)\?\/, ''\)/);
+  assert.ok(app.indexOf('activateDashboardHashTarget();') < app.indexOf('var initialActiveTab'));
+  assert.match(app, /var initialActiveTab = document\.querySelector\('\.tab-content\.active'\)[\s\S]*?updateDashboardActiveView\(initialActiveTab\);\s*syncDashboardKpis\(initialActiveTab\)/);
+  assert.doesNotMatch(app, /updateDashboardActiveView\('overview'\);\s*syncDashboardKpis\('overview'\)/);
+  assert.match(app, /var dashboardTabsWithKpis = \{\s*overview: true\s*\}/);
 });
 
-test('shows the active index type on the mobile filter button', () => {
-  assert.match(html, /id="filterSideTabLabel">Peer<\/span>/);
-  assert.match(app, /var indexLabel = state\.indexType === 'absolute' \? 'Benchmark' : 'Peer'/);
+test('uses Benchmark as the single user-facing performance lens', () => {
+  assert.doesNotMatch(html, /id="globalIndexToggle"|data-global-index=/);
+  assert.doesNotMatch(app, /globalIndexToggle|state\.indexType|state\.rankingsMetric|state\.targetMetric/);
+  assert.doesNotMatch(html, /Peer Score Band|<th>Peer Score<\/th>|<th>Peer Band<\/th>/);
+  assert.match(html, /id="bandFilterLabel">Benchmark Band<\/label>/);
+  assert.match(html, /<option value="ac">Benchmark Score<\/option>/);
+});
+
+test('uses a neutral label on the mobile filter button', () => {
+  assert.match(html, /id="filterSideTabLabel">Filters<\/span>/);
+  assert.match(app, /var indexLabel = 'Filters'/);
   assert.match(app, /filterTabLabel\.textContent = indexLabel/);
-  assert.match(app, /'Open filters — ' \+ indexLabel \+ ' index'/);
+  assert.match(app, /'Open dashboard filters'/);
   assert.match(styles, /\.filter-side-tab \{[\s\S]*?width: auto;[\s\S]*?min-width: 104px/);
 });
 
@@ -68,8 +75,8 @@ test('puts the recommendation and action list before secondary analysis', () => 
 test('uses plain-language performance, priority, trend and visit labels', () => {
   assert.match(targets, /Why this bakery:/);
   assert.match(targets, /Recommended next step:/);
-  assert.match(targets, /Support priority/);
-  assert.match(targets, /Change since last month/);
+  assert.match(targets, /role="columnheader">Priority</);
+  assert.match(targets, /vs Prev Month/);
   assert.match(targets, /Routine visit/);
   assert.match(targets, /Review bakery/);
   assert.doesNotMatch(targets, /Dipping MoM/);
@@ -78,11 +85,16 @@ test('uses plain-language performance, priority, trend and visit labels', () => 
 });
 
 test('keeps performance and activity filters independent and reports results', () => {
-  assert.match(targets, /status: prevStatus, band: prevBand/);
+  // The two activity filters are independent checkboxes held as separate
+  // booleans, so a bakery that is both falling and overdue can be isolated.
+  assert.match(targets, /dipping: prevDipping, novisit: prevNovisit, band: prevBand/);
   assert.match(targets, /if \(s\.band === 'band-high'\)/);
-  assert.match(targets, /if \(s\.status === 'dipping'\)/);
+  assert.match(targets, /if \(s\.dipping && !isDipping\(r\)\) return false;/);
+  assert.match(targets, /if \(s\.novisit && !isVisitDue\(r\)\) return false;/);
+  // Older state stored them as one mutually exclusive string; that is migrated
+  // rather than dropped, so an applied filter survives a re-render.
+  assert.match(targets, /if \(prevStatus === 'dipping'\) prevDipping = true;/);
   assert.match(targets, /Showing <strong>/);
-  assert.match(targets, /All priority levels/);
   assert.match(targets, /Performance: /);
 });
 
@@ -133,8 +145,8 @@ test('provides readable labels and a card layout on narrow screens', () => {
   assert.match(styles, /\.focus-qrow__who small[\s\S]*?font-size: 0\.75rem/);
   assert.match(styles, /\.focus-qrow--lead\s*\{[\s\S]*?border-radius: 0 12px 0 12px/);
   assert.doesNotMatch(styles, /\.focus-qrow--lead\s*\{[\s\S]*?inset[^;]*var\(--accent\)/);
-  assert.match(styles, /#targetHubQueue\s*\{[\s\S]*?margin-bottom: clamp\(30px, 3vw, 40px\)/);
-  assert.match(styles, /\.focus-secondary \+ \.focus-secondary\s*\{[\s\S]*?margin-top: 20px/);
+  assert.match(styles, /#targetHubQueue\s*\{[\s\S]*?margin-bottom: clamp\(16px, 2vw, 24px\)/);
+  assert.match(styles, /\.focus-secondary\s*\+\s*\.focus-secondary\s*\{[\s\S]*?margin-top: 20px/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?grid-template-areas:[\s\S]*?"who action"/);
   assert.match(styles, /@media \(max-width: 640px\)[\s\S]*?"visit"[\s\S]*?"action"/);
 });
@@ -175,7 +187,7 @@ test('simplifies the bakery review and uses benchmark-based RAG analysis', () =>
   assert.match(styles, /\.focus-review-summary \{[\s\S]*?background: var\(--card\)/);
   assert.match(styles, /\.focus-review-summary__facts \{[\s\S]*?grid-template-columns: repeat\(5/);
   assert.doesNotMatch(styles, /\.focus-review-summary__action/);
-  assert.match(styles, /#focusDetailModal \.focus-detail-section--trend > \.focus-at-a-glance \{[\s\S]*?margin-bottom: 22px/);
+  assert.match(styles, /#focusDetailModal \.focus-detail-section--trend\s*>\s*\.focus-at-a-glance \{[\s\S]*?margin-bottom: 22px/);
   assert.doesNotMatch(targets, /focus-quickstats|focus-quickstat/);
   assert.match(targets, /class="focus-detail-section focus-detail-section--trend"/);
   assert.match(targets, /class="focus-detail-section focus-detail-section--trend">' \+\s*summaryHtml \+\s*'<h4 class="focus-section-title">Score trend vs selection and company average/);
@@ -191,7 +203,7 @@ test('simplifies the bakery review and uses benchmark-based RAG analysis', () =>
   assert.match(targets, /<strong>Historical results<\/strong>/);
   assert.match(styles, /\.focus-actions \{[\s\S]*?gap: 0;[\s\S]*?border: 1px solid var\(--card-border\)/);
   assert.match(styles, /\.focus-history-disclosure \{[\s\S]*?background: var\(--card\)/);
-  assert.match(styles, /\.focus-history-disclosure > summary \{/);
+  assert.match(styles, /\.focus-history-disclosure\s*>\s*summary \{/);
   assert.match(styles, /\.focus-history-disclosure__body \{[\s\S]*?background: var\(--card\)/);
   assert.match(styles, /\.focus-detail__visitbtn \{[\s\S]*?background: var\(--card\);[\s\S]*?color: var\(--text-2\)/);
   assert.match(styles, /\.focus-detail__visitbtn:hover \{[\s\S]*?background: var\(--accent-light\);[\s\S]*?color: var\(--accent\)/);
@@ -230,6 +242,7 @@ test('renders a plain-language action card and accurate filtered count', () => {
       this.innerHTML = '';
       this.className = '';
       this.value = '';
+      this.options = [];
       this.style = { setProperty() { } };
       this.attributes = {};
     }
@@ -240,7 +253,12 @@ test('renders a plain-language action card and accurate filtered count', () => {
 
   const elements = new Map();
   const getElement = (id) => {
-    if (!elements.has(id)) elements.set(id, new FakeElement(id));
+    if (!elements.has(id)) {
+      const element = new FakeElement(id);
+      if (id === 'focusQueueTier') element.options = Array.from({ length: 4 }, () => ({}));
+      if (id === 'focusQueueStatus') element.options = Array.from({ length: 3 }, () => ({}));
+      elements.set(id, element);
+    }
     return elements.get(id);
   };
   const document = {
@@ -280,12 +298,13 @@ test('renders a plain-language action card and accurate filtered count', () => {
         const tone = this.metricRagTone(metric, value);
         return tone ? `var(--${tone})` : 'var(--muted)';
       },
-      metricRagStyle(metric, value) {
-        const tone = this.metricRagTone(metric, value);
-        return tone ? ` style="color:var(--${tone})"` : '';
-      },
-      escapeHtml(value) { return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); },
-      bc(value) { return String(value).replaceAll(' ', '-'); },
+       metricRagStyle(metric, value) {
+         const tone = this.metricRagTone(metric, value);
+         return tone ? ` style="color:var(--${tone})"` : '';
+       },
+       escapeHtml(value) { return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); },
+       bakeryProfileLink(name) { return `<a class="bakery-profile-link">${this.escapeHtml(name)}</a>`; },
+       bc(value) { return String(value).replaceAll(' ', '-'); },
       COL: { 'Low Performance': '#B22A24', 'Below Average': '#C97F12' },
       ABSCOL: {},
       formatSecs(value) {
@@ -328,7 +347,19 @@ test('renders a plain-language action card and accurate filtered count', () => {
   assert.match(getElement('focusQueueChips').innerHTML, /Performance: Low Performance/);
   assert.match(getElement('focusQueueSummary').innerHTML, /Showing <strong>1<\/strong> of 1 matching bakeries/);
   assert.match(getElement('focusQueueSummary').innerHTML, /2 total focus bakeries/);
-  assert.match(getElement('focusQueueChips').innerHTML, /All priority levels<span class="focus-chip__count">1<\/span>/);
+  // Support priority is a dropdown whose options carry live counts; the two
+  // activity filters are independent checkboxes with their own counts beside
+  // them, so neither can hide the other's result set.
+  assert.equal(getElement('focusQueueTier').options[0].textContent, 'All (1)');
+  assert.equal(getElement('focusQueueTier').value, 'all');
+  // Counts use the same predicates the list filters by (_visitStatus for
+  // "visit due"), so a checkbox can never advertise a number the list then
+  // fails to show — the previous counts read r.visitedInPeriod while the
+  // filter read _visitStatus, and the two could disagree.
+  assert.equal(getElement('focusQueueDippingCount').textContent, 1);
+  assert.equal(getElement('focusQueueNovisitCount').textContent, 0);
+  assert.equal(getElement('focusQueueDipping').checked, false);
+  assert.doesNotMatch(getElement('focusQueueChips').innerHTML, /focus-chip__count/);
 
   context._renderTargetTable(latest.slice().reverse(), 'cb', 'c', 'Low Performance', false);
   const allBakeryTable = getElement('targetTable').innerHTML;

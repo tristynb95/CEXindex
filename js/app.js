@@ -13,7 +13,6 @@
   var sectionPageTitle = document.getElementById('sectionPageTitle');
   var compactDashboardSidebarMedia = window.matchMedia('(max-width: 980px)');
   var desktopDashboardSidebarCollapsed = false;
-  var _networkMapMetric = 'absolute';
   var dashboardTabLabels = {
     overview: 'Overview',
     trends: 'Trends',
@@ -176,69 +175,21 @@
       currentTab = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
     }
 
-    if (currentTab === 'overview') {
+    if (currentTab === 'overview' || currentTab === 'target' || currentTab === 'map' ||
+        currentTab === 'table' || currentTab === 'trends' || currentTab === 'speed') {
       container.style.display = '';
-      label.textContent = state.rankingsMetric === 'absolute' ? 'Benchmark Score' : 'Peer Score';
-    } else if (currentTab === 'target') {
-      container.style.display = '';
-      label.textContent = state.targetMetric === 'absolute' ? 'Benchmark Score' : 'Peer Score';
-    } else if (currentTab === 'map') {
-      container.style.display = '';
-      label.textContent = _networkMapMetric === 'absolute' ? 'Benchmark Score' : 'Peer Score';
-    } else if (currentTab === 'table' || currentTab === 'trends' || currentTab === 'speed') {
-      container.style.display = '';
-      label.textContent = 'Peer & Benchmark';
+      label.textContent = 'Benchmark Score';
     } else {
       container.style.display = 'none';
     }
   }
 
-  var globalIndexToggle = document.getElementById('globalIndexToggle');
-  var globalIndexToggleDesktopParent = globalIndexToggle ? globalIndexToggle.parentNode : null;
-  var globalIndexToggleDesktopNextSibling = globalIndexToggle ? globalIndexToggle.nextSibling : null;
-  var globalIndexToggleMobileParent = document.querySelector('#filterControlsPanel .filter-controls-body');
-  var tabsWithoutGlobalIndexToggle = {
-    'table': true,
-    'visit-log': true,
-    'trends': true,
-    'feedback': true
-  };
-
-  function syncGlobalIndexTogglePlacement() {
-    if (!globalIndexToggle || !globalIndexToggleDesktopParent || !globalIndexToggleMobileParent) return;
-    var useMobilePlacement = compactDashboardSidebarMedia.matches;
-    globalIndexToggle.classList.toggle('is-mobile-filter', useMobilePlacement);
-
-    if (useMobilePlacement) {
-      if (globalIndexToggle.parentNode !== globalIndexToggleMobileParent) {
-        globalIndexToggleMobileParent.insertBefore(globalIndexToggle, globalIndexToggleMobileParent.firstChild);
-      }
-      return;
-    }
-
-    if (globalIndexToggle.parentNode !== globalIndexToggleDesktopParent) {
-      var desktopAnchorIsAvailable = globalIndexToggleDesktopNextSibling &&
-        globalIndexToggleDesktopNextSibling.parentNode === globalIndexToggleDesktopParent;
-      globalIndexToggleDesktopParent.insertBefore(
-        globalIndexToggle,
-        desktopAnchorIsAvailable ? globalIndexToggleDesktopNextSibling : null
-      );
-    }
-  }
-
-  syncGlobalIndexTogglePlacement();
-
-  function updateGlobalIndexToggleVisibility(name) {
-    if (!globalIndexToggle) return;
-    globalIndexToggle.style.display = tabsWithoutGlobalIndexToggle[name] ? 'none' : 'inline-flex';
-  }
-
   function syncMobileFilterIndexLabel() {
     var filterTab = document.getElementById('filterSideTab');
     var filterTabLabel = document.getElementById('filterSideTabLabel');
-    var indexLabel = state.indexType === 'absolute' ? 'Benchmark' : 'Peer';
+    var indexLabel = 'Filters';
     if (filterTabLabel) filterTabLabel.textContent = indexLabel;
-    if (filterTab) filterTab.setAttribute('aria-label', 'Open filters — ' + indexLabel + ' index');
+    if (filterTab) filterTab.setAttribute('aria-label', 'Open dashboard filters');
   }
 
   syncMobileFilterIndexLabel();
@@ -251,7 +202,6 @@
       sectionPageTitle.textContent = dashboardTabLabels[name] || name;
     }
     updateDashboardActiveIndex(name);
-    updateGlobalIndexToggleVisibility(name);
     syncMobileFilterIndexLabel();
     // Expose the active tab so tab-specific layout tweaks can be scoped in CSS.
     document.body.dataset.dashTab = name;
@@ -554,15 +504,10 @@
     updateHeaderSummary(data.length);
     G.storeDashboardMapData(data);
     if (data.length === 0 || n === 0) {
-      var wantAbs = state.indexType === 'absolute';
       var dashMetrics = [
-        { eyebrow: 'NPS', title: 'NPS (Drink & Meal)', meta: 'Target: 55', primary: true }
+        { eyebrow: 'NPS', title: 'NPS (Drink & Meal)', meta: 'Target: 55', primary: true },
+        { eyebrow: 'Index', title: 'Benchmark Score', meta: 'vs company benchmark', primary: true }
       ];
-      if (wantAbs) {
-        dashMetrics.push({ eyebrow: 'Index', title: 'Benchmark Score', meta: 'vs company benchmark', primary: true });
-      } else {
-        dashMetrics.push({ eyebrow: 'Index', title: 'Peer Score', meta: 'vs bakery peer set.', primary: true });
-      }
       dashMetrics.push(
         { eyebrow: 'SHINE', title: 'Drink Quality', meta: 'Target: 90%' },
         { eyebrow: 'SHINE', title: 'Efficiency', meta: 'Target: 90%' },
@@ -633,7 +578,6 @@
       };
     };
     var nps = G.avg(scoredData, 'n');
-    var cei = G.avg(scoredData, 'c');
     var acei = G.avg(scoredData, 'ac');
     var dr = G.avg(scoredData, 'dr');
     var ef = G.avg(scoredData, 'ef');
@@ -667,7 +611,6 @@
         ],
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       });
-    var wantAbs = state.indexType === 'absolute';
     var cards = [
       buildMetricCard({
         value: nps,
@@ -688,39 +631,23 @@
       })
     ];
 
-    if (wantAbs) {
-      cards.push(buildMetricCard({
-        value: acei,
-        compare: Math.round(acei),
-        display: Math.round(acei).toString(),
-        eyebrow: 'Index',
-        title: 'Benchmark Score',
-        meta: 'vs company benchmark',
-        priorKey: 'ac',
-        bands: [
-          { test: function (val) { return val > 92; }, tone: 'kpi-blue', status: 'Exceeding' },
-          { test: function (val) { return val >= 75; }, tone: 'kpi-green', status: 'Meeting' },
-          { test: function (val) { return val >= 60; }, tone: 'kpi-amber', status: 'Approaching' },
-          { test: function (val) { return val < 60; }, tone: 'kpi-red', status: 'Below Standard' }
-        ],
-        labels: { good: 'Meeting', warn: 'Approaching', bad: 'Below Standard' },
-        primary: true
-      }));
-    } else {
-      cards.push(buildMetricCard({
-        value: cei,
-        compare: Math.round(cei),
-        display: Math.round(cei).toString(),
-        eyebrow: 'Index',
-        title: 'Peer Score',
-        meta: 'vs bakery peer set.',
-        priorKey: 'c',
-        good: 62.5,
-        warn: 37.5,
-        labels: { good: 'Leading', warn: 'Mid-Pack', bad: 'Lagging' },
-        primary: true
-      }));
-    }
+    cards.push(buildMetricCard({
+      value: acei,
+      compare: Math.round(acei),
+      display: Math.round(acei).toString(),
+      eyebrow: 'Index',
+      title: 'Benchmark Score',
+      meta: 'vs company benchmark',
+      priorKey: 'ac',
+      bands: [
+        { test: function (val) { return val > 92; }, tone: 'kpi-blue', status: 'Exceeding' },
+        { test: function (val) { return val >= 75; }, tone: 'kpi-green', status: 'Meeting' },
+        { test: function (val) { return val >= 60; }, tone: 'kpi-amber', status: 'Approaching' },
+        { test: function (val) { return val < 60; }, tone: 'kpi-red', status: 'Below Standard' }
+      ],
+      labels: { good: 'Meeting', warn: 'Approaching', bad: 'Below Standard' },
+      primary: true
+    }));
 
     cards.push(
       buildMetricCard({
@@ -921,26 +848,10 @@
     }
   });
 
-  // ========== GLOBAL INDEX TYPE TOGGLE (header) ==========
-  _networkMapMetric = state.indexType;
-  Array.from(document.querySelectorAll('[data-global-index]')).forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var nextMetric = btn.dataset.globalIndex === 'absolute' ? 'absolute' : 'relative';
-      if (state.indexType === nextMetric) return;
-      state.indexType = nextMetric;
-      state.rankingsMetric = nextMetric;
-      state.targetMetric = nextMetric;
-      _networkMapMetric = nextMetric;
-      syncMobileFilterIndexLabel();
-      Array.from(document.querySelectorAll('[data-global-index]')).forEach(function (toggleBtn) {
-        toggleBtn.classList.toggle('active', toggleBtn.dataset.globalIndex === nextMetric);
-      });
-      if (G.setNetworkMapMetric) G.setNetworkMapMetric(nextMetric);
-      if (G.setTargetMapMetric) G.setTargetMapMetric(nextMetric);
-      updateDashboardActiveIndex();
-      refresh();
-    });
-  });
+  // Benchmark is the single performance lens. Maps retain their internal
+  // metric API, but the dashboard always initialises them in benchmark mode.
+  if (G.setNetworkMapMetric) G.setNetworkMapMetric('absolute');
+  if (G.setTargetMapMetric) G.setTargetMapMetric('absolute');
 
   // ========== NETWORK MAP AREA TOGGLE ==========
   var _networkMapArea = 'off';
@@ -1235,8 +1146,6 @@
       ? G.getFocusAvailableBands()
       : G.getAvailableBands();
     var currentValue = state.bandFilter;
-    var toggleApplies = !tabsWithoutGlobalIndexToggle[currentTab];
-    var wantAbs = state.indexType === 'absolute';
 
     // Rebuild select from original structure, omitting unavailable options
     bandFilterEl.innerHTML = '';
@@ -1249,44 +1158,24 @@
         return;
       }
 
-      // On pages where the Relative/Absolute toggle applies, only show the
-      // optgroup matching the active mode; elsewhere (Trends, League Table,
-      // Bakery Reports) show both, since either metric can be relevant there.
       var isAbsGroup = item.options.length > 0 && item.options[0].value.indexOf('abs:') === 0;
-      if (toggleApplies && isAbsGroup !== wantAbs) return;
+      if (!isAbsGroup) return;
 
       var visibleOpts = item.options.filter(function (o) {
-        return o.value.indexOf('abs:') === 0
-          ? available.absolute.has(o.value.slice(4))
-          : available.relative.has(o.value);
+        return available.absolute.has(o.value.slice(4));
       });
       if (!visibleOpts.length) return;
 
-      if (toggleApplies) {
-        // Single mode active: flatten, the optgroup label is redundant with the toggle
-        visibleOpts.forEach(function (o) {
-          var opt = document.createElement('option');
-          opt.value = o.value;
-          opt.textContent = o.text;
-          bandFilterEl.appendChild(opt);
-        });
-      } else {
-        var grp = document.createElement('optgroup');
-        grp.label = item.label;
-        visibleOpts.forEach(function (o) {
-          var opt = document.createElement('option');
-          opt.value = o.value;
-          opt.textContent = o.text;
-          grp.appendChild(opt);
-        });
-        bandFilterEl.appendChild(grp);
-      }
+      visibleOpts.forEach(function (o) {
+        var opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.text;
+        bandFilterEl.appendChild(opt);
+      });
     });
 
     var bandFilterLabelEl = document.getElementById('bandFilterLabel');
-    if (bandFilterLabelEl) {
-      bandFilterLabelEl.textContent = toggleApplies ? ('Band (' + (wantAbs ? 'Benchmark' : 'Peer') + ')') : 'Band';
-    }
+    if (bandFilterLabelEl) bandFilterLabelEl.textContent = 'Benchmark Band';
 
     // Reset to "All" only if the current selection is no longer in the available options
     var selectionExists = !currentValue || !!Array.from(bandFilterEl.options).find(function (o) { return o.value === currentValue; });
@@ -1635,6 +1524,19 @@
     });
   });
 
+  // Allow standalone pages (such as a Bakery Profile) to return directly to
+  // the dashboard section they came from. Both #visit-log and #tab-visit-log
+  // are accepted so links stay readable while matching the panel id.
+  function activateDashboardHashTarget() {
+    var target = String(window.location.hash || '').replace(/^#(?:tab-)?/, '');
+    if (!target) return;
+    var button = document.querySelector('.tab[data-tab="' + target + '"]');
+    if (!button) return;
+    activateDashboardTab(target);
+  }
+  window.addEventListener('hashchange', activateDashboardHashTarget);
+  activateDashboardHashTarget();
+
   if (dashboardSidebarToggleBtn) {
     dashboardSidebarToggleBtn.addEventListener('click', function () {
       if (compactDashboardSidebarMedia.matches) {
@@ -1659,7 +1561,6 @@
 
   if (compactDashboardSidebarMedia && compactDashboardSidebarMedia.addEventListener) {
     compactDashboardSidebarMedia.addEventListener('change', function () {
-      syncGlobalIndexTogglePlacement();
       syncDashboardSidebarForViewport();
       syncDashboardKpis();
       renderHeaderSummary();
@@ -2057,12 +1958,17 @@
   G.onBakeryMetaChanged = function () {
     G.rebuildDashboardFilters();
   };
-  updateDashboardActiveView('overview');
-  syncDashboardKpis('overview');
+  // Hash navigation may already have activated a returned-to tab above. Keep
+  // that panel authoritative during final startup sync instead of resetting
+  // only the shared title and KPI strip to Overview.
+  var initialActiveTab = document.querySelector('.tab-content.active')
+    ? document.querySelector('.tab-content.active').id.replace(/^tab-/, '')
+    : 'overview';
+  updateDashboardActiveView(initialActiveTab);
+  syncDashboardKpis(initialActiveTab);
   syncDashboardSidebarForViewport();
 
   // Sync initial mobile filter tab visibility on startup
-  var initialActiveTab = document.querySelector('.tab-content.active') ? document.querySelector('.tab-content.active').id.replace(/^tab-/, '') : 'overview';
   var initialMobileFilterTab = document.getElementById('filterSideTab');
   if (initialMobileFilterTab) {
     if (initialActiveTab === 'table' || initialActiveTab === 'visit-log') {
@@ -2071,6 +1977,27 @@
       initialMobileFilterTab.style.display = '';
     }
   }
+
+  // Overlay disclosures ("Columns Explained", "How support priority is
+  // calculated") float above the layout, so they need dismissing like a menu —
+  // a native <details> otherwise only closes via its own summary. Delegated so
+  // it also covers the trend-table one, which is re-rendered on every refresh.
+  (function () {
+    document.addEventListener('click', function (e) {
+      var clicked = e.target && e.target.closest ? e.target.closest('.focus-method--overlay') : null;
+      document.querySelectorAll('.focus-method--overlay[open]').forEach(function (el) {
+        if (el !== clicked) el.open = false;
+      });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      var open = document.querySelector('.focus-method--overlay[open]');
+      if (!open) return;
+      open.open = false;
+      var summary = open.querySelector('summary');
+      if (summary) summary.focus();
+    });
+  })();
 
   G.initUpload(initDashboard);
 })();

@@ -14,7 +14,22 @@ function getSiteMetaEntries(payload) {
   return payload;
 }
 
-function buildSiteMetaPayload(meta, sourceInfo) {
+function cloneRegionAssignments(assignments) {
+  var records = Array.isArray(assignments)
+    ? assignments
+    : Object.values(assignments && typeof assignments === 'object' ? assignments : {});
+  return records.map(function(record) {
+    return {
+      region: String(record && record.region || '').trim(),
+      coffeePartner: String(record && record.coffeePartner || '').trim(),
+      coffeeTrainer: String(record && record.coffeeTrainer || '').trim()
+    };
+  }).filter(function(record) {
+    return !!record.region;
+  });
+}
+
+function buildSiteMetaPayload(meta, sourceInfo, regionAssignments) {
   var entries = window.GAILS && typeof window.GAILS.cloneBakeryMeta === 'function'
     ? window.GAILS.cloneBakeryMeta(meta)
     : meta;
@@ -29,6 +44,7 @@ function buildSiteMetaPayload(meta, sourceInfo) {
 
   return {
     entries: entries,
+    regionAssignments: cloneRegionAssignments(regionAssignments),
     siteCount: Object.keys(entries || {}).length,
     regionCount: regions.size,
     managerCount: managers.size,
@@ -79,9 +95,15 @@ window.GAILS_Firebase = {
     localStorage.removeItem('gails_firebase_cache_ts');
     localStorage.removeItem('gails_firebase_cache');
   },
-  saveSiteMeta: async function(meta, sourceInfo) {
+  saveSiteMeta: async function(meta, sourceInfo, regionAssignments) {
     if (!auth.currentUser) return;
-    var payload = buildSiteMetaPayload(meta, sourceInfo);
+    var assignments = regionAssignments;
+    if (typeof assignments === 'undefined') {
+      var existingSnapshot = await get(ref(db, 'portalData/siteMeta'));
+      var existingPayload = existingSnapshot.exists() ? existingSnapshot.val() : null;
+      assignments = existingPayload && existingPayload.regionAssignments;
+    }
+    var payload = buildSiteMetaPayload(meta, sourceInfo, assignments);
     await set(ref(db, 'portalData/siteMeta'), payload);
     return payload;
   },
@@ -309,6 +331,9 @@ containerEl.style.display = 'none';
 
 function applySiteMeta(payload) {
   var meta = getSiteMetaEntries(payload);
+  if (window.GAILS && typeof window.GAILS.setRegionAssignments === 'function') {
+    window.GAILS.setRegionAssignments(payload && payload.regionAssignments);
+  }
   if (window.GAILS && typeof window.GAILS.setBakeryMeta === 'function') {
     window.GAILS.setBakeryMeta(meta);
   }
@@ -690,10 +715,8 @@ function showApp(isAdmin, permissions) {
     headerEl.style.display = 'flex';
     containerEl.style.display = 'block';
 
-    const globalIndexToggle = document.getElementById('globalIndexToggle');
     const uploader = document.getElementById('uploadZone');
     if (adminBtn) adminBtn.style.display = (isAdmin || hasAdminPanelAccess(permissions)) ? 'inline-block' : 'none';
-    if (globalIndexToggle) globalIndexToggle.style.display = 'inline-flex';
 
     // Always hide upload zone initially — loadSharedDashboardData will reveal it
     // for admins only if there is no Firebase data to load.

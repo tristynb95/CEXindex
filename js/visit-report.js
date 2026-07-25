@@ -53,31 +53,6 @@ window.GAILS = window.GAILS || {};
     window.scrollTo(0, lockedScrollY);
   }
 
-  function preserveScrollPosition(callback) {
-    var scrollX = window.scrollX || window.pageXOffset || 0;
-    var scrollY = window.scrollY || window.pageYOffset || 0;
-    // Clear any padding from a previous restore so the list re-measures at
-    // its natural height before this render.
-    var list = document.getElementById('visitLogList');
-    if (list) list.style.minHeight = '';
-
-    callback();
-
-    window.scrollTo(scrollX, scrollY);
-    // If the re-render shrank the page (e.g. filtering down to one visit),
-    // the restore above clamps short of the old position and the page still
-    // jumps. Pad the list by exactly the shortfall so the document stays
-    // tall enough for the viewport to remain where it was.
-    var deficit = scrollY - (window.scrollY || window.pageYOffset || 0);
-    if (deficit > 0 && list) {
-      list.style.minHeight = (list.offsetHeight + deficit) + 'px';
-      window.scrollTo(scrollX, scrollY);
-    }
-    window.requestAnimationFrame(function () {
-      window.scrollTo(scrollX, scrollY);
-    });
-  }
-
   function formatVisitDate(isoDate) {
     if (!isoDate) return 'Unknown date';
     var d = new Date(isoDate + 'T00:00:00');
@@ -690,17 +665,24 @@ window.GAILS = window.GAILS || {};
     return 'Routine Coffee Visit';
   }
 
-  // Keys deliberately mirror the #visitLogType <option> values so a summary
-  // chip can drive the same dropdown filter directly.
-  var VISIT_TYPE_META = [
-    { key: 'routine', label: 'Routine Coffee Visit', color: 'var(--gold)', bg: 'var(--gold-d)' },
-    { key: 'cqv', label: 'CQV', color: 'var(--accent)', bg: 'var(--accent-light)' },
-    { key: 'cqvFollowUp', label: 'CQV Follow-Up', color: 'var(--accent)', bg: 'var(--accent-light)' },
-    { key: 'siteVisit', label: 'Check-in', color: 'var(--teal)', bg: 'var(--teal-d)' },
-    { key: 'nboOpening', label: 'NBO: Opening', color: 'var(--purple)', bg: 'var(--purple-d)' },
-    { key: 'nboVisit1', label: 'NBO: Coffee Visit 1', color: 'var(--purple)', bg: 'var(--purple-d)' },
-    { key: 'nboVisit2', label: 'NBO: Coffee Visit 2', color: 'var(--purple)', bg: 'var(--purple-d)' }
-  ];
+  // Column headings for the visit rows. The row is otherwise a line of bare
+  // values — two different people's names (coffee partner and ops area), a
+  // bare percentage, a bare em dash where a visit type carries no score — and
+  // nothing on screen says which is which. Column order must stay in step with
+  // .visit-log-row's grid in css/styles.css.
+  //
+  // "Partner / auditor" rather than either alone: the column holds the coffee
+  // partner for routine visits and the auditor for CQV and NBO ones.
+  function visitLogHeadHtml() {
+    return '<div class="visit-log-head" aria-hidden="true">' +
+      '<span>Date</span>' +
+      '<span>Bakery</span>' +
+      '<span>Partner / auditor</span>' +
+      '<span>Score</span>' +
+      '<span>Visit type &amp; notes</span>' +
+      '<span></span>' +
+      '</div>';
+  }
 
   function visitTypeKey(v) {
     if (v.type === 'cqv') return v.isFollowUp ? 'cqvFollowUp' : 'cqv';
@@ -898,9 +880,7 @@ window.GAILS = window.GAILS || {};
 
   // Downloads whatever the last render put in _visitLogExport — i.e. exactly
   // the rows the active filters produced, not just the ones rendered so far.
-  function exportVisitLogFile() {
-    var data = window.GAILS._visitLogExport;
-    if (!data || !data.rows || !data.rows.length) return;
+  function downloadVisitLogFile(data) {
     if (!window.XLSX) {
       exportVisitLogCsvFallback(data);
       return;
@@ -909,6 +889,28 @@ window.GAILS = window.GAILS || {};
     window.XLSX.utils.book_append_sheet(wb, buildExportInfoSheet(data), 'Report Info');
     window.XLSX.utils.book_append_sheet(wb, buildExportDataSheet(data), data.sheetName);
     window.XLSX.writeFile(wb, data.filename);
+  }
+
+  // Every report export flows through this confirmation before the browser is
+  // allowed to create a file. That keeps repeated or accidental clicks from
+  // starting multiple downloads.
+  function exportVisitLogFile() {
+    var data = window.GAILS._visitLogExport;
+    if (!data || !data.rows || !data.rows.length) return;
+
+    var isExcel = !!window.XLSX;
+    var filename = isExcel ? data.filename : data.filename.replace(/\.xlsx$/, '.csv');
+    var rowLabel = data.rows.length === 1 ? 'row' : 'rows';
+
+    window.GAILS.openSaveConfirmModal({
+      title: isExcel ? 'Download Excel File' : 'Download CSV File',
+      subtitle: 'Confirm before the download starts.',
+      message: 'Download "' + filename + '" with ' + data.rows.length + ' ' + rowLabel + '?',
+      confirmLabel: isExcel ? 'Download Excel' : 'Download CSV',
+      onConfirm: function () {
+        downloadVisitLogFile(data);
+      }
+    });
   }
 
   // Comparator behind the "Sort By" filter, shared by the rendered groups and
@@ -929,7 +931,7 @@ window.GAILS = window.GAILS || {};
     };
   }
 
-  // Drives the "Group By" filter — Ops Area (default), Region, or Visit
+  // Drives the "Group By" filter — Region (default), Ops Area, or Visit
   // Type all group the same underlying visit list, just bucketed differently.
   function getVisitGroupKey(v, groupVal) {
     var G = window.GAILS;
@@ -1021,14 +1023,65 @@ window.GAILS = window.GAILS || {};
     }
   }
 
+  // The card's own title, which tracks the selected view. Kept in step with
+  // the nav labels above it — they are the same four names.
+  var VISIT_LOG_VIEW_TITLES = {
+    bakeries: 'Bakery Directory',
+    history: 'Visit History',
+    unvisited: 'Unvisited Sites',
+    followups: 'Follow-up Tasks'
+  };
+
+  function syncVisitLogSectionTitle(view) {
+    var el = document.getElementById('visitLogSectionTitle');
+    if (el) el.textContent = VISIT_LOG_VIEW_TITLES[view] || VISIT_LOG_VIEW_TITLES.history;
+  }
+
+  // One primary action per view, in the card's header slot.
+  //
+  // The pair used to sit on every view, which meant Follow-up Tasks offered
+  // "+ Log Visit" while its real action ("+ Add task") was stranded in the
+  // summary bar below. Each view now shows the one action it is actually for,
+  // and the whole slot comes off where there is no action.
+  //
+  // The external Google Form link stays on every view that has a slot: it is
+  // the same hand-off whichever list you are looking at.
+  function syncVisitLogActions(view) {
+    var actionsEl = document.querySelector('#tab-visit-log .visit-log-actions');
+    if (!actionsEl) return;
+
+    var allowed = canLogVisits();
+    // Unvisited Sites keeps its header button even though every card carries
+    // one: the card buttons are pre-filled for that bakery, this one is not.
+    var showLogVisit = allowed && (view === 'history' || view === 'unvisited');
+    var showAddTask = allowed && view === 'followups';
+
+    var logBtn = document.getElementById('visitLogAddBtn');
+    if (logBtn) logBtn.hidden = !showLogVisit;
+    var taskBtn = document.getElementById('visitLogAddTaskBtn');
+    if (taskBtn) taskBtn.hidden = !showAddTask;
+
+    // The bakery directory is reference data rather than an action queue, so
+    // the slot goes entirely, external visit-form link included.
+    actionsEl.hidden = view === 'bakeries';
+  }
+
   function syncVisitLogViewControls(view) {
     var isHistoryView = view === 'history';
     var isFollowUps = view === 'followups';
+    var isBakeryList = view === 'bakeries';
+    syncVisitLogSectionTitle(view);
+    syncVisitLogActions(view);
     var searchEl = document.getElementById('visitLogSearch');
     var typeEl = document.getElementById('visitLogType');
     var groupEl = document.getElementById('visitLogGroup');
     var sortEl = document.getElementById('visitLogSort');
     var periodEl = document.getElementById('visitLogPeriod');
+    var bakeryControl = document.getElementById('visitLogBakeryControl');
+    var directorySortControl = document.getElementById('visitLogDirectorySortControl');
+    var directoryGroupControl = document.getElementById('visitLogDirectoryGroupControl');
+    var followUpGroupControl = document.getElementById('followUpGroupControl');
+    var followUpSortControl = document.getElementById('followUpSortControl');
     var typeControl = typeEl ? typeEl.closest('.visit-log-filter-control') : null;
     var sortControl = sortEl ? sortEl.closest('.visit-log-filter-control') : null;
     var groupControl = groupEl ? groupEl.closest('.visit-log-filter-control') : null;
@@ -1038,16 +1091,26 @@ window.GAILS = window.GAILS || {};
     var typeGroupOption = groupEl ? groupEl.querySelector('option[value="type"]') : null;
 
     if (searchEl) {
-      searchEl.placeholder = isHistoryView
-        ? 'Search bakery or partner...'
-        : (isFollowUps ? 'Search bakery or action...' : 'Search bakery...');
+      // The field's own SEARCH label carries the verb, so the placeholder only
+      // has to name what can be matched — which also keeps it inside the
+      // control on the single-row filter layout.
+      searchEl.placeholder = isBakeryList
+        ? 'Bakery, ops area or coffee team…'
+        : (isHistoryView
+          ? 'Bakery or partner…'
+          : (isFollowUps ? 'Bakery or action…' : 'Bakery name…'));
     }
     if (typeControl) typeControl.style.display = isHistoryView ? '' : 'none';
     if (sortControl) sortControl.style.display = isHistoryView ? '' : 'none';
-    // Follow-ups always group by bakery and ignore the reporting period, so
-    // those two controls are hidden there but remain for the other views.
-    if (groupControl) groupControl.style.display = isFollowUps ? 'none' : '';
-    if (periodControl) periodControl.style.display = isFollowUps ? 'none' : '';
+    if (bakeryControl) bakeryControl.style.display = isBakeryList ? '' : 'none';
+    if (directorySortControl) directorySortControl.style.display = isBakeryList ? '' : 'none';
+    if (directoryGroupControl) directoryGroupControl.style.display = isBakeryList ? '' : 'none';
+    if (followUpGroupControl) followUpGroupControl.style.display = isFollowUps ? '' : 'none';
+    if (followUpSortControl) followUpSortControl.style.display = isFollowUps ? '' : 'none';
+    // Follow-ups use their task-specific Group By and Sort By controls and
+    // ignore the reporting period. The directory has its own list controls.
+    if (groupControl) groupControl.style.display = (isFollowUps || isBakeryList) ? 'none' : '';
+    if (periodControl) periodControl.style.display = (isFollowUps || isBakeryList) ? 'none' : '';
     if (statusToggle) statusToggle.style.display = isFollowUps ? 'flex' : 'none';
 
     syncCqvRatingVisibility();
@@ -1055,9 +1118,9 @@ window.GAILS = window.GAILS || {};
 
     // Unvisited sites have no visit type of their own. Region, Ops Area, and
     // ungrouped views remain meaningful, but grouping them by visit type does
-    // not, so fall back to Ops Area if that history-only option was active.
+    // not, so fall back to Region if that history-only option was active.
     if (!isHistoryView && groupEl && groupEl.value === 'type') {
-      groupEl.value = 'ops';
+      groupEl.value = getVisitLogDefaultGroup();
       if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect(groupEl);
     }
     if (!isHistoryView && typeGroupOption) {
@@ -1149,6 +1212,114 @@ window.GAILS = window.GAILS || {};
     if (da && !db) return -1;
     if (!da && db) return 1;
     return PRIORITY_ORDER[normalizePriority(a.priority)] - PRIORITY_ORDER[normalizePriority(b.priority)];
+  }
+
+  function followUpIsDone(task) {
+    return (task.status || 'open') === 'done';
+  }
+
+  function followUpIsOverdue(task) {
+    return !followUpIsDone(task) && dueMeta(task.dueDate).state === 'overdue';
+  }
+
+  function followUpBakeryLabel(task) {
+    return getDirectoryBakeryLabel(task.bakery);
+  }
+
+  // Sort options used by Follow-up Tasks. Completed work remains below open
+  // work when "All" is selected; the chosen ordering then applies within each
+  // status, with the task title providing a stable final tie-break.
+  function followUpTaskSorter(sortVal) {
+    return function (a, b) {
+      var doneA = followUpIsDone(a);
+      var doneB = followUpIsDone(b);
+      if (doneA !== doneB) return doneA ? 1 : -1;
+
+      var compared = 0;
+      if (sortVal === 'dueDesc') {
+        var dueA = a.dueDate || '';
+        var dueB = b.dueDate || '';
+        if (dueA && dueB && dueA !== dueB) compared = dueA > dueB ? -1 : 1;
+        else if (dueA && !dueB) compared = -1;
+        else if (!dueA && dueB) compared = 1;
+      } else if (sortVal === 'priority') {
+        compared = PRIORITY_ORDER[normalizePriority(a.priority)] - PRIORITY_ORDER[normalizePriority(b.priority)];
+        if (!compared) compared = followUpSortByDue(a, b);
+      } else if (sortVal === 'createdDesc' || sortVal === 'createdAsc') {
+        var createdA = a.createdAt || '';
+        var createdB = b.createdAt || '';
+        compared = createdA.localeCompare(createdB);
+        if (sortVal === 'createdDesc') compared *= -1;
+      } else if (sortVal === 'bakeryAsc') {
+        compared = followUpBakeryLabel(a).localeCompare(followUpBakeryLabel(b));
+      } else {
+        compared = followUpSortByDue(a, b);
+      }
+
+      return compared || String(a.title || '').localeCompare(String(b.title || ''));
+    };
+  }
+
+  function getFollowUpGroupKey(task, groupVal) {
+    var G = window.GAILS;
+    if (groupVal === 'region') {
+      return (G.getBakeryRegion ? G.getBakeryRegion(task.bakery) : '') || 'Unknown region';
+    }
+    if (groupVal === 'ops') {
+      return (G.getBakeryOps ? G.getBakeryOps(task.bakery) : '') || 'Unknown ops area';
+    }
+    if (groupVal === 'priority') {
+      var priority = normalizePriority(task.priority);
+      return priority === 'none' ? 'No priority' : PRIORITY_LABELS[priority] + ' priority';
+    }
+    if (groupVal === 'status') {
+      if (followUpIsDone(task)) return 'Done';
+      return followUpIsOverdue(task) ? 'Overdue' : 'Open';
+    }
+    if (groupVal === 'none') return 'All follow-ups';
+    return followUpBakeryLabel(task);
+  }
+
+  function followUpTaskBakeryHtml(task, groupVal) {
+    if (groupVal === 'bakery') return '';
+    return '<div class="follow-up-item__bakery">' +
+      escapeHtml(followUpBakeryLabel(task) || 'Unknown bakery') + '</div>';
+  }
+
+  // Keep the card's supporting location context useful without repeating the
+  // value that already appears in its group heading. Bakery is promoted to a
+  // heading above the task whenever it is not already the group heading.
+  function followUpTaskContextHtml(task, groupVal) {
+    var G = window.GAILS;
+    var context = [
+      {
+        key: 'ops',
+        label: 'Ops Area',
+        value: (G.getBakeryOps ? G.getBakeryOps(task.bakery) : '') || 'Unknown ops area'
+      },
+      {
+        key: 'region',
+        label: 'Region',
+        value: (G.getBakeryRegion ? G.getBakeryRegion(task.bakery) : '') || 'Unknown region'
+      }
+    ].filter(function (item) {
+      return item.key !== groupVal;
+    });
+
+    return '<div class="follow-up-item__context">' + context.map(function (item) {
+      return '<span class="follow-up-item__context-item"><strong>' + item.label + ':</strong> ' +
+        escapeHtml(item.value) + '</span>';
+    }).join('') + '</div>';
+  }
+
+  function followUpGroupSorter(groupVal) {
+    var priorityOrder = { 'High priority': 0, 'Medium priority': 1, 'Low priority': 2, 'No priority': 3 };
+    var statusOrder = { Overdue: 0, Open: 1, Done: 2 };
+    return function (a, b) {
+      if (groupVal === 'priority') return priorityOrder[a] - priorityOrder[b];
+      if (groupVal === 'status') return statusOrder[a] - statusOrder[b];
+      return a.localeCompare(b);
+    };
   }
 
   function followUpBuilderRowHtml() {
@@ -1519,9 +1690,9 @@ window.GAILS = window.GAILS || {};
     }
   };
 
-  // Lightweight "are you sure?" dialog shown before a log or action is saved,
-  // themed to match the delete-confirm modal. The triggering form modal stays
-  // open behind it and keeps the background-scroll lock, so this helper
+  // Shared lightweight confirmation dialog for saves, actions, and downloads,
+  // themed to match the delete-confirm modal. A triggering form modal may stay
+  // open behind it and keep the background-scroll lock, so this helper
   // deliberately never touches lock/unlock.
   window.GAILS.openSaveConfirmModal = function (opts) {
     opts = opts || {};
@@ -1550,6 +1721,9 @@ window.GAILS = window.GAILS || {};
 
     // Fresh handler on every open so callbacks never stack across invocations.
     confirmBtn.onclick = function () {
+      if (confirmBtn.disabled) return;
+      confirmBtn.disabled = true;
+      confirmBtn.onclick = null;
       window.GAILS.closeSaveConfirmModal();
       if (typeof opts.onConfirm === 'function') opts.onConfirm();
     };
@@ -1601,28 +1775,46 @@ window.GAILS = window.GAILS || {};
     return 'thisQuarter';
   }
 
+  function getVisitLogDefaultGroup() {
+    return 'region';
+  }
+
   window.GAILS.getVisitLogHeaderSummary = function () {
     var G = window.GAILS;
     var searchEl = document.getElementById('visitLogSearch');
     var regionEl = document.getElementById('visitLogRegion');
     var opsEl = document.getElementById('visitLogOps');
+    var bakeryEl = document.getElementById('visitLogBakery');
     var typeEl = document.getElementById('visitLogType');
     var ratingEl = document.getElementById('visitLogRating');
     var groupEl = document.getElementById('visitLogGroup');
     var sortEl = document.getElementById('visitLogSort');
     var periodEl = document.getElementById('visitLogPeriod');
+    var followUpGroupEl = document.getElementById('followUpGroup');
+    var followUpSortEl = document.getElementById('followUpSort');
 
     var searchVal = searchEl ? searchEl.value.trim() : '';
     var regionVal = regionEl ? regionEl.value : '';
     var opsVal = opsEl ? opsEl.value : '';
+    var bakeryVal = bakeryEl ? bakeryEl.value : '';
     var typeVal = typeEl ? typeEl.value : '';
     var ratingVal = ratingEl ? ratingEl.value : '';
-    var groupVal = groupEl ? groupEl.value : 'ops';
+    var groupVal = groupEl ? groupEl.value : getVisitLogDefaultGroup();
     var sortVal = sortEl ? sortEl.value : 'date';
-    var view = window.GAILS._activeVisitLogView || 'history';
+    var view = window.GAILS._activeVisitLogView || 'bakeries';
     var periodVal = periodEl ? periodEl.value : getVisitLogDefaultPeriod(view);
 
     var pills = [];
+
+    if (view === 'bakeries') {
+      pills.push('<span class="header-pill-core">Bakery Directory</span>');
+      if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
+      if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
+      if (opsVal) pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
+      if (bakeryVal) pills.push('<span class="header-pill-filter">' + escapeHtml(bakeryVal) + '</span>');
+      var directoryTitle = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
+      return directoryTitle + '<span class="header-sub-pillwrap">' + pills.join('') + '</span>';
+    }
 
     if (view === 'followups') {
       var statusLabels = FOLLOW_UP_STATUS_LABELS;
@@ -1636,6 +1828,12 @@ window.GAILS = window.GAILS || {};
       if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
       if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
       if (opsVal) pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
+      if (followUpGroupEl && followUpGroupEl.value !== 'bakery') {
+        pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('followUpGroup', 'Bakery')) + '</span>');
+      }
+      if (followUpSortEl && followUpSortEl.value !== 'dueAsc') {
+        pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('followUpSort', 'Due Date (Soonest)')) + '</span>');
+      }
       var fuTitle = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
       return fuTitle + '<span class="header-sub-pillwrap">' + pills.join('') + '</span>';
     }
@@ -1649,10 +1847,10 @@ window.GAILS = window.GAILS || {};
       };
       if (window.innerWidth <= 980) {
         pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + '</span>');
-        pills.push('<span class="header-pill-core">' + escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Ops Area') + '</span>');
+        pills.push('<span class="header-pill-core">' + escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Region') + '</span>');
       } else {
         pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + ' \u00b7 ' +
-          escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Ops Area') + '</span>');
+          escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Region') + '</span>');
       }
 
       if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
@@ -1745,11 +1943,41 @@ window.GAILS = window.GAILS || {};
     )].filter(Boolean).sort();
   }
 
+  function getDirectoryBakeryLabel(name) {
+    var G = window.GAILS;
+    var label = (G.getBakeryMapLabel ? G.getBakeryMapLabel(name) : name) || name;
+    return String(label).replace(/^GAIL['\u2018\u2019]s(?:\s+|$)/i, '').trim();
+  }
+
+  function getDirectoryBakeryNames(regionVal, opsVal) {
+    var G = window.GAILS;
+    var meta = (G && G.BAKERY_META) || {};
+    return Object.keys(meta).filter(reportBakeryAllowed).filter(function (name) {
+      if (regionVal && G.getBakeryRegion && G.getBakeryRegion(name) !== regionVal) return false;
+      if (opsVal && G.getBakeryOps && G.getBakeryOps(name) !== opsVal) return false;
+      return true;
+    }).map(function (name) {
+      return getDirectoryBakeryLabel(name);
+    }).sort();
+  }
+
+  function populateDirectoryBakeryOptions() {
+    var regionEl = document.getElementById('visitLogRegion');
+    var opsEl = document.getElementById('visitLogOps');
+    populateDropdown(
+      'visitLogBakery',
+      new Set(getDirectoryBakeryNames(regionEl ? regionEl.value : '', opsEl ? opsEl.value : '')),
+      'All Bakeries'
+    );
+    if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect('visitLogBakery');
+  }
+
   function populateVisitLogFilterOptions() {
     var regionEl = document.getElementById('visitLogRegion');
     var regionVal = regionEl ? regionEl.value : '';
     populateDropdown('visitLogRegion', new Set(getVisitLogRegions()), 'All Regions');
     populateDropdown('visitLogOps', new Set(getVisitLogOps(regionVal)), 'All Areas');
+    populateDirectoryBakeryOptions();
     if (window.GAILS.syncCustomSelect) {
       window.GAILS.syncCustomSelect('visitLogRegion');
       window.GAILS.syncCustomSelect('visitLogOps');
@@ -1777,22 +2005,37 @@ window.GAILS = window.GAILS || {};
   function getVisitLogActiveFilterCount() {
     var regionEl = document.getElementById('visitLogRegion');
     var opsEl = document.getElementById('visitLogOps');
+    var bakeryEl = document.getElementById('visitLogBakery');
     var typeEl = document.getElementById('visitLogType');
     var ratingEl = document.getElementById('visitLogRating');
     var groupEl = document.getElementById('visitLogGroup');
     var sortEl = document.getElementById('visitLogSort');
     var periodEl = document.getElementById('visitLogPeriod');
-    var isHistoryView = (window.GAILS._activeVisitLogView || 'history') === 'history';
+    var directorySortEl = document.getElementById('visitLogDirectorySort');
+    var directoryGroupEl = document.getElementById('visitLogDirectoryGroup');
+    var followUpGroupEl = document.getElementById('followUpGroup');
+    var followUpSortEl = document.getElementById('followUpSort');
+    var activeView = window.GAILS._activeVisitLogView || 'bakeries';
+    var isHistoryView = activeView === 'history';
+    var isFollowUps = activeView === 'followups';
+    var isBakeryList = activeView === 'bakeries';
+    var supportsGrouping = activeView !== 'bakeries' && activeView !== 'followups';
+    var supportsPeriod = activeView !== 'bakeries' && activeView !== 'followups';
     var defaultPeriod = getVisitLogDefaultPeriod();
     var count = 0;
 
     if (regionEl && regionEl.value) count++;
     if (opsEl && opsEl.value) count++;
+    if (isBakeryList && bakeryEl && bakeryEl.value) count++;
+    if (isBakeryList && directorySortEl && directorySortEl.value !== 'nameAsc') count++;
+    if (isBakeryList && directoryGroupEl && directoryGroupEl.value !== 'none') count++;
+    if (isFollowUps && followUpGroupEl && followUpGroupEl.value !== 'bakery') count++;
+    if (isFollowUps && followUpSortEl && followUpSortEl.value !== 'dueAsc') count++;
     if (isHistoryView && typeEl && typeEl.value) count++;
     if (isHistoryView && ratingEl && ratingEl.value && typeEl && (typeEl.value === 'cqv' || typeEl.value === 'cqvFollowUp')) count++;
-    if (groupEl && groupEl.value && groupEl.value !== 'ops') count++;
+    if (supportsGrouping && groupEl && groupEl.value && groupEl.value !== getVisitLogDefaultGroup()) count++;
     if (isHistoryView && sortEl && sortEl.value && sortEl.value !== 'date') count++;
-    if (periodEl && periodEl.value && periodEl.value !== defaultPeriod) count++;
+    if (supportsPeriod && periodEl && periodEl.value && periodEl.value !== defaultPeriod) count++;
     return count;
   }
 
@@ -1882,10 +2125,10 @@ window.GAILS = window.GAILS || {};
 
   // Restores the last-used filters (saved on every render) so the page opens
   // in the state the user last worked in. Visit type is deliberately not
-  // restored: summary chips are temporary result filters and must all start
-  // unselected in a new page session. Rating depends on visit type, so it also
-  // starts clear. Runs once, right after the filter dropdowns are populated
-  // and before the first filtered render reads them.
+  // restored, so a new page session always starts with the complete visit
+  // list. Rating depends on visit type, so it also starts clear. Runs once,
+  // right after the filter dropdowns are populated and before the first
+  // filtered render reads them.
   function restoreVisitLogFilters() {
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(VISIT_LOG_FILTER_STORAGE_KEY) || 'null'); } catch (e) { /* corrupt/unavailable */ }
@@ -1894,21 +2137,31 @@ window.GAILS = window.GAILS || {};
     var searchEl = document.getElementById('visitLogSearch');
     var regionEl = document.getElementById('visitLogRegion');
 
-    if (searchEl && typeof saved.search === 'string') searchEl.value = saved.search;
+    if (searchEl) {
+      searchEl.value = saved.view === 'bakeries'
+        ? ''
+        : (typeof saved.search === 'string' ? saved.search : '');
+    }
     setSelectValueIfPresent(regionEl, saved.region);
     // Ops options depend on the selected region, so rebuild them first
     if (regionEl && regionEl.value) {
       populateDropdown('visitLogOps', new Set(getVisitLogOps(regionEl.value)), 'All Areas');
     }
     setSelectValueIfPresent(document.getElementById('visitLogOps'), saved.ops);
+    populateDirectoryBakeryOptions();
+    setSelectValueIfPresent(document.getElementById('visitLogBakery'), saved.bakery);
+    setSelectValueIfPresent(document.getElementById('visitLogDirectorySort'), saved.directorySort);
+    setSelectValueIfPresent(document.getElementById('visitLogDirectoryGroup'), saved.directoryGroup);
     setSelectValueIfPresent(document.getElementById('visitLogGroup'), saved.group);
     setSelectValueIfPresent(document.getElementById('visitLogSort'), saved.sort);
     setSelectValueIfPresent(document.getElementById('visitLogPeriod'), saved.period);
+    setSelectValueIfPresent(document.getElementById('followUpGroup'), saved.followUpGroup);
+    setSelectValueIfPresent(document.getElementById('followUpSort'), saved.followUpSort);
     syncCqvRatingVisibility();
 
-    if (saved.view === 'unvisited' || saved.view === 'history' || saved.view === 'followups') {
+    if (saved.view === 'bakeries' || saved.view === 'unvisited' || saved.view === 'history' || saved.view === 'followups') {
       window.GAILS._activeVisitLogView = saved.view;
-      document.querySelectorAll('#visitLogViewToggle .visit-log-toggle-btn').forEach(function (b) {
+      document.querySelectorAll('#visitLogViewToggle .target-subtab').forEach(function (b) {
         b.classList.toggle('active', b.dataset.view === saved.view);
       });
     }
@@ -1921,14 +2174,199 @@ window.GAILS = window.GAILS || {};
     }
   }
 
-  // At-a-glance bar above the list: how many visits the filters produced and
-  // how many of each type. The total mirrors the rendered list; chip counts
-  // come from the list BEFORE the type/rating filter so every type stays
-  // visible while one is selected — the active chip highlights, the rest dim
-  // but remain one-click switches (clicking the active chip clears it).
+  // At-a-glance bar utilities shared by the report list summaries.
   function visitLogGroupToggleHtml(showGroupToggle) {
     if (!showGroupToggle) return '';
     return '<button type="button" class="visit-log-summary__expand-all" title="Collapse every group">Collapse all</button>';
+  }
+
+  function buildBakeryDirectoryRows(filters) {
+    var G = window.GAILS;
+    var meta = (G && G.BAKERY_META) || {};
+    var values = filters || {};
+    var search = String(values.search || '').trim().toLowerCase();
+    var regionFilter = String(values.region || '');
+    var opsFilter = String(values.ops || '');
+    var bakeryFilter = String(values.bakery || '');
+    var sortBy = String(values.sort || 'nameAsc');
+
+    return Object.keys(meta).filter(reportBakeryAllowed).map(function (name) {
+      var entry = meta[name] || {};
+      var region = (G.getBakeryRegion ? G.getBakeryRegion(name) : entry.r) || 'Unknown';
+      var ops = (G.getBakeryOps ? G.getBakeryOps(name) : entry.o) || 'Unknown';
+      var assignment = G.getRegionAssignment ? G.getRegionAssignment(region) : null;
+      return {
+        bakery: getDirectoryBakeryLabel(name),
+        ops: ops,
+        region: region,
+        coffeePartner: assignment && assignment.coffeePartner || '',
+        coffeeTrainer: assignment && assignment.coffeeTrainer || ''
+      };
+    }).filter(function (row) {
+      if (regionFilter && row.region !== regionFilter) return false;
+      if (opsFilter && row.ops !== opsFilter) return false;
+      if (bakeryFilter && row.bakery !== bakeryFilter) return false;
+      if (!search) return true;
+      return [
+        row.bakery,
+        row.ops,
+        row.region,
+        row.coffeePartner,
+        row.coffeeTrainer
+      ].join(' ').toLowerCase().indexOf(search) !== -1;
+    }).sort(function (a, b) {
+      var sortFields = {
+        region: 'region',
+        ops: 'ops',
+        partner: 'coffeePartner',
+        trainer: 'coffeeTrainer'
+      };
+      var field = sortFields[sortBy] || 'bakery';
+      var aVal = a[field] || '￿';
+      var bVal = b[field] || '￿';
+      var compared = aVal.localeCompare(bVal);
+      if (sortBy === 'nameDesc') compared *= -1;
+      return compared || a.bakery.localeCompare(b.bakery);
+    });
+  }
+
+  window.GAILS.buildBakeryDirectoryRows = buildBakeryDirectoryRows;
+
+  function renderBakeryDirectorySummary(count, showGroupToggle) {
+    var summaryEl = document.getElementById('visitLogSummary');
+    if (!summaryEl) return;
+    summaryEl.innerHTML =
+      '<span class="visit-log-summary__total"><strong>' + count + '</strong> baker' + (count === 1 ? 'y' : 'ies') + '</span>' +
+      '<span class="visit-log-summary__actions">' +
+      visitLogGroupToggleHtml(showGroupToggle) +
+      '<button type="button" class="visit-log-summary__export"' + (count ? '' : ' disabled') +
+      ' title="Download the filtered bakery directory as a formatted Excel workbook">Export Excel</button>' +
+      '</span>';
+    summaryEl.hidden = false;
+  }
+
+  function renderBakeryDirectory(filters) {
+    var container = document.getElementById('visitLogList');
+    if (!container) return;
+    var statusEl = document.getElementById('visitLogStatus');
+    if (statusEl) {
+      statusEl.textContent = '';
+      statusEl.style.display = 'none';
+    }
+
+    var rows = buildBakeryDirectoryRows(filters);
+    if (!rows.length) {
+      window.GAILS._visitLogExport = null;
+      window.GAILS._visitLogCurrentGroupNames = [];
+      renderBakeryDirectorySummary(0, false);
+      var hasDirectory = buildBakeryDirectoryRows({}).length > 0;
+      container.innerHTML = '<div class="visit-log-empty">' +
+        '<div class="visit-log-empty__icon" aria-hidden="true">' + (hasDirectory ? '&#128269;' : '&#127838;') + '</div>' +
+        '<p><strong>' + (hasDirectory ? 'No bakeries match these filters.' : 'No bakeries are available yet.') + '</strong></p>' +
+        (hasDirectory ? '<p>Try a different search, region, ops area, or bakery.</p>' : '') +
+        '</div>';
+      return;
+    }
+
+    // groupName + hidden are only set for the grouped path, so a row carries
+    // the attribute the collapse toggle looks for and starts in the right
+    // state on first render (no flash of visible rows under a collapsed group).
+    function directoryRowHtml(row, groupName, hidden) {
+      return '<tr' + (groupName ? ' data-group="' + escapeHtml(groupName) + '"' : '') + (hidden ? ' hidden' : '') + '>' +
+        '<th scope="row" data-label="Bakery Name">' + GAILS.bakeryProfileLink(row.bakery, {
+          className: 'bakery-directory__profile-link',
+          returnUrl: 'index.html#visit-log',
+          returnLabel: 'Bakery Directory'
+        }) + '</th>' +
+        '<td data-label="Ops Area">' + escapeHtml(row.ops) + '</td>' +
+        '<td data-label="Region">' + escapeHtml(row.region) + '</td>' +
+        '<td data-label="Coffee Partner">' + escapeHtml(row.coffeePartner || '—') + '</td>' +
+        '<td data-label="Coffee Trainer">' + escapeHtml(row.coffeeTrainer || '—') + '</td>' +
+        '</tr>';
+    }
+
+    var groupBy = filters && filters.group || 'none';
+    var groupFields = {
+      region: 'region',
+      ops: 'ops',
+      partner: 'coffeePartner',
+      trainer: 'coffeeTrainer'
+    };
+    var groupField = groupFields[groupBy];
+    var bodyHtml = '';
+    var orderedRows = [];
+    var collapsedGroups = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
+
+    if (!groupField) {
+      window.GAILS._visitLogCurrentGroupNames = [];
+      bodyHtml = rows.map(function (row) { return directoryRowHtml(row); }).join('');
+      orderedRows = rows.slice();
+    } else {
+      var groupedRows = {};
+      rows.forEach(function (row) {
+        var groupName = row[groupField] || 'Unassigned';
+        if (!groupedRows[groupName]) groupedRows[groupName] = [];
+        groupedRows[groupName].push(row);
+      });
+      var groupNamesSorted = Object.keys(groupedRows).sort(function (a, b) {
+        if (a === 'Unassigned') return 1;
+        if (b === 'Unassigned') return -1;
+        return a.localeCompare(b);
+      });
+      window.GAILS._visitLogCurrentGroupNames = groupNamesSorted.slice();
+      bodyHtml = groupNamesSorted.map(function (groupName) {
+        orderedRows = orderedRows.concat(groupedRows[groupName]);
+        var isCollapsed = !!collapsedGroups[groupName];
+        var groupCount = groupedRows[groupName].length;
+        return '<tr class="bakery-directory__group-row' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
+          '<th scope="rowgroup" colspan="5">' +
+          '<button type="button" class="bakery-directory__group-toggle" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
+          '<svg class="bakery-directory__group-chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
+          '<span>' + escapeHtml(groupName) + '</span>' +
+          '<em>' + groupCount + ' baker' + (groupCount === 1 ? 'y' : 'ies') + '</em>' +
+          '</button>' +
+          '</th>' +
+          '</tr>' +
+          groupedRows[groupName].map(function (row) { return directoryRowHtml(row, groupName, isCollapsed); }).join('');
+      }).join('');
+    }
+
+    var directoryMeta = baseExportMeta().filter(function (item) { return item[0] !== 'Period'; }).concat([
+      ['Bakery', exportFilterLabel('visitLogBakery', 'All bakeries')],
+      ['Sorted by', exportFilterLabel('visitLogDirectorySort', 'Bakery Name (A-Z)')],
+      ['Grouped by', exportFilterLabel('visitLogDirectoryGroup', 'None')],
+      ['Bakeries exported', orderedRows.length]
+    ]);
+    window.GAILS._visitLogExport = {
+      title: 'GAIL’s — Bakery Directory',
+      sheetName: 'Bakery Directory',
+      filename: buildExportFilename('Bakery Directory'),
+      meta: directoryMeta,
+      columns: [
+        { label: 'Bakery Name', type: 'text', width: 28 },
+        { label: 'Ops Area', type: 'text', width: 22 },
+        { label: 'Region', type: 'text', width: 17 },
+        { label: 'Coffee Partner', type: 'text', width: 22 },
+        { label: 'Coffee Trainer', type: 'text', width: 22 }
+      ],
+      rows: orderedRows.map(function (row) {
+        return [row.bakery, row.ops, row.region, row.coffeePartner, row.coffeeTrainer];
+      })
+    };
+    renderBakeryDirectorySummary(orderedRows.length, !!groupField);
+
+    container.innerHTML =
+      '<div class="table-wrap table-wrap--league table-wrap--floating table-wrap--directory">' +
+      '<table class="bakery-directory" data-table-fullscreen="off">' +
+      '<caption>Bakery directory</caption>' +
+      '<thead><tr>' +
+      '<th scope="col">Bakery Name</th>' +
+      '<th scope="col">Ops Area</th>' +
+      '<th scope="col">Region</th>' +
+      '<th scope="col">Coffee Partner</th>' +
+      '<th scope="col">Coffee Trainer</th>' +
+      '</tr></thead>' +
+      '<tbody>' + bodyHtml + '</tbody></table></div>';
   }
 
   function syncVisitLogGroupToggle() {
@@ -1966,6 +2404,21 @@ window.GAILS = window.GAILS || {};
       if (title) title.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
     });
 
+    // Bakery Directory groups are table rows, not a section div, so the
+    // rows themselves need hiding rather than a collapsible container.
+    document.querySelectorAll('#visitLogList .bakery-directory__group-row').forEach(function (groupRow) {
+      var name = groupRow.getAttribute('data-group-name') || '';
+      if (groupNames.indexOf(name) === -1) return;
+      groupRow.classList.toggle('collapsed', shouldCollapse);
+      var toggleBtn = groupRow.querySelector('.bakery-directory__group-toggle');
+      if (toggleBtn) toggleBtn.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+    });
+    document.querySelectorAll('#visitLogList tr[data-group]').forEach(function (row) {
+      var name = row.getAttribute('data-group') || '';
+      if (groupNames.indexOf(name) === -1) return;
+      row.hidden = shouldCollapse;
+    });
+
     syncVisitLogGroupToggle();
   }
 
@@ -1978,43 +2431,34 @@ window.GAILS = window.GAILS || {};
       if (title) title.setAttribute('aria-expanded', 'true');
     });
 
+    document.querySelectorAll('#visitLogList .bakery-directory__group-row').forEach(function (groupRow) {
+      groupRow.classList.remove('collapsed');
+      var toggleBtn = groupRow.querySelector('.bakery-directory__group-toggle');
+      if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+    });
+    document.querySelectorAll('#visitLogList tr[data-group]').forEach(function (row) {
+      row.hidden = false;
+    });
+
     syncVisitLogGroupToggle();
   };
 
   // Leaving the reports tab ends the "session" for the view toggle: coming
-  // back always lands on Visit History rather than resuming Unvisited Sites
-  // or Follow-ups. Only flips the in-memory view + button state; the caller
-  // re-renders, which writes the reset view back to the saved filters.
+  // back always lands on Bakery Directory rather than resuming Visit History,
+  // Unvisited Sites, or Follow-ups. Only flips the in-memory view + button
+  // state; the caller re-renders, which writes the reset view back to the
+  // saved filters.
   window.GAILS.resetVisitLogView = function () {
-    window.GAILS._activeVisitLogView = 'history';
+    window.GAILS._activeVisitLogView = 'bakeries';
 
-    document.querySelectorAll('#visitLogViewToggle .visit-log-toggle-btn').forEach(function (b) {
-      b.classList.toggle('active', b.dataset.view === 'history');
+    document.querySelectorAll('#visitLogViewToggle .target-subtab').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.view === 'bakeries');
     });
   };
 
-  function renderVisitLogSummary(baseFiltered, shownCount, typeVal, showGroupToggle) {
+  function renderVisitLogSummary(shownCount, showGroupToggle) {
     var summaryEl = document.getElementById('visitLogSummary');
     if (!summaryEl) return;
-
-    var counts = {};
-    baseFiltered.forEach(function (v) {
-      var k = visitTypeKey(v);
-      counts[k] = (counts[k] || 0) + 1;
-    });
-
-    var chipsHtml = VISIT_TYPE_META.filter(function (m) { return counts[m.key]; }).map(function (m) {
-      var active = typeVal === m.key;
-      var stateClass = active ? ' active' : (typeVal ? ' dimmed' : '');
-      return '<button type="button" class="visit-log-summary__chip' + stateClass + '"' +
-        ' data-type="' + m.key + '"' +
-        ' style="--chip-color:' + m.color + ';--chip-bg:' + m.bg + ';"' +
-        ' aria-pressed="' + active + '"' +
-        ' title="' + (active ? 'Clear visit type filter' : 'Show only: ' + escapeHtml(m.label)) + '">' +
-        escapeHtml(m.label) +
-        '<span class="visit-log-summary__chip-count">' + counts[m.key] + '</span>' +
-        '</button>';
-    }).join('');
 
     var actionsHtml = '<span class="visit-log-summary__actions">' +
       visitLogGroupToggleHtml(showGroupToggle) +
@@ -2023,7 +2467,6 @@ window.GAILS = window.GAILS || {};
 
     summaryEl.innerHTML =
       '<span class="visit-log-summary__total"><strong>' + shownCount + '</strong> visit' + (shownCount === 1 ? '' : 's') + '</span>' +
-      chipsHtml +
       actionsHtml;
     summaryEl.hidden = false;
   }
@@ -2047,14 +2490,13 @@ window.GAILS = window.GAILS || {};
   function renderFollowUpSummary(shownCount, openCount, overdueCount, showGroupToggle) {
     var summaryEl = document.getElementById('visitLogSummary');
     if (!summaryEl) return;
-    var addBtn = canLogVisits()
-      ? '<button type="button" class="visit-log-summary__add-task" title="Add a follow-up task">+ Add task</button>'
-      : '';
+    // "+ Add task" lives in the card header now (syncVisitLogActions), beside
+    // the title — it is this view's primary action, and down here it sat below
+    // the header's own buttons and read as a lesser one.
     summaryEl.innerHTML =
       '<span class="visit-log-summary__total"><strong>' + shownCount + '</strong> follow-up' + (shownCount === 1 ? '' : 's') + '</span>' +
       '<span class="visit-log-summary__coverage">' + openCount + ' open · ' + overdueCount + ' overdue</span>' +
       '<span class="visit-log-summary__actions">' +
-      addBtn +
       visitLogGroupToggleHtml(showGroupToggle) +
       '<button type="button" class="visit-log-summary__export" title="Download the follow-up list as a formatted Excel workbook">Export Excel</button>' +
       '</span>';
@@ -2073,24 +2515,6 @@ window.GAILS = window.GAILS || {};
     var allVisits = window.GAILS._allVisitsObj || {};
     var visitIds = Object.keys(allVisits);
 
-    // The Follow-ups view reads its own node and can have tasks even before any
-    // visits load, so it isn't gated by the "no check-ins" guard below.
-    if (visitIds.length === 0 && window.GAILS._activeVisitLogView !== 'followups') {
-      if (statusEl) {
-        statusEl.textContent = 'Loading check-ins...';
-        statusEl.style.display = '';
-      }
-      var emptySummaryEl = document.getElementById('visitLogSummary');
-      if (emptySummaryEl) emptySummaryEl.hidden = true;
-      container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#128196;</div><p>No check-ins loaded yet.</p></div>';
-      return;
-    }
-
-    if (statusEl) {
-      statusEl.textContent = '';
-      statusEl.style.display = 'none';
-    }
-
     var G = window.GAILS;
 
     // Initialize listeners once
@@ -2099,6 +2523,9 @@ window.GAILS = window.GAILS || {};
       var searchEl = document.getElementById('visitLogSearch');
       var regionEl = document.getElementById('visitLogRegion');
       var opsEl = document.getElementById('visitLogOps');
+      var bakeryEl = document.getElementById('visitLogBakery');
+      var directorySortEl = document.getElementById('visitLogDirectorySort');
+      var directoryGroupEl = document.getElementById('visitLogDirectoryGroup');
       var periodEl = document.getElementById('visitLogPeriod');
       var resetBtn = document.getElementById('visitLogResetBtn');
       var mobileFilterBtn = document.getElementById('visitLogMobileFilterBtn');
@@ -2152,10 +2579,18 @@ window.GAILS = window.GAILS || {};
         // only offer areas that actually operate in that region.
         populateDropdown('visitLogOps', new Set(getVisitLogOps(regionEl.value)), 'All Areas');
         if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect('visitLogOps');
+        populateDirectoryBakeryOptions();
         syncVisitLogMobileFilterButton();
         window.GAILS.renderVisitLog();
       });
-      if (opsEl) opsEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (opsEl) opsEl.addEventListener('change', function () {
+        populateDirectoryBakeryOptions();
+        syncVisitLogMobileFilterButton();
+        window.GAILS.renderVisitLog();
+      });
+      if (bakeryEl) bakeryEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (directorySortEl) directorySortEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (directoryGroupEl) directoryGroupEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       if (periodEl) periodEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var typeEl = document.getElementById('visitLogType');
       var ratingEl = document.getElementById('visitLogRating');
@@ -2170,12 +2605,16 @@ window.GAILS = window.GAILS || {};
       if (groupEl) groupEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var sortEl = document.getElementById('visitLogSort');
       if (sortEl) sortEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      var followUpGroupEl = document.getElementById('followUpGroup');
+      if (followUpGroupEl) followUpGroupEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      var followUpSortEl = document.getElementById('followUpSort');
+      if (followUpSortEl) followUpSortEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
 
       // Toggle views (scoped to the main view toggle so the Follow-ups status
       // sub-toggle below doesn't collide with it).
-      document.querySelectorAll('#visitLogViewToggle .visit-log-toggle-btn').forEach(function (btn) {
+      document.querySelectorAll('#visitLogViewToggle .target-subtab').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          document.querySelectorAll('#visitLogViewToggle .visit-log-toggle-btn').forEach(function (b) { b.classList.remove('active'); });
+          document.querySelectorAll('#visitLogViewToggle .target-subtab').forEach(function (b) { b.classList.remove('active'); });
           btn.classList.add('active');
           window.GAILS._activeVisitLogView = btn.dataset.view;
           window.GAILS.renderVisitLog();
@@ -2192,8 +2631,8 @@ window.GAILS = window.GAILS || {};
         });
       });
 
-      // Summary bar: chips filter by visit type (clicking the active chip
-      // clears it), export downloads the currently filtered list as CSV
+      // Summary bar utilities: collapse/expand grouped rows or export the
+      // currently filtered list.
       var summaryBarEl = document.getElementById('visitLogSummary');
       if (summaryBarEl) {
         summaryBarEl.addEventListener('click', function (e) {
@@ -2201,26 +2640,10 @@ window.GAILS = window.GAILS || {};
             toggleAllVisitLogGroups();
             return;
           }
-          if (e.target.closest && e.target.closest('.visit-log-summary__add-task')) {
-            window.GAILS.openFollowUpModal();
-            return;
-          }
           if (e.target.closest && e.target.closest('.visit-log-summary__export')) {
             exportVisitLogFile();
             return;
           }
-          var chip = e.target.closest ? e.target.closest('.visit-log-summary__chip') : null;
-          if (!chip) return;
-          var typeSelect = document.getElementById('visitLogType');
-          if (!typeSelect) return;
-          var key = chip.dataset.type;
-          preserveScrollPosition(function () {
-            typeSelect.value = (typeSelect.value === key) ? '' : key;
-            if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect('visitLogType');
-            syncCqvRatingVisibility();
-            syncVisitLogMobileFilterButton();
-            window.GAILS.renderVisitLog();
-          });
         });
       }
 
@@ -2243,6 +2666,27 @@ window.GAILS = window.GAILS || {};
             else collapsedGroups[name] = true;
             section.classList.toggle('collapsed');
             groupBtn.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
+            syncVisitLogGroupToggle();
+            return;
+          }
+
+          var dirGroupBtn = closest('.bakery-directory__group-toggle');
+          if (dirGroupBtn) {
+            var groupRow = dirGroupBtn.closest('.bakery-directory__group-row');
+            if (!groupRow) return;
+            var dirName = groupRow.getAttribute('data-group-name') || '';
+            var dirCollapsedGroups = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
+            var willCollapse = !dirCollapsedGroups[dirName];
+            if (willCollapse) dirCollapsedGroups[dirName] = true;
+            else delete dirCollapsedGroups[dirName];
+            groupRow.classList.toggle('collapsed', willCollapse);
+            dirGroupBtn.setAttribute('aria-expanded', willCollapse ? 'false' : 'true');
+            var dirTable = groupRow.closest('table');
+            if (dirTable) {
+              dirTable.querySelectorAll('tr[data-group]').forEach(function (row) {
+                if (row.getAttribute('data-group') === dirName) row.hidden = willCollapse;
+              });
+            }
             syncVisitLogGroupToggle();
             return;
           }
@@ -2298,6 +2742,14 @@ window.GAILS = window.GAILS || {};
       if (addBtn) {
         addBtn.addEventListener('click', function () {
           window.GAILS.openAddSiteVisitModal();
+        });
+      }
+
+      // Add follow-up task click (Follow-up Tasks view's primary action)
+      var addTaskBtn = document.getElementById('visitLogAddTaskBtn');
+      if (addTaskBtn) {
+        addTaskBtn.addEventListener('click', function () {
+          window.GAILS.openFollowUpModal();
         });
       }
 
@@ -2495,11 +2947,17 @@ window.GAILS = window.GAILS || {};
           if (regionEl) regionEl.value = '';
           if (typeEl) typeEl.value = '';
           if (ratingEl) ratingEl.value = '';
-          if (groupEl) groupEl.value = 'ops';
+          if (groupEl) groupEl.value = getVisitLogDefaultGroup();
           if (sortEl) sortEl.value = 'date';
-          if (periodEl) periodEl.value = getVisitLogDefaultPeriod(window.GAILS._activeVisitLogView || 'history');
+          if (periodEl) periodEl.value = getVisitLogDefaultPeriod(window.GAILS._activeVisitLogView || 'bakeries');
           populateDropdown('visitLogOps', new Set(getVisitLogOps('')), 'All Areas');
           if (opsEl) opsEl.value = '';
+          populateDirectoryBakeryOptions();
+          if (bakeryEl) bakeryEl.value = '';
+          if (directorySortEl) directorySortEl.value = 'nameAsc';
+          if (directoryGroupEl) directoryGroupEl.value = 'none';
+          if (followUpGroupEl) followUpGroupEl.value = 'bakery';
+          if (followUpSortEl) followUpSortEl.value = 'dueAsc';
           window.GAILS._followUpStatusFilter = 'open';
           document.querySelectorAll('#followUpStatusToggle .visit-log-toggle-btn').forEach(function (b) {
             b.classList.toggle('active', b.dataset.status === 'open');
@@ -2509,11 +2967,16 @@ window.GAILS = window.GAILS || {};
           if (window.GAILS.syncCustomSelect) {
             window.GAILS.syncCustomSelect('visitLogRegion');
             window.GAILS.syncCustomSelect('visitLogOps');
+            window.GAILS.syncCustomSelect('visitLogBakery');
+            window.GAILS.syncCustomSelect('visitLogDirectorySort');
+            window.GAILS.syncCustomSelect('visitLogDirectoryGroup');
             window.GAILS.syncCustomSelect('visitLogType');
             window.GAILS.syncCustomSelect('visitLogRating');
             window.GAILS.syncCustomSelect('visitLogGroup');
             window.GAILS.syncCustomSelect('visitLogSort');
             window.GAILS.syncCustomSelect('visitLogPeriod');
+            window.GAILS.syncCustomSelect('followUpGroup');
+            window.GAILS.syncCustomSelect('followUpSort');
           }
           window.GAILS.renderVisitLog();
         });
@@ -2533,17 +2996,30 @@ window.GAILS = window.GAILS || {};
       syncVisitLogMobileFilterButton();
     }
 
-    var view = window.GAILS._activeVisitLogView || 'history';
+    var view = window.GAILS._activeVisitLogView || 'bakeries';
+
+    // Lets CSS keep view-specific supporting UI in step with the selected
+    // directory/report list.
+    var tabEl = document.getElementById('tab-visit-log');
+    if (tabEl) tabEl.setAttribute('data-visit-view', view);
+
     syncVisitLogViewControls(view);
 
     // Get filter values
     var searchVal = document.getElementById('visitLogSearch') ? document.getElementById('visitLogSearch').value.toLowerCase().trim() : '';
     var regionVal = document.getElementById('visitLogRegion') ? document.getElementById('visitLogRegion').value : '';
     var opsVal = document.getElementById('visitLogOps') ? document.getElementById('visitLogOps').value : '';
+    var bakeryVal = document.getElementById('visitLogBakery') ? document.getElementById('visitLogBakery').value : '';
+    var directorySortVal = document.getElementById('visitLogDirectorySort') ? document.getElementById('visitLogDirectorySort').value : 'nameAsc';
+    var directoryGroupVal = document.getElementById('visitLogDirectoryGroup') ? document.getElementById('visitLogDirectoryGroup').value : 'none';
     var typeVal = document.getElementById('visitLogType') ? document.getElementById('visitLogType').value : '';
     var ratingVal = document.getElementById('visitLogRating') ? document.getElementById('visitLogRating').value : '';
-    var groupVal = document.getElementById('visitLogGroup') ? document.getElementById('visitLogGroup').value : 'ops';
+    var groupVal = document.getElementById('visitLogGroup')
+      ? document.getElementById('visitLogGroup').value
+      : getVisitLogDefaultGroup();
     var sortVal = document.getElementById('visitLogSort') ? document.getElementById('visitLogSort').value : 'date';
+    var followUpGroupVal = document.getElementById('followUpGroup') ? document.getElementById('followUpGroup').value : 'bakery';
+    var followUpSortVal = document.getElementById('followUpSort') ? document.getElementById('followUpSort').value : 'dueAsc';
     var periodVal = document.getElementById('visitLogPeriod')
       ? document.getElementById('visitLogPeriod').value
       : getVisitLogDefaultPeriod(view);
@@ -2552,17 +3028,56 @@ window.GAILS = window.GAILS || {};
     syncVisitLogMobileFilterButton();
 
     saveVisitLogFilters({
-      search: document.getElementById('visitLogSearch') ? document.getElementById('visitLogSearch').value : '',
+      search: view === 'bakeries'
+        ? ''
+        : (document.getElementById('visitLogSearch') ? document.getElementById('visitLogSearch').value : ''),
       region: regionVal,
       ops: opsVal,
+      bakery: bakeryVal,
+      directorySort: directorySortVal,
+      directoryGroup: directoryGroupVal,
       type: typeVal,
       rating: ratingVal,
       group: groupVal,
       sort: sortVal,
       period: periodVal,
+      followUpGroup: followUpGroupVal,
+      followUpSort: followUpSortVal,
       followUpStatus: followUpStatus,
       view: view
     });
+
+    if (view === 'bakeries') {
+      renderBakeryDirectory({
+        search: searchVal,
+        region: regionVal,
+        ops: opsVal,
+        bakery: bakeryVal,
+        sort: directorySortVal,
+        group: directoryGroupVal
+      });
+      syncVisitLogGroupToggle();
+      return;
+    }
+
+    // The Follow-ups view reads its own node and can have tasks even before any
+    // visits load, so it isn't gated by the "no check-ins" guard below. The
+    // bakery directory above is likewise independent of visit data.
+    if (visitIds.length === 0 && view !== 'followups') {
+      if (statusEl) {
+        statusEl.textContent = 'Loading check-ins...';
+        statusEl.style.display = '';
+      }
+      var emptySummaryEl = document.getElementById('visitLogSummary');
+      if (emptySummaryEl) emptySummaryEl.hidden = true;
+      container.innerHTML = '<div class="visit-log-empty"><div class="visit-log-empty__icon">&#128196;</div><p>No check-ins loaded yet.</p></div>';
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.textContent = '';
+      statusEl.style.display = 'none';
+    }
 
     // "Show more" pagination: any filter/view change resets the row limit
     // back to the first chunk; the Show more button re-renders with the same
@@ -2588,17 +3103,14 @@ window.GAILS = window.GAILS || {};
     }
 
     // Convert object to array. Scoped ops managers only see visits for their
-    // own ops area; filtering here means the history list, the summary chip
-    // counts, and every grouping downstream all respect the scope.
+    // own ops area, so every grouping downstream respects the same scope.
     var visitsList = visitIds.map(function (id) {
       return Object.assign({ id: id }, allVisits[id]);
     }).filter(function (v) { return reportBakeryAllowed(v.bakery); });
 
     if (view === 'history') {
-      // Filter history in two stages: everything except visit type/rating
-      // first, so the summary bar can keep showing every type's count while
-      // one type is selected (unselected chips render dimmed), then the
-      // type/rating filter on top for the list itself.
+      // Apply the shared search, scope, and period filters first, followed by
+      // the Visit Type and Rating controls.
       var baseFiltered = visitsList.filter(function (v) {
         if (!v.bakery || !v.date) return false;
 
@@ -2630,7 +3142,7 @@ window.GAILS = window.GAILS || {};
 
       if (filtered.length === 0) {
         window.GAILS._visitLogCurrentGroupNames = [];
-        renderVisitLogSummary(baseFiltered, filtered.length, typeVal, false);
+        renderVisitLogSummary(filtered.length, false);
         // Clear stale export data so the still-visible Export button can't
         // download the previous filter's rows.
         window.GAILS._visitLogExport = null;
@@ -2653,7 +3165,7 @@ window.GAILS = window.GAILS || {};
       var schema = window.GAILS_VISIT_SCHEMA;
       var collapsedGroups = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
       window.GAILS._visitLogCurrentGroupNames = groupVal === 'none' ? [] : groupsSorted.slice();
-      renderVisitLogSummary(baseFiltered, filtered.length, typeVal, groupVal !== 'none');
+      renderVisitLogSummary(filtered.length, groupVal !== 'none');
 
       // The export always mirrors the full filtered list, even when the
       // rendered rows are capped by the Show more pager, and repeats the
@@ -2798,6 +3310,7 @@ window.GAILS = window.GAILS || {};
 
         if (groupVal === 'none') {
           return '<div class="unvisited-manager-body">' +
+            visitLogHeadHtml() +
             visitsHtml +
             '</div>';
         }
@@ -2809,6 +3322,7 @@ window.GAILS = window.GAILS || {};
           '<span>' + escapeHtml(groupName) + ' (' + groupVisits.length + ' visits)</span>' +
           '</button>' +
           '<div class="unvisited-manager-body">' +
+          visitLogHeadHtml() +
           visitsHtml +
           '</div>' +
           '</div>';
@@ -2993,37 +3507,29 @@ window.GAILS = window.GAILS || {};
         if (opsVal && (G.getBakeryOps ? G.getBakeryOps(t.bakery) : 'Unknown') !== opsVal) return false;
         return true;
       }
-      function taskIsDone(t) { return (t.status || 'open') === 'done'; }
-      function taskIsOverdue(t) { return !taskIsDone(t) && dueMeta(t.dueDate).state === 'overdue'; }
-
       var scopeTasks = allTasks.filter(taskInScope);
-      var openCount = scopeTasks.filter(function (t) { return !taskIsDone(t); }).length;
-      var overdueCount = scopeTasks.filter(taskIsOverdue).length;
+      var openCount = scopeTasks.filter(function (t) { return !followUpIsDone(t); }).length;
+      var overdueCount = scopeTasks.filter(followUpIsOverdue).length;
 
       var filteredTasks = scopeTasks.filter(function (t) {
-        var done = taskIsDone(t);
+        var done = followUpIsDone(t);
         if (followStatus === 'open') return !done;
         if (followStatus === 'done') return done;
-        if (followStatus === 'overdue') return taskIsOverdue(t);
+        if (followStatus === 'overdue') return followUpIsOverdue(t);
         return true; // 'all'
       });
 
-      // Group by bakery (using the display label).
+      // Apply the Follow-up Tasks-specific Group By and Sort By controls.
       var taskGroups = {};
       filteredTasks.forEach(function (t) {
-        var key = (G.getBakeryMapLabel ? G.getBakeryMapLabel(t.bakery) : t.bakery) || t.bakery;
+        var key = getFollowUpGroupKey(t, followUpGroupVal);
         if (!taskGroups[key]) taskGroups[key] = [];
         taskGroups[key].push(t);
       });
       Object.keys(taskGroups).forEach(function (k) {
-        taskGroups[k].sort(function (a, b) {
-          // Open before done, then by soonest deadline.
-          var ad = taskIsDone(a), bd = taskIsDone(b);
-          if (ad !== bd) return ad ? 1 : -1;
-          return followUpSortByDue(a, b);
-        });
+        taskGroups[k].sort(followUpTaskSorter(followUpSortVal));
       });
-      var taskGroupsSorted = Object.keys(taskGroups).sort();
+      var taskGroupsSorted = Object.keys(taskGroups).sort(followUpGroupSorter(followUpGroupVal));
 
       window.GAILS._visitLogExport = {
         title: 'GAIL’s — Follow-Up Actions',
@@ -3031,6 +3537,8 @@ window.GAILS = window.GAILS || {};
         filename: buildExportFilename('Follow-Up Actions'),
         meta: baseExportMeta().concat([
           ['Status filter', FOLLOW_UP_STATUS_LABELS[followStatus] || 'All'],
+          ['Grouped by', exportFilterLabel('followUpGroup', 'Bakery')],
+          ['Sorted by', exportFilterLabel('followUpSort', 'Due Date (Soonest)')],
           ['Tasks exported', filteredTasks.length],
           ['Open (all statuses)', openCount],
           ['Overdue (all statuses)', overdueCount]
@@ -3062,8 +3570,8 @@ window.GAILS = window.GAILS || {};
             t.detail || '',
             PRIORITY_LABELS[normalizePriority(t.priority)],
             t.dueDate || '',
-            taskIsOverdue(t) ? Math.abs(due.days) : '',
-            taskIsDone(t) ? 'Done' : (taskIsOverdue(t) ? 'Overdue' : 'Open'),
+            followUpIsOverdue(t) ? Math.abs(due.days) : '',
+            followUpIsDone(t) ? 'Done' : (followUpIsOverdue(t) ? 'Overdue' : 'Open'),
             t.createdAt ? t.createdAt.slice(0, 10) : '',
             t.completedAt ? t.completedAt.slice(0, 10) : ''
           ];
@@ -3089,7 +3597,7 @@ window.GAILS = window.GAILS || {};
       var html = taskGroupsSorted.map(function (groupName) {
         var tasks = taskGroups[groupName];
         var itemsHtml = tasks.map(function (t) {
-          var done = taskIsDone(t);
+          var done = followUpIsDone(t);
           var m = dueMeta(t.dueDate);
           var pill = done
             ? '<span class="follow-up-pill follow-up-pill--done">Done</span>'
@@ -3104,7 +3612,9 @@ window.GAILS = window.GAILS || {};
             ' data-followup-toggle="' + escapeHtml(t.id) + '" title="' + (done ? 'Mark as open' : 'Mark as done') + '">' +
             (done ? '&#10003;' : '') + '</button>' +
             '<div class="follow-up-item__body">' +
+            followUpTaskBakeryHtml(t, followUpGroupVal) +
             '<div class="follow-up-item__title">' + escapeHtml(t.title || 'Untitled task') + '</div>' +
+            followUpTaskContextHtml(t, followUpGroupVal) +
             (t.detail ? '<div class="follow-up-item__detail">' + escapeHtml(t.detail) + '</div>' : '') +
             (metaBits.length ? '<div class="follow-up-item__meta">' + escapeHtml(metaBits.join(' · ')) + '</div>' : '') +
             '</div>' +
@@ -3137,4 +3647,16 @@ window.GAILS = window.GAILS || {};
 
     // Banner is updated at the start of renderVisitLog
   };
+
+  // Site directory uploads arrive independently of visit data. Refresh the
+  // Region/Ops options and the visible bakery directory as soon as the shared
+  // metadata (including regional coffee-team assignments) changes.
+  if (window.addEventListener) {
+    window.addEventListener('gails:site-meta-sync', function () {
+      window.GAILS._visitLogFiltersPopulated = false;
+      if (window.GAILS._activeVisitLogView === 'bakeries') {
+        window.GAILS.renderVisitLog();
+      }
+    });
+  }
 })();

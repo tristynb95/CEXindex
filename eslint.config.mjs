@@ -10,6 +10,7 @@ const ESM_FILES = [
   'js/admin-page.js',
   'js/auth.js',
   'js/firebase-config.js',
+  'js/bakery-profile.js',
   'js/permissions.js',
   'js/profile-menu.js',
   'js/profile-page.js'

@@ -21,7 +21,7 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=20260720-visual-refresh-13">
+  <link rel="stylesheet" href="css/styles.css?v=20260725-ux-04">
 </head>
 
 <body>
@@ -493,6 +493,28 @@
 
                 <div id="siteMsg" class="admin-message" style="display:none;"></div>
 
+                <div class="admin-region-assignments">
+                  <div class="admin-region-assignments__header">
+                    <div>
+                      <h4>Region Coffee Team</h4>
+                      <p>Regions are detected automatically from the site directory. Matching regions keep their saved Coffee Partner and Coffee Trainer when new directory data is uploaded.</p>
+                    </div>
+                    <div class="admin-toolbar__meta" id="regionAssignmentMeta">Loading regions&hellip;</div>
+                  </div>
+                  <div class="admin-table-wrap">
+                    <table class="admin-table admin-table--region-assignments">
+                      <thead>
+                        <tr>
+                          <th>Region</th>
+                          <th>Coffee Partner</th>
+                          <th>Coffee Trainer</th>
+                        </tr>
+                      </thead>
+                      <tbody id="regionAssignmentList"></tbody>
+                    </table>
+                  </div>
+                </div>
+
                 <div class="admin-toolbar">
                   <label class="admin-form-field admin-form-field--search" for="siteSearchInput">
                     <span>Search directory</span>
@@ -725,6 +747,7 @@
   <script src="js/cqv-shared.js"></script>
   <script src="js/cqv-parser.js"></script>
   <script src="js/nbo-shared.js"></script>
+  <script src="js/region-assignments.js"></script>
   <!-- Reuses the CQV parser's pdf.js text extraction and the NBO score helpers,
        so it must load after both. -->
   <script src="js/nbo-parser.js"></script>
@@ -732,5 +755,3 @@
 </body>
 
 </html>
-
-

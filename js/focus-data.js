@@ -184,7 +184,7 @@ window.GAILS = window.GAILS || {};
     var state = options.state || G.state || {};
     var records = options.records || state.ALL || [];
     var referenceDate = options.referenceDate instanceof Date ? options.referenceDate : new Date();
-    var isAbsolute = options.isAbsolute !== undefined ? !!options.isAbsolute : state.targetMetric !== 'relative';
+    var isAbsolute = options.isAbsolute !== undefined ? !!options.isAbsolute : true;
     var scoreField = isAbsolute ? 'ac' : 'c';
     var recentMonths = getRecentClosedMonths(referenceDate);
     var closedMonths = getAllClosedMonths(records, referenceDate);

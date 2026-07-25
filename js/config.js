@@ -32,6 +32,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "Wokingham": { "r": "South Region", "o": "Michelle Solomon", "ll": [51.4104, -0.8348] },
   "Bristol College Green": { "r": "South Region", "o": "Matt Church", "ll": [51.4534, -2.5990] },
   "Bristol Whiteladies Road": { "r": "South Region", "o": "Matt Church", "ll": [51.4646, -2.6044] },
+  "Cheltenham": { "r": "South Region", "o": "Matt Church", "ll": [51.8987, -2.0784] },
   "Clifton Village": { "r": "South Region", "o": "Matt Church", "ll": [51.4576, -2.6210] },
   "Marlborough": { "r": "South Region", "o": "Matt Church", "ll": [51.4205, -1.7270] },
   "Newbury": { "r": "South Region", "o": "Matt Church", "ll": [51.4012, -1.3227] },
@@ -113,7 +114,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "Manchester Sale": { "r": "North Region", "o": "Chris Kral", "ll": [53.4247, -2.3226] },
   "Prestwich": { "r": "North Region", "o": "Chris Kral", "ll": [53.5344, -2.2875] },
   "Wilmslow": { "r": "North Region", "o": "Chris Kral", "ll": [53.3294, -2.2334] },
-  "Banbury Gateway": { "r": "North Region", "o": "Bobby Holmes", "ll": [52.0658, -1.3183] },
+  "Banbury Gateway": { "r": "North Region", "o": "Bobby Holmes", "ll": [52.076677, -1.318543] },
   "Beaconsfield": { "r": "North Region", "o": "Bobby Holmes", "ll": [51.6077, -0.6437] },
   "Gerrards Cross": { "r": "North Region", "o": "Bobby Holmes", "ll": [51.5826, -0.5549] },
   "Henley": { "r": "North Region", "o": "Bobby Holmes", "ll": [51.5353, -0.8991] },
@@ -138,6 +139,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "Euston": { "r": "London Region", "o": "Samuel Suris Costas", "ll": [51.5283, -0.1338] },
   "Great Russell Street": { "r": "London Region", "o": "Samuel Suris Costas", "ll": [51.5185, -0.1245] },
   "Kings Cross": { "r": "London Region", "o": "Samuel Suris Costas", "ll": [51.5308, -0.1241] },
+  "Kings Cross Station": { "r": "London Region", "o": "Samuel Suris Costas", "ll": [51.5320, -0.1233] },
   "Liverpool Street Station": { "r": "London Region", "o": "Samuel Suris Costas", "ll": [51.5178, -0.0821] },
   "London Bridge Station": { "r": "London Region", "o": "Samuel Suris Costas", "ll": [51.5045, -0.0870] },
   "Pentonville Road Kings Cross": { "r": "London Region", "o": "Samuel Suris Costas", "ll": [51.5305, -0.1162] },
@@ -163,6 +165,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "High Street Kensington": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.5013, -0.1929] },
   "Kensington Arcade": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.5011, -0.1909] },
   "Kings Road": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.4876, -0.1742] },
+  "Orchard Place": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.5096, 0.0076] },
   "Pimlico": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.4898, -0.1352] },
   "Strand": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.5094, -0.1228] },
   "Cheapside": { "r": "London Region", "o": "George Austin", "ll": [51.5142, -0.0910] },
@@ -358,6 +361,62 @@ window.GAILS.getBakeryMetaSnapshot = function () {
   return window.GAILS.cloneBakeryMeta(window.GAILS.BAKERY_META);
 };
 
+function _normalizeRegionAssignmentKey(value) {
+  return String(value == null ? '' : value).trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+// Coffee Partner and Coffee Trainer ownership is maintained once per region
+// in the admin site directory. Keep a normalized lookup alongside the public
+// snapshot so any bakery-facing view can resolve those names consistently,
+// even when an uploaded workbook varies the region's case or spacing.
+window.GAILS.setRegionAssignments = function (assignments) {
+  var source = Array.isArray(assignments)
+    ? assignments
+    : Object.values(assignments && typeof assignments === 'object' ? assignments : {});
+  var records = [];
+  var lookup = {};
+
+  source.forEach(function (record) {
+    var region = String(record && record.region || '').trim().replace(/\s+/g, ' ');
+    if (!region) return;
+    var normalized = {
+      region: region,
+      coffeePartner: String(record && record.coffeePartner || '').trim(),
+      coffeeTrainer: String(record && record.coffeeTrainer || '').trim()
+    };
+    records.push(normalized);
+    lookup[_normalizeRegionAssignmentKey(region)] = normalized;
+  });
+
+  records.sort(function (a, b) { return a.region.localeCompare(b.region); });
+  window.GAILS.REGION_ASSIGNMENTS = records;
+  window.GAILS._regionAssignmentLookup = lookup;
+  return records;
+};
+
+window.GAILS.getRegionAssignment = function (region) {
+  var key = _normalizeRegionAssignmentKey(region);
+  var record = key && window.GAILS._regionAssignmentLookup
+    ? window.GAILS._regionAssignmentLookup[key]
+    : null;
+  return record ? {
+    region: record.region,
+    coffeePartner: record.coffeePartner,
+    coffeeTrainer: record.coffeeTrainer
+  } : null;
+};
+
+window.GAILS.getRegionAssignmentsSnapshot = function () {
+  return (window.GAILS.REGION_ASSIGNMENTS || []).map(function (record) {
+    return {
+      region: record.region,
+      coffeePartner: record.coffeePartner,
+      coffeeTrainer: record.coffeeTrainer
+    };
+  });
+};
+
+window.GAILS.setRegionAssignments([]);
 window.GAILS.setBakeryMeta(window.GAILS.DEFAULT_BAKERY_META);
 
 window.GAILS.getBakeryRegion = function (b) {

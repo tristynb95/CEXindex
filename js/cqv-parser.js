@@ -35,6 +35,52 @@ window.GAILS = window.GAILS || {};
     return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
+  // GoAudits vertically centres the FINDINGS / ACTION REQUIRED captions
+  // against their multi-line text. A caption can therefore reconstruct one
+  // row below the first line it describes. Move each left-column caption to
+  // the topmost nearby body row that is closer to it than to the other
+  // captions. The normal left-to-right parser can then switch fields at the
+  // true visual boundary rather than at the caption's baseline.
+  function alignActionPlanFieldMarkers(rows, pageWidth) {
+    var contentStartX = pageWidth * 0.15;
+    var sidebarStartX = pageWidth * 0.7;
+    var markers = [];
+
+    rows.forEach(function(row) {
+      row.items.forEach(function(item) {
+        var markerText = cleanLine(item.str);
+        if (item.x < contentStartX && /^(?:FINDINGS|ACTION\s*REQUIRED)$/i.test(markerText)) {
+          markers.push({ item: item, row: row, text: markerText, target: null });
+        }
+      });
+    });
+    if (!markers.length) return;
+
+    rows.forEach(function(row) {
+      var hasBodyText = row.items.some(function(item) {
+        return item.x >= contentStartX && item.x < sidebarStartX;
+      });
+      if (!hasBodyText) return;
+
+      var nearest = null;
+      markers.forEach(function(marker) {
+        var distance = Math.abs(row.y - marker.item.y);
+        if (distance <= 72 && (!nearest || distance < nearest.distance)) {
+          nearest = { marker: marker, distance: distance };
+        }
+      });
+      if (nearest && (!nearest.marker.target || row.y > nearest.marker.target.y)) {
+        nearest.marker.target = row;
+      }
+    });
+
+    markers.forEach(function(marker) {
+      if (!marker.target || marker.target === marker.row) return;
+      marker.row.items = marker.row.items.filter(function(item) { return item !== marker.item; });
+      marker.target.items.push({ str: marker.text, x: marker.item.x, y: marker.target.y });
+    });
+  }
+
   // ---------- pdf.js text extraction ----------
   async function extractPageLines(arrayBuffer) {
     if (typeof pdfjsLib === 'undefined') {
@@ -42,9 +88,12 @@ window.GAILS = window.GAILS || {};
     }
     var pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     var pages = [];
+    var inActionPlanTextLayer = false;
     for (var p = 1; p <= pdf.numPages; p++) {
       var page = await pdf.getPage(p);
       var content = await page.getTextContent();
+      var pageWidth = page.getViewport({ scale: 1 }).width;
+      var sidebarStartX = pageWidth * 0.7;
       var items = content.items
         .map(function(it) { return { str: it.str, x: it.transform[4], y: it.transform[5] }; })
         .filter(function(it) { return it.str && cleanLine(it.str); });
@@ -63,9 +112,35 @@ window.GAILS = window.GAILS || {};
         row.items.push(it);
       });
 
+      var pageHasActionPlanHeading = rows.some(function(row) {
+        var text = cleanLine(row.items.map(function(item) { return item.str; }).join(' '));
+        return RE_ACTION_PLAN_HEADING.test(text.replace(/\s+/g, ''));
+      });
+      if (inActionPlanTextLayer || pageHasActionPlanHeading) {
+        alignActionPlanFieldMarkers(rows, pageWidth);
+      }
+
       var lines = rows.map(function(r) {
         r.items.sort(function(a, b) { return a.x - b.x; });
-        return cleanLine(r.items.map(function(it) { return it.str; }).join(' '));
+        // GoAudits prints a standalone "Change" control in the action-plan
+        // sidebar. Its baseline is often within the row tolerance of the
+        // findings paragraph, so a plain left-to-right join incorrectly
+        // appends it to the report text. Keep column information long enough
+        // to discard only that right-sidebar control; a genuine use of the
+        // word in the report body remains untouched.
+        var rowItems = r.items;
+        if (inActionPlanTextLayer) {
+          rowItems = rowItems.filter(function(it) {
+            return !(it.x >= sidebarStartX && RE_ACTION_SIDEBAR_CONTROL.test(cleanLine(it.str)));
+          });
+        }
+        var reconstructed = cleanLine(rowItems.map(function(it) { return it.str; }).join(' '));
+        if (RE_ACTION_PLAN_HEADING.test(reconstructed.replace(/\s+/g, ''))) {
+          inActionPlanTextLayer = true;
+        } else if (RE_DECLARATION_HEADING.test(reconstructed)) {
+          inActionPlanTextLayer = false;
+        }
+        return reconstructed;
       }).filter(Boolean);
 
       pages.push(lines);
@@ -128,6 +203,8 @@ window.GAILS = window.GAILS || {};
   var RE_ORPHAN_SIDEBAR_KEYWORD = /^(?:PRIORITY|DUE\s*DATE)$/i;
   var RE_ORPHAN_DUE_DATE = /^\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}$/;
   var RE_ORPHAN_PRIORITY = /^(?:Low|Medium|High)$/i;
+  var RE_ACTION_SIDEBAR_CONTROL = /^Change$/i;
+  var RE_TRAILING_ACTION_SIDEBAR_CONTROL = /\s+Change\s*$/i;
 
   // A single reconstructed action-plan row can glue several logical fields
   // together — a question label's tail, the quoted "'No' - ..." response,
@@ -343,6 +420,7 @@ window.GAILS = window.GAILS || {};
     var currentBlock = null; // action plan block being built
     var blockPhase = ''; // '', 'label', 'findings', 'action'
     var expectPrevResponse = false; // a score row ended with a PREVIOUS-column date; its response follows on the next row
+    var expectActionSidebarControl = false;
 
     function flushBlock() {
       if (currentBlock) {
@@ -353,6 +431,7 @@ window.GAILS = window.GAILS || {};
       }
       currentBlock = null;
       blockPhase = '';
+      expectActionSidebarControl = false;
     }
 
     // Called whenever a new event starts (a new question, a new subsection/
@@ -457,6 +536,7 @@ window.GAILS = window.GAILS || {};
           // parse miss doesn't lose it.
           currentBlock = { sectionPath: cleanLine(hdr[1]) + ' >> ' + cleanLine(hdr[2]), questionRef: '', questionLabel: '', findings: '', actionRequired: '', assignee: record.bakery || '', priority: '', dueDate: '' };
           blockPhase = '';
+          expectActionSidebarControl = false;
           continue;
         }
         if (!currentBlock) continue; // stray line before first block header
@@ -474,6 +554,7 @@ window.GAILS = window.GAILS || {};
         if (assMatch) {
           if (!currentBlock.assignee && cleanLine(assMatch[1])) currentBlock.assignee = cleanLine(assMatch[1]);
           cleaned = cleanLine(cleaned.slice(0, assMatch.index));
+          expectActionSidebarControl = true;
         }
         // A keyword/value pair that split across rows leaves a bare keyword
         // or bare value behind.
@@ -488,6 +569,14 @@ window.GAILS = window.GAILS || {};
         }
         cleaned = cleanLine(cleaned.replace(RE_TRAILING_RUNNING_HEADER, ''));
         if (siteNameFragmentRe) cleaned = cleanLine(cleaned.replace(siteNameFragmentRe, ' '));
+        // Defensive fallback for callers that pass already-reconstructed
+        // page lines instead of using extractPageLines(). In GoAudits the
+        // sidebar's Change control follows ASSIGNEE and is vertically aligned
+        // with the first quoted findings row.
+        if (expectActionSidebarControl && /['â€™]\s*(?:Yes|No|N\/A)\s*['â€™]?\s*-\s*/i.test(cleaned)) {
+          cleaned = cleanLine(cleaned.replace(RE_TRAILING_ACTION_SIDEBAR_CONTROL, ''));
+          expectActionSidebarControl = false;
+        }
         if (!cleaned) continue; // line was pure sidebar/header noise
 
         // Walk the row left to right, splitting at whichever marker comes

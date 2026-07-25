@@ -878,7 +878,7 @@ window.GAILS = window.GAILS || {};
     if (G && focusContext && state && state.ALL && state.ALL.length) {
       var filtered = focusContext.data || [];
       var bakeries = [];
-      var isAbsoluteTarget = state && state.targetMetric !== 'relative';
+      var isAbsoluteTarget = true;
       var targetBf = isAbsoluteTarget ? 'acb' : 'cb';
       var targetHigh = isAbsoluteTarget ? 'Below Standard' : 'Low Performance';
       var targetLow = isAbsoluteTarget ? 'Approaching' : 'Below Average';

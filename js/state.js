@@ -11,10 +11,7 @@ window.GAILS.state = {
   bandFilter: '',
   regionFilter: [],
   opsFilter: [],
-  indexType: 'absolute',
   dataLastUpdated: null, // ISO timestamp from the workbook's "Last Updated" tab
 
-  rankingsMetric: 'absolute',
-  targetMetric: 'absolute',
   PERIODS: {},
 };

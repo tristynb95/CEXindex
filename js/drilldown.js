@@ -111,7 +111,10 @@ window.GAILS = window.GAILS || {};
       {
         label: 'Bakery',
         render: function(row) {
-          return '<span class="drill-cell-strong">' + escapeHtml(row.b) + '</span>';
+          return '<span class="drill-cell-strong">' + GAILS.bakeryProfileLink(row.b, {
+            returnUrl: 'index.html#overview',
+            returnLabel: 'Overview'
+          }) + '</span>';
         }
       },
       {
@@ -202,7 +205,7 @@ window.GAILS = window.GAILS || {};
     if (type === 'nps') {
       var npsSorted = [].concat(bakeries).sort(function(a, b) { return b.n - a.n; });
       var npsAvg = npsSorted.length ? Math.round(npsSorted.reduce(function(sum, bakery) { return sum + bakery.n; }, 0) / npsSorted.length) : 0;
-      var ceiAvg = npsSorted.length ? Math.round(npsSorted.reduce(function(sum, bakery) { return sum + bakery.c; }, 0) / npsSorted.length) : 0;
+      var ceiAvg = npsSorted.length ? Math.round(npsSorted.reduce(function(sum, bakery) { return sum + bakery.ac; }, 0) / npsSorted.length) : 0;
 
       var npsColumns = baseColumns.concat([
         {
@@ -210,12 +213,16 @@ window.GAILS = window.GAILS || {};
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.n) + '</span>'; }
         },
         {
-          label: 'Peer Score',
-          render: function(row) { return metricText(row.c); }
+          label: 'Benchmark Score',
+          render: function(row) { return metricText(row.ac); }
         },
         {
-          label: 'Peer Band',
-          render: function(row) { return renderBandPill(G, row.cb); }
+          label: 'Benchmark Band',
+          render: function(row) { return renderBandPill(G, row.acb); }
+        },
+        {
+          label: 'Company Rank',
+          render: function(row) { return row.companyRank ? row.companyRank + ' of ' + row.companyCohortSize : '—'; }
         }
       ].concat(ragMetricColumns()).concat([
         {
@@ -227,30 +234,13 @@ window.GAILS = window.GAILS || {};
       content += '<div class="drill-topbar" data-table-fullscreen-anchor="true">' +
         '<div class="drill-summary">' +
         renderSummaryCard('Avg NPS (D+M)', npsAvg) +
-        renderSummaryCard('Avg Score', ceiAvg) +
+        renderSummaryCard('Avg Benchmark Score', ceiAvg) +
         renderSummaryCard('Bakeries', npsSorted.length) +
         '</div>' +
         renderTableControls(false) +
         '</div>';
 
       content += renderTableWrap(G, npsColumns, npsSorted);
-    } else if (type === 'relative') {
-      var relSorted = [].concat(bakeries).sort(function(a, b) { return b.c - a.c; });
-      content += renderTable(G, baseColumns.concat([
-        {
-          label: 'Peer Score',
-          render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.c) + '</span>'; }
-        },
-        {
-          label: 'NPS (D+M)',
-          render: function(row) { return metricText(row.n); }
-        }
-      ]).concat(ragMetricColumns()).concat([
-        {
-          label: 'Conf',
-          render: function(row) { return renderConfidence(row.co); }
-        }
-      ]), relSorted);
     } else {
       var absSorted = [].concat(bakeries).sort(function(a, b) { return b.ac - a.ac; });
       content += renderTable(G, baseColumns.concat([
@@ -259,8 +249,8 @@ window.GAILS = window.GAILS || {};
           render: function(row) { return '<span class="drill-cell-strong">' + metricText(row.ac) + '</span>'; }
         },
         {
-          label: 'Peer Score',
-          render: function(row) { return metricText(row.c); }
+          label: 'Company Rank',
+          render: function(row) { return row.companyRank ? row.companyRank + ' of ' + row.companyCohortSize : '—'; }
         },
         {
           label: 'NPS (D+M)',

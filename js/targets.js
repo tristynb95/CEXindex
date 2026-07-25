@@ -208,19 +208,12 @@ function _fmtOneDecimal(value) {
 function _driverGapText(d) {
   var diff = d.value - d.bench;
   if (d.fmt === 'secs') {
-    if (Math.round(diff) === 0) return 'On the ' + GAILS.formatSecs(d.bench) + ' target';
-    return Math.abs(Math.round(diff)) + 's ' + (diff > 0 ? 'slower' : 'faster') + ' than the ' + GAILS.formatSecs(d.bench) + ' target';
+    if (Math.round(diff) === 0) return 'On the target of ' + GAILS.formatSecs(d.bench);
+    return Math.abs(Math.round(diff)) + 's ' + (diff > 0 ? 'slower' : 'faster') + ' than the target of ' + GAILS.formatSecs(d.bench);
   }
   if (Math.round(diff * 10) === 0) return 'On target';
   var target = d.fmt === 'pct' ? d.bench + '%' : d.bench;
-  return _fmtOneDecimal(diff) + ' pts ' + (diff < 0 ? 'below' : 'above') + ' the ' + target + ' target';
-}
-
-// Peer standing still supports the main Focus queue's explanatory sentence;
-// it is not used for the benchmark bars in the review modal.
-function _driverStandingText(percentile) {
-  var pct = Math.max(1, Math.min(99, Math.round(percentile)));
-  return pct <= 50 ? 'Bottom ' + pct + '% of bakeries' : 'Top ' + Math.max(1, 100 - pct) + '% of bakeries';
+  return _fmtOneDecimal(diff) + ' pts ' + (diff < 0 ? 'below' : 'above') + ' the target of ' + target;
 }
 
 function _driverRagText(tone) {
@@ -305,7 +298,16 @@ function _thresholdText(row) {
 
 function _weaknessText(row) {
   if (!row.weakest) return 'No reliable driver data yet';
-  return row.weakest.label + ' is ' + _driverStandingText(row.weakest.pct).toLowerCase();
+  return row.weakest.label + ' is the furthest from target (' + _driverGapText(row.weakest).toLowerCase() + ')';
+}
+
+// Two-line version for the action list's Main Focus column: metric name on
+// its own line, gap on the next. The column header already says "furthest
+// from target", so the row doesn't need to restate it — that sentence was
+// wrapping to three lines for every driver with a longer metric name.
+function _weaknessParts(row) {
+  if (!row.weakest) return { label: 'No reliable driver data yet', detail: '' };
+  return { label: row.weakest.label, detail: _driverGapText(row.weakest) };
 }
 
 // The former standalone "Top Priority" card duplicated the action list's #1
@@ -449,12 +451,19 @@ function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
     prevBand = prevStatus;
     prevStatus = 'all';
   }
+  // The two activity filters are independent checkboxes. Older state held them
+  // as one mutually exclusive `status` string, so carry that across rather than
+  // silently dropping whichever filter the user had applied.
+  var prevDipping = _hubState ? !!_hubState.dipping : false;
+  var prevNovisit = _hubState ? !!_hubState.novisit : false;
+  if (prevStatus === 'dipping') prevDipping = true;
+  if (prevStatus === 'novisit') prevNovisit = true;
   var prevSearch = _hubState ? _hubState.search || '' : '';
   var prevExpanded = _hubState ? !!_hubState.expanded : false;
   if (prevArea !== 'all' && !areaMap[prevArea]) prevArea = 'all';
   _hubState = {
     rows: rows, byName: byName, areas: areas, sort: prevSort, tier: prevTier, area: prevArea,
-    status: prevStatus, band: prevBand, search: prevSearch,
+    dipping: prevDipping, novisit: prevNovisit, band: prevBand, search: prevSearch,
     expanded: prevExpanded,
     bf: bf, cf: cf, isAbsolute: isAbsolute, FM: FM,
     highBand: highBand, lowBand: lowBand, escapeLine: escapeLine,
@@ -472,17 +481,48 @@ function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
 
   queueEl.innerHTML =
     '<div class="focus-queue__heading"><div><p class="focus-section-title">Bakery action list</p><p>Ranked by support priority. Every row explains why the bakery needs attention.</p></div><span id="focusQueueSummary" class="focus-queue__summary" role="status" aria-live="polite"></span></div>' +
+    // Every control is a direct child of the tray: .focus-queue__chips and
+    // .focus-queue__quick are display:contents, so what they hold lays out in
+    // the tray's own flex row. Wrapping them in a real container instead gave
+    // the row a nested width to divide up and pushed Reset onto a second line.
     '<div class="focus-queue__bar">' +
     '<div class="focus-queue__chips" id="focusQueueChips"></div>' +
-    '<div class="focus-queue__tools">' +
     '<label class="focus-tool-label"><span>Search</span><input type="search" id="focusQueueSearch" class="focus-qsearch" placeholder="Bakery or operations area" aria-label="Search the action list by bakery or operations area" oninput="GAILS.setFocusSearch(this.value)"></label>' +
-    '<label class="focus-tool-label"><span>Sort by</span><select id="focusQueueSort" class="spark-sort-select" onchange="GAILS.setFocusSort(this.value)">' +
+    // Support priority is one dropdown rather than four chips, and the two
+    // activity filters are checkboxes rather than two more chips — six buttons
+    // and two group labels replaced by three fields that sit in the same tray,
+    // at the same scale, as Search and Sort by. Option labels carry the live
+    // counts the chips used to show.
+    //
+    // Built once here, not in the per-render containers, so operating a control
+    // cannot destroy the element mid-interaction; _renderHubQueue only refreshes
+    // the counts and the selected/checked state.
+    '<label class="focus-tool-label focus-tool-label--priority"><span>Support priority</span><select id="focusQueueTier" class="spark-sort-select" onchange="GAILS.setFocusTier(this.value)">' +
+    ['all', 'critical', 'high', 'watch'].map(function (t) {
+      return '<option value="' + t + '">' + (t === 'all' ? 'All' : _TIER_LABEL[t]) + '</option>';
+    }).join('') +
+    '</select></label>' +
+    '<label class="focus-tool-label focus-tool-label--sort"><span>Sort by</span><select id="focusQueueSort" class="spark-sort-select" onchange="GAILS.setFocusSort(this.value)">' +
     '<option value="priority">Highest support priority</option>' +
     '<option value="score-asc">Lowest performance</option>' +
     '<option value="decline">Largest fall since last month</option>' +
     '<option value="alpha">Alphabetical (A–Z)</option>' +
     '</select></label>' +
+    // Checkboxes, not a second dropdown: these two are independent, and a
+    // bakery that is both falling and overdue a visit is exactly the one worth
+    // finding. A select could only ever express one of them at a time.
+    '<div class="focus-queue__quick">' +
+    '<label class="focus-tool-label focus-tool-label--check"><span>Down vs prev month</span>' +
+    '<span class="focus-check" id="focusQueueDippingBox"><input type="checkbox" id="focusQueueDipping" aria-label="Only bakeries down versus the previous month" onchange="GAILS.setFocusFlag(\'dipping\', this.checked)">' +
+    '<em id="focusQueueDippingCount"></em></span></label>' +
+    '<label class="focus-tool-label focus-tool-label--check"><span>Visit due</span>' +
+    '<span class="focus-check" id="focusQueueNovisitBox"><input type="checkbox" id="focusQueueNovisit" aria-label="Only bakeries with a routine visit due" onchange="GAILS.setFocusFlag(\'novisit\', this.checked)">' +
+    '<em id="focusQueueNovisitCount"></em></span></label>' +
     '</div>' +
+    '<button type="button" id="focusQueueReset" class="focus-reset-btn" title="Reset filters" aria-label="Reset all action list filters" onclick="GAILS.resetFocusFilters()">' +
+    '<svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>' +
+    '<svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/><path d="M15 3l6 6M21 3l-6 6"/></svg>' +
+    '</button>' +
     '</div>' +
     '<div class="focus-qwrap"><div class="focus-qlist" id="focusQueueGrid"></div></div>' +
     '<div class="focus-qmore" id="focusQueueMore"></div>';
@@ -560,8 +600,10 @@ function _visibleQueueRows() {
   var rows = s.rows.filter(function (r) {
     if (s.area !== 'all' && r.ops !== s.area) return false;
     if (s.tier !== 'all' && r.tier !== s.tier) return false;
-    if (s.status === 'dipping' && r.trend.direction !== 'down') return false;
-    if (s.status === 'novisit' && _visitStatus(r).cls === 'is-complete') return false;
+    // Two independent toggles, not one choice: a bakery can be both falling
+    // and overdue a visit, and narrowing to that intersection is the point.
+    if (s.dipping && r.trend.direction !== 'down') return false;
+    if (s.novisit && _visitStatus(r).cls === 'is-complete') return false;
     if (s.band === 'band-high' && r.rec[s.bf] !== s.highBand) return false;
     if (s.band === 'band-low' && r.rec[s.bf] !== s.lowBand) return false;
     if (search && r.name.toLowerCase().indexOf(search) === -1 && r.ops.toLowerCase().indexOf(search) === -1) return false;
@@ -575,6 +617,36 @@ function _visibleQueueRows() {
     if (b.priority !== a.priority) return b.priority - a.priority;
     return (a.score || 0) - (b.score || 0);
   });
+}
+
+// Rewrites the option labels of one queue filter dropdown so each choice shows
+// how many bakeries it would return, then re-asserts the selected value and
+// re-syncs the custom dropdown wrapper (js/custom-selects.js) that renders it.
+// Options are updated in place rather than replaced so the element the user is
+// interacting with survives the render that their own choice triggered.
+function _syncQueueFilterSelect(id, value, options) {
+  var sel = document.getElementById(id);
+  if (!sel) return;
+  options.forEach(function (opt, i) {
+    var el = sel.options[i];
+    if (!el) return;
+    el.value = opt.value;
+    el.textContent = opt.label + ' (' + opt.count + ')';
+  });
+  sel.value = value;
+  if (GAILS.syncCustomSelect) GAILS.syncCustomSelect(sel);
+}
+
+// Same job for one of the two activity checkboxes: re-assert whether it is
+// ticked, mark the surrounding box so "on" reads from across the tray rather
+// than only from the 16px tick, and show how many bakeries it would leave.
+function _syncQueueFilterCheck(inputId, boxId, countId, checked, count) {
+  var input = document.getElementById(inputId);
+  if (input) input.checked = !!checked;
+  var box = document.getElementById(boxId);
+  if (box && box.classList) box.classList.toggle('is-on', !!checked);
+  var countEl = document.getElementById(countId);
+  if (countEl) countEl.textContent = count;
 }
 
 function _renderHubQueue() {
@@ -593,9 +665,11 @@ function _renderHubQueue() {
     if (s.band === 'band-low') return r.rec[s.bf] === s.lowBand;
     return true;
   }
+  function isDipping(r) { return r.trend.direction === 'down'; }
+  function isVisitDue(r) { return _visitStatus(r).cls !== 'is-complete'; }
   function matchesActivity(r) {
-    if (s.status === 'dipping') return r.trend.direction === 'down';
-    if (s.status === 'novisit') return _visitStatus(r).cls !== 'is-complete';
+    if (s.dipping && !isDipping(r)) return false;
+    if (s.novisit && !isVisitDue(r)) return false;
     return true;
   }
   function matchesSearch(r) {
@@ -610,14 +684,15 @@ function _renderHubQueue() {
   var counts = { all: tierScope.length, critical: 0, high: 0, watch: 0 };
   tierScope.forEach(function (r) { counts[r.tier]++; });
 
-  // Quick-filter counts respect area, band, priority and search, while ignoring
-  // the current quick filter so each button describes the result it would show.
+  // Each checkbox's count respects area, band, priority, search AND the other
+  // checkbox, while ignoring itself — so it always reads as "ticking this would
+  // leave N", including when both are on and the counts describe the overlap.
   var activityScope = s.rows.filter(function (r) {
     return matchesArea(r) && matchesBand(r) && (s.tier === 'all' || r.tier === s.tier) && matchesSearch(r);
   });
   var statusCounts = {
-    dipping: activityScope.filter(function (r) { return r.trend.direction === 'down'; }).length,
-    novisit: activityScope.filter(function (r) { return !r.visitedInPeriod; }).length
+    dipping: activityScope.filter(function (r) { return isDipping(r) && (!s.novisit || isVisitDue(r)); }).length,
+    novisit: activityScope.filter(function (r) { return isVisitDue(r) && (!s.dipping || isDipping(r)); }).length
   };
 
   var rows = _visibleQueueRows();
@@ -630,8 +705,8 @@ function _renderHubQueue() {
   if (s.band === 'band-high') activeLabels.push('Performance: ' + s.highBand);
   if (s.band === 'band-low') activeLabels.push('Performance: ' + s.lowBand);
   if (s.tier !== 'all') activeLabels.push('Priority: ' + _TIER_LABEL[s.tier]);
-  if (s.status === 'dipping') activeLabels.push('Down since last month');
-  if (s.status === 'novisit') activeLabels.push('Visit due');
+  if (s.dipping) activeLabels.push('Down vs prev month');
+  if (s.novisit) activeLabels.push('Visit due');
   if (search) activeLabels.push('Search: ' + (s.search || '').trim());
   if (summaryEl) {
     summaryEl.innerHTML = 'Showing <strong>' + shownCount + '</strong> of ' + rows.length + ' matching bakeries' +
@@ -648,19 +723,33 @@ function _renderHubQueue() {
       var bandName = s.band === 'band-high' ? s.highBand : s.lowBand;
       appliedChips += '<button type="button" class="focus-applied-filter" onclick="GAILS.setFocusBand(\'all\')" aria-label="Clear performance filter">Performance: ' + esc(bandName) + ' <span aria-hidden="true">&times;</span></button>';
     }
-    var tierChips = ['all', 'critical', 'high', 'watch'].map(function (t) {
-      var label = t === 'all' ? 'All priority levels' : _TIER_LABEL[t];
-      return '<button type="button" class="focus-chip' + (s.tier === t ? ' active' : '') + '" aria-pressed="' + (s.tier === t ? 'true' : 'false') + '" onclick="GAILS.setFocusTier(\'' + t + '\')">' + label + '<span class="focus-chip__count">' + counts[t] + '</span></button>';
-    }).join('');
-    var statusChips = [
-      { key: 'dipping', label: 'Down since last month' },
-      { key: 'novisit', label: 'Visit due' }
-    ].map(function (c) {
-      return '<button type="button" class="focus-chip' + (s.status === c.key ? ' active' : '') + '" aria-pressed="' + (s.status === c.key ? 'true' : 'false') + '" onclick="GAILS.setFocusStatus(\'' + c.key + '\')">' + c.label + '<span class="focus-chip__count">' + statusCounts[c.key] + '</span></button>';
-    }).join('');
-    chipsEl.innerHTML = (appliedChips ? '<div class="focus-applied-filters"><span>Applied</span>' + appliedChips + '</div>' : '') +
-      '<div class="focus-filter-group"><span class="focus-filter-label">Support priority</span><div>' + tierChips + '</div></div>' +
-      '<div class="focus-filter-group"><span class="focus-filter-label">Quick filters</span><div>' + statusChips + '</div></div>';
+    // Only the "Applied" clear-me chips live here now; the priority, activity
+    // and sort controls are in the toolbar. This container is rewritten on
+    // every render, which is why those controls are not in it.
+    chipsEl.innerHTML = appliedChips
+      ? '<div class="focus-applied-filters"><span>Applied</span>' + appliedChips + '</div>'
+      : '';
+  }
+
+  // Refresh the toolbar controls in place: labels carry the live count for the
+  // result set each choice would show, and the value/checked state is
+  // re-asserted so the controls still match state after an external change
+  // (clearing an applied-filter chip, say). Replacing the elements instead
+  // would tear out the control the user is currently interacting with.
+  _syncQueueFilterSelect('focusQueueTier', s.tier, [
+    { value: 'all', label: 'All', count: counts.all },
+    { value: 'critical', label: _TIER_LABEL.critical, count: counts.critical },
+    { value: 'high', label: _TIER_LABEL.high, count: counts.high },
+    { value: 'watch', label: _TIER_LABEL.watch, count: counts.watch }
+  ]);
+  _syncQueueFilterCheck('focusQueueDipping', 'focusQueueDippingBox', 'focusQueueDippingCount', s.dipping, statusCounts.dipping);
+  _syncQueueFilterCheck('focusQueueNovisit', 'focusQueueNovisitBox', 'focusQueueNovisitCount', s.novisit, statusCounts.novisit);
+
+  // Reset swaps its plain funnel for the funnel-with-X once there is something
+  // to clear, the same signal the Bakery Reports tray uses.
+  var resetEl = document.getElementById('focusQueueReset');
+  if (resetEl && resetEl.classList) {
+    resetEl.classList.toggle('has-active-filters', activeLabels.length > 0);
   }
 
   var moreEl = document.getElementById('focusQueueMore');
@@ -690,10 +779,10 @@ function _renderHubQueue() {
   grid.setAttribute('aria-label', 'Bakery action list');
   grid.innerHTML =
     '<div class="focus-qhead" role="row">' +
-    '<span role="columnheader">Support priority</span>' +
+    '<span role="columnheader">Priority</span>' +
     '<span role="columnheader">Bakery</span>' +
     '<span role="columnheader">Performance</span>' +
-    '<span role="columnheader">Change since last month</span>' +
+    '<span role="columnheader">vs Prev Month</span>' +
     '<span role="columnheader">Main focus</span>' +
     '<span role="columnheader">Last visited</span>' +
     '<span role="columnheader">Action</span>' +
@@ -702,6 +791,7 @@ function _renderHubQueue() {
       var band = r.rec[bf];
       var score = (r.score !== null && r.score !== undefined) ? r.score : null;
       var isLead = showLead && i === 0;
+      var weakness = _weaknessParts(r);
 
       var badges = '';
       if (r.dataStatus === 'provisional') badges += '<span class="focus-qbadge focus-qbadge--data">Incomplete data · provisional</span>';
@@ -717,10 +807,21 @@ function _renderHubQueue() {
 
       return '<article class="focus-qrow' + (isLead ? ' focus-qrow--lead' : '') + '" role="row">' +
         '<span class="focus-qrow__urgency focus-tier--' + r.tier + '" role="cell" aria-label="Priority rank ' + r.rank + ', support score ' + r.priority + ' of 100, ' + esc(_TIER_LABEL[r.tier]) + '"><strong>#' + r.rank + '</strong><span class="focus-qrow__tier">' + esc(_TIER_LABEL[r.tier]) + '</span><small>' + r.priority + '<em> / 100</em></small></span>' +
-        '<span class="focus-qrow__who" role="cell"><span class="focus-qrow__nameline"><button type="button" class="focus-qrow__name" data-focus-detail="' + esc(r.name) + '">' + esc(r.name) + '</button>' + badges + '</span><small>Operations area: ' + esc(r.ops) + ' &middot; ' + esc(G.getBakeryRegion(r.name)) + '</small></span>' +
+        '<span class="focus-qrow__who" role="cell"><span class="focus-qrow__nameline">' + G.bakeryProfileLink(r.name, {
+          className: 'focus-qrow__name',
+          returnUrl: 'index.html#target',
+          returnLabel: 'Focus Bakeries'
+        }) + // "Ops area", not "Operations area": the filters, the Bakery Reports rows
+        // and the header summary all call it Ops Area, so this was the only place
+        // using a longer name for the same thing — and the extra characters were
+        // enough to wrap this line onto a second row on every bakery.
+        badges + '</span><small>Ops area: ' + esc(r.ops) + ' &middot; ' + esc(G.getBakeryRegion(r.name)) + '</small></span>' +
         '<span class="focus-qrow__performance" role="cell"><strong>' + (score !== null ? score.toFixed(1) + '<em>/ 100</em>' : 'Not available') + '</strong><small>' + esc(band) + ' &middot; ' + esc(_thresholdText(r)) + '</small></span>' +
         '<span class="focus-qrow__delta' + trendClass + '" role="cell"><strong>' + esc(_trendText(r)) + '</strong></span>' +
-        '<span class="focus-qrow__fix" role="cell"><strong>' + esc(_weaknessText(r)) + '</strong><small>' + (r.weakest ? 'Review ' + esc(r.weakest.label) + ' first' : 'Open the bakery for more evidence') + '</small></span>' +
+        // Metric name on its own line, gap below it — the column header
+        // already says "furthest from target", so the row only needs to name
+        // the driver and its distance, not restate the relationship.
+        '<span class="focus-qrow__fix" role="cell"><strong>' + esc(weakness.label) + '</strong>' + (weakness.detail ? '<small>' + esc(weakness.detail) + '</small>' : '<small>Open the bakery for more evidence</small>') + '</span>' +
         '<span class="focus-qrow__visit ' + visitStatus.cls + '" role="cell"><strong>' + esc(visitStatus.label) + '</strong>' + (visitDetail ? '<small>' + esc(visitDetail) + '</small>' : '') + '</span>' +
         '<span class="focus-qrow__action" role="cell"><button type="button" data-focus-detail="' + esc(r.name) + '" aria-label="Review ' + esc(r.name) + '">Review bakery</button></span>' +
         (isLead ? '<span class="focus-qrow__lead-why" role="cell">' +
@@ -774,9 +875,30 @@ window.GAILS.setFocusSort = function (val) {
   _renderHubQueue();
 };
 
-window.GAILS.setFocusStatus = function (status) {
+// One of the two independent activity checkboxes. Takes the checkbox's own
+// checked state rather than toggling, so the control and the state cannot
+// drift apart if a render lands between the click and this call.
+window.GAILS.setFocusFlag = function (flag, on) {
   if (!_hubState) return;
-  _hubState.status = _hubState.status === status ? 'all' : status;
+  if (flag !== 'dipping' && flag !== 'novisit') return;
+  _hubState[flag] = !!on;
+  _renderHubQueue();
+};
+
+// Clears every action-list filter at once. Area and performance band are set
+// from the cards above the list, so they are cleared here too — otherwise
+// Reset would appear to do nothing while an off-screen filter still applied.
+window.GAILS.resetFocusFilters = function () {
+  if (!_hubState) return;
+  _hubState.tier = 'all';
+  _hubState.dipping = false;
+  _hubState.novisit = false;
+  _hubState.band = 'all';
+  _hubState.area = 'all';
+  _hubState.search = '';
+  var searchEl = document.getElementById('focusQueueSearch');
+  if (searchEl) searchEl.value = '';
+  _renderHubAreas();
   _renderHubQueue();
 };
 
@@ -791,11 +913,12 @@ window.GAILS.setFocusSearch = function (val) {
 window.GAILS.filterQueueFromStat = function (stat) {
   if (!_hubState) return;
   _hubState.tier = 'all';
-  _hubState.status = 'all';
+  _hubState.dipping = false;
+  _hubState.novisit = false;
   _hubState.band = 'all';
   if (stat === 'critical') _hubState.tier = 'critical';
   else if (stat === 'band-high' || stat === 'band-low') _hubState.band = stat;
-  else _hubState.status = stat;
+  else if (stat === 'dipping' || stat === 'novisit') _hubState[stat] = true;
   _hubState.area = 'all';
   _hubState.search = '';
   var searchEl = document.getElementById('focusQueueSearch');
@@ -2237,7 +2360,10 @@ document.addEventListener('keydown', function (event) {
     tableBody.innerHTML = items.length
       ? items.map(function (item) {
         return '<tr>' +
-          '<td>' + escapeHtml(item.bakery) + '</td>' +
+          '<td>' + GAILS.bakeryProfileLink(item.bakery, {
+            returnUrl: mapKey === 'target' ? 'index.html#target' : 'index.html#map',
+            returnLabel: mapKey === 'target' ? 'Focus Bakeries' : 'Map'
+          }) + '</td>' +
           '<td>' + escapeHtml(item.region) + '</td>' +
           '<td>' + escapeHtml(item.ops) + '</td>' +
           '</tr>';
@@ -2270,11 +2396,11 @@ document.addEventListener('keydown', function (event) {
 window.GAILS.renderTargets = function (data) {
   var G = GAILS;
   var state = G.state;
-  var isAbsolute = state.targetMetric !== 'relative';
-  var bf = isAbsolute ? 'acb' : 'cb';
-  var cf = isAbsolute ? 'ac' : 'c';
-  var highBand = isAbsolute ? 'Below Standard' : 'Low Performance';
-  var lowBand = isAbsolute ? 'Approaching' : 'Below Average';
+  var isAbsolute = true;
+  var bf = 'acb';
+  var cf = 'ac';
+  var highBand = 'Below Standard';
+  var lowBand = 'Approaching';
 
   var focusContext = G.buildFocusDataset
     ? G.buildFocusDataset({ isAbsolute: isAbsolute })
@@ -2310,19 +2436,22 @@ function _renderInsights(targets, bf, cf, lowBand, isAbsolute) {
   if (insightsDetails) insightsDetails.style.display = targets.length === 0 ? 'none' : '';
   if (targets.length === 0) { insightsEl.innerHTML = ''; return; }
 
-  var focusCounts = { 'Drink + Meal NPS': [], 'Overall Efficiency': [], 'Drink Quality': [], Friendliness: [], 'Coffee Efficiency': [] };
+  var focusCounts = {
+    'Drink + Meal NPS': [],
+    'Customer-rated Efficiency': [],
+    'Drink Quality': [],
+    Friendliness: [],
+    'Coffee Efficiency': [],
+    'Average Wait Time': []
+  };
   targets.forEach(function (b) {
-    var areas = [
-      { name: 'Drink + Meal NPS', pct: b.np },
-      { name: 'Overall Efficiency', pct: b.ep }, { name: 'Drink Quality', pct: b.dp },
-      { name: 'Friendliness', pct: b.fp }, { name: 'Coffee Efficiency', pct: b.ap },
-    ].sort(function (a, x) { return a.pct - x.pct; });
-    focusCounts[areas[0].name].push(b.b);
+    var weakest = _driverList(b)[0];
+    if (weakest && focusCounts[weakest.label]) focusCounts[weakest.label].push(b.b);
   });
   var topWeakness = Object.entries(focusCounts).sort(function (a, b) { return b[1].length - a[1].length; })[0];
-  var quickWinLine = (isAbsolute ? 75 : 50) - 5;
+  var quickWinLine = 70;
   var quickWins = targets.filter(function (b) { return b[bf] === lowBand && b[cf] >= quickWinLine; });
-  var quickWinsThreshold = isAbsolute ? 'close to Meeting' : 'close to Good';
+  var quickWinsThreshold = 'close to Meeting';
   var weakAreas = Object.entries(focusCounts).filter(function (e) { return e[1].length > 0; }).sort(function (a, b) { return b[1].length - a[1].length; });
 
   var h = '<div class="insight-grid">';
@@ -2333,7 +2462,7 @@ function _renderInsights(targets, bf, cf, lowBand, isAbsolute) {
   if (quickWins.length > 0) {
     h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' within 5 points of leaving focus &mdash; ' + quickWinsThreshold + '</p><ul>' + quickWins.map(function (b) { return '<li><strong>' + b.b + '</strong> \u2014 ' + b[cf] + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
   } else {
-    h += '<p style="color:var(--muted)">No bakeries within quick-win range of ' + (isAbsolute ? 'Meeting' : 'Above Average') + ' yet.</p>';
+    h += '<p style="color:var(--muted)">No bakeries within quick-win range of Meeting yet.</p>';
   }
   h += '</div>';
 
@@ -2361,25 +2490,13 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
     return (a[cf] || 0) - (b[cf] || 0);
   });
   var getFocus = function (b) {
-    var list = [
-      { name: 'Drink + Meal NPS', pct: b.np },
-      { name: 'Overall Efficiency', pct: b.ep }, { name: 'Drink Quality', pct: b.dp },
-      { name: 'Friendliness', pct: b.fp }, { name: 'Coffee Efficiency', pct: b.ap }
-    ];
-    if (b.at !== null && b.at !== undefined && !isNaN(b.at)) {
-      list.push({ name: 'Avg Wait Time', pct: b.atp });
-    }
-    return list.sort(function (a, x) { return a.pct - x.pct; })[0];
+    return _driverList(b)[0];
   };
-  var focusLabel = function (pct) {
-    if (pct <= 10) return 'among the lowest in the company — biggest single opportunity';
-    if (pct <= 25) return 'well below most bakeries — clear opportunity to improve';
-    return 'below the company average — room to grow';
+  var benchmarkFocusLabel = function (driver) {
+    return driver ? _driverGapText(driver) : 'No reliable driver data';
   };
-  var ceiHeader = isAbsolute ? 'Benchmark Score' : 'Peer Score';
-  var altCeiHeader = isAbsolute ? 'Peer Score' : 'Benchmark Score';
-  var altCeiField = isAbsolute ? 'c' : 'ac';
-  var bandHeader = isAbsolute ? 'Benchmark Band' : 'Peer Band';
+  var ceiHeader = 'Benchmark Score';
+  var bandHeader = 'Benchmark Band';
 
   // Null-safe rendering + RAG thresholds for the KV/NPS-split columns,
   // matching the league table (js/tables.js) so the two views never disagree.
@@ -2388,10 +2505,10 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
   var pctOrDash = function (v) { return hasVal(v) ? v + '%' : '—'; };
   document.getElementById('targetTable').innerHTML = targets.length === 0
     ? '<p style="text-align:center;color:var(--muted);padding:32px 0">No eligible bakeries in ' + highBand + ' or adjacent bands through the latest completed month.</p>'
-    : '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">\ud83c\udf31 Support Priority List</h3><p class="tracker-table-header__copy"><strong>Priority</strong> is ranked by the same support-priority calculation as Priorities: performance gap (50 points), recent falls (25), time in focus (15), and routine-visit recency (10). <strong>Biggest Lever</strong> = each bakery&rsquo;s lowest-scoring area, where improvement lifts the overall score most. Click a bakery name for its full performance breakdown.</p></div></div><div class="table-wrap table-wrap--support-priority table-wrap--floating"><table data-nps-splits class="support-priority-table ' + (G.npsSplitsExpanded ? '' : 'nps-splits-collapsed') + '"><thead><tr><th><span class="th-label-full">Priority</span><span class="th-label-short">#</span></th><th>Bakery</th><th>Region</th><th>Ops Area</th><th>' + ceiHeader + '</th><th>' + altCeiHeader + '</th><th>' + bandHeader + '</th><th>NPS (DRINK &amp; MEAL) ' + G.npsSplitToggleHtml() + '</th><th class="nps-split-col">NPS Coffee</th><th class="nps-split-col">NPS Meal</th><th class="nps-split-col">NPS (All)</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>&le;30s</th><th>&le;2m</th><th>&gt;5m</th><th>Avg Wait</th><th>Average Drinks Per Month</th><th>Biggest Lever</th></tr></thead><tbody>' +
+    : '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">\ud83c\udf31 Support Priority List</h3><p class="tracker-table-header__copy"><strong>Priority</strong> is ranked by the same support-priority calculation as Priorities: performance gap (50 points), recent falls (25), time in focus (15), and routine-visit recency (10). <strong>Biggest Lever</strong> = each bakery&rsquo;s area furthest from its company benchmark. Click a bakery name for its full performance breakdown.</p></div></div><div class="table-wrap table-wrap--support-priority table-wrap--floating"><table data-nps-splits class="support-priority-table ' + (G.npsSplitsExpanded ? '' : 'nps-splits-collapsed') + '"><thead><tr><th><span class="th-label-full">Priority</span><span class="th-label-short">#</span></th><th>Bakery</th><th>Region</th><th>Ops Area</th><th>' + ceiHeader + '</th><th>' + bandHeader + '</th><th>NPS (DRINK &amp; MEAL) ' + G.npsSplitToggleHtml() + '</th><th class="nps-split-col">NPS Coffee</th><th class="nps-split-col">NPS Meal</th><th class="nps-split-col">NPS (All)</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>&le;30s</th><th>&le;2m</th><th>&gt;5m</th><th>Avg Wait</th><th>Average Drinks Per Month</th><th>Biggest Lever</th></tr></thead><tbody>' +
     tableTargets.map(function (b, i) {
       var focus = getFocus(b);
-      var focusColor = focus.pct <= 10 ? 'var(--red)' : 'var(--amber)';
+      var focusColor = focus && focus.attainment < 60 ? 'var(--red)' : 'var(--amber)';
       // Low volume is already represented by the dedicated Conf column; keep
       // it out of the frozen Bakery cell so names do not inflate the pane.
       var confTag = '';
@@ -2400,11 +2517,14 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
       var priorityRank = support ? support.rank : i + 1;
       return '<tr>' +
         '<td style="font-weight:700">' + priorityRank + '</td>' +
-        '<td><button type="button" class="focus-name-link" data-focus-detail="' + G.escapeHtml(b.b) + '">' + b.b + '</button>' + confTag + '</td>' +
+        '<td>' + G.bakeryProfileLink(b.b, {
+          className: 'focus-name-link',
+          returnUrl: 'index.html#target',
+          returnLabel: 'Focus Bakeries'
+        }) + confTag + '</td>' +
         '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryRegion(b.b) + '</td>' +
         '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(b.b) + '</td>' +
         '<td style="font-weight:700">' + b[cf] + '</td>' +
-        '<td style="font-weight:600">' + b[altCeiField] + '</td>' +
         '<td><span class="band ' + G.bc(b[bf]) + '">' + b[bf] + '</span></td>' +
         '<td' + G.metricRagStyle('n', b.n) + '>' + b.n + '</td>' +
         '<td class="nps-split-col"' + G.metricRagStyle('nc', b.nc) + '>' + numOrDash(b.nc) + '</td>' +
@@ -2420,7 +2540,7 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
         '<td' + G.metricRagStyle('o5', b.o5) + '>' + b.o5 + '%</td>' +
         '<td' + G.metricRagStyle('at', b.at) + '>' + G.formatSecs(b.at) + '</td>' +
         '<td>' + numOrDash(b.tdMonthlyAvg) + '</td>' +
-        '<td style="font-weight:600;color:' + focusColor + '">' + focus.name + ' &mdash; ' + focusLabel(focus.pct) + '</td></tr>';
+        '<td style="font-weight:600;color:' + focusColor + '">' + (focus ? focus.label + ' &mdash; ' + benchmarkFocusLabel(focus) : benchmarkFocusLabel(null)) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   G.makeSortable(document.getElementById('targetTable'));
   G.syncNpsSplitTables();
@@ -2638,23 +2758,15 @@ function _renderTargetTrends(targets, bf, cf, highBand, lowBand, isAbsolute) {
 
   trendData.sort(function (a, b) { var order = { down: 0, flat: 1, up: 2, new: 3 }; if (order[a.direction] !== order[b.direction]) return order[a.direction] - order[b.direction]; return a.ceiChange - b.ceiChange; });
 
-  var latestMonth = FM.length > 0 ? FM[FM.length - 1] : '—';
-  var latestMonthIdx = state.MONTHS ? state.MONTHS.indexOf(latestMonth) : -1;
-  var prevMonth = latestMonthIdx >= 1 ? state.MONTHS[latestMonthIdx - 1] : '—';
-  var threeAgoMonth = latestMonthIdx >= 3 ? state.MONTHS[latestMonthIdx - 3] : '—';
-  var firstMonth = FM.length > 0 ? FM[0] : '—';
-
-  // A bakery with incomplete data can have an older latest observation than
-  // the estate cut-off, so relationship labels are safer than a false date.
-  latestMonth = 'latest scored month';
-  prevMonth = 'prior calendar month';
-  threeAgoMonth = '3 calendar months earlier';
-  firstMonth = 'first completed month';
-  var trendCeiHeader = (isAbsolute ? 'Benchmark ' : 'Peer ') + 'Score (' + latestMonth + ')';
-  document.getElementById('targetTrendTable').innerHTML = '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">Performance Trends \u2014 Table</h3><p class="tracker-table-header__copy"><span style="color:var(--green);font-weight:600">\u2191 Improving</span> = +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">\u2193 Dipping</span> = \u22123pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">\u2194 Steady</span> = \u00b13pts &nbsp;&middot;&nbsp; Direction = month-on-month. 3-Month Trend = last 3 months. Click a bakery name for its full performance breakdown.</p></div></div><div class="table-wrap table-wrap--floating"><table><thead><tr><th>Bakery</th><th>Ops Area</th><th>' + trendCeiHeader + '</th><th>' + (isAbsolute ? 'Benchmark' : 'Peer') + ' Score Change<span class="th-sublabel">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Direction<span class="th-sublabel">Month-on-Month</span></th><th>NPS Change<span class="th-sublabel">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>3-Month Trend<span class="th-sublabel">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>3m ' + (isAbsolute ? 'Benchmark' : 'Peer') + ' Score Change<span class="th-sublabel">' + threeAgoMonth + ' &rarr; ' + latestMonth + '</span></th><th>Period Change<span class="th-sublabel">' + firstMonth + ' &rarr; ' + latestMonth + '</span></th><th>Dip Streak</th><th>Peak Month</th><th>Lowest Month</th><th>Quality &Delta;<span class="th-sublabel">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Efficiency &Delta;<span class="th-sublabel">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Friendliness &Delta;<span class="th-sublabel">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th><th>Coffee Efficiency &Delta;<span class="th-sublabel">' + prevMonth + ' &rarr; ' + latestMonth + '</span></th></tr></thead><tbody>' +
+  var trendCeiHeader = (isAbsolute ? 'Benchmark' : 'Peer') + ' Score';
+  document.getElementById('targetTrendTable').innerHTML = '<div class="tracker-table-header tracker-table-header--with-legend" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">Performance Trends \u2014 Table</h3><details class="focus-method focus-method--inline focus-method--overlay"><summary>Columns Explained</summary><p><span style="color:var(--green);font-weight:600">&uarr; Improving</span> means the score climbed 3 or more points since last month, <span style="color:var(--red);font-weight:600">&darr; Dipping</span> means it fell by that much, and <span style="color:var(--muted-l);font-weight:600">&harr; Steady</span> is everything in between. &Delta; Score and &Delta; NPS compare this month to last; 3m Trend and 3m &Delta; look back three months instead. Period &Delta; covers the bakery&rsquo;s whole time in focus so far, and Streak counts how many months running it&rsquo;s been dipping. Peak and Low are its best and worst months on record. The last four columns show how quality, efficiency, friendliness and coffee speed have moved since last month. Click a bakery&rsquo;s name for its full story.</p></details></div></div><div class="table-wrap table-wrap--floating table-wrap--trend-detail"><table class="trend-detail-table"><thead><tr><th>Bakery</th><th>Ops Area</th><th>' + trendCeiHeader + '</th><th>&Delta; Score</th><th>Direction</th><th>&Delta; NPS</th><th>3m Trend</th><th>3m &Delta;</th><th>Period &Delta;</th><th>Streak</th><th>Peak</th><th>Low</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>Coffee Eff.</th></tr></thead><tbody>' +
     trendData.map(function (t) {
       var streakWarn = t.streak >= 3 ? 'color:#6B4FA8;font-weight:700' : t.streak >= 2 ? 'color:var(--red);font-weight:600' : '';
-      return '<tr><td><button type="button" class="focus-name-link" data-focus-detail="' + G.escapeHtml(t.name) + '">' + t.name + '</button></td><td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(t.name) + '</td><td style="font-weight:700">' + (t.latest ? t.latest[cf] : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best[cf] + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst[cf] + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';
+      return '<tr><td>' + G.bakeryProfileLink(t.name, {
+        className: 'focus-name-link',
+        returnUrl: 'index.html#target',
+        returnLabel: 'Focus Bakeries'
+      }) + '</td><td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(t.name) + '</td><td style="font-weight:700">' + (t.latest ? t.latest[cf] : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best[cf] + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst[cf] + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   G.makeSortable(document.getElementById('targetTrendTable'));
 }

@@ -155,6 +155,32 @@ window.GAILS.escapeHtml = function(value) {
     .replace(/'/g, '&#39;');
 };
 
+// Every bakery-name table link carries its dashboard origin explicitly. URL
+// fragments are not included in document.referrer, so relying on the referrer
+// alone would lose the active tab and send users back to the wrong page.
+window.GAILS.getBakeryProfileUrl = function(name, options) {
+  options = options || {};
+  var returnUrl = options.returnUrl || 'index.html#visit-log';
+  var returnLabel = options.returnLabel || 'Bakery Directory';
+  var encodeQueryValue = function(value) {
+    return encodeURIComponent(value).replace(/'/g, '%27');
+  };
+  return 'bakery-profile.html?bakery=' + encodeQueryValue(name) +
+    '&from=' + encodeQueryValue(returnUrl) +
+    '&fromLabel=' + encodeQueryValue(returnLabel);
+};
+
+window.GAILS.bakeryProfileLink = function(name, options) {
+  options = options || {};
+  var label = options.label || name;
+  var className = ['bakery-profile-link', options.className || ''].filter(Boolean).join(' ');
+  var url = window.GAILS.getBakeryProfileUrl(name, options);
+  return '<a class="' + window.GAILS.escapeHtml(className) + '" href="' +
+    window.GAILS.escapeHtml(url) + '" aria-label="Open ' +
+    window.GAILS.escapeHtml(name) + ' bakery profile">' +
+    window.GAILS.escapeHtml(label) + '</a>';
+};
+
 window.GAILS.avg = function(arr, k) {
   if (!arr || !arr.length) return 0;
   var vs = arr.map(function(r) { return r ? r[k] : undefined; }).filter(function(v) { return typeof v === 'number' && !isNaN(v); });

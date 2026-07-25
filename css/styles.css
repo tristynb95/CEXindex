@@ -77,13 +77,49 @@ html {
   --r-lg: 18px;
   --r-xl: 24px;
   --r-pill: 999px;
+
+  /* ── Density scale ──
+     One height for every filter/toolbar control, and one stack gap between a
+     field label and its control, so the filter blocks that head each view all
+     collapse to the same compact rhythm instead of drifting apart. Changing
+     --control-h here retunes every filter row on the site at once.
+
+     Tuned for comfortable density rather than maximum density: the aim is to
+     fit a useful number of rows on a screen without the page reading as one
+     undifferentiated slab. --row-gap is the air between sibling data rows,
+     and is deliberately large enough to see where one row ends. */
+  --control-h: 38px;
+  --label-gap: 5px;
+  --row-gap: 8px;
+
+  /* ── List-view language ──
+     Focus Bakeries and Bakery Reports are the two list-first views: filter
+     block, result summary, column-headed list, pager. They had drifted apart
+     detail by detail — two label scales, one filter block boxed and one bare,
+     one column heading banded and one quiet — so the parts they share are
+     defined once here.
+
+     The values are Bakery Reports', which is the house style: --toolbar-* is
+     its tinted, bordered filter tray, and --micro-label-* is its uppercase
+     field caption, reused for filter-group labels and column headings.
+     Retuning here moves both views together; see SHARED LIST-VIEW LANGUAGE at
+     the end of this file for the rules that apply them. */
+  --toolbar-bg: rgba(34, 31, 26, 0.02);
+  --toolbar-radius: 12px;
+  --toolbar-pad-y: 13px;
+  --toolbar-pad-x: 16px;
+
+  --micro-label-size: 0.64rem;
+  --micro-label-weight: 700;
+  --micro-label-track: 0.06em;
+  --colhead-pad-y: 10px;
 }
 
 body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
-  line-height: 1.5;
+  line-height: 1.45;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
@@ -93,7 +129,9 @@ body {
    showing/hiding only shifts the visible window into the scroll container,
    never reflowing the page layout or jumping fixed elements ── */
 @media (max-width: 980px) {
-  html, body {
+
+  html,
+  body {
     height: auto;
     overflow-y: visible;
   }
@@ -412,7 +450,7 @@ h4 {
   font-size: 1.22rem;
 }
 
-.dashboard-invitation__body > p:not(.dashboard-invitation__eyebrow):not(.dashboard-invitation__error) {
+.dashboard-invitation__body>p:not(.dashboard-invitation__eyebrow):not(.dashboard-invitation__error) {
   color: var(--text-2);
   font-size: 0.86rem;
 }
@@ -426,7 +464,7 @@ h4 {
   background: var(--card-2);
 }
 
-.dashboard-invitation__details > div {
+.dashboard-invitation__details>div {
   display: grid;
   grid-template-columns: 92px minmax(0, 1fr);
   gap: 10px;
@@ -494,7 +532,7 @@ h4 {
     flex-basis: 34px;
   }
 
-  .dashboard-invitation__details > div {
+  .dashboard-invitation__details>div {
     grid-template-columns: 1fr;
     gap: 1px;
   }
@@ -569,7 +607,7 @@ h4 {
 .container {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 12px 24px;
+  padding: 10px 20px;
   overflow-x: hidden;
 }
 
@@ -579,7 +617,7 @@ h4 {
   border: 1px solid var(--card-border);
   border-radius: var(--r-lg);
   padding: 7px 14px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   display: block;
   box-shadow: var(--shadow-sm);
 }
@@ -599,10 +637,18 @@ h4 {
   font-size: 0.67rem;
   color: var(--muted);
   font-weight: 700;
+  line-height: 1.25;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  margin-bottom: 2px;
+  margin-bottom: var(--label-gap);
   display: block;
+}
+
+/* The markup separates each label from its control with a <br>. The label is
+   already display:block, so the break adds nothing but an empty line box —
+   about 20px of dead height on every filter bar on the site. */
+.filter-bar br {
+  display: none;
 }
 
 .filter-bar select,
@@ -650,10 +696,15 @@ h4 {
   pointer-events: none;
 }
 
+/* Height comes from --control-h so a custom trigger lines up with the plain
+   inputs and the Reset button sharing its row. The horizontal chrome is kept
+   lean (padding + gap + icon ≈ 38px) because on the single-row Bakery Reports
+   filter layout that chrome is subtracted from every control's label, and at
+   14px gap values like "All Regions" were being ellipsised. */
 .filter-select__trigger {
   width: 100%;
-  min-height: 32px;
-  padding: 6px 12px;
+  min-height: var(--control-h);
+  padding: 6px 10px;
   border: 1px solid var(--card-border-h);
   border-radius: 8px;
   background:
@@ -666,7 +717,7 @@ h4 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 8px;
   cursor: pointer;
   box-shadow: inset 0 1px 0 rgba(34, 31, 26, 0.03), 0 1px 3px rgba(48, 36, 22, 0.06);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease;
@@ -896,7 +947,7 @@ h4 {
   padding: 8px 12px;
   border: 1px solid var(--card-border-h);
   border-radius: 8px;
-  background: linear-gradient(180deg, rgba(34, 31, 26,0.04) 0%, rgba(34, 31, 26,0.01) 100%), rgba(255, 255, 255,0.96);
+  background: linear-gradient(180deg, rgba(34, 31, 26, 0.04) 0%, rgba(34, 31, 26, 0.01) 100%), rgba(255, 255, 255, 0.96);
   color: var(--text);
   font: inherit;
   font-size: 0.82rem;
@@ -906,14 +957,14 @@ h4 {
   justify-content: space-between;
   gap: 14px;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(34, 31, 26,0.03), 0 1px 3px rgba(48, 36, 22, 0.06);
+  box-shadow: inset 0 1px 0 rgba(34, 31, 26, 0.03), 0 1px 3px rgba(48, 36, 22, 0.06);
   transition: border-color 0.2s, box-shadow 0.2s;
   text-align: left;
 }
 
 .bakery-ms__trigger:hover {
-  border-color: rgba(178, 42, 36,0.45);
-  box-shadow: inset 0 1px 0 rgba(34, 31, 26,0.05), 0 3px 10px rgba(48, 36, 22, 0.09);
+  border-color: rgba(178, 42, 36, 0.45);
+  box-shadow: inset 0 1px 0 rgba(34, 31, 26, 0.05), 0 3px 10px rgba(48, 36, 22, 0.09);
 }
 
 .bakery-ms__trigger.is-open,
@@ -952,10 +1003,10 @@ h4 {
   left: 0;
   right: 0;
   padding: 8px;
-  border: 1px solid rgba(178, 42, 36,0.2);
+  border: 1px solid rgba(178, 42, 36, 0.2);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255,0.98) 0%, rgba(255, 255, 255,0.98) 100%);
-  box-shadow: 0 24px 48px rgba(48, 36, 22, 0.18), 0 0 0 1px rgba(34, 31, 26,0.03);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
+  box-shadow: 0 24px 48px rgba(48, 36, 22, 0.18), 0 0 0 1px rgba(34, 31, 26, 0.03);
   backdrop-filter: blur(18px);
   z-index: 300;
 }
@@ -966,15 +1017,15 @@ h4 {
   align-items: center;
   gap: 6px;
   padding: 4px 6px 8px;
-  border-bottom: 1px solid rgba(34, 31, 26,0.06);
+  border-bottom: 1px solid rgba(34, 31, 26, 0.06);
   margin-bottom: 4px;
 }
 
 .bakery-ms__search {
   flex: 1;
-  border: 1px solid rgba(34, 31, 26,0.1);
+  border: 1px solid rgba(34, 31, 26, 0.1);
   border-radius: 8px;
-  background: rgba(34, 31, 26,0.05);
+  background: rgba(34, 31, 26, 0.05);
   color: var(--text);
   font: inherit;
   font-size: 0.82rem;
@@ -983,19 +1034,21 @@ h4 {
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 
-.bakery-ms__search::placeholder { color: rgba(77, 70, 60,0.45); }
+.bakery-ms__search::placeholder {
+  color: rgba(77, 70, 60, 0.45);
+}
 
 .bakery-ms__search:focus {
-  border-color: rgba(178, 42, 36,0.5);
-  box-shadow: 0 0 0 2px rgba(178, 42, 36,0.12);
+  border-color: rgba(178, 42, 36, 0.5);
+  box-shadow: 0 0 0 2px rgba(178, 42, 36, 0.12);
 }
 
 .bakery-ms__clear {
   flex-shrink: 0;
   padding: 5px 10px;
-  border: 1px solid rgba(34, 31, 26,0.1);
+  border: 1px solid rgba(34, 31, 26, 0.1);
   border-radius: 8px;
-  background: rgba(34, 31, 26,0.05);
+  background: rgba(34, 31, 26, 0.05);
   color: var(--muted-l);
   font: inherit;
   font-size: 0.75rem;
@@ -1005,8 +1058,8 @@ h4 {
 }
 
 .bakery-ms__clear:hover {
-  background: rgba(178, 42, 36,0.18);
-  border-color: rgba(178, 42, 36,0.4);
+  background: rgba(178, 42, 36, 0.18);
+  border-color: rgba(178, 42, 36, 0.4);
   color: var(--accent);
 }
 
@@ -1039,7 +1092,7 @@ h4 {
 
 .bakery-ms__option:hover,
 .bakery-ms__option:focus-visible {
-  background: rgba(34, 31, 26,0.06);
+  background: rgba(34, 31, 26, 0.06);
   color: var(--text);
   outline: none;
 }
@@ -1049,7 +1102,7 @@ h4 {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(34, 31, 26,0.2);
+  border: 2px solid rgba(34, 31, 26, 0.2);
   border-radius: 4px;
   background: transparent;
   display: flex;
@@ -1081,7 +1134,7 @@ h4 {
 .bakery-ms__selected-section {
   margin-top: 4px;
   padding: 10px 6px 4px;
-  border-top: 1px solid rgba(34, 31, 26,0.07);
+  border-top: 1px solid rgba(34, 31, 26, 0.07);
 }
 
 .bakery-ms__selected-header {
@@ -1107,8 +1160,8 @@ h4 {
   height: 18px;
   padding: 0 5px;
   border-radius: 20px;
-  background: rgba(178, 42, 36,0.2);
-  border: 1px solid rgba(178, 42, 36,0.3);
+  background: rgba(178, 42, 36, 0.2);
+  border: 1px solid rgba(178, 42, 36, 0.3);
   color: var(--accent);
   font-size: 0.68rem;
   font-weight: 800;
@@ -1128,8 +1181,8 @@ h4 {
   align-items: center;
   gap: 5px;
   padding: 3px 5px 3px 9px;
-  background: rgba(34, 31, 26,0.05);
-  border: 1px solid rgba(34, 31, 26,0.1);
+  background: rgba(34, 31, 26, 0.05);
+  border: 1px solid rgba(34, 31, 26, 0.1);
   border-radius: 20px;
   font-size: 0.76rem;
   font-weight: 600;
@@ -1153,7 +1206,7 @@ h4 {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(34, 31, 26,0.1);
+  background: rgba(34, 31, 26, 0.1);
   color: var(--muted-l);
   font-size: 0.58rem;
   cursor: pointer;
@@ -1227,17 +1280,17 @@ h4 {
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .kpi {
   background:
     radial-gradient(circle at top right, rgba(201, 127, 18, 0.05) 0%, transparent 36%),
     #FFFFFF;
-  border-radius: 20px;
-  padding: 13px;
-  min-height: 126px;
+  border-radius: 18px;
+  padding: 11px 12px;
+  min-height: 104px;
   text-align: left;
   box-shadow: 0 4px 16px rgba(48, 36, 22, 0.06);
   border: 1px solid rgba(34, 31, 26, 0.09);
@@ -1330,13 +1383,17 @@ h4 {
   border-color: rgba(178, 42, 36, 0.18);
 }
 
+/* Deliberately a column, not a wrapping row: eyebrow and status fit on one
+   line for some tiles and not others, so sharing a line makes the row ragged
+   and the big values stop lining up across the KPI strip. Comparing those
+   values at a glance is worth more than the single line it would save. */
 .kpi__top {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 5px;
+  margin-bottom: 7px;
 }
 
 .kpi__eyebrow {
@@ -1374,7 +1431,7 @@ h4 {
   color: var(--text);
   letter-spacing: -0.04em;
   line-height: 1;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
@@ -1394,7 +1451,7 @@ h4 {
 
 .kpi__meta {
   margin-top: auto;
-  padding-top: 12px;
+  padding-top: 7px;
   color: var(--muted);
   font-size: 0.68rem;
   line-height: 1.35;
@@ -1562,7 +1619,7 @@ h4 {
 .section {
   /* Side padding as a variable so full-bleed children (tables on phones) can
      cancel exactly the padding in force, whatever a tab has overridden it to */
-  --section-pad-x: 22px;
+  --section-pad-x: 20px;
   background: var(--card);
   border-radius: var(--r-lg);
   padding: 16px var(--section-pad-x);
@@ -1578,9 +1635,9 @@ h4 {
 
 .section h2 {
   font-family: var(--font-display);
-  font-size: 0.98rem;
+  font-size: 0.94rem;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   color: var(--text);
   display: flex;
   align-items: center;
@@ -1651,9 +1708,9 @@ canvas {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
   flex-wrap: wrap;
-  margin: 12px 0 14px;
+  margin: 6px 0 9px;
 }
 
 .overview-rankings-toolbar__copy {
@@ -1663,7 +1720,7 @@ canvas {
 }
 
 .overview-rankings-toolbar__title {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
 }
 
 .overview-rankings-toolbar__text {
@@ -1744,8 +1801,8 @@ canvas {
   flex: 0 0 256px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px 16px;
+  gap: 10px;
+  padding: 13px 14px;
   border-right: 1px solid rgba(34, 31, 26, 0.08);
   background:
     radial-gradient(circle at top left, rgba(178, 42, 36, 0.06) 0%, transparent 42%),
@@ -1918,8 +1975,8 @@ canvas {
 
 .dashboard-nav {
   display: grid;
-  gap: 8px;
-  padding-top: 12px;
+  gap: 6px;
+  padding-top: 11px;
   border-top: 1px solid rgba(34, 31, 26, 0.06);
 }
 
@@ -1931,9 +1988,9 @@ canvas {
   appearance: none;
   position: relative;
   width: 100%;
-  min-height: 50px;
-  padding: 12px 14px;
-  border-radius: 14px;
+  min-height: 44px;
+  padding: 10px 13px;
+  border-radius: 13px;
   border: 1px solid rgba(34, 31, 26, 0.04);
   background: rgba(34, 31, 26, 0.022);
   color: var(--text);
@@ -2105,8 +2162,8 @@ canvas {
   flex: 1 1 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
-  padding: 24px 28px 28px;
+  gap: 14px;
+  padding: 18px 24px 22px;
 }
 
 .dashboard-workspace__toolbar {
@@ -2129,6 +2186,7 @@ canvas {
    height across the title and card rows, pushing both down compared with the
    other views. Pack the rows to the top on desktop instead. */
 @media (min-width: 981px) {
+
   body[data-dash-tab="table"] .dashboard-workspace__main,
   body[data-dash-tab="map"] .dashboard-workspace__main,
   body[data-dash-tab="target"] .dashboard-workspace__main,
@@ -2138,9 +2196,9 @@ canvas {
 }
 
 .section-page-title {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-family: var(--font-display);
-  font-size: 1.45rem;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -2501,7 +2559,7 @@ canvas {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .league-table-toolbar__label {
@@ -2634,8 +2692,35 @@ canvas {
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
-  margin: 0 0 8px;
+  margin: 0 0 20px;
 }
+
+/* Variant for headers that carry a "Columns Explained" disclosure: title,
+   disclosure and fullscreen button all share a single line. The explanation
+   opens as an overlay panel, so the row never reflows on toggle. */
+.tracker-table-header--with-legend {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Reset the shared `flex: 1 1 320px` — that basis over-reserves width and
+   shunted the fullscreen button onto a second flex line. */
+.tracker-table-header--with-legend .tracker-table-header__content {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+
+.tracker-table-header--with-legend .tracker-table-header__title {
+  margin-bottom: 0;
+}
+
+/* The disclosure itself is styled by .focus-method--overlay: it hugs its
+   label and opens as an out-of-flow panel, which is what keeps this row from
+   wrapping the fullscreen button onto a second line. */
 
 .tracker-table-header__content {
   min-width: 0;
@@ -2658,7 +2743,7 @@ canvas {
   margin: 0;
   font-size: 0.74rem;
   color: var(--muted-l);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 /* Shared compact control for entering and leaving full-screen views. Tables and
@@ -2759,15 +2844,15 @@ canvas {
 .league-table td:first-child {
   position: sticky;
   left: 0;
-  width: 48px;
-  min-width: 48px;
+  width: 76px;
+  min-width: 76px;
   background: var(--bg-2);
 }
 
 .league-table th:nth-child(2),
 .league-table td:nth-child(2) {
   position: sticky;
-  left: 48px;
+  left: 76px;
   background: var(--bg-2);
   /* Elevation edge on the frozen pane's outer boundary */
   box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
@@ -2798,15 +2883,15 @@ canvas {
 
   .league-table th:first-child,
   .league-table td:first-child {
-    width: 36px;
-    min-width: 36px;
+    width: 64px;
+    min-width: 64px;
     padding-left: 8px;
     padding-right: 8px;
   }
 
   .league-table th:nth-child(2),
   .league-table td:nth-child(2) {
-    left: 36px;
+    left: 64px;
     max-width: 128px;
     padding-left: 8px;
     white-space: normal;
@@ -2875,6 +2960,7 @@ canvas {
 }
 
 @media (max-width: 640px) {
+
   /* The header reads "#" here, so the column only has to hold two digits */
   .support-priority-table {
     --support-priority-rank-width: 36px;
@@ -2969,6 +3055,40 @@ canvas {
   }
 }
 
+/* Focus Bakeries trend detail table: only the bakery name needs to stay
+   pinned while the many trend columns scroll — there's no rank column here. */
+.table-wrap--trend-detail {
+  position: relative;
+  isolation: isolate;
+  background: var(--bg-2);
+}
+
+.trend-detail-table {
+  border-collapse: collapse;
+}
+
+.trend-detail-table th:first-child,
+.trend-detail-table td:first-child {
+  position: sticky;
+  left: 0;
+  min-width: 160px;
+  background: var(--bg-2);
+  box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
+}
+
+.trend-detail-table th:first-child {
+  background: var(--bg);
+  z-index: 3;
+}
+
+.trend-detail-table td:first-child {
+  z-index: 1;
+}
+
+.trend-detail-table tr:hover td:first-child {
+  background: #F9F3ED;
+}
+
 .table-wrap--panel {
   max-height: min(46vh, 460px);
   overflow-y: auto;
@@ -2986,7 +3106,7 @@ th {
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 8px 12px;
+  padding: 9px 13px;
   text-align: left;
   font-weight: 700;
   text-transform: uppercase;
@@ -3036,7 +3156,7 @@ th.sort-desc::after {
 }
 
 td {
-  padding: 8px 12px;
+  padding: 10px 13px;
   border-bottom: 1px solid rgba(34, 31, 26, 0.035);
   white-space: nowrap;
   color: var(--text-2);
@@ -3487,22 +3607,22 @@ body.table-fullscreen-lock {
 
 /* ══════════════════════════════════════ METHODOLOGY PAGE ══ */
 .methodology {
-  padding: 22px 26px;
+  padding: 16px 20px;
 }
 
 .methodology__lead {
-  font-size: 1rem !important;
+  font-size: 0.94rem !important;
   color: var(--text) !important;
-  line-height: 1.65 !important;
-  margin-bottom: 18px !important;
+  line-height: 1.55 !important;
+  margin-bottom: 12px !important;
 }
 
 /* Section headings act as anchors down the page */
 .methodology h3 {
   font-family: var(--font-display);
-  font-size: 1rem;
-  margin: 28px 0 12px;
-  padding-bottom: 8px;
+  font-size: 0.96rem;
+  margin: 18px 0 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--card-border);
   display: flex;
   align-items: center;
@@ -3648,10 +3768,13 @@ body.table-fullscreen-lock {
 }
 
 @keyframes auth-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 16px 36px rgba(148, 29, 25, 0.35), inset 0 2px 6px rgba(255, 255, 255, 0.25);
     transform: translate3d(0, 0, 0);
   }
+
   50% {
     box-shadow: 0 22px 48px rgba(148, 29, 25, 0.45), inset 0 2px 6px rgba(255, 255, 255, 0.30);
     transform: translate3d(0, -4px, 0);
@@ -3687,15 +3810,18 @@ body.table-fullscreen-lock {
   }
 }
 
-@media (max-width: 480px), (max-height: 480px) {
+@media (max-width: 480px),
+(max-height: 480px) {
   .auth-loading__logo {
     width: 80px;
     padding: 10px 14px;
     border-radius: 12px;
   }
+
   .auth-loading-content {
     gap: 14px;
   }
+
   .auth-loading__text {
     font-size: 0.78rem;
   }
@@ -4332,7 +4458,7 @@ body.table-fullscreen-lock {
   font-weight: 800;
 }
 
-.visit-detail-body > p {
+.visit-detail-body>p {
   margin: 0;
   color: var(--muted);
   font-size: 0.86rem;
@@ -6631,6 +6757,47 @@ body.table-fullscreen-lock {
   margin-bottom: 18px;
 }
 
+.admin-region-assignments {
+  margin: 18px 0 24px;
+}
+
+.admin-region-assignments__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+
+.admin-region-assignments__header h4 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.admin-region-assignments__header p {
+  max-width: 760px;
+  margin: 6px 0 0;
+  color: var(--muted-l);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.admin-region-assignments__header .admin-toolbar__meta {
+  flex: 0 0 auto;
+  padding-top: 0;
+}
+
+.admin-table--region-assignments {
+  min-width: 640px;
+}
+
+.admin-table--region-assignments th:first-child,
+.admin-table--region-assignments td:first-child {
+  width: 28%;
+}
+
 .admin-site-import__zone {
   cursor: pointer;
 }
@@ -7063,6 +7230,1017 @@ body.table-fullscreen-lock {
     flex-direction: column;
     align-items: stretch;
   }
+
+  .admin-region-assignments__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* ========== Bakery profile page ========== */
+.bakery-profile-body {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.bakery-profile-page {
+  min-height: 100vh;
+}
+
+.bakery-profile-header {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  padding: 12px clamp(20px, 4vw, 56px);
+  color: #fff;
+  background: rgba(34, 31, 26, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.bakery-profile-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.bakery-profile-header__brand img {
+  width: 57px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.bakery-profile-header__brand span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bakery-profile-header__brand small {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.bakery-profile-header__brand strong {
+  font-size: 0.94rem;
+}
+
+.bakery-profile-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bakery-profile-header__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 13px;
+  color: rgba(255, 255, 255, 0.82);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+
+.bakery-profile-header__link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.bakery-profile-main {
+  width: min(1440px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 36px 0 72px;
+}
+
+.bakery-profile-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 34px;
+  padding: 32px clamp(24px, 4vw, 48px);
+  color: #fff;
+  background:
+    radial-gradient(circle at 88% 20%, rgba(201, 127, 18, 0.24), transparent 30%),
+    linear-gradient(135deg, #2b2721 0%, #413831 58%, #6d2925 100%);
+  border: 1px solid rgba(34, 31, 26, 0.08);
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.bakery-profile-eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.bakery-profile-hero .bakery-profile-eyebrow {
+  color: #efb0aa;
+}
+
+.bakery-profile-hero h1 {
+  max-width: 850px;
+  margin: 0;
+  font-size: clamp(2rem, 4.2vw, 3.8rem);
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 1.02;
+}
+
+.bakery-profile-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.bakery-profile-hero__meta span {
+  padding: 6px 10px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-pill);
+}
+
+.bakery-profile-hero__asof {
+  flex: 0 0 auto;
+  min-width: 170px;
+  padding: 17px 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 15px;
+}
+
+.bakery-profile-hero__asof span,
+.bakery-profile-hero__asof strong {
+  display: block;
+}
+
+.bakery-profile-hero__asof span {
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bakery-profile-hero__asof strong {
+  font-size: 1rem;
+}
+
+.bakery-profile-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.bakery-profile-section-heading h2,
+.bakery-profile-card__head h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.2rem;
+  letter-spacing: -0.025em;
+}
+
+.bakery-profile-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.bakery-profile-stat {
+  position: relative;
+  min-height: 145px;
+  overflow: hidden;
+  padding: 19px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 17px;
+  box-shadow: var(--shadow-sm);
+}
+
+.bakery-profile-stat::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  content: "";
+  background: var(--stat-color, var(--accent));
+}
+
+.bakery-profile-stat--green {
+  --stat-color: var(--green);
+}
+
+.bakery-profile-stat--amber {
+  --stat-color: var(--amber);
+}
+
+.bakery-profile-stat--red {
+  --stat-color: var(--red);
+}
+
+.bakery-profile-stat--blue {
+  --stat-color: var(--blue);
+}
+
+.bakery-profile-stat--teal {
+  --stat-color: var(--teal);
+}
+
+.bakery-profile-stat--purple {
+  --stat-color: var(--purple);
+}
+
+.bakery-profile-stat span,
+.bakery-profile-stat strong,
+.bakery-profile-stat small {
+  display: block;
+}
+
+.bakery-profile-stat span {
+  margin-bottom: 12px;
+  color: var(--muted-l);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.bakery-profile-stat strong {
+  color: var(--text);
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.bakery-profile-stat small {
+  margin-top: 11px;
+  color: var(--muted-l);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.bakery-profile-grid {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.bakery-profile-grid--map {
+  grid-template-columns: minmax(0, 1.55fr) minmax(310px, 0.75fr);
+}
+
+.bakery-profile-grid--activity {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bakery-profile-card {
+  min-width: 0;
+  padding: 23px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 19px;
+  box-shadow: var(--shadow-sm);
+}
+
+.bakery-profile-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.bakery-profile-card__head--notes {
+  margin-bottom: 22px;
+}
+
+.bakery-profile-card__head--notes p:last-child {
+  max-width: 650px;
+  margin: 7px 0 0;
+  color: var(--muted-l);
+  font-size: 0.78rem;
+}
+
+.bakery-profile-tag,
+.bakery-profile-count {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 0 9px;
+  color: var(--accent);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  background: var(--accent-light);
+  border-radius: var(--r-pill);
+}
+
+.bakery-profile-tag--muted,
+.bakery-profile-count {
+  color: var(--text-2);
+  background: rgba(34, 31, 26, 0.06);
+}
+
+.bakery-profile-map {
+  width: 100%;
+  height: 390px;
+  overflow: hidden;
+  background: var(--card-2);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+}
+
+.bakery-profile-map__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 30px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.bakery-profile-map .leaflet-control-attribution {
+  font-size: 9px;
+}
+
+.bakery-profile-card__status {
+  margin: 10px 2px 0;
+  color: var(--muted-l);
+  font-size: 0.7rem;
+}
+
+.bakery-profile-card--competition {
+  display: flex;
+  flex-direction: column;
+}
+
+.bakery-competition-empty {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 220px;
+  padding: 26px 18px;
+  text-align: center;
+  background: var(--card-2);
+  border: 1px dashed var(--card-border-h);
+  border-radius: 14px;
+}
+
+.bakery-competition-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 13px;
+  color: var(--accent);
+  font-size: 1.35rem;
+  background: var(--accent-light);
+  border-radius: 50%;
+}
+
+.bakery-competition-empty h3 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.bakery-competition-empty p {
+  max-width: 340px;
+  margin: 0;
+  color: var(--muted-l);
+  font-size: 0.73rem;
+  line-height: 1.55;
+}
+
+.bakery-competition-scope {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 16px 0 0;
+  overflow: hidden;
+  background: var(--card-border);
+  border: 1px solid var(--card-border);
+  border-radius: 11px;
+}
+
+.bakery-competition-scope div {
+  min-width: 0;
+  padding: 11px;
+  background: var(--card);
+}
+
+.bakery-competition-scope dt {
+  color: var(--muted-l);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bakery-competition-scope dd {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bakery-profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bakery-profile-empty {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 170px;
+  padding: 28px;
+  color: var(--muted-l);
+  text-align: center;
+  background: var(--card-2);
+  border: 1px dashed var(--card-border);
+  border-radius: 13px;
+}
+
+.bakery-profile-empty strong {
+  margin-bottom: 5px;
+  color: var(--text-2);
+  font-size: 0.82rem;
+}
+
+.bakery-profile-empty span {
+  max-width: 360px;
+  font-size: 0.72rem;
+}
+
+.bakery-activity-row,
+.bakery-task-row {
+  display: flex;
+  gap: 12px;
+  padding: 13px 14px;
+  background: var(--card-2);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+}
+
+.bakery-activity-row__marker {
+  flex: 0 0 10px;
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  background: var(--accent);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+
+.bakery-activity-row__body,
+.bakery-task-row__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.bakery-activity-row__top,
+.bakery-task-row__body>div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bakery-activity-row strong,
+.bakery-task-row strong {
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.bakery-activity-row p,
+.bakery-task-row p {
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-size: 0.72rem;
+}
+
+.bakery-activity-row small,
+.bakery-task-row small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted-l);
+  font-size: 0.65rem;
+}
+
+.bakery-profile-small-btn,
+.bakery-profile-secondary-btn,
+.bakery-note-entry__edit {
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.69rem;
+  font-weight: 800;
+  background: var(--accent-light);
+  border: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+
+.bakery-profile-small-btn {
+  min-height: 30px;
+  padding: 0 11px;
+}
+
+.bakery-profile-secondary-btn {
+  min-height: 36px;
+  padding: 0 13px;
+  color: var(--text-2);
+  background: rgba(34, 31, 26, 0.06);
+}
+
+.bakery-profile-inline-form {
+  margin-bottom: 14px;
+  padding: 16px;
+  background: var(--card-2);
+  border: 1px solid var(--card-border-h);
+  border-radius: 13px;
+}
+
+.bakery-profile-inline-form label,
+.bakery-note-composer label {
+  display: block;
+}
+
+.bakery-profile-inline-form label>span {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  color: var(--text-2);
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
+.bakery-profile-inline-form label>span em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.bakery-profile-inline-form input,
+.bakery-profile-inline-form textarea,
+.bakery-profile-inline-form select,
+.bakery-note-composer textarea {
+  width: 100%;
+  padding: 9px 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.76rem;
+  background: #fff;
+  border: 1px solid var(--card-border-h);
+  border-radius: 9px;
+  outline: none;
+}
+
+.bakery-profile-inline-form input:focus,
+.bakery-profile-inline-form textarea:focus,
+.bakery-profile-inline-form select:focus,
+.bakery-note-composer textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+
+.bakery-profile-inline-form>label+label {
+  margin-top: 11px;
+}
+
+.bakery-profile-inline-form__row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 11px;
+}
+
+.bakery-profile-inline-form__actions,
+.bakery-note-composer__footer,
+.bakery-note-composer__footer>div {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.bakery-profile-inline-form__actions {
+  margin-top: 13px;
+}
+
+.bakery-profile-inline-form__actions .btn,
+.bakery-note-composer .btn {
+  min-height: 36px;
+  padding: 0 15px;
+  font-size: 0.7rem;
+}
+
+.bakery-profile-form-message {
+  margin-top: 10px;
+  padding: 8px 10px;
+  color: var(--text-2);
+  font-size: 0.69rem;
+  background: rgba(34, 31, 26, 0.05);
+  border-radius: 8px;
+}
+
+.bakery-profile-form-message.is-error {
+  color: var(--red);
+  background: var(--red-d);
+}
+
+.bakery-profile-form-message.is-success {
+  color: var(--green);
+  background: var(--green-d);
+}
+
+.bakery-task-row__check {
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  color: #fff;
+  font-size: 0.72rem;
+  background: #fff;
+  border: 1.5px solid var(--card-border-h);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.bakery-task-row__check[aria-pressed="true"],
+.bakery-task-row__check--static:not(:empty) {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.bakery-task-row__check--static {
+  cursor: default;
+}
+
+.bakery-task-row.is-done {
+  opacity: 0.66;
+}
+
+.bakery-task-row.is-done strong {
+  text-decoration: line-through;
+}
+
+.bakery-priority {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 2px 7px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-transform: capitalize;
+  border-radius: var(--r-pill);
+}
+
+.bakery-priority--low {
+  color: var(--blue);
+  background: var(--blue-d);
+}
+
+.bakery-priority--medium {
+  color: var(--amber);
+  background: var(--gold-d);
+}
+
+.bakery-priority--high {
+  color: var(--red);
+  background: var(--red-d);
+}
+
+.bakery-profile-card--notes {
+  margin-top: 18px;
+}
+
+.bakery-note-composer {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 11px;
+  margin-bottom: 26px;
+  padding: 16px;
+  background: var(--card-2);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+}
+
+.bakery-note-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), #7a211d);
+  border-radius: 50%;
+}
+
+.bakery-note-composer textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.bakery-note-composer__footer {
+  grid-column: 2;
+  justify-content: space-between;
+}
+
+.bakery-note-composer__footer>span {
+  color: var(--muted-l);
+  font-size: 0.66rem;
+}
+
+.bakery-note-composer .bakery-profile-form-message {
+  grid-column: 2;
+  margin-top: 0;
+}
+
+.bakery-notes-timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.bakery-notes-timeline::before {
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  left: 18px;
+  width: 1px;
+  content: "";
+  background: var(--card-border-h);
+}
+
+.bakery-note-entry {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 0 0 22px;
+}
+
+.bakery-note-entry:last-child {
+  padding-bottom: 0;
+}
+
+.bakery-note-entry__body {
+  flex: 1;
+  min-width: 0;
+  padding: 13px 15px;
+  background: var(--card-2);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+}
+
+.bakery-note-entry__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.bakery-note-entry__head strong,
+.bakery-note-entry__head span {
+  display: block;
+}
+
+.bakery-note-entry__head strong {
+  font-size: 0.75rem;
+}
+
+.bakery-note-entry__head span {
+  margin-top: 2px;
+  color: var(--muted-l);
+  font-size: 0.61rem;
+}
+
+.bakery-note-entry__edit {
+  padding: 4px 8px;
+  background: transparent;
+}
+
+.bakery-note-entry__edit:hover {
+  background: var(--accent-light);
+}
+
+.bakery-note-entry__body p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.76rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.bakery-profile-empty--notes {
+  min-height: 130px;
+}
+
+.bakery-directory__profile-link {
+  color: var(--text);
+  font-weight: 700;
+  text-decoration-color: rgba(178, 42, 36, 0.3);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.bakery-directory__profile-link:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+.bakery-directory__profile-link:focus-visible {
+  border-radius: 3px;
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+@media (max-width: 1120px) {
+  .bakery-profile-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bakery-profile-grid--map {
+    grid-template-columns: minmax(0, 1.2fr) minmax(290px, 0.8fr);
+  }
+}
+
+@media (max-width: 820px) {
+  .bakery-profile-main {
+    width: min(100% - 24px, 720px);
+    padding-top: 20px;
+  }
+
+  .bakery-profile-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 24px;
+    padding: 26px 22px;
+  }
+
+  .bakery-profile-hero__asof {
+    min-width: 0;
+  }
+
+  .bakery-profile-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bakery-profile-grid--map,
+  .bakery-profile-grid--activity {
+    grid-template-columns: 1fr;
+  }
+
+  .bakery-profile-map {
+    height: 330px;
+  }
+}
+
+@media (max-width: 560px) {
+  .bakery-profile-header {
+    min-height: 62px;
+    padding: 10px 12px;
+  }
+
+  .bakery-profile-header__brand img {
+    width: 49px;
+    height: 36px;
+  }
+
+  .bakery-profile-header__brand small,
+  .bakery-profile-header__actions button {
+    display: none;
+  }
+
+  .bakery-profile-header__brand strong {
+    font-size: 0.8rem;
+  }
+
+  .bakery-profile-header__link {
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 0.68rem;
+  }
+
+  .bakery-profile-main {
+    width: calc(100% - 20px);
+    padding-bottom: 40px;
+  }
+
+  .bakery-profile-hero {
+    border-radius: 18px;
+  }
+
+  .bakery-profile-hero h1 {
+    font-size: 2rem;
+  }
+
+  .bakery-profile-hero__meta {
+    gap: 6px;
+  }
+
+  .bakery-profile-hero__meta span {
+    width: 100%;
+  }
+
+  .bakery-profile-stats {
+    gap: 8px;
+  }
+
+  .bakery-profile-stat {
+    min-height: 125px;
+    padding: 15px;
+  }
+
+  .bakery-profile-stat span {
+    margin-bottom: 9px;
+    font-size: 0.58rem;
+  }
+
+  .bakery-profile-card {
+    padding: 17px;
+    border-radius: 16px;
+  }
+
+  .bakery-profile-map {
+    height: 285px;
+  }
+
+  .bakery-competition-scope {
+    grid-template-columns: 1fr;
+  }
+
+  .bakery-profile-inline-form__row {
+    grid-template-columns: 1fr;
+  }
+
+  .bakery-note-composer {
+    grid-template-columns: 30px minmax(0, 1fr);
+    padding: 12px;
+  }
+
+  .bakery-note-avatar {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+    font-size: 0.6rem;
+  }
+
+  .bakery-note-composer__footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bakery-note-composer__footer>div {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .bakery-notes-timeline::before {
+    left: 14px;
+  }
 }
 
 /* ── Sparkline scale toggle ── */
@@ -7202,18 +8380,18 @@ body.table-fullscreen-lock {
 .chart-caption {
   font-size: 0.78rem;
   color: var(--muted-l);
-  margin: 2px 0 14px;
-  line-height: 1.5;
+  margin: 2px 0 9px;
+  line-height: 1.45;
 }
 
 .insight-grid {
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .insight-card {
-  padding: 14px 16px;
+  padding: 11px 14px;
 }
 
 .insight-card h4 {
@@ -8023,7 +9201,8 @@ body.table-fullscreen-lock {
 @media print {
 
   /* Reset overflow and height constraints on document structure for printing */
-  html, body {
+  html,
+  body {
     overflow: visible !important;
     height: auto !important;
     min-height: 0 !important;
@@ -8308,17 +9487,25 @@ body.table-fullscreen-lock {
   height: 100%;
   font-size: 0.65rem;
   font-weight: 700;
-  color: rgba(34, 31, 26,0.9);
+  color: rgba(34, 31, 26, 0.9);
   letter-spacing: 0.02em;
   overflow: hidden;
   white-space: nowrap;
-  transition: flex-basis 0.5s cubic-bezier(.4,0,.2,1);
+  transition: flex-basis 0.5s cubic-bezier(.4, 0, .2, 1);
   min-width: 0;
 }
 
-.wc-sentiment-bar__seg--pos { background: #1D9E5C; }
-.wc-sentiment-bar__seg--neu { background: #A79E8E; }
-.wc-sentiment-bar__seg--neg { background: #B22A24; }
+.wc-sentiment-bar__seg--pos {
+  background: #1D9E5C;
+}
+
+.wc-sentiment-bar__seg--neu {
+  background: #A79E8E;
+}
+
+.wc-sentiment-bar__seg--neg {
+  background: #B22A24;
+}
 
 .wc-sentiment-bar__labels {
   display: flex;
@@ -8328,8 +9515,13 @@ body.table-fullscreen-lock {
   color: var(--muted);
 }
 
-.wc-sentiment-bar__label--neg { color: #B22A24; }
-.wc-sentiment-bar__label--pos { color: #1D9E5C; }
+.wc-sentiment-bar__label--neg {
+  color: #B22A24;
+}
+
+.wc-sentiment-bar__label--pos {
+  color: #1D9E5C;
+}
 
 /* Tag that appears in the top-right corner of the word cloud box */
 .wc-sentiment-tag {
@@ -8344,7 +9536,7 @@ body.table-fullscreen-lock {
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(6px);
-  border: 1px solid rgba(34, 31, 26,0.1);
+  border: 1px solid rgba(34, 31, 26, 0.1);
   font: 700 0.75rem/1 Inter, system-ui, sans-serif;
   color: var(--text);
   pointer-events: none;
@@ -8396,8 +9588,13 @@ body.table-fullscreen-lock {
   margin-bottom: 8px;
 }
 
-.wc-sig__col-label--pos { color: var(--green); }
-.wc-sig__col-label--neg { color: var(--accent); }
+.wc-sig__col-label--pos {
+  color: var(--green);
+}
+
+.wc-sig__col-label--neg {
+  color: var(--accent);
+}
 
 .wc-sig__list {
   display: flex;
@@ -8413,7 +9610,9 @@ body.table-fullscreen-lock {
   border-bottom: 1px solid var(--card-border);
 }
 
-.wc-sig__item:last-child { border-bottom: none; }
+.wc-sig__item:last-child {
+  border-bottom: none;
+}
 
 .wc-sig__rank {
   font: 700 0.7rem/1 Inter, system-ui, sans-serif;
@@ -8459,8 +9658,13 @@ body.table-fullscreen-lock {
 }
 
 @media (max-width: 520px) {
-  .wc-sig__cols { grid-template-columns: 1fr; }
-  .wc-sig__bar-wrap { width: 40px; }
+  .wc-sig__cols {
+    grid-template-columns: 1fr;
+  }
+
+  .wc-sig__bar-wrap {
+    width: 40px;
+  }
 }
 
 /* ── Word Cloud Drift Panel ─────────────────────────────────────────────── */
@@ -8493,8 +9697,13 @@ body.table-fullscreen-lock {
   margin-bottom: 8px;
 }
 
-.wc-drift__col-label--up   { color: var(--green); }
-.wc-drift__col-label--down { color: var(--accent); }
+.wc-drift__col-label--up {
+  color: var(--green);
+}
+
+.wc-drift__col-label--down {
+  color: var(--accent);
+}
 
 .wc-drift__item {
   display: flex;
@@ -8505,7 +9714,9 @@ body.table-fullscreen-lock {
   border-bottom: 1px solid var(--card-border);
 }
 
-.wc-drift__item:last-child { border-bottom: none; }
+.wc-drift__item:last-child {
+  border-bottom: none;
+}
 
 .wc-drift__word {
   font: 600 0.84rem/1.2 Inter, system-ui, sans-serif;
@@ -8522,10 +9733,25 @@ body.table-fullscreen-lock {
   border-radius: 20px;
 }
 
-.wc-drift__badge--up   { background: var(--green-d);  color: var(--green); }
-.wc-drift__badge--down { background: var(--red-d);    color: var(--accent); }
-.wc-drift__badge--new  { background: var(--blue-d);   color: var(--blue); }
-.wc-drift__badge--gone { background: rgba(122, 113, 98,0.12); color: var(--muted-l); }
+.wc-drift__badge--up {
+  background: var(--green-d);
+  color: var(--green);
+}
+
+.wc-drift__badge--down {
+  background: var(--red-d);
+  color: var(--accent);
+}
+
+.wc-drift__badge--new {
+  background: var(--blue-d);
+  color: var(--blue);
+}
+
+.wc-drift__badge--gone {
+  background: rgba(122, 113, 98, 0.12);
+  color: var(--muted-l);
+}
 
 .wc-drift__empty {
   font: 400 0.8rem/1.4 Inter, system-ui, sans-serif;
@@ -8533,7 +9759,9 @@ body.table-fullscreen-lock {
 }
 
 @media (max-width: 520px) {
-  .wc-drift__cols { grid-template-columns: 1fr; }
+  .wc-drift__cols {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Word Cloud Month Range Slider ──────────────────────────────────────── */
@@ -8619,7 +9847,9 @@ body.table-fullscreen-lock {
   transition: transform 0.15s ease;
 }
 
-.wc-month-range__slider::-webkit-slider-thumb:hover { transform: scale(1.12); }
+.wc-month-range__slider::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
 
 .wc-month-range__slider::-moz-range-thumb {
   width: 16px;
@@ -8637,9 +9867,19 @@ body.table-fullscreen-lock {
 }
 
 @media (max-width: 520px) {
-  .wc-month-range__header { flex-direction: column; align-items: flex-start; }
-  .wc-month-range__presets { width: 100%; }
-  .wc-month-range__preset { flex: 1 1 auto; text-align: center; }
+  .wc-month-range__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .wc-month-range__presets {
+    width: 100%;
+  }
+
+  .wc-month-range__preset {
+    flex: 1 1 auto;
+    text-align: center;
+  }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -9059,7 +10299,7 @@ a,
     border-color: rgba(178, 42, 36, 0.2);
   }
 
-  .filter-controls .bakery-ms__trigger.is-open ~ .bakery-ms__dropdown {
+  .filter-controls .bakery-ms__trigger.is-open~.bakery-ms__dropdown {
     display: block;
   }
 
@@ -9155,6 +10395,7 @@ a,
       transform: translateY(-6px) scaleY(0.98);
       transform-origin: top;
     }
+
     to {
       opacity: 1;
       transform: translateY(0) scaleY(1);
@@ -9207,7 +10448,7 @@ a,
     color: var(--text) !important;
     font-weight: 700;
   }
-  
+
   /* Multiselect search input focus style */
   .filter-controls .bakery-ms__search:focus {
     border-color: var(--accent) !important;
@@ -9720,7 +10961,7 @@ a,
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     width: 100%;
     flex-wrap: nowrap;
   }
@@ -10242,6 +11483,7 @@ a,
   box-shadow: 0 4px 16px rgba(48, 36, 22, 0.14) !important;
   backdrop-filter: blur(4px);
 }
+
 .map-area-tooltip::before {
   display: none !important;
 }
@@ -10259,6 +11501,7 @@ a,
   min-width: 160px;
   pointer-events: none !important;
 }
+
 .map-marker-tooltip::before {
   display: none !important;
 }
@@ -10277,6 +11520,7 @@ a,
   pointer-events: none !important;
   white-space: nowrap;
 }
+
 .map-name-tooltip::before {
   display: none !important;
 }
@@ -10343,6 +11587,7 @@ a,
    here is redundant and only crowds the toggle row. Below 641px the floating
    legend is hidden (see its @media rule), so these keys stay to own the job. */
 @media (min-width: 641px) {
+
   .map-legend-key,
   #targetMapLegendHint {
     display: none;
@@ -10673,16 +11918,19 @@ body.map-fullscreen-active .dashboard-workspace__main {
 }
 
 /* ── Visit Log Styles ── */
+/* The reference filter tray — Focus Bakeries' action-list toolbar takes the
+   same surface via the --toolbar-* tokens (see SHARED LIST-VIEW LANGUAGE at
+   the end of this file). */
 .visit-log-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 15px;
-  background: rgba(34, 31, 26, 0.02);
+  gap: 10px 12px;
+  background: var(--toolbar-bg);
   border: 1px solid var(--card-border);
-  border-radius: 12px;
-  padding: 15px 20px;
-  margin-bottom: 25px;
+  border-radius: var(--toolbar-radius);
+  padding: var(--toolbar-pad-y) var(--toolbar-pad-x);
+  margin-bottom: 14px;
 }
 
 .visit-log-mobile-filter-btn,
@@ -10703,7 +11951,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
 .visit-log-filter-control {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--label-gap);
   flex: 1;
   min-width: 180px;
 }
@@ -10716,24 +11964,24 @@ body.visit-log-filter-open .mobile-bottom-nav {
   flex: 0 1 220px;
 }
 
-/* Desktop: a two-row grid of four equal columns, shared by both views —
-   Search / Region / Ops Area / Group By on top; Period / Sort By / Visit
-   Type / Rating below, with the Reset icon in its own slim end column.
-   Every control is one column wide, so all boxes are the same size and
-   nothing drifts between rows as the viewport changes.
+/* Desktop: a grid of four equal columns, shared by both views — Search /
+   Region / Ops Area / Group By on top; Period / Sort By / Visit Type /
+   Rating below. Every control is one column wide, so all boxes are the same
+   size and nothing drifts between rows as the viewport changes.
 
-   Reset occupies the end column of row 1, which is what pushes Period —
-   the fifth control in source order — down to the start of row 2. Keeping
-   the tracks equal (rather than pinning Search to a fixed width) is what
-   lets row 2 line up with row 1: a fixed-width first column would be
-   inherited by whatever sat beneath it.
+   Four columns, not four plus a slim Reset track. A reserved fifth track is
+   only ever wide enough for the icon button, so as soon as the control count
+   pushed one control into it — Sort By, in the 721-980px range — that
+   control was squeezed to a bare chevron. Reset flows as an ordinary grid
+   item instead and simply takes the last free cell, which also removes the
+   empty gap that the reserved track left at the end of the second row.
 
    minmax(0, ...) stops a wide control from inflating its track and
    squeezing its neighbours into truncation. */
 @media (min-width: 721px) {
   .visit-log-filters {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) 38px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: end;
   }
 
@@ -10741,15 +11989,14 @@ body.visit-log-filter-open .mobile-bottom-nav {
     min-width: 0;
   }
 
-  /* Permanent square icon button in its reserved end column, bottom-
-     aligned with the top row of dropdowns (38px tall). Neutral grey/white
-     resting state so it reads as a plain utility control, not an alert. */
+  /* Square icon button, bottom-aligned with the dropdowns on its row.
+     Neutral grey/white resting state so it reads as a plain utility
+     control, not an alert. */
   .visit-log-filters .visit-log-reset-btn {
-    grid-column: -2 / -1;
-    grid-row: 1;
     align-self: end;
-    width: 38px;
-    height: 38px;
+    justify-self: start;
+    width: var(--control-h);
+    height: var(--control-h);
     padding: 0;
     background: rgba(34, 31, 26, 0.05);
     border: 1px solid var(--card-border);
@@ -10773,32 +12020,52 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 }
 
+/* No single-row variant here, deliberately. Packing all seven controls plus
+   Reset onto one row saves ~65px, but .container caps the workspace at
+   1440px, so that row is stuck at roughly 1030px however wide the monitor
+   is — about 124px per control once Search and Reset take their share. That
+   is not enough for the values these dropdowns actually hold: "All Regions"
+   and "Last 3 Months" both ellipsised, and a filter whose current value you
+   cannot read is worse than a filter block one row taller. The four-column
+   grid above gives every control ~230px and nothing truncates. */
+
 /* Narrow desktop: a quarter-width column gets too tight for the Search
    placeholder, so Search takes its own full row and the dropdowns flow
-   four per row beneath it. */
+   four per row beneath it.
+
+   :first-child matters — unscoped, this gave every control its own full row
+   and stacked the whole block into a ~420px wall before any results. */
 @media (min-width: 721px) and (max-width: 900px) {
-  .visit-log-filters > .visit-log-filter-control {
-    grid-column: 1 / -2;
+  .visit-log-filters>.visit-log-filter-control:first-child {
+    grid-column: 1 / -1;
   }
 }
 
+/* The reference field caption — Focus Bakeries' filter-group labels and column
+   headings read the same tokens (see SHARED LIST-VIEW LANGUAGE at the end of
+   this file). */
 .visit-log-filter-control label {
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: var(--micro-label-size);
+  font-weight: var(--micro-label-weight);
+  line-height: 1.25;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--micro-label-track);
   color: var(--muted-l);
 }
 
+/* min-height rather than height: the class is also worn by the notes
+   textareas in the Log Visit / Follow-up modals, which set their own taller
+   min-height and must keep growing with their content. */
 .visit-log-input,
 .visit-log-select {
   appearance: none;
   background: var(--bg);
   border: 1px solid var(--card-border-h);
   border-radius: 8px;
-  padding: 8px 12px;
+  min-height: var(--control-h);
+  padding: 6px 11px;
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text);
   width: 100%;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -10820,7 +12087,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 14px;
-  padding-right: 32px;
+  padding-right: 30px;
 }
 
 .visit-log-input:focus,
@@ -10867,10 +12134,10 @@ body.visit-log-filter-open .mobile-bottom-nav {
   color: var(--text);
   border: 1px solid var(--card-border);
   border-radius: 8px;
-  padding: 9px 16px;
+  padding: 0 14px;
   cursor: pointer;
   transition: all 0.2s ease;
-  height: 38px;
+  height: var(--control-h);
 }
 
 .visit-log-reset-btn svg {
@@ -10907,8 +12174,8 @@ body.visit-log-filter-open .mobile-bottom-nav {
 .visit-log-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 15px;
+  gap: var(--row-gap);
+  margin-top: 12px;
   /* Content is swapped wholesale on every filter change; scroll position is
      restored manually (preserveScrollPosition), so keep the browser's own
      scroll anchoring from also adjusting and causing a double correction. */
@@ -10916,15 +12183,50 @@ body.visit-log-filter-open .mobile-bottom-nav {
 }
 
 
+/* Column headings for the visit list. Without them the row is a line of bare
+   values — a person's name in the partner column and another in the ops-area
+   line, a bare "92%", a bare "—" — and the reader has to infer what each one
+   is. Shares .visit-log-row's grid so the labels sit over their columns.
+
+   The hide breakpoint must track .visit-log-row's own card breakpoint below
+   (max-width: 980px): once a row reflows into a two-column card, headings
+   have no columns left to sit over and just stack into a jumble. */
+.visit-log-head {
+  display: grid;
+  grid-template-columns: 116px minmax(190px, 1.5fr) 112px 72px minmax(0, 2fr) 96px;
+  align-items: end;
+  gap: 16px;
+  /* 19px, not 18px: the rows carry a 1px border that the header does not, so
+     matching the row's padding alone would leave the labels a pixel out.
+     No bottom padding — the container's --row-gap already spaces it. */
+  padding: 0 19px 1px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted-l);
+}
+
+@media (max-width: 980px) {
+  .visit-log-head {
+    display: none;
+  }
+}
+
+/* Bakery is the widest single value in the row and was capped at 180px, so
+   most names wrapped to two lines and set the height of the whole list.
+   Giving it a proportional share (and taking it back off the fixed date,
+   partner and score columns, which hold short values) keeps almost every
+   name on one line, which is most of the row-height saving here. */
 .visit-log-row {
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: 12px;
-  padding: 14px 20px;
+  padding: 11px 18px;
   display: grid;
-  grid-template-columns: 140px 180px 130px 90px 1fr 100px;
+  grid-template-columns: 116px minmax(190px, 1.5fr) 112px 72px minmax(0, 2fr) 96px;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
@@ -10939,7 +12241,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
 .visit-log-row__date-col {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .visit-log-row__date {
@@ -10956,7 +12258,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
 .visit-log-row__bakery-col {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .visit-log-row__bakery {
@@ -10988,7 +12290,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
 .visit-log-row__notes-col {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -11120,7 +12422,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
     padding: 12px 14px;
   }
 
-  .visit-log-filters > .visit-log-filter-control {
+  .visit-log-filters>.visit-log-filter-control {
     grid-column: auto;
     min-width: 0;
   }
@@ -11412,91 +12714,344 @@ body.visit-log-filter-open .mobile-bottom-nav {
     gap: 10px;
     padding: 14px;
   }
-  
+
   .visit-log-row__date-col {
     grid-column: 1;
   }
-  
+
   .visit-log-row__score-col {
     grid-column: 2;
     text-align: right;
   }
-  
+
   .visit-log-row__bakery-col {
     grid-column: 1 / span 2;
   }
-  
+
   .visit-log-row__partner {
     grid-column: 1;
     font-size: 0.78rem;
   }
-  
+
   .visit-log-row__notes-col {
     grid-column: 1 / span 2;
   }
-  
+
   .visit-log-row__action-col {
     grid-column: 1 / span 2;
     text-align: left;
     margin-top: 4px;
   }
-  
+
   .visit-log-row__btn {
     width: 100%;
     text-align: center;
   }
 }
 
-/* ── Visit Log primary actions ──────────────────────────────────────────
-   The title and primary actions use compact, separate rows on Bakery Reports. */
-.visit-log-actions {
-  display: none;
-  gap: 10px;
-  align-items: stretch;
+/* ── Bakery Reports view nav ────────────────────────────────────────────
+   The view switcher is the Focus Bakeries sub-tab bar (.target-subtabs__nav
+   + .target-subtab), sitting above the card exactly as Focus's does — this
+   class only supplies the gap that Focus gets from its .target-subtabs grid. */
+.visit-log-subtabs {
+  margin-bottom: 16px;
 }
 
-body[data-dash-tab="visit-log"] .section-page-header {
+/* The directory uses the standard result/export bar but has no follow-up
+   status state behind it. */
+#tab-visit-log[data-visit-view="bakeries"] .follow-up-status-toggle {
+  display: none !important;
+}
+
+/* ── Bakery directory ───────────────────────────────────────────────────
+   Reuse the League Table surface and row rhythm. The directory only supplies
+   its column sizing and resets the semantic row-header cell to body-cell
+   styling; the shared table rules own the visual treatment. */
+.table-wrap--directory {
+  background: var(--bg-2);
+}
+
+.table-wrap--directory .bakery-directory {
+  width: 100%;
+  min-width: 900px;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin-top: 0;
+}
+
+.bakery-directory caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.bakery-directory thead {
+  position: static;
+}
+
+.bakery-directory thead th {
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+  background-clip: border-box;
+  box-shadow: none;
+  cursor: default;
+}
+
+.bakery-directory thead th:nth-child(1) {
+  width: 28%;
+}
+
+.bakery-directory thead th:nth-child(2) {
+  width: 23%;
+}
+
+.bakery-directory thead th:nth-child(3) {
+  width: 16%;
+}
+
+.bakery-directory thead th:nth-child(4),
+.bakery-directory thead th:nth-child(5) {
+  width: 16.5%;
+}
+
+.bakery-directory tbody th {
+  position: static;
+  top: auto;
+  z-index: auto;
+  padding: 10px 13px;
+  border: 0;
+  border-bottom: 1px solid rgba(34, 31, 26, 0.035);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  cursor: default;
+  user-select: text;
+  transition: background 0.15s ease;
+}
+
+.bakery-profile-link {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: rgba(178, 42, 36, 0.42);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.bakery-profile-link:hover {
+  color: var(--accent);
+  text-decoration-style: solid;
+  text-decoration-color: var(--accent);
+}
+
+.bakery-profile-link:focus-visible {
+  border-radius: 3px;
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.bakery-directory__profile-link {
+  color: var(--text);
+  font-weight: 700;
+  text-decoration-color: rgba(178, 42, 36, 0.3);
+  text-underline-offset: 3px;
+}
+
+.bakery-directory__profile-link:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+.bakery-directory tbody tr:hover th {
+  background: rgba(178, 42, 36, 0.028);
+  color: var(--text);
+}
+
+.bakery-directory tbody tr:last-child>th {
+  border-bottom: 0;
+}
+
+.bakery-directory tbody .bakery-directory__group-row th {
+  padding: 0;
+  border-top: 1px solid var(--card-border-h);
+  border-bottom: 1px solid var(--card-border-h);
+  background: var(--bg);
+}
+
+.bakery-directory tbody .bakery-directory__group-row:hover th {
+  background: var(--bg);
+}
+
+/* The group label is a button, not static text, so the whole band is a
+   click target for collapsing the group — not just the chevron or the name. */
+.bakery-directory__group-toggle {
   display: flex;
-  align-items: stretch;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 13px;
+  border: none;
+  background: none;
+  color: var(--gold);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s ease;
 }
 
-body[data-dash-tab="visit-log"] .section-page-title {
+.bakery-directory__group-toggle:hover {
+  color: var(--accent);
+}
+
+.bakery-directory__group-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: 6px;
+}
+
+.bakery-directory__group-toggle em {
+  margin-left: 8px;
+  font-style: normal;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted-l);
+}
+
+.bakery-directory__group-chevron {
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  flex: 0 0 auto;
+  transition: transform 0.2s ease;
+}
+
+.bakery-directory__group-row.collapsed .bakery-directory__group-chevron {
+  transform: rotate(-90deg);
+}
+
+@media (max-width: 640px) {
+  .table-wrap--directory .bakery-directory {
+    min-width: 760px;
+  }
+}
+
+/* ── Bakery Reports card header ─────────────────────────────────────────
+   Standfirst left, primary actions pinned top-right inside the card. The
+   actions used to sit beside the page h1 outside it; on a page whose nav bar
+   now spans the full width, buttons floating above that bar read as page
+   chrome rather than as actions on this card. */
+.visit-log-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  /* Clears the filter tray below by more than the tray clears the summary
+     bar: this row is the card's header, and at the tray's own 14px it read as
+     the first item in the filter stack rather than as the header above it. */
+  margin-bottom: 20px;
+}
+
+/* Overrides .section h2, which is sized for a chart card's caption and adds a
+   bottom margin the flex row supplies here. */
+.visit-log-section-header .visit-log-section-title {
   margin: 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 
-body[data-dash-tab="visit-log"] .visit-log-actions {
+.visit-log-actions {
   display: flex;
-  align-self: flex-end;
+  gap: 14px;
+  align-items: center;
   margin-left: auto;
 }
 
+/* .btn and .visit-log-actions are both display:flex, which beats the hidden
+   attribute's UA display:none — so the per-view toggling in
+   syncVisitLogActions needs these. */
+.visit-log-actions[hidden],
+.visit-log-actions__btn[hidden] {
+  display: none;
+}
+
+/* Smaller than a page-level button: this is a card action now, and at the old
+   0.85rem/18px it outweighed the title beside it. */
 .visit-log-actions__btn {
-  padding: 9px 18px;
-  font-size: 0.85rem;
+  padding: 7px 14px;
+  font-size: 0.78rem;
   font-weight: 700;
   text-decoration: none;
 }
 
-/* On phones the two buttons share the full width on a single line when
-   they fit; on narrower screens the row wraps so the longer "Complete
-   Visit Form" button drops to its own full-width line rather than
-   running off the right edge. */
+/* The Google Form is a hand-off to another tool, not an action this app
+   performs, so it reads as a link with an external-link glyph rather than
+   competing with the view's one primary button. */
+.visit-log-actions__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted-l);
+  text-decoration: underline;
+  text-decoration-color: rgba(77, 70, 60, 0.3);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.visit-log-actions__link svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+}
+
+.visit-log-actions__link:hover {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}
+
+.visit-log-actions__link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* On phones the action slot takes its own full-width row under the title
+   rather than running off the right edge: the button stretches, the form link
+   sits beside it. */
 @media (max-width: 640px) {
-  body[data-dash-tab="visit-log"] .visit-log-actions {
+  .visit-log-actions {
     align-self: stretch;
     width: 100%;
     margin-left: 0;
-    gap: 8px;
     flex-wrap: wrap;
   }
 
   .visit-log-actions__btn {
     flex: 1 1 0;
     white-space: nowrap;
-    padding: 9px 12px;
-    font-size: 0.8rem;
+    padding: 7px 10px;
   }
 }
 
@@ -11513,18 +13068,20 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   background: rgba(34, 31, 26, 0.03);
   border: 1px solid var(--card-border);
   color: var(--text-2);
-  font-size: 0.82rem;
+  font-size: 0.79rem;
   font-weight: 700;
   white-space: nowrap;
-  padding: 8px 18px;
+  padding: 6px 15px;
   border-radius: var(--r-pill);
   cursor: pointer;
   transition: all 0.2s ease;
 }
+
 .visit-log-toggle-btn:hover {
   background: rgba(34, 31, 26, 0.08);
   color: var(--text);
 }
+
 .visit-log-toggle-btn.active {
   background: var(--accent);
   color: #fff;
@@ -11537,9 +13094,9 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  margin-bottom: 15px;
+  gap: 6px;
+  padding: 7px 12px;
+  margin-bottom: 10px;
   background: rgba(34, 31, 26, 0.02);
   border: 1px solid var(--card-border);
   border-radius: 10px;
@@ -11561,52 +13118,6 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--muted-l);
-}
-
-.visit-log-summary__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.66rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--chip-color);
-  background: var(--chip-bg);
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 4px 10px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.visit-log-summary__chip:hover {
-  border-color: var(--chip-color);
-}
-
-.visit-log-summary__chip.active {
-  border-color: var(--chip-color);
-  box-shadow: inset 0 0 0 1px var(--chip-color);
-}
-
-/* While a type filter is active, the other chips stay visible (with their
-   counts) but recede; hovering restores them to signal they're clickable. */
-.visit-log-summary__chip.dimmed {
-  opacity: 0.4;
-  filter: grayscale(0.5);
-}
-
-.visit-log-summary__chip.dimmed:hover {
-  opacity: 1;
-  filter: none;
-}
-
-.visit-log-summary__chip-count {
-  background: rgba(255, 255, 255, 0.85);
-  color: inherit;
-  border-radius: 999px;
-  padding: 1px 7px;
-  font-size: 0.66rem;
 }
 
 .visit-log-summary__actions {
@@ -11637,21 +13148,13 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   background: var(--accent-light);
 }
 
-.visit-log-summary__add-task {
-  font-size: 0.72rem;
-  font-weight: 800;
-  white-space: nowrap;
-  color: #fff;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  padding: 5px 13px;
-  border-radius: var(--r-pill);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.visit-log-summary__add-task:hover {
-  filter: brightness(1.05);
+.visit-log-summary__export:disabled,
+.visit-log-summary__export:disabled:hover {
+  opacity: 0.48;
+  color: var(--muted-l);
+  border-color: var(--card-border);
+  background: var(--card);
+  cursor: not-allowed;
 }
 
 /* ── Form modals (Log Visit, Add follow-up) ─────────────────────────
@@ -12213,11 +13716,37 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   min-width: 0;
 }
 
+.follow-up-item__bakery {
+  margin-bottom: 3px;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
 .follow-up-item__title {
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--text);
   line-height: 1.35;
+}
+
+.follow-up-item__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+  color: var(--muted-l);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.follow-up-item__context-item {
+  color: inherit;
+}
+
+.follow-up-item__context-item strong {
+  font-weight: 500;
 }
 
 .follow-up-item__detail {
@@ -12272,6 +13801,7 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
 }
 
 @media (max-width: 560px) {
+
   /* The builder row already stacks its meta line, so it needs no change here;
      only the priority/date pair collapses to one column on narrow screens. */
   .follow-up-builder__meta {
@@ -12398,10 +13928,13 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   transform: rotate(-90deg);
 }
 
+/* Visit rows sit in here, not directly in .visit-log-list, so this gap — not
+   the list's — is what actually separates one row from the next. Both read
+   --row-gap so they can't drift apart. */
 .unvisited-manager-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--row-gap);
 }
 
 .unvisited-manager-section.collapsed .unvisited-manager-body {
@@ -12474,6 +14007,7 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   padding: 0;
   margin-bottom: 30px;
 }
+
 .unvisited-manager-title {
   font-size: 0.95rem;
   font-weight: 700;
@@ -12481,11 +14015,13 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   margin-bottom: 12px;
   margin-top: 0;
 }
+
 .unvisited-bakeries-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 10px;
 }
+
 .unvisited-bakery-item {
   background: var(--card);
   border: 1px solid var(--card-border);
@@ -12495,6 +14031,7 @@ body[data-dash-tab="visit-log"] .visit-log-actions {
   color: var(--text-2);
   transition: all 0.2s ease;
 }
+
 .unvisited-bakery-item:hover {
   border-color: var(--accent);
   color: var(--text);
@@ -12615,6 +14152,7 @@ table.nps-splits-collapsed .nps-split-col {
 }
 
 @media (max-width: 980px) {
+
   .header-pill-core,
   .header-pill-filter {
     font-size: 0.64rem;
@@ -12626,6 +14164,7 @@ table.nps-splits-collapsed .nps-split-col {
 }
 
 @media (max-width: 640px) {
+
   .header-pill-core,
   .header-pill-filter {
     font-size: 0.58rem;
@@ -12732,11 +14271,13 @@ table.nps-splits-collapsed .nps-split-col {
     grid-column: span 2;
     margin-top: 8px;
   }
+
   .filter-reset-btn {
     min-height: 42px;
     font-size: 0.88rem;
     border-radius: 12px;
   }
+
   .filter-reset-btn svg {
     display: none !important;
   }
@@ -12794,7 +14335,7 @@ table.nps-splits-collapsed .nps-split-col {
   color: var(--text);
 }
 
-.admin-role-matrix__group > p {
+.admin-role-matrix__group>p {
   margin: 0 0 14px;
   font-size: 0.76rem;
   line-height: 1.45;
@@ -13139,7 +14680,7 @@ table.nps-splits-collapsed .nps-split-col {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-#createUserForm > .btn {
+#createUserForm>.btn {
   justify-self: start;
 }
 
@@ -13256,7 +14797,7 @@ table.nps-splits-collapsed .nps-split-col {
   line-height: 1.02;
 }
 
-.profile-page__intro > p:last-child {
+.profile-page__intro>p:last-child {
   color: var(--muted-l);
   font-size: 1rem;
 }
@@ -13369,7 +14910,7 @@ table.nps-splits-collapsed .nps-split-col {
 }
 
 .profile-role span,
-.profile-field > span {
+.profile-field>span {
   color: var(--text-2);
   font-size: 0.68rem;
   font-weight: 800;
@@ -13655,7 +15196,7 @@ body.profile-modal-open {
     flex-direction: column-reverse;
   }
 
-  .profile-modal .profile-form__actions > * {
+  .profile-modal .profile-form__actions>* {
     justify-content: center;
     width: 100%;
   }
@@ -13708,7 +15249,7 @@ body.profile-modal-open {
    above the "Bakery support queue" title */
 #targetHubQueue {
   scroll-margin-top: 96px;
-  margin-bottom: clamp(30px, 3vw, 40px);
+  margin-bottom: clamp(16px, 2vw, 24px);
 }
 
 .focus-section-title {
@@ -13717,16 +15258,16 @@ body.profile-modal-open {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--muted-l);
-  margin: 16px 0 9px;
+  margin: 10px 0 6px;
 }
 
 .focus-queue__bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin: 16px 0 12px;
+  margin: 10px 0 8px;
 }
 
 .focus-queue__chips {
@@ -13823,9 +15364,20 @@ body.profile-modal-open {
   white-space: nowrap;
 }
 
-.focus-tier--critical { background: var(--red-d); color: var(--red); }
-.focus-tier--high { background: rgba(201, 127, 18, 0.14); color: var(--amber); }
-.focus-tier--watch { background: rgba(140, 130, 114, 0.14); color: var(--muted-l); }
+.focus-tier--critical {
+  background: var(--red-d);
+  color: var(--red);
+}
+
+.focus-tier--high {
+  background: rgba(201, 127, 18, 0.14);
+  color: var(--amber);
+}
+
+.focus-tier--watch {
+  background: rgba(140, 130, 114, 0.14);
+  color: var(--muted-l);
+}
 
 /* ── At-a-glance spotlight ── */
 .focus-spots {
@@ -13926,7 +15478,9 @@ body.profile-modal-open {
   display: inline-block;
 }
 
-.focus-area-legend__note { color: var(--muted); }
+.focus-area-legend__note {
+  color: var(--muted);
+}
 
 .focus-area-list {
   border: 1px solid var(--card-border);
@@ -13946,9 +15500,13 @@ body.profile-modal-open {
   transition: background 0.14s ease;
 }
 
-.focus-area-row:last-child { border-bottom: none; }
+.focus-area-row:last-child {
+  border-bottom: none;
+}
 
-.focus-area-row:hover { background: rgba(178, 42, 36, 0.035); }
+.focus-area-row:hover {
+  background: rgba(178, 42, 36, 0.035);
+}
 
 .focus-area-row:focus-visible {
   outline: 2px solid var(--accent);
@@ -13984,9 +15542,14 @@ body.profile-modal-open {
   min-width: 8px;
 }
 
-.focus-area-row__bar i { display: block; height: 100%; }
+.focus-area-row__bar i {
+  display: block;
+  height: 100%;
+}
 
-.focus-area-row__bar i + i { border-left: 1px solid rgba(255, 255, 255, 0.7); }
+.focus-area-row__bar i+i {
+  border-left: 1px solid rgba(255, 255, 255, 0.7);
+}
 
 .focus-area-row__count {
   font-size: 0.72rem;
@@ -14033,7 +15596,9 @@ body.profile-modal-open {
 }
 
 /* ── Bakery priority queue (ranked list) ── */
-.focus-qwrap { overflow-x: auto; }
+.focus-qwrap {
+  overflow-x: auto;
+}
 
 .focus-qlist {
   min-width: 760px;
@@ -14075,9 +15640,13 @@ body.profile-modal-open {
   transition: background 0.14s ease;
 }
 
-.focus-qrow:last-child { border-bottom: none; }
+.focus-qrow:last-child {
+  border-bottom: none;
+}
 
-.focus-qrow:hover { background: rgba(178, 42, 36, 0.035); }
+.focus-qrow:hover {
+  background: rgba(178, 42, 36, 0.035);
+}
 
 .focus-qrow:focus-visible {
   outline: 2px solid var(--accent);
@@ -14216,7 +15785,9 @@ body.profile-modal-open {
   font-weight: 600;
 }
 
-.focus-qrow__visit { text-align: center; }
+.focus-qrow__visit {
+  text-align: center;
+}
 
 .focus-qdot {
   display: inline-block;
@@ -14225,9 +15796,13 @@ body.profile-modal-open {
   border-radius: 50%;
 }
 
-.focus-qdot--ok { background: var(--green); }
+.focus-qdot--ok {
+  background: var(--green);
+}
 
-.focus-qdot--stale { background: var(--amber); }
+.focus-qdot--stale {
+  background: var(--amber);
+}
 
 .focus-qdot--never {
   background: transparent;
@@ -14429,7 +16004,7 @@ body.profile-modal-open {
   background: var(--card);
 }
 
-#focusDetailModal .focus-detail-section--trend > .focus-at-a-glance {
+#focusDetailModal .focus-detail-section--trend>.focus-at-a-glance {
   margin-bottom: 22px;
 }
 
@@ -14576,7 +16151,9 @@ body.profile-modal-open {
   border-bottom: 1px dashed var(--card-border-h);
 }
 
-.focus-driver:last-child { border-bottom: none; }
+.focus-driver:last-child {
+  border-bottom: none;
+}
 
 .focus-driver__head {
   display: flex;
@@ -14706,7 +16283,7 @@ body.profile-modal-open {
   background: var(--card);
 }
 
-.focus-history-disclosure > summary {
+.focus-history-disclosure>summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -14718,32 +16295,32 @@ body.profile-modal-open {
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.focus-history-disclosure > summary::-webkit-details-marker {
+.focus-history-disclosure>summary::-webkit-details-marker {
   display: none;
 }
 
-.focus-history-disclosure > summary:hover {
+.focus-history-disclosure>summary:hover {
   background: var(--accent-light);
   color: var(--accent);
 }
 
-.focus-history-disclosure > summary:focus-visible {
+.focus-history-disclosure>summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -3px;
 }
 
-.focus-history-disclosure > summary > span:first-child {
+.focus-history-disclosure>summary>span:first-child {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
-.focus-history-disclosure > summary strong {
+.focus-history-disclosure>summary strong {
   font-size: 0.78rem;
 }
 
-.focus-history-disclosure > summary small {
+.focus-history-disclosure>summary small {
   color: var(--muted-l);
   font-size: 0.66rem;
   line-height: 1.35;
@@ -14759,7 +16336,7 @@ body.profile-modal-open {
   transition: transform 0.18s ease, color 0.18s ease;
 }
 
-.focus-history-disclosure[open] > summary {
+.focus-history-disclosure[open]>summary {
   border-bottom: 1px solid var(--card-border);
 }
 
@@ -14904,7 +16481,7 @@ body.profile-modal-open {
     height: 175px;
   }
 
-  #focusDetailModal .focus-detail-section--trend > .focus-at-a-glance {
+  #focusDetailModal .focus-detail-section--trend>.focus-at-a-glance {
     margin-bottom: 16px;
   }
 
@@ -14955,8 +16532,8 @@ body.profile-modal-open {
   font-size: 0.72rem;
 }
 
-.focus-data-status > span,
-.focus-data-status > details {
+.focus-data-status>span,
+.focus-data-status>details {
   padding: 6px 9px;
   border: 1px solid var(--card-border);
   border-radius: 8px;
@@ -15023,6 +16600,52 @@ body.profile-modal-open {
   line-height: 1.55;
 }
 
+/* Table-header placement: sits beside the title instead of the sidebar spot
+   focus-method normally fills, so it should hug its own text width when
+   closed and only claim the full 360px once opened. */
+.focus-method--inline {
+  width: auto;
+  align-self: center;
+}
+
+.focus-method--inline[open] {
+  width: min(360px, 100%);
+}
+
+/* Opens as a floating panel rather than expanding in flow. Closed, the
+   control hugs its label so `margin-left: auto` can sit it flush against the
+   container edge — the default `width: min(360px, 100%)` otherwise leaves the
+   label ranged left inside a 360px box that never looks right-aligned. Open,
+   the copy is out of flow, so it cannot widen or stretch the row it sits in.
+   Dismissed by click-outside/Escape in js/app.js. */
+.focus-method--overlay,
+.focus-method--overlay[open] {
+  position: relative;
+  flex: 0 0 auto;
+  width: auto;
+  margin-left: auto;
+  border-color: transparent;
+  background: transparent;
+}
+
+.focus-method--overlay summary {
+  padding: 6px 0;
+  white-space: nowrap;
+}
+
+.focus-method--overlay>p {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: min(400px, 72vw);
+  padding: 12px 14px;
+  border: 1px solid var(--card-border-h);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow-md);
+}
+
 /* ── Action list row buttons ── */
 .focus-qrow__action button {
   appearance: none;
@@ -15077,8 +16700,8 @@ body.profile-modal-open {
 }
 
 .focus-queue__summary {
-  flex: 0 0 auto;
-  max-width: 320px;
+  flex: 0 1 auto;
+  max-width: 460px;
   color: var(--text-2);
   font-size: 0.74rem;
   line-height: 1.45;
@@ -15088,6 +16711,13 @@ body.profile-modal-open {
 .focus-queue__summary span {
   display: block;
   color: var(--muted-l);
+}
+
+/* One active-filter label. Kept whole so the line can only break at the " · "
+   between labels — "Visit due" split over two lines read as two filters. */
+.focus-queue__summary em {
+  font-style: normal;
+  white-space: nowrap;
 }
 
 .focus-queue__bar {
@@ -15174,7 +16804,7 @@ body.profile-modal-open {
   background: rgba(255, 255, 255, 0.52);
 }
 
-.focus-secondary + .focus-secondary {
+.focus-secondary+.focus-secondary {
   margin-top: 20px;
 }
 
@@ -15235,20 +16865,25 @@ body.profile-modal-open {
 .focus-qrow,
 .focus-qlist.has-delta .focus-qhead,
 .focus-qlist.has-delta .focus-qrow {
-  grid-template-columns: 84px minmax(118px, 1.3fr) minmax(90px, 0.85fr) minmax(76px, 0.7fr) minmax(138px, 1.2fr) minmax(86px, 0.75fr) 104px;
+  /* Widths follow the longest realistic value in each column, not an even
+     split: "Down 15.8 points" and "Last visit: 10 Jul 2026" were each
+     wrapping onto two or three lines and setting the height of the whole
+     row, while the columns beside them sat half empty. Fitting them on one
+     line makes the row both shorter and easier to read. */
+  grid-template-columns: 84px minmax(150px, 1.32fr) minmax(126px, 0.92fr) minmax(120px, 0.74fr) minmax(140px, 0.94fr) minmax(120px, 0.8fr) 104px;
   gap: 14px;
-  padding: 14px 16px;
+  padding: 12px 16px;
 }
 
 .focus-qhead {
-  font-size: 0.6rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted-l);
   background: var(--bg);
-  padding-top: 12px;
-  padding-bottom: 12px;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .focus-qrow {
@@ -15257,7 +16892,9 @@ body.profile-modal-open {
   background: transparent;
 }
 
-.focus-qrow:hover { background: rgba(178, 42, 36, 0.028); }
+.focus-qrow:hover {
+  background: rgba(178, 42, 36, 0.028);
+}
 
 .focus-qrow__urgency,
 .focus-qrow__performance,
@@ -15276,7 +16913,7 @@ body.profile-modal-open {
 .focus-qrow__urgency {
   align-self: start;
   gap: 2px;
-  padding: 8px 11px;
+  padding: 7px 10px;
   border-radius: 10px;
 }
 
@@ -15418,7 +17055,7 @@ body.profile-modal-open {
    next step in their own panel beneath the columns. */
 .focus-qrow--lead {
   position: relative;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   border-bottom: none;
   border-radius: 0 12px 0 12px;
   background: linear-gradient(160deg, rgba(178, 42, 36, 0.07), rgba(178, 42, 36, 0.012) 62%);
@@ -15432,14 +17069,14 @@ body.profile-modal-open {
 .focus-qrow__lead-why {
   grid-column: 1 / -1;
   display: grid;
-  gap: 7px;
-  margin-top: 12px;
-  padding: 13px 16px;
+  gap: 6px;
+  margin-top: 11px;
+  padding: 12px 15px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.6);
   color: var(--text-2);
-  font-size: 0.82rem;
-  line-height: 1.55;
+  font-size: 0.81rem;
+  line-height: 1.5;
 }
 
 .focus-qrow__lead-tag {
@@ -15525,14 +17162,37 @@ body.profile-modal-open {
     border-radius: 0 14px 0 14px;
   }
 
-  .focus-qrow__who { grid-area: who; }
-  .focus-qrow__urgency { grid-area: urgency; }
-  .focus-qrow__performance { grid-area: performance; }
-  .focus-qrow__delta { grid-area: delta; }
-  .focus-qrow__fix { grid-area: reason; }
-  .focus-qrow__visit { grid-area: visit; }
-  .focus-qrow__action { grid-area: action; }
-  .focus-qrow__lead-why { grid-area: lead; }
+  .focus-qrow__who {
+    grid-area: who;
+  }
+
+  .focus-qrow__urgency {
+    grid-area: urgency;
+  }
+
+  .focus-qrow__performance {
+    grid-area: performance;
+  }
+
+  .focus-qrow__delta {
+    grid-area: delta;
+  }
+
+  .focus-qrow__fix {
+    grid-area: reason;
+  }
+
+  .focus-qrow__visit {
+    grid-area: visit;
+  }
+
+  .focus-qrow__action {
+    grid-area: action;
+  }
+
+  .focus-qrow__lead-why {
+    grid-area: lead;
+  }
 
   .focus-qrow__action button {
     width: auto;
@@ -15761,9 +17421,7 @@ html {
 }
 
 /* ── 3. Bakery Reports summary card ──
-   The desktop layout (total inline with big uppercase chips, actions
-   pushed right) collapsed into a jumble on phones. Stack it: total on
-   its own line, compact chips, then full-width action buttons. */
+   Stack the total and full-width action buttons on phones. */
 @media (max-width: 640px) {
   .visit-log-summary {
     padding: 12px 14px 14px;
@@ -15774,18 +17432,6 @@ html {
   .visit-log-summary__total {
     flex-basis: 100%;
     margin-right: 0;
-  }
-
-  .visit-log-summary__chip {
-    font-size: 0.6rem;
-    letter-spacing: 0.02em;
-    padding: 5px 9px;
-    min-height: 26px;
-  }
-
-  .visit-log-summary__chip-count {
-    font-size: 0.6rem;
-    padding: 1px 6px;
   }
 
   .visit-log-summary__coverage {
@@ -15800,7 +17446,7 @@ html {
     gap: 8px;
   }
 
-  .visit-log-summary__actions > button {
+  .visit-log-summary__actions>button {
     flex: 1 1 0;
     min-height: 38px;
   }
@@ -15812,10 +17458,10 @@ html {
 }
 
 /* ── 4. Touch press feedback ──
-   Pills and chips dip slightly under the finger, matching .btn. */
+   Pills and action buttons dip slightly under the finger, matching .btn. */
 @media (max-width: 980px) {
+
   .visit-log-toggle-btn:active,
-  .visit-log-summary__chip:active,
   .visit-log-summary__actions button:active,
   .overview-rankings-toggle__btn:active {
     transform: scale(0.96);
@@ -15843,6 +17489,373 @@ html {
     background: rgba(34, 31, 26, 0.16);
     z-index: 6;
     pointer-events: none;
+  }
+}
+
+/* ═══════════ SHARED LIST-VIEW LANGUAGE — Focus Bakeries ↔ Bakery Reports ══
+   The two views do the same job — filter a long list of bakeries, scan it,
+   open one — but had grown a separate look for every part of that job. Bakery
+   Reports is the reference: its filter tray, label scale, quiet column
+   headings, count pills and panels are the house style, and Focus Bakeries
+   moves onto them here. Bakery Reports itself is deliberately untouched.
+
+     filter block      Focus's loose controls take the Reports tray
+     filter controls   Focus's chips become a dropdown, checkboxes and Reset
+     labels/headings   one uppercase micro-label (--micro-label-*)
+     column heading    Focus drops its tinted band for quiet labels
+     row action        one size across both lists
+     empty state       Focus takes Reports's dashed panel
+     pager             Focus takes Reports's full-width dashed bar
+
+   These rules sit at the end of the file on purpose: Focus carries a late
+   block of per-view overrides at ≈15.3k that they have to land on top of, at
+   matching specificity. */
+
+/* ── 1. Filter block ──
+   Focus's controls floated loose on the card while the Reports filters sat in
+   a tray, so only one of the two read as "the filters". Same tray, same
+   tokens, and the same shape of control inside it: a row of labelled fields
+   that ends in the Reset button.
+
+   Support priority used to be four chips and the two quick filters two more,
+   which put six buttons and two group labels in a row that the Reports tray
+   would have covered with two fields. It is a dropdown and a pair of
+   checkboxes now — the same controls, a quarter of the width. */
+.focus-queue__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 10px 12px;
+  margin: 14px 0 20px;
+  padding: var(--toolbar-pad-y) var(--toolbar-pad-x);
+  background: var(--toolbar-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--toolbar-radius);
+}
+
+/* Three containers hold the parts of the tray that are rebuilt on each
+   render. They are plumbing, not layout: display:contents drops them out of
+   the flex row so what they hold sits in it directly, in source order —
+   applied chips, Search, Support priority, Sort by, Other, Reset. */
+.focus-queue__applied,
+.focus-queue__chips,
+.focus-queue__quick {
+  display: contents;
+}
+
+.focus-tool-label {
+  flex: 1 1 190px;
+  min-width: 0;
+}
+
+/* A field caption that wraps stops looking like a caption and starts looking
+   like two of them. If the tray runs out of room it wraps to a second line
+   instead — one long label should not set the height of the whole row. */
+.focus-tool-label>span {
+  white-space: nowrap;
+}
+
+/* Matched to Sort by rather than sized to its own short values ("Monitor
+   (31)"): the two dropdowns sit side by side, and one visibly smaller than
+   the other read as a mistake rather than as a tighter control. */
+.focus-tool-label--priority {
+  flex: 0 1 205px;
+}
+
+/* Sized for its resting value ("Highest support priority"), not its longest
+   option ("Largest fall since last month") — sizing for the longest gave it a
+   third of the tray to sit half-empty in. It no longer grows either, so the
+   width it gives up goes to Search and the checkbox fields. */
+.focus-tool-label--sort {
+  flex: 0 1 205px;
+}
+
+/* The open menu keeps the width its options need, rather than inheriting the
+   narrowed trigger's and wrapping them. right:auto lets it run rightwards
+   from the trigger's left edge instead of being pinned to both edges. */
+.focus-tool-label--sort .filter-select__menu {
+  right: auto;
+  min-width: 265px;
+}
+
+/* Both checkbox fields take one fixed width — the same as each other, so the
+   pair reads as a pair, and no wider than the longer of their two captions
+   needs. A checkbox field holds a tick and a count; any width beyond its
+   caption is empty box, and it is better spent on the dropdowns. */
+.focus-tool-label--check {
+  flex: 0 0 146px;
+}
+
+.focus-qsearch {
+  width: 100%;
+}
+
+/* Applied filters come from elsewhere on the page (an ops-area row, a
+   performance band), so they take their own full-width line above the
+   fields rather than a column among them. */
+.focus-applied-filters {
+  flex: 1 1 100%;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── Checkbox fields ──
+   The control box matches a dropdown's height, border and radius so the tray
+   reads as one row of fields rather than a row of fields with two loose
+   ticks in it. The count rides inside the box: without it you cannot tell a
+   filter that would show 42 bakeries from one that would show none until you
+   tick it. */
+.focus-check {
+  display: flex;
+  align-items: center;
+  /* Tick left, count right, as a dropdown puts its value left and its chevron
+     right — packed together they left the rest of the box looking empty. */
+  justify-content: space-between;
+  gap: 9px;
+  min-height: var(--control-h);
+  padding: 0 11px;
+  border: 1px solid var(--card-border-h);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(34, 31, 26, 0.04) 0%, rgba(34, 31, 26, 0.01) 100%),
+    rgba(255, 255, 255, 0.96);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.focus-check:hover {
+  border-color: var(--accent);
+}
+
+/* The ring goes on the box, not the 16px input inside it, so keyboard focus
+   lands where the eye already is. */
+.focus-check:has(input:focus-visible) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-d);
+}
+
+.focus-check input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Reserved for the widest count the queue can hold (three digits), so the box
+   does not shrink as a filter takes the count from 103 to 42 — the control
+   resizing under the pointer as you tick the other box looked like a bug.
+   tabular-nums keeps single digits from jittering within that width too. */
+.focus-check em {
+  min-width: 3ch;
+  text-align: right;
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-l);
+}
+
+/* Ticked reads at a glance from across the tray, not just from the 16px box. */
+.focus-check.is-on {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.focus-check.is-on em {
+  color: var(--accent);
+}
+
+/* ── Reset ──
+   Shares .visit-log-reset-btn's rules (see the selector lists above) so the
+   two trays end the same way: a square icon button that swaps its plain
+   funnel for a funnel-with-X once there is something to clear. */
+.focus-reset-btn {
+  align-self: flex-end;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  padding: 0;
+  background: rgba(34, 31, 26, 0.05);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.focus-reset-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.focus-reset-btn:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.focus-reset-btn .visit-log-reset-btn__label {
+  display: none;
+}
+
+.focus-reset-btn .visit-log-reset-btn__icon--active {
+  display: none;
+}
+
+.focus-reset-btn.has-active-filters .visit-log-reset-btn__icon--plain {
+  display: none;
+}
+
+.focus-reset-btn.has-active-filters .visit-log-reset-btn__icon--active {
+  display: block;
+}
+
+/* ── 2. Micro-labels ──
+   Field labels, filter-group labels and column headings ran at three
+   different sizes, weights and tracking across the two views. The Reports
+   field label is the one that wins; --micro-label-* holds its values. */
+.focus-filter-label,
+.focus-applied-filters>span,
+.focus-tool-label>span,
+.focus-qhead {
+  font-size: var(--micro-label-size);
+  font-weight: var(--micro-label-weight);
+  letter-spacing: var(--micro-label-track);
+  line-height: 1.25;
+  text-transform: uppercase;
+  color: var(--muted-l);
+}
+
+.focus-filter-group,
+.focus-applied-filters,
+.focus-tool-label {
+  gap: var(--label-gap);
+}
+
+/* ── 3. Column heading ──
+   Banded in --bg to match the header row of every real <table> on the site
+   (Bakery Directory, League Table, Support Priority). */
+.focus-qhead {
+  background: var(--bg);
+  border-bottom: 1px solid var(--card-border);
+  padding-top: var(--colhead-pad-y);
+  padding-bottom: var(--colhead-pad-y);
+  /* Match the muted tone every real <table> header uses (Bakery Directory,
+     League Table, Support Priority) rather than the flatter grey shared
+     with the Focus filter labels above. */
+  color: var(--muted);
+}
+
+/* ── 4. Controls ──
+   Focus's search and sort sat at 36px beside the Reports fields' 38px. Both
+   take --control-h, the site-wide filter-control height. The trigger needs
+   two classes to outrank the 36px override further up the file. */
+.focus-qsearch,
+.focus-tool-label .spark-sort-select,
+.focus-tool-label .filter-select__trigger {
+  min-height: var(--control-h);
+  font-size: 0.82rem;
+}
+
+/* ── 5. Row action button ──
+   Sized off .visit-log-row__btn so the two lists carry the same weight at
+   their right edge. Focus keeps its accent fill — "Review bakery" is the
+   primary call to action on that page, where "View Report" is one of several
+   affordances on a Reports row.
+
+   Vertical padding matches; horizontal stays at 8px rather than the Reports
+   button's 12px, because this button fills a fixed 104px column and "Review
+   bakery" needs almost all of it. Width is left alone for the same reason —
+   it is set per breakpoint by rules above that an unmediated width here would
+   override. */
+.focus-qrow__action button {
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+/* ── 6. Empty state ──
+   Focus printed a bare sentence where Reports draws a panel. */
+.focus-queue__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 60px 20px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px dashed var(--card-border);
+  border-radius: 16px;
+}
+
+/* ── 7. Pager ──
+   .visit-log-show-more's full-width dashed bar, so "there is more below"
+   looks the same in both lists. */
+/* The button carries the gap itself, as .visit-log-show-more does, so the
+   wrapper's own margin comes off. */
+.focus-qmore {
+  text-align: left;
+  margin-top: 0;
+}
+
+.focus-qmore__btn {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-2);
+  background: rgba(34, 31, 26, 0.03);
+  border: 1px dashed var(--card-border);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.focus-qmore__btn:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+/* ── 8. Stacked tray ──
+   Below 640px an earlier rule turns the tray into a column, which flips the
+   flex main axis: the basis every field carries for the desktop row (190px
+   Search, 205px the dropdowns, 146px the checkboxes) then applies to HEIGHT,
+   and five fields at ~190px tall built a ~1000px wall before the list. The
+   bar's align-items: flex-end reads as "right-align" once stacked, too.
+
+   This has to sit here rather than in that media query: media queries carry no
+   extra specificity, so the unprefixed .focus-tool-label rules further down
+   the file would otherwise win regardless of viewport. */
+@media (max-width: 640px) {
+  .focus-queue__bar {
+    align-items: stretch;
+  }
+
+  .focus-tool-label,
+  .focus-tool-label--priority,
+  .focus-tool-label--sort,
+  .focus-tool-label--check {
+    flex: 0 0 auto;
+  }
+
+  .focus-reset-btn {
+    align-self: flex-start;
   }
 }
 

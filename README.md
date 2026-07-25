@@ -13,6 +13,7 @@ exists only for tooling (ESLint); nothing is bundled, compiled, or minified.
 | `index.html` | `js/app.js` (+ 19 others) | The dashboard |
 | `admin.html` | `js/admin-page.js` | Admin portal, CQV PDF import |
 | `profile.html` | `js/profile-page.js` | User profile |
+| `bakery-profile.html` | `js/bakery-profile.js` | Per-bakery performance, visits, tasks, map, and team notes |
 
 ## The two JavaScript worlds
 

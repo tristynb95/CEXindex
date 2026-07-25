@@ -59,6 +59,8 @@ const saveSitesBtn    = document.getElementById('saveSitesBtn');
 const resetSitesBtn   = document.getElementById('resetSitesBtn');
 const regionList      = document.getElementById('adminRegionList');
 const managerList     = document.getElementById('adminManagerList');
+const regionAssignmentList = document.getElementById('regionAssignmentList');
+const regionAssignmentMeta = document.getElementById('regionAssignmentMeta');
 const dataGrid        = document.getElementById('adminDataGrid');
 const dataMsg         = document.getElementById('dataMsg');
 const datasetImportZone = document.getElementById('datasetImportZone');
@@ -133,6 +135,8 @@ const state = {
   siteMetaSource: {},
   siteMetaSourceInfo: null,
   siteMetaDraft: {},
+  regionAssignmentsSource: [],
+  regionAssignmentsDraft: [],
   siteMetaDirty: false,
   siteSearch: '',
   datasetInfo: null,
@@ -280,6 +284,35 @@ function updateProfileMenu(user, profile) {
 // ── Helpers ──
 function cloneMeta(meta) {
   return JSON.parse(JSON.stringify(meta || {}));
+}
+
+function detectedSiteRegions(meta) {
+  return [...new Set(Object.values(meta || {}).map(function(entry) {
+    return entry && String(entry.r || '').trim();
+  }).filter(Boolean))].sort(function(a, b) {
+    return a.localeCompare(b);
+  });
+}
+
+function regionAssignmentApi() {
+  if (!window.GAILS_REGION_ASSIGNMENTS) {
+    throw new Error('Region assignment support is unavailable on this page.');
+  }
+  return window.GAILS_REGION_ASSIGNMENTS;
+}
+
+function mergeRegionAssignmentsForMeta(meta, assignments) {
+  return regionAssignmentApi().mergeDetectedRegions(
+    detectedSiteRegions(meta),
+    assignments
+  );
+}
+
+function visibleRegionAssignments() {
+  return regionAssignmentApi().assignmentsForRegions(
+    detectedSiteRegions(state.siteMetaDraft),
+    state.regionAssignmentsDraft
+  );
 }
 
 function formatDate(iso) {
@@ -435,7 +468,7 @@ function renderImportZones() {
   }
 }
 
-function buildSiteMetaPayload(meta, sourceInfo) {
+function buildSiteMetaPayload(meta, sourceInfo, regionAssignments) {
   var entries = window.GAILS && typeof window.GAILS.cloneBakeryMeta === 'function'
     ? window.GAILS.cloneBakeryMeta(meta)
     : cloneMeta(meta);
@@ -450,6 +483,7 @@ function buildSiteMetaPayload(meta, sourceInfo) {
 
   return {
     entries: entries,
+    regionAssignments: mergeRegionAssignmentsForMeta(entries, regionAssignments),
     siteCount: Object.keys(entries || {}).length,
     regionCount: regions.size,
     managerCount: managers.size,
@@ -593,7 +627,7 @@ function confirmSiteImport() {
   var hasDraft = Object.keys(state.siteMetaDraft).length > 0;
   if (!hasDraft && !state.siteMetaDirty) return true;
 
-  return confirm('Importing a workbook will immediately replace the shared site directory for all dashboard users. Continue?');
+  return confirm('Importing a workbook will immediately replace the shared site directory for all dashboard users. Coffee Partner and Coffee Trainer details for matching regions will be kept. Continue?');
 }
 
 async function importSiteWorkbook(file) {
@@ -622,11 +656,17 @@ async function importSiteWorkbook(file) {
 
     setMessage(siteMsg, 'info', 'Saving ' + imported.siteCount + ' sites to Firebase\u2026');
 
-    var payload = buildSiteMetaPayload(imported.meta, importInfo);
+    var preservedRegionAssignments = mergeRegionAssignmentsForMeta(
+      imported.meta,
+      state.regionAssignmentsDraft
+    );
+    var payload = buildSiteMetaPayload(imported.meta, importInfo, preservedRegionAssignments);
     await set(ref(db, 'portalData/siteMeta'), payload);
 
     state.siteMetaDraft = cloneMeta(imported.meta);
     state.siteMetaSource = cloneMeta(imported.meta);
+    state.regionAssignmentsSource = cloneMeta(payload.regionAssignments);
+    state.regionAssignmentsDraft = cloneMeta(payload.regionAssignments);
     state.siteImportInfo = normalizeSiteImportInfo({
       fileName: payload.sourceName,
       sheetName: payload.sourceSheetName,
@@ -650,6 +690,7 @@ async function importSiteWorkbook(file) {
         + (imported.duplicateCount === 1 ? ' was' : 's were')
         + ' merged by bakery name.';
     }
+    summary += ' Existing Coffee Partner and Coffee Trainer details were kept for matching regions.';
     setMessage(siteMsg, 'success', summary);
   } catch (err) {
     console.error('Failed to import site workbook:', err);
@@ -1140,6 +1181,36 @@ function renderDatalists() {
   managerList.innerHTML = managers.map(function(m) { return '<option value="' + escapeHtml(m) + '">'; }).join('');
 }
 
+function renderRegionAssignments() {
+  if (!regionAssignmentList) return;
+  var rows = visibleRegionAssignments();
+  var assignmentsComplete = rows.filter(function(row) {
+    return !!(row.coffeePartner || row.coffeeTrainer);
+  }).length;
+
+  if (regionAssignmentMeta) {
+    regionAssignmentMeta.textContent = rows.length + ' detected region'
+      + (rows.length === 1 ? '' : 's')
+      + ' \u2022 ' + assignmentsComplete + ' with team details'
+      + (state.siteMetaDirty ? ' \u2022 unsaved changes' : ' \u2022 all changes saved');
+  }
+
+  if (!rows.length) {
+    regionAssignmentList.innerHTML = '<tr><td colspan="3" class="admin-empty">Upload or add site data to detect regions.</td></tr>';
+    return;
+  }
+
+  var assignmentsEditable = canEdit('sites');
+  var inputDisabled = assignmentsEditable ? '' : ' disabled';
+  regionAssignmentList.innerHTML = rows.map(function(row) {
+    return '<tr>'
+      + '<td><div class="admin-table__title">' + escapeHtml(row.region) + '</div></td>'
+      + '<td><input type="text" value="' + escapeHtml(row.coffeePartner || '') + '" data-region="' + escapeHtml(row.region) + '" data-field="coffeePartner" placeholder="Coffee Partner"' + inputDisabled + '></td>'
+      + '<td><input type="text" value="' + escapeHtml(row.coffeeTrainer || '') + '" data-region="' + escapeHtml(row.region) + '" data-field="coffeeTrainer" placeholder="Coffee Trainer"' + inputDisabled + '></td>'
+      + '</tr>';
+  }).join('');
+}
+
 function getVisibleSiteMeta() {
   var merged = cloneMeta(state.siteMetaDraft);
   var search = state.siteSearch.trim().toLowerCase();
@@ -1170,7 +1241,10 @@ function renderSites() {
   var siteInputDis = sitesEditable ? '' : ' disabled';
   siteList.innerHTML = rows.map(function(row) {
     return '<tr>'
-      + '<td><div class="admin-table__title">' + escapeHtml(row.name) + '</div></td>'
+      + '<td><div class="admin-table__title">' + window.GAILS.bakeryProfileLink(row.name, {
+        returnUrl: 'admin.html#sites',
+        returnLabel: 'Site Data'
+      }) + '</div></td>'
       + '<td><input type="text" value="' + escapeHtml(row.entry.r || '') + '" list="adminRegionList"  data-site="' + escapeHtml(row.name) + '" data-field="r" placeholder="Region"' + siteInputDis + '></td>'
       + '<td><input type="text" value="' + escapeHtml(row.entry.o || '') + '" list="adminManagerList" data-site="' + escapeHtml(row.name) + '" data-field="o" placeholder="Ops area"' + siteInputDis + '></td>'
       + '<td>' + (sitesEditable
@@ -1259,7 +1333,12 @@ function renderVisits() {
     return '<tr>'
       + '<td>' + escapeHtml(formatVisitDate(v.date)) + '</td>'
       + '<td><div class="admin-table__title-cell">'
-      + '  <div class="admin-table__title">' + escapeHtml(v.bakery || 'Unknown') + '</div>'
+      + '  <div class="admin-table__title">' + (v.bakery
+        ? window.GAILS.bakeryProfileLink(v.bakery, {
+          returnUrl: 'admin.html#visits',
+          returnLabel: 'Bakery Visits'
+        })
+        : escapeHtml('Unknown')) + '</div>'
       + '  ' + typeBadge
       + '</div></td>'
       + '<td>' + escapeHtml((isCqv || isNbo) ? (v.auditorName || '—') : (v.coffeePartner || '—')) + '</td>'
@@ -1998,6 +2077,7 @@ function renderPortal() {
   renderRoles();
   populateRoleSelects();
   renderSites();
+  renderRegionAssignments();
   renderVisits();
   renderDataControls();
   renderImportZones();
@@ -2013,6 +2093,16 @@ function switchPanel(panelName) {
     panel.classList.toggle('active', panel.dataset.adminPanelContent === panelName);
   });
   if (panelName === 'overview') renderActivityLog();
+}
+
+function requestedAdminPanel() {
+  var panelName = String(window.location.hash || '').replace(/^#/, '');
+  var panel = panels.find(function(item) {
+    return item.dataset.adminPanelContent === panelName;
+  });
+  if (!panel) return 'overview';
+  var area = PANEL_AREAS[panelName];
+  return !area || canView(area) ? panelName : 'overview';
 }
 
 // ── Firebase ──
@@ -2049,6 +2139,10 @@ async function refreshDatasetInfo() {
 function syncSiteMetaFromSource(payload) {
   var entries = payload && payload.entries ? payload.entries : payload;
   state.siteMetaSource = cloneMeta(entries || {});
+  state.regionAssignmentsSource = mergeRegionAssignmentsForMeta(
+    state.siteMetaSource,
+    payload && payload.regionAssignments
+  );
   state.siteMetaSourceInfo = normalizeSiteImportInfo({
     fileName: payload && payload.sourceName,
     sheetName: payload && payload.sourceSheetName,
@@ -2059,11 +2153,13 @@ function syncSiteMetaFromSource(payload) {
   });
   if (!state.siteMetaDirty) {
     state.siteMetaDraft = cloneMeta(state.siteMetaSource);
+    state.regionAssignmentsDraft = cloneMeta(state.regionAssignmentsSource);
     state.siteImportInfo = state.siteMetaSourceInfo ? cloneMeta(state.siteMetaSourceInfo) : null;
   }
   renderSummary();
   renderOverview();
   renderSites();
+  renderRegionAssignments();
   renderDataControls();
   renderImportZones();
 }
@@ -2103,6 +2199,32 @@ function updateSiteDraft(name, field, value) {
   state.siteMetaDraft[name][field] = String(value || '').trim();
   setDirty(true);
   updateSiteTableMeta(getVisibleSiteMeta().length);
+  renderSummary();
+  renderOverview();
+  renderRegionAssignments();
+  renderDataControls();
+}
+
+function updateRegionAssignmentDraft(region, field, value) {
+  state.regionAssignmentsDraft = regionAssignmentApi().updateAssignment(
+    detectedSiteRegions(state.siteMetaDraft),
+    state.regionAssignmentsDraft,
+    region,
+    field,
+    value
+  );
+  setDirty(true);
+  updateSiteTableMeta(getVisibleSiteMeta().length);
+  if (regionAssignmentMeta) {
+    var rows = visibleRegionAssignments();
+    var assignmentsComplete = rows.filter(function(row) {
+      return !!(row.coffeePartner || row.coffeeTrainer);
+    }).length;
+    regionAssignmentMeta.textContent = rows.length + ' detected region'
+      + (rows.length === 1 ? '' : 's')
+      + ' \u2022 ' + assignmentsComplete + ' with team details'
+      + ' \u2022 unsaved changes';
+  }
   renderSummary();
   renderOverview();
   renderDataControls();
@@ -2304,7 +2426,7 @@ onAuthStateChanged(primaryAuth, async function(user) {
   resetRoleForm();
   applyAdminAccessUI();
   ensurePortalSync();
-  switchPanel('overview');
+  switchPanel(requestedAdminPanel());
   renderPortal();
   refreshDatasetInfo();
 });
@@ -2396,6 +2518,7 @@ nav.addEventListener('click', function(e) {
   var btn = e.target.closest('[data-admin-panel]');
   if (!btn) return;
   switchPanel(btn.dataset.adminPanel);
+  window.history.replaceState(null, '', 'admin.html#' + btn.dataset.adminPanel);
   if (compactSidebarMedia.matches) setSidebarCollapsed(true);
 });
 
@@ -2403,6 +2526,7 @@ document.addEventListener('click', function(e) {
   var link = e.target.closest('[data-admin-panel-target]');
   if (!link) return;
   switchPanel(link.dataset.adminPanelTarget);
+  window.history.replaceState(null, '', 'admin.html#' + link.dataset.adminPanelTarget);
   if (compactSidebarMedia.matches) setSidebarCollapsed(true);
 });
 
@@ -2668,18 +2792,40 @@ siteList.addEventListener('click', function(e) {
   if (btn) removeSite(btn.dataset.site);
 });
 
+if (regionAssignmentList) {
+  regionAssignmentList.addEventListener('input', function(e) {
+    var input = e.target;
+    if (!input.dataset.region || !input.dataset.field) return;
+    updateRegionAssignmentDraft(
+      input.dataset.region,
+      input.dataset.field,
+      input.value
+    );
+  });
+}
+
 saveSitesBtn.addEventListener('click', async function() {
   saveSitesBtn.disabled = true;
   setMessage(siteMsg, 'info', 'Saving site data to Firebase…');
   try {
     var payload;
     if (window.GAILS_Firebase && typeof window.GAILS_Firebase.saveSiteMeta === 'function') {
-      payload = await window.GAILS_Firebase.saveSiteMeta(state.siteMetaDraft, state.siteImportInfo);
+      payload = await window.GAILS_Firebase.saveSiteMeta(
+        state.siteMetaDraft,
+        state.siteImportInfo,
+        state.regionAssignmentsDraft
+      );
     } else {
-      payload = buildSiteMetaPayload(state.siteMetaDraft, state.siteImportInfo);
+      payload = buildSiteMetaPayload(
+        state.siteMetaDraft,
+        state.siteImportInfo,
+        state.regionAssignmentsDraft
+      );
       await set(ref(db, 'portalData/siteMeta'), payload);
     }
     state.siteMetaSource = cloneMeta(state.siteMetaDraft);
+    state.regionAssignmentsSource = cloneMeta((payload && payload.regionAssignments) || []);
+    state.regionAssignmentsDraft = cloneMeta(state.regionAssignmentsSource);
     state.siteMetaSourceInfo = normalizeSiteImportInfo({
       fileName: payload && payload.sourceName,
       sheetName: payload && payload.sourceSheetName,
@@ -2701,6 +2847,7 @@ saveSitesBtn.addEventListener('click', async function() {
 
 resetSitesBtn.addEventListener('click', function() {
   state.siteMetaDraft = cloneMeta(state.siteMetaSource);
+  state.regionAssignmentsDraft = cloneMeta(state.regionAssignmentsSource);
   state.siteImportInfo = state.siteMetaSourceInfo ? cloneMeta(state.siteMetaSourceInfo) : null;
   setDirty(false);
   clearMessage(siteMsg);
@@ -2831,10 +2978,16 @@ restoreMetaBtn.addEventListener('click', async function() {
   setMessage(dataMsg, 'info', 'Restoring default site map…');
   try {
     var defaults = cloneMeta(window.GAILS && window.GAILS.DEFAULT_BAKERY_META ? window.GAILS.DEFAULT_BAKERY_META : {});
-    var payload = buildSiteMetaPayload(defaults, { fileName: 'Default site map', siteCount: Object.keys(defaults).length });
+    var payload = buildSiteMetaPayload(
+      defaults,
+      { fileName: 'Default site map', siteCount: Object.keys(defaults).length },
+      state.regionAssignmentsDraft
+    );
     await set(ref(db, 'portalData/siteMeta'), payload);
     state.siteMetaSource = cloneMeta(defaults);
     state.siteMetaDraft  = cloneMeta(defaults);
+    state.regionAssignmentsSource = cloneMeta(payload.regionAssignments);
+    state.regionAssignmentsDraft = cloneMeta(payload.regionAssignments);
     state.siteMetaSourceInfo = normalizeSiteImportInfo({
       fileName: payload.sourceName,
       sheetName: payload.sourceSheetName,

@@ -26,7 +26,7 @@ test('uses one accessible close-button component across every modal surface', ()
     ...modalCloseButtons(profile)
   ];
 
-  assert.equal(modalCloseButtons(index).length, 7);
+  assert.equal(modalCloseButtons(index).length, 8);
   assert.equal(modalCloseButtons(admin).length, 3);
   assert.equal(modalCloseButtons(profile).length, 1);
 
