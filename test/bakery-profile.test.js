@@ -14,6 +14,7 @@ const leagueScript = fs.readFileSync(path.join(root, 'js', 'tables.js'), 'utf8')
 const drilldownScript = fs.readFileSync(path.join(root, 'js', 'drilldown.js'), 'utf8');
 const targetsScript = fs.readFileSync(path.join(root, 'js', 'targets.js'), 'utf8');
 const adminScript = fs.readFileSync(path.join(root, 'js', 'admin-page.js'), 'utf8');
+const profileStyles = fs.readFileSync(path.join(root, 'css', 'bakery-profile.css'), 'utf8');
 const rules = JSON.parse(fs.readFileSync(path.join(root, 'database.rules.json'), 'utf8'));
 
 test('bakery profile contains every requested dashboard section', () => {
@@ -87,6 +88,35 @@ test('top banner provides an accessible bakery profile switcher', () => {
   assert.match(script, /event\.key === 'Escape'/);
   assert.match(script, /event\.key === 'ArrowDown'/);
   assert.match(script, /!bakerySwitcher\.contains\(event\.target\)/);
+});
+
+test('follow-up tasks are added through a dialog opened from the section', () => {
+  assert.match(html, /id="bakeryTaskAddToggle"[\s\S]*?aria-haspopup="dialog"[\s\S]*?aria-controls="bakeryTaskModal"/);
+  assert.match(html, /id="bakeryTaskModal"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"[\s\S]*?aria-labelledby="bakeryTaskModalTitle"[\s\S]*?hidden>/);
+  assert.match(html, /id="bakeryTaskModalBackdrop"/);
+
+  const modal = html.slice(html.indexOf('id="bakeryTaskModal"'));
+  [
+    'bakeryTaskForm',
+    'bakeryTaskTitle',
+    'bakeryTaskDetail',
+    'bakeryTaskDueDate',
+    'bakeryTaskPriority',
+    'bakeryTaskCancel',
+    'bakeryTaskSubmit'
+  ].forEach((id) => assert.match(modal, new RegExp('id="' + id + '"')));
+
+  // The form only ever renders inside the dialog, so it carries no hidden state of its own.
+  assert.doesNotMatch(html, /<form id="bakeryTaskForm"[^>]*\shidden/);
+  assert.match(profileStyles, /\.bakery-profile-modal__dialog \{/);
+  assert.match(profileStyles, /body\.bakery-profile-modal-open \{/);
+
+  assert.match(script, /taskModal\.hidden = false/);
+  assert.match(script, /document\.body\.classList\.add\('bakery-profile-modal-open'\)/);
+  assert.match(script, /\[taskCancel, taskModalClose, taskModalBackdrop\]/);
+  assert.match(script, /function trapTaskModalFocus/);
+  assert.match(script, /function dismissTaskForm\(\) \{\s*if \(taskSaving\) return;/);
+  assert.match(script, /data-task-add/);
 });
 
 test('uses Google Maps with a no-key directions handoff', () => {

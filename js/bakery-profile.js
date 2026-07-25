@@ -29,6 +29,10 @@ const taskForm = document.getElementById('bakeryTaskForm');
 const taskCancel = document.getElementById('bakeryTaskCancel');
 const taskSubmit = document.getElementById('bakeryTaskSubmit');
 const taskMessage = document.getElementById('bakeryTaskMessage');
+const taskModal = document.getElementById('bakeryTaskModal');
+const taskModalBackdrop = document.getElementById('bakeryTaskModalBackdrop');
+const taskModalClose = document.getElementById('bakeryTaskModalClose');
+const taskModalBakery = document.getElementById('bakeryTaskModalBakery');
 const noteForm = document.getElementById('bakeryNoteForm');
 const noteBody = document.getElementById('bakeryNoteBody');
 const noteSubmit = document.getElementById('bakeryNoteSubmit');
@@ -66,6 +70,8 @@ let canEdit = false;
 let notesUnsubscribe = null;
 let visitsUnsubscribe = null;
 let tasksUnsubscribe = null;
+let taskSaving = false;
+let taskModalReturnFocus = null;
 
 const RETURN_LABELS = {
   overview: 'Overview',
@@ -1002,7 +1008,9 @@ function renderTasks() {
   var bakeryTasks = sortedBakeryTasks();
   if (!bakeryTasks.length) {
     container.innerHTML = '<div class="bakery-profile-empty"><strong>No follow-up tasks.</strong>' +
-      '<span>Add the next action for this bakery when one is agreed.</span></div>';
+      '<span>Add the next action for this bakery when one is agreed.</span>' +
+      (canEdit ? '<button type="button" class="bakery-profile-small-btn" data-task-add>+ Add task</button>' : '') +
+      '</div>';
     renderStats();
     return;
   }
@@ -1071,18 +1079,54 @@ function renderNotes() {
 }
 
 function openTaskForm() {
+  if (!canEdit || !taskModal.hidden) return;
   taskForm.reset();
   setMessage(taskMessage, '', '');
-  taskForm.hidden = false;
-  taskAddToggle.hidden = true;
+  taskModalBakery.textContent = profileDisplayBakeryName(bakeryName) || 'this bakery';
+  taskModalReturnFocus = document.activeElement;
+  taskModal.hidden = false;
+  document.body.classList.add('bakery-profile-modal-open');
+  taskAddToggle.setAttribute('aria-expanded', 'true');
   document.getElementById('bakeryTaskTitle').focus();
 }
 
 function closeTaskForm() {
+  if (taskModal.hidden) return;
+  taskModal.hidden = true;
+  document.body.classList.remove('bakery-profile-modal-open');
+  taskAddToggle.setAttribute('aria-expanded', 'false');
   taskForm.reset();
-  taskForm.hidden = true;
-  taskAddToggle.hidden = !canEdit;
   setMessage(taskMessage, '', '');
+  var returnTo = taskModalReturnFocus;
+  taskModalReturnFocus = null;
+  if (!returnTo || !document.body.contains(returnTo) || returnTo.hidden) {
+    returnTo = canEdit ? taskAddToggle : null;
+  }
+  if (returnTo && typeof returnTo.focus === 'function') returnTo.focus();
+}
+
+/* Dismissing is the user's choice; saving in progress keeps the dialog open. */
+function dismissTaskForm() {
+  if (taskSaving) return;
+  closeTaskForm();
+}
+
+function trapTaskModalFocus(event) {
+  if (event.key !== 'Tab' || taskModal.hidden) return;
+  var focusable = Array.prototype.filter.call(
+    taskModal.querySelectorAll('button, input, select, textarea, [href]'),
+    function(element) { return !element.disabled && element.offsetParent !== null; }
+  );
+  if (!focusable.length) return;
+  var first = focusable[0];
+  var last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function resetNoteEditor() {
@@ -1250,7 +1294,19 @@ document.addEventListener('click', function(event) {
 });
 
 taskAddToggle.addEventListener('click', openTaskForm);
-taskCancel.addEventListener('click', closeTaskForm);
+
+[taskCancel, taskModalClose, taskModalBackdrop].forEach(function(control) {
+  control.addEventListener('click', dismissTaskForm);
+});
+
+document.addEventListener('keydown', function(event) {
+  if (taskModal.hidden) return;
+  if (event.key === 'Escape') {
+    dismissTaskForm();
+    return;
+  }
+  trapTaskModalFocus(event);
+});
 
 taskForm.addEventListener('submit', async function(event) {
   event.preventDefault();
@@ -1261,6 +1317,7 @@ taskForm.addEventListener('submit', async function(event) {
     return;
   }
 
+  taskSaving = true;
   setBusy(taskSubmit, true, 'Adding…', 'Add task');
   try {
     var who = currentUser.email || currentUser.uid;
@@ -1287,11 +1344,16 @@ taskForm.addEventListener('submit', async function(event) {
     console.error('Could not add task:', error);
     setMessage(taskMessage, 'error', error.message || 'The task could not be added.');
   } finally {
+    taskSaving = false;
     setBusy(taskSubmit, false, 'Adding…', 'Add task');
   }
 });
 
 document.getElementById('bakeryTaskList').addEventListener('click', async function(event) {
+  if (event.target.closest('[data-task-add]')) {
+    openTaskForm();
+    return;
+  }
   var button = event.target.closest('[data-task-toggle]');
   if (!button || !currentUser || !canEdit) return;
   var task = tasks.find(function(item) { return item.id === button.getAttribute('data-task-toggle'); });
