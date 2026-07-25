@@ -1084,7 +1084,7 @@ function renderNotes() {
 
   if (!noteList.length) {
     container.innerHTML = '<div class="bakery-profile-empty bakery-profile-empty--notes">' +
-      '<strong>No historical notes yet.</strong><span>The first coffee-team update will start the shared timeline.</span></div>';
+      '<strong>No bakery notes yet.</strong><span>The first coffee-team update will start the shared timeline.</span></div>';
     return;
   }
 
@@ -1250,7 +1250,7 @@ function startLiveData() {
   }, function(error) {
     console.error('Could not load bakery notes:', error);
     document.getElementById('bakeryNotesList').innerHTML =
-      '<div class="bakery-profile-empty bakery-profile-empty--notes"><strong>Historical notes unavailable.</strong>' +
+      '<div class="bakery-profile-empty bakery-profile-empty--notes"><strong>Bakery notes unavailable.</strong>' +
       '<span>Try refreshing the page.</span></div>';
   });
 }
