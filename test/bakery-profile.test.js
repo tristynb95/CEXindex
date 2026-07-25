@@ -14,6 +14,7 @@ const leagueScript = fs.readFileSync(path.join(root, 'js', 'tables.js'), 'utf8')
 const drilldownScript = fs.readFileSync(path.join(root, 'js', 'drilldown.js'), 'utf8');
 const targetsScript = fs.readFileSync(path.join(root, 'js', 'targets.js'), 'utf8');
 const adminScript = fs.readFileSync(path.join(root, 'js', 'admin-page.js'), 'utf8');
+const profileStyles = fs.readFileSync(path.join(root, 'css', 'bakery-profile.css'), 'utf8');
 const rules = JSON.parse(fs.readFileSync(path.join(root, 'database.rules.json'), 'utf8'));
 
 test('bakery profile contains every requested dashboard section', () => {
@@ -87,6 +88,35 @@ test('top banner provides an accessible bakery profile switcher', () => {
   assert.match(script, /event\.key === 'Escape'/);
   assert.match(script, /event\.key === 'ArrowDown'/);
   assert.match(script, /!bakerySwitcher\.contains\(event\.target\)/);
+});
+
+test('follow-up tasks are added through a dialog opened from the section', () => {
+  assert.match(html, /id="bakeryTaskAddToggle"[\s\S]*?aria-haspopup="dialog"[\s\S]*?aria-controls="bakeryTaskModal"/);
+  assert.match(html, /id="bakeryTaskModal"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"[\s\S]*?aria-labelledby="bakeryTaskModalTitle"[\s\S]*?hidden>/);
+  assert.match(html, /id="bakeryTaskModalBackdrop"/);
+
+  const modal = html.slice(html.indexOf('id="bakeryTaskModal"'));
+  [
+    'bakeryTaskForm',
+    'bakeryTaskTitle',
+    'bakeryTaskDetail',
+    'bakeryTaskDueDate',
+    'bakeryTaskPriority',
+    'bakeryTaskCancel',
+    'bakeryTaskSubmit'
+  ].forEach((id) => assert.match(modal, new RegExp('id="' + id + '"')));
+
+  // The form only ever renders inside the dialog, so it carries no hidden state of its own.
+  assert.doesNotMatch(html, /<form id="bakeryTaskForm"[^>]*\shidden/);
+  assert.match(profileStyles, /\.bakery-profile-modal__dialog \{/);
+  assert.match(profileStyles, /body\.bakery-profile-modal-open \{/);
+
+  assert.match(script, /setModalOpen\(taskModal, true\)/);
+  assert.match(script, /classList\.toggle\('bakery-profile-modal-open'/);
+  assert.match(script, /\[taskCancel, taskModalClose, taskModalBackdrop\]/);
+  assert.match(script, /function trapModalFocus/);
+  assert.match(script, /function dismissTaskForm\(\) \{\s*if \(taskSaving\) return;/);
+  assert.match(script, /data-task-add/);
 });
 
 test('uses Google Maps with a no-key directions handoff', () => {
@@ -271,6 +301,81 @@ test('notes have authenticated read/write rules and validated author metadata', 
   assert.match(entryRules['.write'], /auth != null/);
   assert.match(entryRules['.validate'], /createdBy/);
   assert.match(entryRules['.validate'], /auth\.uid/);
+});
+
+test('a note is editable by its author or an admin, and deletable only by admins', () => {
+  const source = ['isNoteAuthor', 'canEditNote', 'canDeleteNote'].map((name) => {
+    const match = script.match(new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\}'));
+    assert.ok(match, name + ' helper should exist');
+    return match[0];
+  }).join('\n') + '\nresult = { isNoteAuthor, canEditNote, canDeleteNote };';
+  const context = { currentUser: null, isAdmin: false, canEdit: true, result: null };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  const own = { createdBy: { uid: 'me' } };
+  const theirs = { createdBy: { uid: 'someone-else' } };
+  const legacy = { createdBy: 'someone@example.test' };
+
+  // Signed out: nothing is editable.
+  assert.equal(context.result.canEditNote(own), false);
+  assert.equal(context.result.canDeleteNote(), false);
+
+  context.currentUser = { uid: 'me' };
+  assert.equal(context.result.canEditNote(own), true);
+  assert.equal(context.result.canEditNote(theirs), false);
+  assert.equal(context.result.canEditNote(legacy), false);
+  assert.equal(context.result.canDeleteNote(), false);
+
+  // Without the logVisits action even your own note is read-only.
+  context.canEdit = false;
+  assert.equal(context.result.canEditNote(own), false);
+
+  // Admins edit anything and are the only ones who can delete.
+  context.isAdmin = true;
+  assert.equal(context.result.canEditNote(own), true);
+  assert.equal(context.result.canEditNote(theirs), true);
+  assert.equal(context.result.canEditNote(legacy), true);
+  assert.equal(context.result.canDeleteNote(), true);
+});
+
+test('note rules limit edits to the author or an admin and deletes to admins', () => {
+  const entryRules = rules.rules.bakeryNotes.$bakeryKey.$noteId;
+  const write = entryRules['.write'];
+  const admin = "root.child('admins').child(auth.uid).val() === true || " +
+    "root.child('users').child(auth.uid).child('role').val() === 'admin'";
+
+  assert.ok(write.includes("!data.exists() && newData.exists()"), 'creates stay permission-gated');
+  assert.ok(write.includes("data.exists() && newData.exists() && " +
+    "(data.child('createdBy').child('uid').val() === auth.uid || " + admin + ")"),
+  'edits are limited to the note author or an admin');
+  assert.ok(write.includes("data.exists() && !newData.exists() && (" + admin + ")"),
+    'deletes are admin-only');
+  // An admin editing someone else's note must not rewrite who wrote it.
+  assert.ok(entryRules['.validate'].includes(
+    "newData.child('createdBy').child('uid').val() === data.child('createdBy').child('uid').val()"),
+  'edits preserve the original author');
+});
+
+test('deleting a note goes through an admin confirmation dialog', () => {
+  assert.match(html, /id="bakeryNoteDeleteModal"[\s\S]*?role="alertdialog"[\s\S]*?aria-modal="true"[\s\S]*?hidden>/);
+  [
+    'bakeryNoteDeleteBackdrop',
+    'bakeryNoteDeleteClose',
+    'bakeryNoteDeleteCancel',
+    'bakeryNoteDeleteConfirm',
+    'bakeryNoteDeleteAuthor',
+    'bakeryNoteDeletePreview'
+  ].forEach((id) => assert.match(html, new RegExp('id="' + id + '"')));
+
+  assert.match(script, /data-note-delete/);
+  assert.match(script, /function openNoteDelete\(id\) \{\s*var note = notes\[id\];\s*if \(!note \|\| !canDeleteNote\(\)/);
+  assert.match(script, /function dismissNoteDelete\(\) \{\s*if \(noteDeleting\) return;/);
+  assert.match(script, /\[noteDeleteCancel, noteDeleteClose, noteDeleteBackdrop\]/);
+  // The dialog names and quotes the note before it is destroyed.
+  assert.match(script, /noteDeleteAuthor\.textContent = noteAuthor\(note\)/);
+  assert.match(script, /noteDeletePreview\.textContent = note\.body/);
+  assert.match(script, /await remove\(ref\(db, 'bakeryNotes\/' \+ bakeryPathKey\(bakeryName\) \+ '\/' \+ id\)\)/);
+  assert.match(profileStyles, /\.bakery-note-entry__delete \{/);
 });
 
 test('bakery note path keys are safe for Firebase paths', () => {

@@ -5,6 +5,7 @@ import {
   onValue,
   push,
   ref,
+  remove,
   serverTimestamp,
   set,
   update
@@ -29,11 +30,24 @@ const taskForm = document.getElementById('bakeryTaskForm');
 const taskCancel = document.getElementById('bakeryTaskCancel');
 const taskSubmit = document.getElementById('bakeryTaskSubmit');
 const taskMessage = document.getElementById('bakeryTaskMessage');
+const taskModal = document.getElementById('bakeryTaskModal');
+const taskModalBackdrop = document.getElementById('bakeryTaskModalBackdrop');
+const taskModalClose = document.getElementById('bakeryTaskModalClose');
+const taskModalBakery = document.getElementById('bakeryTaskModalBakery');
 const noteForm = document.getElementById('bakeryNoteForm');
 const noteBody = document.getElementById('bakeryNoteBody');
 const noteSubmit = document.getElementById('bakeryNoteSubmit');
 const noteCancelEdit = document.getElementById('bakeryNoteCancelEdit');
 const noteMessage = document.getElementById('bakeryNoteMessage');
+const notePostingAs = document.getElementById('bakeryNotePostingAs');
+const noteDeleteModal = document.getElementById('bakeryNoteDeleteModal');
+const noteDeleteBackdrop = document.getElementById('bakeryNoteDeleteBackdrop');
+const noteDeleteClose = document.getElementById('bakeryNoteDeleteClose');
+const noteDeleteCancel = document.getElementById('bakeryNoteDeleteCancel');
+const noteDeleteConfirm = document.getElementById('bakeryNoteDeleteConfirm');
+const noteDeleteAuthor = document.getElementById('bakeryNoteDeleteAuthor');
+const noteDeletePreview = document.getElementById('bakeryNoteDeletePreview');
+const noteDeleteMessage = document.getElementById('bakeryNoteDeleteMessage');
 const competitionList = document.getElementById('bakeryCompetitionList');
 const competitionStatusTag = document.getElementById('bakeryCompetitionStatusTag');
 const competitionResultCount = document.getElementById('bakeryCompetitionResultCount');
@@ -66,6 +80,13 @@ let canEdit = false;
 let notesUnsubscribe = null;
 let visitsUnsubscribe = null;
 let tasksUnsubscribe = null;
+let taskSaving = false;
+let taskModalReturnFocus = null;
+let isAdmin = false;
+let notePostingAsDefault = 'Posting as Coffee Team';
+let noteDeleteId = null;
+let noteDeleting = false;
+let noteDeleteReturnFocus = null;
 
 const RETURN_LABELS = {
   overview: 'Overview',
@@ -1002,7 +1023,9 @@ function renderTasks() {
   var bakeryTasks = sortedBakeryTasks();
   if (!bakeryTasks.length) {
     container.innerHTML = '<div class="bakery-profile-empty"><strong>No follow-up tasks.</strong>' +
-      '<span>Add the next action for this bakery when one is agreed.</span></div>';
+      '<span>Add the next action for this bakery when one is agreed.</span>' +
+      (canEdit ? '<button type="button" class="bakery-profile-small-btn" data-task-add>+ Add task</button>' : '') +
+      '</div>';
     renderStats();
     return;
   }
@@ -1034,6 +1057,23 @@ function noteAuthor(note) {
   return note && (note.authorName || note.createdBy) || 'Coffee Team';
 }
 
+function isNoteAuthor(note) {
+  return !!(currentUser && note && note.createdBy && typeof note.createdBy === 'object' &&
+    note.createdBy.uid === currentUser.uid);
+}
+
+/* A note belongs to whoever wrote it: only its author can revise it, with
+   admins able to step in on any note. Removing one is admin-only. */
+function canEditNote(note) {
+  if (!currentUser) return false;
+  if (isAdmin) return true;
+  return canEdit && isNoteAuthor(note);
+}
+
+function canDeleteNote() {
+  return !!currentUser && isAdmin;
+}
+
 function renderNotes() {
   var container = document.getElementById('bakeryNotesList');
   var noteList = Object.keys(notes || {}).map(function(id) {
@@ -1044,45 +1084,125 @@ function renderNotes() {
 
   if (!noteList.length) {
     container.innerHTML = '<div class="bakery-profile-empty bakery-profile-empty--notes">' +
-      '<strong>No historical notes yet.</strong><span>The first coffee-team update will start the shared timeline.</span></div>';
+      '<strong>No bakery notes yet.</strong><span>The first coffee-team update will start the shared timeline.</span></div>';
     return;
   }
 
   container.innerHTML = noteList.map(function(note) {
     var author = noteAuthor(note);
-    var mayEdit = canEdit && currentUser && note.createdBy &&
-      typeof note.createdBy === 'object' && note.createdBy.uid === currentUser.uid;
     var edited = note.updatedAt && timestampValue(note.updatedAt) !== timestampValue(note.createdAt);
     var editMeta = edited
       ? ' · Edited ' + formatDate(note.updatedAt, true) +
         (note.updatedBy && note.updatedBy.name ? ' by ' + note.updatedBy.name : '')
       : '';
+    var actions = '';
+    if (canEditNote(note)) {
+      actions += '<button type="button" class="bakery-note-entry__edit" data-note-edit="' +
+        escapeHtml(note.id) + '">Edit</button>';
+    }
+    if (canDeleteNote()) {
+      actions += '<button type="button" class="bakery-note-entry__delete" data-note-delete="' +
+        escapeHtml(note.id) + '">Delete</button>';
+    }
     return '<article class="bakery-note-entry">' +
       '<div class="bakery-note-avatar" aria-hidden="true">' + escapeHtml(initials(author)) + '</div>' +
       '<div class="bakery-note-entry__body">' +
       '<div class="bakery-note-entry__head"><div><strong>' + escapeHtml(author) + '</strong>' +
       '<span>' + escapeHtml(formatDate(note.createdAt, true) + editMeta) + '</span></div>' +
-      (mayEdit ? '<button type="button" class="bakery-note-entry__edit" data-note-edit="' +
-        escapeHtml(note.id) + '">Edit</button>' : '') +
+      (actions ? '<div class="bakery-note-entry__actions">' + actions + '</div>' : '') +
       '</div>' +
       '<p>' + escapeHtml(note.body || '').replace(/\n/g, '<br>') + '</p>' +
       '</div></article>';
   }).join('');
+
+  // Someone else may have removed the note being edited or confirmed for deletion.
+  var editId = noteForm.getAttribute('data-edit-id');
+  if (editId && !notes[editId]) resetNoteEditor();
+  if (noteDeleteId && !notes[noteDeleteId]) closeNoteDelete();
+}
+
+function setModalOpen(modal, open) {
+  modal.hidden = !open;
+  document.body.classList.toggle('bakery-profile-modal-open',
+    !taskModal.hidden || !noteDeleteModal.hidden);
+}
+
+function restoreFocus(returnTo, fallback) {
+  if (!returnTo || !document.body.contains(returnTo) || returnTo.hidden) returnTo = fallback;
+  if (returnTo && typeof returnTo.focus === 'function') returnTo.focus();
+}
+
+function trapModalFocus(modal, event) {
+  if (event.key !== 'Tab') return;
+  var focusable = Array.prototype.filter.call(
+    modal.querySelectorAll('button, input, select, textarea, [href]'),
+    function(element) { return !element.disabled && element.offsetParent !== null; }
+  );
+  if (!focusable.length) return;
+  var first = focusable[0];
+  var last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function openTaskForm() {
+  if (!canEdit || !taskModal.hidden) return;
   taskForm.reset();
   setMessage(taskMessage, '', '');
-  taskForm.hidden = false;
-  taskAddToggle.hidden = true;
+  taskModalBakery.textContent = profileDisplayBakeryName(bakeryName) || 'this bakery';
+  taskModalReturnFocus = document.activeElement;
+  setModalOpen(taskModal, true);
+  taskAddToggle.setAttribute('aria-expanded', 'true');
   document.getElementById('bakeryTaskTitle').focus();
 }
 
 function closeTaskForm() {
+  if (taskModal.hidden) return;
+  setModalOpen(taskModal, false);
+  taskAddToggle.setAttribute('aria-expanded', 'false');
   taskForm.reset();
-  taskForm.hidden = true;
-  taskAddToggle.hidden = !canEdit;
   setMessage(taskMessage, '', '');
+  var returnTo = taskModalReturnFocus;
+  taskModalReturnFocus = null;
+  restoreFocus(returnTo, canEdit ? taskAddToggle : null);
+}
+
+/* Dismissing is the user's choice; saving in progress keeps the dialog open. */
+function dismissTaskForm() {
+  if (taskSaving) return;
+  closeTaskForm();
+}
+
+function openNoteDelete(id) {
+  var note = notes[id];
+  if (!note || !canDeleteNote() || !noteDeleteModal.hidden) return;
+  noteDeleteId = id;
+  noteDeleteAuthor.textContent = noteAuthor(note);
+  noteDeletePreview.textContent = note.body || '';
+  setMessage(noteDeleteMessage, '', '');
+  noteDeleteReturnFocus = document.activeElement;
+  setModalOpen(noteDeleteModal, true);
+  noteDeleteCancel.focus();
+}
+
+function closeNoteDelete() {
+  if (noteDeleteModal.hidden) return;
+  setModalOpen(noteDeleteModal, false);
+  noteDeleteId = null;
+  setMessage(noteDeleteMessage, '', '');
+  var returnTo = noteDeleteReturnFocus;
+  noteDeleteReturnFocus = null;
+  restoreFocus(returnTo, noteForm.hidden ? null : noteBody);
+}
+
+function dismissNoteDelete() {
+  if (noteDeleting) return;
+  closeNoteDelete();
 }
 
 function resetNoteEditor() {
@@ -1090,6 +1210,7 @@ function resetNoteEditor() {
   noteBody.value = '';
   noteSubmit.textContent = 'Add note';
   noteCancelEdit.hidden = true;
+  notePostingAs.textContent = notePostingAsDefault;
   setMessage(noteMessage, '', '');
 }
 
@@ -1129,7 +1250,7 @@ function startLiveData() {
   }, function(error) {
     console.error('Could not load bakery notes:', error);
     document.getElementById('bakeryNotesList').innerHTML =
-      '<div class="bakery-profile-empty bakery-profile-empty--notes"><strong>Historical notes unavailable.</strong>' +
+      '<div class="bakery-profile-empty bakery-profile-empty--notes"><strong>Bakery notes unavailable.</strong>' +
       '<span>Try refreshing the page.</span></div>';
   });
 }
@@ -1151,7 +1272,7 @@ async function loadBakeryProfile(user) {
     get(ref(db, 'appSettings/reportVisibility'))
   ]);
 
-  var isAdmin = initial[0].exists() && initial[0].val() === true;
+  isAdmin = initial[0].exists() && initial[0].val() === true;
   currentUserProfile = initial[1].exists() ? initial[1].val() : null;
   if (currentUserProfile && currentUserProfile.role === 'admin') isAdmin = true;
   if (!isAdmin && !currentUserProfile) {
@@ -1203,10 +1324,12 @@ async function loadBakeryProfile(user) {
   currentUser = user;
   canEdit = permissions.actions.logVisits === true;
   var displayName = profileDisplayName(user, currentUserProfile);
+  notePostingAsDefault = 'Posting as ' + displayName;
   document.getElementById('bakeryNoteAvatar').textContent = initials(displayName);
-  document.getElementById('bakeryNotePostingAs').textContent = 'Posting as ' + displayName;
+  notePostingAs.textContent = notePostingAsDefault;
   taskAddToggle.hidden = !canEdit;
-  noteForm.hidden = !canEdit;
+  // Admins keep the composer so they can revise any note, even without logVisits.
+  noteForm.hidden = !canEdit && !isAdmin;
 
   renderIdentity(sitePayload);
   renderBakerySelector(reportScopeActive);
@@ -1250,7 +1373,25 @@ document.addEventListener('click', function(event) {
 });
 
 taskAddToggle.addEventListener('click', openTaskForm);
-taskCancel.addEventListener('click', closeTaskForm);
+
+[taskCancel, taskModalClose, taskModalBackdrop].forEach(function(control) {
+  control.addEventListener('click', dismissTaskForm);
+});
+
+[noteDeleteCancel, noteDeleteClose, noteDeleteBackdrop].forEach(function(control) {
+  control.addEventListener('click', dismissNoteDelete);
+});
+
+document.addEventListener('keydown', function(event) {
+  var openModal = !taskModal.hidden ? taskModal : (!noteDeleteModal.hidden ? noteDeleteModal : null);
+  if (!openModal) return;
+  if (event.key === 'Escape') {
+    if (openModal === taskModal) dismissTaskForm();
+    else dismissNoteDelete();
+    return;
+  }
+  trapModalFocus(openModal, event);
+});
 
 taskForm.addEventListener('submit', async function(event) {
   event.preventDefault();
@@ -1261,6 +1402,7 @@ taskForm.addEventListener('submit', async function(event) {
     return;
   }
 
+  taskSaving = true;
   setBusy(taskSubmit, true, 'Adding…', 'Add task');
   try {
     var who = currentUser.email || currentUser.uid;
@@ -1287,11 +1429,16 @@ taskForm.addEventListener('submit', async function(event) {
     console.error('Could not add task:', error);
     setMessage(taskMessage, 'error', error.message || 'The task could not be added.');
   } finally {
+    taskSaving = false;
     setBusy(taskSubmit, false, 'Adding…', 'Add task');
   }
 });
 
 document.getElementById('bakeryTaskList').addEventListener('click', async function(event) {
+  if (event.target.closest('[data-task-add]')) {
+    openTaskForm();
+    return;
+  }
   var button = event.target.closest('[data-task-toggle]');
   if (!button || !currentUser || !canEdit) return;
   var task = tasks.find(function(item) { return item.id === button.getAttribute('data-task-toggle'); });
@@ -1315,7 +1462,9 @@ document.getElementById('bakeryTaskList').addEventListener('click', async functi
 
 noteForm.addEventListener('submit', async function(event) {
   event.preventDefault();
-  if (!currentUser || !canEdit) return;
+  if (!currentUser) return;
+  var editId = noteForm.getAttribute('data-edit-id');
+  if (editId ? !canEditNote(notes[editId]) : !(canEdit || isAdmin)) return;
   var body = noteBody.value.trim();
   if (!body) {
     setMessage(noteMessage, 'error', 'Write a note before saving.');
@@ -1328,7 +1477,6 @@ noteForm.addEventListener('submit', async function(event) {
     name: displayName,
     email: currentUser.email || ''
   };
-  var editId = noteForm.getAttribute('data-edit-id');
   setBusy(noteSubmit, true, editId ? 'Saving…' : 'Posting…', editId ? 'Save changes' : 'Add note');
   try {
     var basePath = 'bakeryNotes/' + bakeryPathKey(bakeryName);
@@ -1360,18 +1508,45 @@ noteForm.addEventListener('submit', async function(event) {
 });
 
 document.getElementById('bakeryNotesList').addEventListener('click', function(event) {
+  var deleteButton = event.target.closest('[data-note-delete]');
+  if (deleteButton) {
+    openNoteDelete(deleteButton.getAttribute('data-note-delete'));
+    return;
+  }
+
   var button = event.target.closest('[data-note-edit]');
-  if (!button || !canEdit) return;
+  if (!button) return;
   var id = button.getAttribute('data-note-edit');
   var note = notes[id];
-  if (!note) return;
+  if (!note || !canEditNote(note)) return;
   noteForm.setAttribute('data-edit-id', id);
   noteBody.value = note.body || '';
   noteSubmit.textContent = 'Save changes';
   noteCancelEdit.hidden = false;
+  notePostingAs.textContent = isNoteAuthor(note)
+    ? 'Editing your note'
+    : 'Editing the note by ' + noteAuthor(note);
   setMessage(noteMessage, '', '');
   noteBody.focus();
   noteForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+noteDeleteConfirm.addEventListener('click', async function() {
+  if (!noteDeleteId || !canDeleteNote() || noteDeleting) return;
+  var id = noteDeleteId;
+  noteDeleting = true;
+  setBusy(noteDeleteConfirm, true, 'Deleting…', 'Delete note');
+  try {
+    await remove(ref(db, 'bakeryNotes/' + bakeryPathKey(bakeryName) + '/' + id));
+    if (noteForm.getAttribute('data-edit-id') === id) resetNoteEditor();
+    closeNoteDelete();
+  } catch (error) {
+    console.error('Could not delete note:', error);
+    setMessage(noteDeleteMessage, 'error', error.message || 'The note could not be deleted.');
+  } finally {
+    noteDeleting = false;
+    setBusy(noteDeleteConfirm, false, 'Deleting…', 'Delete note');
+  }
 });
 
 noteCancelEdit.addEventListener('click', resetNoteEditor);

@@ -194,40 +194,9 @@
               <p class="bakery-profile-eyebrow">Actions</p>
               <h2 id="bakeryTasksTitle">Follow-up tasks</h2>
             </div>
-            <button type="button" id="bakeryTaskAddToggle" class="bakery-profile-small-btn">+ Add task</button>
+            <button type="button" id="bakeryTaskAddToggle" class="bakery-profile-small-btn"
+              aria-haspopup="dialog" aria-expanded="false" aria-controls="bakeryTaskModal">+ Add task</button>
           </div>
-
-          <form id="bakeryTaskForm" class="bakery-profile-inline-form" hidden>
-            <label>
-              <span>Task</span>
-              <input id="bakeryTaskTitle" type="text" maxlength="160" placeholder="What needs to happen?" required>
-            </label>
-            <label>
-              <span>Detail <em>Optional</em></span>
-              <textarea id="bakeryTaskDetail" rows="2" maxlength="800"
-                placeholder="Add useful context for the team"></textarea>
-            </label>
-            <div class="bakery-profile-inline-form__row">
-              <label>
-                <span>Due date <em>Optional</em></span>
-                <input id="bakeryTaskDueDate" type="date">
-              </label>
-              <label>
-                <span>Priority</span>
-                <select id="bakeryTaskPriority">
-                  <option value="none">No priority</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </label>
-            </div>
-            <div id="bakeryTaskMessage" class="bakery-profile-form-message" role="status" hidden></div>
-            <div class="bakery-profile-inline-form__actions">
-              <button type="button" id="bakeryTaskCancel" class="bakery-profile-secondary-btn">Cancel</button>
-              <button type="submit" id="bakeryTaskSubmit" class="btn">Add task</button>
-            </div>
-          </form>
 
           <div id="bakeryTaskList" class="bakery-profile-list" aria-live="polite"></div>
         </section>
@@ -237,7 +206,7 @@
         <div class="bakery-profile-card__head bakery-profile-card__head--notes">
           <div>
             <p class="bakery-profile-eyebrow">Coffee team record</p>
-            <h2 id="bakeryNotesTitle">Historical notes</h2>
+            <h2 id="bakeryNotesTitle">Bakery notes</h2>
             <p>Updates are kept with the poster’s name and timestamp so the team has a shared history.</p>
           </div>
         </div>
@@ -245,7 +214,7 @@
         <form id="bakeryNoteForm" class="bakery-note-composer">
           <div id="bakeryNoteAvatar" class="bakery-note-avatar" aria-hidden="true">C</div>
           <label for="bakeryNoteBody">
-            <span class="sr-only">Add a historical note</span>
+            <span class="sr-only">Add a bakery note</span>
             <textarea id="bakeryNoteBody" rows="3" maxlength="2000"
               placeholder="Add context, decisions, changes, or an update for the coffee team…" required></textarea>
           </label>
@@ -263,6 +232,83 @@
         <div id="bakeryNotesList" class="bakery-notes-timeline" aria-live="polite"></div>
       </section>
     </main>
+  </div>
+
+  <div id="bakeryNoteDeleteModal" class="bakery-profile-modal" role="alertdialog" aria-modal="true"
+    aria-labelledby="bakeryNoteDeleteTitle" aria-describedby="bakeryNoteDeleteCopy" hidden>
+    <button type="button" id="bakeryNoteDeleteBackdrop" class="bakery-profile-modal__backdrop"
+      aria-label="Cancel deleting this note"></button>
+    <section class="bakery-profile-modal__dialog">
+      <div class="bakery-profile-modal__head">
+        <div>
+          <p class="bakery-profile-eyebrow">Coffee team record</p>
+          <h2 id="bakeryNoteDeleteTitle">Delete this note?</h2>
+          <p id="bakeryNoteDeleteCopy" class="bakery-profile-modal__copy">The note by
+            <strong id="bakeryNoteDeleteAuthor">a team member</strong> is removed from this bakery's shared
+            history for everyone. This cannot be undone.</p>
+        </div>
+        <button type="button" id="bakeryNoteDeleteClose" class="modal-close-btn"
+          aria-label="Close delete note confirmation" title="Close">&#10005;</button>
+      </div>
+
+      <blockquote id="bakeryNoteDeletePreview" class="bakery-profile-modal__quote"></blockquote>
+      <div id="bakeryNoteDeleteMessage" class="bakery-profile-form-message" role="status" hidden></div>
+
+      <div class="bakery-profile-modal__actions">
+        <button type="button" id="bakeryNoteDeleteCancel" class="bakery-profile-secondary-btn">Cancel</button>
+        <button type="button" id="bakeryNoteDeleteConfirm" class="bakery-profile-danger-btn">Delete note</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="bakeryTaskModal" class="bakery-profile-modal" role="dialog" aria-modal="true"
+    aria-labelledby="bakeryTaskModalTitle" hidden>
+    <button type="button" id="bakeryTaskModalBackdrop" class="bakery-profile-modal__backdrop"
+      aria-label="Cancel adding a follow-up task"></button>
+    <section class="bakery-profile-modal__dialog">
+      <div class="bakery-profile-modal__head">
+        <div>
+          <p class="bakery-profile-eyebrow">Actions</p>
+          <h2 id="bakeryTaskModalTitle">Add follow-up task</h2>
+          <p class="bakery-profile-modal__copy">Saved against <strong id="bakeryTaskModalBakery">this bakery</strong>
+            and shared with the whole coffee team.</p>
+        </div>
+        <button type="button" id="bakeryTaskModalClose" class="modal-close-btn"
+          aria-label="Close add follow-up task" title="Close">&#10005;</button>
+      </div>
+
+      <form id="bakeryTaskForm" class="bakery-profile-inline-form bakery-profile-inline-form--modal">
+        <label>
+          <span>Task</span>
+          <input id="bakeryTaskTitle" type="text" maxlength="160" placeholder="What needs to happen?" required>
+        </label>
+        <label>
+          <span>Detail <em>Optional</em></span>
+          <textarea id="bakeryTaskDetail" rows="3" maxlength="800"
+            placeholder="Add useful context for the team"></textarea>
+        </label>
+        <div class="bakery-profile-inline-form__row">
+          <label>
+            <span>Due date <em>Optional</em></span>
+            <input id="bakeryTaskDueDate" type="date">
+          </label>
+          <label>
+            <span>Priority</span>
+            <select id="bakeryTaskPriority">
+              <option value="none">No priority</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+        </div>
+        <div id="bakeryTaskMessage" class="bakery-profile-form-message" role="status" hidden></div>
+        <div class="bakery-profile-inline-form__actions">
+          <button type="button" id="bakeryTaskCancel" class="bakery-profile-secondary-btn">Cancel</button>
+          <button type="submit" id="bakeryTaskSubmit" class="btn">Add task</button>
+        </div>
+      </form>
+    </section>
   </div>
 
   <script src="js/config.js"></script>
