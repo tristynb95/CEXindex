@@ -1624,6 +1624,30 @@ window.GAILS = window.GAILS || {};
     requestAnimationFrame(function () { drawScoreChart(record); });
   };
 
+  // Deep link support for my-activity.html, which links each visit straight to
+  // its report as index.html?visit=<id>#visit-log. The hash activates the tab
+  // (js/app.js); this opens the report itself. The visits node arrives
+  // asynchronously, so the id is held until the record it names exists and the
+  // report is opened exactly once — a later re-render must not reopen it after
+  // the user has closed it.
+  var pendingVisitDeepLinkId = (function () {
+    try {
+      return new URLSearchParams(window.location.search).get('visit') || '';
+    } catch (e) {
+      console.warn('Could not read the visit deep link:', e);
+      return '';
+    }
+  })();
+
+  window.GAILS.openVisitFromDeepLink = function () {
+    if (!pendingVisitDeepLinkId) return;
+    var visits = window.GAILS._allVisitsObj || {};
+    if (!visits[pendingVisitDeepLinkId]) return;
+    var visitId = pendingVisitDeepLinkId;
+    pendingVisitDeepLinkId = '';
+    window.GAILS.openVisitReportById(visitId);
+  };
+
   window.GAILS.deleteVisit = function (visitId) {
     var record = window.GAILS._allVisitsObj ? window.GAILS._allVisitsObj[visitId] : null;
     var bakeryName = record ? (window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery) : 'this';

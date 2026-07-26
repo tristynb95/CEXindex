@@ -14,6 +14,7 @@ exists only for tooling (ESLint); nothing is bundled, compiled, or minified.
 | `admin.html` | `js/admin-page.js` | Admin portal, CQV PDF import |
 | `profile.html` | `js/profile-page.js` | User profile |
 | `bakery-profile.html` | `js/bakery-profile.js` | Per-bakery performance, visits, tasks, map, and team notes |
+| `my-activity.html` | `js/my-activity.js` | The signed-in user's own open actions, visits (with Excel export), and activity feed |
 
 ## The two JavaScript worlds
 
@@ -25,8 +26,8 @@ hand in the `<script>` tags at the bottom of `index.html` / `admin.html`. A file
 must appear after anything it reads at load time. `js/state.js` creates the
 namespace and goes first.
 
-**ES modules** (`auth.js`, `admin-page.js`, `firebase-config.js`, `permissions.js`,
-`profile-menu.js`, `profile-page.js`) use `type="module"` and import each other
+**ES modules** (`auth.js`, `admin-page.js`, `firebase-config.js`, `my-activity.js`,
+`permissions.js`, `profile-menu.js`, `profile-page.js`) use `type="module"` and import each other
 directly. They are deferred, so they run *after* every classic script — which is why
 they can rely on `window.GAILS` already existing.
 
@@ -38,6 +39,26 @@ Shared code lives in one place per concern; prefer extending these over re-copyi
 - `js/cqv-criticals.js` — `GAILS.CQVCriticals`, the canonical zero-tolerance question list.
 - `js/cqv-shared.js` — `GAILS.CQVShared`, CQV band derivation and presentation.
 - `js/profile-menu.js` — the header profile popover (ES module).
+
+## Who a record belongs to
+
+`my-activity.html` is the one screen that asks "whose record is this", so the
+authorship fields matter there in a way they don't elsewhere:
+
+- **Visits** (`routineVisits/{id}`) — `meta.createdBy` / `meta.createdByUid` are
+  the durable signals, written when a check-in is saved. `meta.updatedBy` is
+  **not** a substitute: an admin editing a visit overwrites it, which would
+  otherwise move that visit into the admin's activity. Visits from the Google
+  Form carry the respondent's `email`; CQV and NBO PDFs only ever carry a printed
+  `auditorName`, so both are matched too.
+- **Follow-up tasks** (`followUpActions/{id}`) — `createdBy` and `completedBy`,
+  both email strings. A task raised by one person and closed by another belongs,
+  partly, to both.
+- **Bakery notes** (`bakeryNotes/{bakeryKey}/{noteId}`) — `createdBy` /
+  `updatedBy`, each an object with `uid`, `name`, and `email`.
+
+If you add a new kind of record that a person authors, stamp the author at
+creation time and don't rely on a "last updated by" field to stand in for it.
 
 ## Linting
 

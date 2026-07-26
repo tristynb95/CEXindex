@@ -125,6 +125,12 @@ window.GAILS_Firebase = {
       meta: {
         source: 'siteVisit',
         createdAt: nowIsoStr,
+        // Authorship is recorded separately from updatedBy because an admin
+        // correcting a visit later overwrites updatedBy — which would
+        // otherwise move the visit into the admin's My Activity hub
+        // (my-activity.html) and out of the person's who actually logged it.
+        createdBy: auth.currentUser.email || auth.currentUser.uid,
+        createdByUid: auth.currentUser.uid,
         updatedAt: nowIsoStr,
         updatedBy: auth.currentUser.email || auth.currentUser.uid
       }
@@ -398,6 +404,11 @@ function applyLastVisitDates(visitsObj) {
     }
     if (typeof window.GAILS.refreshMapVisitFilters === 'function') {
       window.GAILS.refreshMapVisitFilters();
+    }
+    // A ?visit=<id> link from the My Activity hub can only be honoured once
+    // the record it names has arrived.
+    if (typeof window.GAILS.openVisitFromDeepLink === 'function') {
+      window.GAILS.openVisitFromDeepLink();
     }
   }
 }
