@@ -10956,24 +10956,48 @@ a,
     min-height: 360px;
   }
 
-  /* League table sort row on mobile */
+  /* League table sort row on mobile. Three controls (sort, Filters pill,
+     full-screen) cannot share one line at phone widths: the select's 160px
+     floor stopped the row shrinking, so it overflowed and the Filters pill
+     sat on top of the sort control. Lay the row out as a grid instead — the
+     sort control keeps the first line alongside the full-screen button, and
+     the Filters pill (phones only) drops onto a full-width second line. */
   .league-table-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    gap: 10px 12px;
     margin-bottom: 20px;
     width: 100%;
-    flex-wrap: nowrap;
   }
 
   .league-table-toolbar__label {
-    flex: 0 1 auto;
+    grid-column: 1;
+    grid-row: 1;
     flex-wrap: nowrap;
-    max-width: calc(100% - 42px);
+    min-width: 0;
+    max-width: none;
   }
 
+  /* Keeps its content width where there is room, but drops the 160px floor so
+     it can give way on narrow phones — long option labels ellipsise rather
+     than forcing the row wider than the card. */
   .league-table-toolbar .filter-select {
-    min-width: min(160px, 52vw);
+    flex: 0 1 auto;
+    min-width: 0;
+    width: auto;
+  }
+
+  .league-table-toolbar .table-fullscreen-toolbar--inline {
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: 0;
+  }
+
+  /* Hidden above 720px, so the second line only exists on phones. */
+  .league-table-toolbar__filter-btn {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .tracker-table-header {
@@ -17115,11 +17139,39 @@ body.profile-modal-open {
 /* ── Responsive ── */
 @media (max-width: 1100px) {
   .focus-page-intro {
+    position: relative;
     flex-direction: column;
   }
 
   .focus-method {
     width: 100%;
+  }
+
+  /* The intro stacks here, so the overlay disclosure sits under the heading
+     rather than opposite it — pin it left in both states. Without this the
+     closed summary picked up the 100% width above (label ranged left) while
+     the open one hugged its label against `margin-left: auto`, so the label
+     jumped to the right edge the moment it was opened. */
+  .focus-page-intro .focus-method--overlay,
+  .focus-page-intro .focus-method--overlay[open] {
+    position: static;
+    width: auto;
+    margin-left: 0;
+    margin-right: auto;
+    align-self: flex-start;
+  }
+
+  /* Panel stays out of flow (so opening never reflows the page) but now hangs
+     off the stacked intro instead of the summary: `top: auto` keeps it at its
+     static position directly under the label, and left/right span the card
+     rather than the right-anchored 72vw the side-by-side layout used. */
+  .focus-page-intro .focus-method--overlay>p {
+    top: auto;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: 400px;
+    margin-top: 8px;
   }
 }
 
