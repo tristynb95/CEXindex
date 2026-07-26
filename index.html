@@ -13,13 +13,11 @@
   <meta name="theme-color" content="#B5312A">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?v=20260725-ux-04">
+  <link rel="stylesheet" href="css/styles.css?v=20260725-ux-03">
 </head>
 
 <body>
@@ -65,8 +63,8 @@
           </div>
           <div class="login-hero__score">
             <span class="login-hero__score-label">Compare</span>
-            <strong>One clear benchmark</strong>
-            <p>Measure every bakery against the same company standards, with company rank shown as supporting context.</p>
+            <strong>Peer &amp; Benchmark</strong>
+            <p>Rank bakeries against the pack, or measure everyone against GAIL's 90% standard.</p>
           </div>
           <div class="login-hero__score">
             <span class="login-hero__score-label">Act</span>
@@ -142,6 +140,14 @@
       </div>
     </div>
     <div class="header-actions">
+      <div id="globalIndexToggle" class="header-index-toggle" style="display:none;">
+        <span class="header-index-toggle__label">Index</span>
+        <div class="overview-rankings-toggle" role="group" aria-label="Index type">
+          <button type="button" class="overview-rankings-toggle__btn" data-global-index="relative">Peer</button>
+          <button type="button" class="overview-rankings-toggle__btn active"
+            data-global-index="absolute">Benchmark</button>
+        </div>
+      </div>
       <button id="adminBtn" title="Admin Portal" style="display:none;">
         <svg class="header-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <rect x="3" y="11" width="18" height="11" rx="2" />
@@ -170,22 +176,6 @@
             </svg>
             Profile
           </a>
-          <a class="profile-menu__item" href="my-activity.html" role="menuitem" data-my-activity-link hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M4 6h4M4 12h4M4 18h4" />
-              <path d="M11 6h9M11 12h9M11 18h5" />
-            </svg>
-            My Activity
-          </a>
-          <a class="profile-menu__item" href="my-team.html" role="menuitem" data-my-team-link hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <circle cx="9" cy="9" r="3" />
-              <path d="M3.5 18a5.5 5.5 0 0 1 11 0" />
-              <circle cx="17" cy="10" r="2.2" />
-              <path d="M15.5 18c.4-2 1.7-3.2 3.8-3.2" />
-            </svg>
-            My Team
-          </a>
           <button type="button" id="logoutBtn" class="profile-menu__item profile-menu__item--danger" role="menuitem">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -199,7 +189,8 @@
     </div>
   </div>
 
-  <aside id="invitationNotice" class="dashboard-invitation" aria-labelledby="invitationNoticeTitle" aria-live="polite" hidden>
+  <aside id="invitationNotice" class="dashboard-invitation" aria-labelledby="invitationNoticeTitle" aria-live="polite"
+    hidden>
     <div class="dashboard-invitation__icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" focusable="false">
         <path d="M20 11.5a8 8 0 1 1-4.7-7.3"></path>
@@ -367,9 +358,15 @@
                 </div>
               </div>
             </div>
-            <div class="filter-control"><label id="bandFilterLabel">Benchmark Band</label><br><select id="bandFilter">
+            <div class="filter-control"><label id="bandFilterLabel">Band</label><br><select id="bandFilter">
                 <option value="">All</option>
-                <optgroup label="— Benchmark Band">
+                <optgroup label="— Peer Score Band">
+                  <option value="Top Performance">Top Performance</option>
+                  <option value="Above Average">Above Average</option>
+                  <option value="Below Average">Below Average</option>
+                  <option value="Low Performance">Low Performance</option>
+                </optgroup>
+                <optgroup label="— Benchmark Score Band">
                   <option value="abs:Exceeding">Exceeding</option>
                   <option value="abs:Meeting">Meeting</option>
                   <option value="abs:Approaching">Approaching</option>
@@ -423,13 +420,13 @@
       </div>
 
       <!-- Mobile floating filter tab -->
-      <button type="button" class="filter-side-tab" id="filterSideTab" aria-label="Open dashboard filters"
+      <button type="button" class="filter-side-tab" id="filterSideTab" aria-label="Open filters — Peer index"
         aria-expanded="false">
         <svg class="filter-side-tab__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M3 7h18M7 12h10M11 17h2" />
         </svg>
-        <span class="filter-side-tab__label" id="filterSideTabLabel">Filters</span>
+        <span class="filter-side-tab__label" id="filterSideTabLabel">Peer</span>
         <span class="filter-side-tab__badge" id="filterSideTabBadge" hidden></span>
       </button>
 
@@ -440,7 +437,7 @@
             <div>
               <p class="dashboard-sidebar__label">Main Menu</p>
               <h2 class="dashboard-sidebar__title">Menu</h2>
-                          </div>
+            </div>
             <button type="button" id="dashboardSidebarToggle" class="dashboard-sidebar__toggle"
               aria-controls="dashboardNav" aria-expanded="true" aria-label="Collapse menu">
               <span class="dashboard-sidebar__toggle-icon" aria-hidden="true"></span>
@@ -568,32 +565,33 @@
             </div>
             <div class="grid-2 overview-secondary-charts">
               <div class="section overview-card overview-card--scatter">
-                <h2 id="npsScatterTitle">NPS vs Benchmark Score</h2><canvas id="npsVsCei"></canvas>
+                <h2 id="npsScatterTitle">NPS vs Peer Score</h2><canvas id="npsVsCei"></canvas>
               </div>
               <div class="section overview-card overview-card--pie">
-                <h2 id="overviewBandSplitTitle">Benchmark Score Band Split</h2><canvas
+                <h2 id="overviewBandSplitTitle">Score Band Split (Peer Score)</h2><canvas
                   id="overviewBandSplit"></canvas>
               </div>
             </div>
             <div class="grid-2 overview-cei-pies">
               <div class="section overview-card overview-card--experience">
-                <h2 id="overviewRadarTitle">Customer Experience by Benchmark Band</h2><canvas id="cxRadar"
+                <h2 id="overviewRadarTitle">Customer Experience by Peer Score Band</h2><canvas id="cxRadar"
                   style="max-height:340px"></canvas>
               </div>
               <div class="section overview-card overview-card--drags">
-                <h2 id="overviewDragTitle">Biggest Drags on Benchmark Score</h2>
-                <p class="chart-caption">Which parts of the customer experience are pulling the overall score down. Shorter bars are the weakest areas — the biggest drags.</p>
+                <h2 id="overviewDragTitle">Biggest Drags on Peer Score</h2>
+                <p class="chart-caption">Which parts of the customer experience are pulling the overall score down.
+                  Shorter bars are the weakest areas — the biggest drags.</p>
                 <canvas id="absComponentDrag" style="max-height:300px"></canvas>
               </div>
             </div>
             <div class="grid-2 overview-rankings-grid">
               <div class="section overview-card overview-card--top">
-                <h2 id="top10Title">Top 10 Bakeries by Benchmark Score</h2><canvas id="top10Chart"
+                <h2 id="top10Title">Top 10 Bakeries by Peer Score</h2><canvas id="top10Chart"
                   style="max-height:360px"></canvas>
               </div>
               <div class="section overview-card overview-card--bottom">
-                <h2 id="bot10Title">Bottom 10 Bakeries by Benchmark Score</h2><canvas
-                  id="bot10Chart" style="max-height:360px"></canvas>
+                <h2 id="bot10Title">Bottom 10 Bakeries by Peer Score</h2><canvas id="bot10Chart"
+                  style="max-height:360px"></canvas>
               </div>
             </div>
           </div>
@@ -627,9 +625,16 @@
               <div class="section">
                 <h2 id="trendAbsBandsTitle">Benchmark Score Bands by Month</h2>
                 <p class="chart-caption">Company-wide progress against the
-                  benchmarks over time, showing whether the estate is genuinely improving against a stable standard.
+                  benchmarks over time &mdash; unlike the relative bands, this will shift as bakeries genuinely improve.
                 </p>
                 <canvas id="trendAbsBands"></canvas>
+              </div>
+              <div class="section">
+                <h2 id="trendBandsTitle">Peer Score Bands by Month</h2>
+                <p class="chart-caption">How bakeries rank against each other
+                  each month &mdash; because the bands are set by quartile, the proportions stay broadly fixed even as
+                  the whole company improves.</p>
+                <canvas id="trendBands"></canvas>
               </div>
             </div>
             <div class="grid-2">
@@ -698,25 +703,24 @@
               <h2>Coffee Experience Index v4 &mdash; Methodology</h2>
               <div class="explain methodology">
                 <p class="methodology__lead">The <strong>Coffee Experience Index</strong> uses a 0 to 100 score to tell
-                  us how well each bakery is performing against the same company standards.</p>
+                  us how well we're doing. We look at it in two ways.</p>
 
                 <div class="method-pair">
                   <div class="method-pair__card">
-                    <div class="method-pair__tag">Benchmark Score</div>
-                    <p>Like a test with a fixed pass mark. Other bakeries do not change your result: meeting the
-                      customer and speed standards earns full marks, while performance below the standard loses points
-                      down to a defined floor.</p>
+                    <div class="method-pair__tag">Peer Score</div>
+                    <p>Like a race. Every selected period, all bakeries line up and we rank them against each other.
+                      Finish 1st out of 20 and your score is near 100; finish last and it's near 0. It doesn't matter
+                      what the actual numbers are &mdash; only where you finished in the group.</p>
                   </div>
                   <div class="method-pair__card">
-                    <div class="method-pair__tag">Company Rank</div>
-                    <p>Rank is supporting context, not a second score. It orders bakeries by Benchmark Score for the
-                      selected period, using the retained peer calculation only to break ties when several bakeries
-                      have reached the same capped benchmark score.</p>
+                    <div class="method-pair__tag">Benchmark Score</div>
+                    <p>Like a test with a pass mark of 90%. Whether every other bakery is above or below 90% doesn't
+                      change your result &mdash; you either hit the standard or you didn't.</p>
                   </div>
                 </div>
-                <p class="method-note"><strong>Benchmark Score</strong> determines performance, bands, Focus status,
-                  maps, and trends. <strong>Company Rank</strong> is shown only where comparison is useful and is
-                  calculated against the full company cohort before dashboard filters are applied.</p>
+                <p class="method-note">Use <strong>Peer</strong> to see who's leading the pack. Use
+                  <strong>Benchmark</strong> to see if the whole company is genuinely hitting the standard.
+                </p>
 
                 <h3>The Recipe: What Makes Up the Score?</h3>
                 <p>We believe what the customer tells us matters most. That's why 90% of your score comes directly from
@@ -732,11 +736,13 @@
                   <li><strong>Coffee Efficiency (5%)</strong> &mdash; How fast the order was completed. We display the %
                     under 2 mins (Target: 70% &lt; 2 min) in the KPI cards and tables, but the index score blends the
                     three company benchmarks: <strong>70% within 2 mins</strong> (50% of the score), <strong>90%
-                    within 3 mins</strong> (30%), and <strong>under 1% over 5 mins</strong> (20%). Each benchmark earns
+                      within 3 mins</strong> (30%), and <strong>under 1% over 5 mins</strong> (20%). Each benchmark
+                    earns
                     full marks when met and falls in a straight line to 0 at its floor (50% for the 2-min band, 70% for
                     the 3-min band, and 2.5% for the over-5-min band). As a guardrail, if orders over 5 mins reach
                     <strong>1.5%</strong> the component score is capped at 50; if they reach <strong>2.5%</strong>, the
-                    component scores 0.</li>
+                    component scores 0.
+                  </li>
                 </ul>
 
                 <h3>Keeping It Fair</h3>
@@ -786,10 +792,31 @@
                   </div>
                 </div>
 
+                <h3>How We Group Bakeries (Bands)</h3>
+                <div class="benchmarks benchmarks--quad">
+                  <div class="benchmark exc">
+                    <div class="bval">75&ndash;100</div>
+                    <div class="blabel">Top Performance</div>
+                  </div>
+                  <div class="benchmark gd">
+                    <div class="bval">50&ndash;74</div>
+                    <div class="blabel">Above Average</div>
+                  </div>
+                  <div class="benchmark dev">
+                    <div class="bval">25&ndash;49</div>
+                    <div class="blabel">Below Average</div>
+                  </div>
+                  <div class="benchmark na">
+                    <div class="bval">0&ndash;24</div>
+                    <div class="blabel">Low Performance</div>
+                  </div>
+                </div>
+
                 <h3>KPI Card Status Thresholds</h3>
                 <p>To help scan the dashboard quickly, each KPI card displays a color-coded status tag
                   (<strong>Exceeding</strong>, <strong>On Target</strong>, <strong>Watch</strong>, or
-                  <strong>Below</strong>) based on specific performance bands for the selected period:</p>
+                  <strong>Below</strong>) based on specific performance bands for the selected period:
+                </p>
                 <ul class="method-list">
                   <li><strong>Net Promoter Score (NPS)</strong>: Exceeding (&gt;60), On Target (55–60), Watch (45–54),
                     Below (&lt;45).</li>
@@ -808,9 +835,9 @@
                   </li>
                   <li><strong>Fairer rankings for everyone:</strong> We added the fairness adjustment for bakeries with
                     very few reviews, so rankings aren't thrown off by just a few responses.</li>
-                  <li><strong>One definition of performance:</strong> The <strong>Benchmark Score</strong> now drives
-                    every performance view. Company rank remains available in ranking-focused views without changing
-                    whether a bakery is meeting the standard.</li>
+                  <li><strong>A true standard to aim for:</strong> We added the <strong>Benchmark Score</strong> to make
+                    sure we are not just trying to beat each other week-over-week, but genuinely improving our service
+                    and meeting our company targets.</li>
                 </ol>
               </div>
             </div>
@@ -822,7 +849,8 @@
               <div class="league-table-toolbar" data-table-fullscreen-anchor="true">
                 <label class="league-table-toolbar__label">Sort by: <select id="sortBy"
                     class="league-table-toolbar__select">
-                    <option value="ac">Benchmark Score</option>
+                    <option value="c">Score (Peer)</option>
+                    <option value="ac">Score (Benchmark)</option>
                     <option value="n">NPS (Drink + Meal)</option>
                     <option value="dr">Quality</option>
                     <option value="ef">Overall Efficiency</option>
@@ -836,16 +864,26 @@
                     <option value="nm">NPS Meal</option>
                     <option value="na">NPS (All)</option>
                   </select></label>
+                <button type="button" id="leagueTableFilterBtn" class="league-table-toolbar__filter-btn"
+                  aria-label="Open filters">
+                  <svg class="league-table-toolbar__filter-icon" viewBox="0 0 24 24" aria-hidden="true"
+                    focusable="false" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <path d="M3 7h18M7 12h10M11 17h2" />
+                  </svg>
+                  <span class="league-table-toolbar__filter-label">Filters</span>
+                  <span class="league-table-toolbar__filter-badge" id="leagueTableFilterBadge" hidden></span>
+                </button>
               </div>
               <div class="table-wrap table-wrap--league table-wrap--floating">
                 <table class="league-table nps-splits-collapsed" data-nps-splits>
                   <thead>
                     <tr>
-                      <th>Rank</th>
+                      <th>#</th>
                       <th>Bakery</th>
-                      <th>Top %</th>
                       <th>Region</th>
                       <th>Ops Area</th>
+                      <th>Peer Score</th>
+                      <th>Peer Band</th>
                       <th>Benchmark Score</th>
                       <th>Benchmark Band</th>
                       <th>Conf</th>
@@ -905,21 +943,26 @@
                       <span style="color:var(--green);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp;
                       <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp;
                       <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp;
-                      <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span></p>
+                      <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span>
+                    </p>
                     <button type="button" class="fullscreen-toggle-btn map-fullscreen-btn" data-map-fullscreen="network"
                       aria-label="Open full screen map view" aria-pressed="false" title="Open full screen">
-                      <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__expand" viewBox="0 0 20 20"
-                        aria-hidden="true">
+                      <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__expand"
+                        viewBox="0 0 20 20" aria-hidden="true">
                         <path d="M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12" fill="none" stroke="currentColor"
                           stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
                       </svg>
-                      <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__collapse" viewBox="0 0 20 20"
-                        aria-hidden="true">
+                      <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__collapse"
+                        viewBox="0 0 20 20" aria-hidden="true">
                         <path d="M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4" fill="none" stroke="currentColor"
                           stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
                       </svg>
-                      <span class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open full
-                        screen</span><span class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit full
+                      <span
+                        class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open
+                        full
+                        screen</span><span
+                        class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit
+                        full
                         screen</span>
                     </button>
                   </div>
@@ -964,7 +1007,7 @@
                       <path d="M5 17h14"></path>
                     </svg>
                   </span>
-                  <span>Trend Detail</span>
+                  <span>Monthly results</span>
                 </button>
                 <button class="target-subtab" type="button" data-target-subtab="graphs">
                   <span class="target-subtab__icon" aria-hidden="true">
@@ -1000,9 +1043,9 @@
                 <div class="section">
                   <div class="focus-page-intro">
                     <div>
-              <h2>Priority Overview</h2>
+                      <h2>Priority Overview</h2>
                     </div>
-                    <details class="focus-method focus-method--overlay">
+                    <details class="focus-method">
                       <summary>How support priority is calculated</summary>
                       <p><strong>Support priority</strong> helps decide where to act first. It starts with a performance
                         measure using up to the six most recent completed months: normally 60% from the latest month,
@@ -1133,29 +1176,34 @@
                               data-target-map-visit="unvisited">Unvisited</button>
                           </div>
                         </div>
-                        <button type="button" class="fullscreen-toggle-btn map-fullscreen-btn" data-map-fullscreen="target"
-                          aria-label="Open full screen map view" aria-pressed="false" title="Open full screen">
-                          <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__expand" viewBox="0 0 20 20"
-                            aria-hidden="true">
+                        <button type="button" class="fullscreen-toggle-btn map-fullscreen-btn"
+                          data-map-fullscreen="target" aria-label="Open full screen map view" aria-pressed="false"
+                          title="Open full screen">
+                          <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__expand"
+                            viewBox="0 0 20 20" aria-hidden="true">
                             <path d="M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12" fill="none" stroke="currentColor"
                               stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
                           </svg>
-                          <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__collapse" viewBox="0 0 20 20"
-                            aria-hidden="true">
+                          <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__collapse"
+                            viewBox="0 0 20 20" aria-hidden="true">
                             <path d="M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4" fill="none" stroke="currentColor"
                               stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
                           </svg>
-                          <span class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open full
-                            screen</span><span class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit
+                          <span
+                            class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open
+                            full
+                            screen</span><span
+                            class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit
                             full screen</span>
                         </button>
                       </div>
                     </div>
-                    <p class="target-hint" id="targetMapLegendHint"><span
-                        style="color:#B22A24;font-weight:600">&#9679; High</span> &nbsp;&middot;&nbsp;
+                    <p class="target-hint" id="targetMapLegendHint"><span style="color:#B22A24;font-weight:600">&#9679;
+                        High</span> &nbsp;&middot;&nbsp;
                       <span style="color:#E3A130;font-weight:600">&#9679; Medium</span> &nbsp;&middot;&nbsp;
                       <span style="color:#78909C;font-weight:600">&#9679; Monitor</span> &nbsp;&middot;&nbsp;
-                      Colour shows support priority, not performance band. Click a pin for details.</p>
+                      Colour shows support priority, not performance band. Click a pin for details.
+                    </p>
                     <div class="map-body">
                       <div class="map-canvas-wrap">
                         <div id="targetMap"></div>
@@ -1172,11 +1220,13 @@
                   <h2>Comment Cloud</h2>
                   <p class="target-hint">Words drawn from customer reviews for <strong>Low Performance</strong> &amp;
                     <strong>Below Average</strong> bakeries only. Defaults to the latest completed month &mdash; use
-                    the slider to widen the window and see how comments have shifted over time.</p>
+                    the slider to widen the window and see how comments have shifted over time.
+                  </p>
 
                   <div id="wcTargetMonthRange" class="wc-month-range" hidden>
                     <div class="wc-month-range__header">
-                      <span class="wc-month-range__label">Showing <strong id="wcTargetMonthRangeLabel">&mdash;</strong></span>
+                      <span class="wc-month-range__label">Showing <strong
+                          id="wcTargetMonthRangeLabel">&mdash;</strong></span>
                       <div class="wc-month-range__presets" role="group" aria-label="Month range presets">
                         <button type="button" class="wc-month-range__preset" data-months="1">Latest month</button>
                         <button type="button" class="wc-month-range__preset" data-months="3">Last 3</button>
@@ -1184,8 +1234,8 @@
                         <button type="button" class="wc-month-range__preset" data-months="all">All time</button>
                       </div>
                     </div>
-                    <input type="range" id="wcTargetMonthSlider" class="wc-month-range__slider"
-                      min="1" max="1" step="1" value="1" aria-label="Number of recent months to include">
+                    <input type="range" id="wcTargetMonthSlider" class="wc-month-range__slider" min="1" max="1" step="1"
+                      value="1" aria-label="Number of recent months to include">
                   </div>
 
                   <div id="wcTargetStatus" class="status" style="margin-bottom:10px"></div>
@@ -1317,16 +1367,16 @@
             <!-- VIEW NAV — same segmented bar as the Focus Bakeries sub-tabs -->
             <div id="visitLogViewToggle" class="target-subtabs__nav visit-log-subtabs" role="group"
               aria-label="Bakery Reports view">
-              <button type="button" class="target-subtab active" data-view="bakeries">
+              <button type="button" class="target-subtab" data-view="bakeries">
                 <span class="target-subtab__icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
                     <path d="M4 9.5 12 4l8 5.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5Z"></path>
                     <path d="M9 20v-5h6v5"></path>
                   </svg>
                 </span>
-                <span>Bakery Directory</span>
+                <span>Bakery List</span>
               </button>
-              <button type="button" class="target-subtab" data-view="history">
+              <button type="button" class="target-subtab active" data-view="history">
                 <span class="target-subtab__icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
                     <circle cx="12" cy="12" r="8"></circle>
@@ -1362,7 +1412,7 @@
                    The title names the active view, so the card always says what
                    it is currently showing. -->
               <div class="visit-log-section-header">
-                <h2 class="visit-log-section-title" id="visitLogSectionTitle">Bakery Directory</h2>
+                <h2 class="visit-log-section-title" id="visitLogSectionTitle">Visit History</h2>
                 <!-- One primary action per view (see syncVisitLogActions in
                      js/visit-report.js), plus the external form as a quiet
                      link — it hands off to Google Forms, so it should not
@@ -1381,6 +1431,15 @@
                       <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
                     </svg></a>
                 </div>
+              </div>
+
+              <!-- FOLLOW-UPS STATUS SUB-FILTER (only shown in the Follow-ups view) -->
+              <div id="followUpStatusToggle" class="visit-log-toggle follow-up-status-toggle" role="group"
+                aria-label="Follow-up status" style="margin-bottom:10px; display:none; gap:8px;">
+                <button type="button" class="visit-log-toggle-btn active" data-status="open">Open</button>
+                <button type="button" class="visit-log-toggle-btn" data-status="overdue">Overdue</button>
+                <button type="button" class="visit-log-toggle-btn" data-status="done">Done</button>
+                <button type="button" class="visit-log-toggle-btn" data-status="all">All</button>
               </div>
 
               <!-- STANDALONE VISIT LOG FILTERS -->
@@ -1487,30 +1546,6 @@
                         <option value="type">Visit Type</option>
                       </select>
                     </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact"
-                      id="followUpGroupControl" style="display:none;">
-                      <label for="followUpGroup">Group By</label>
-                      <select id="followUpGroup" class="visit-log-select">
-                        <option value="bakery">Bakery</option>
-                        <option value="region">Region</option>
-                        <option value="ops">Ops Area</option>
-                        <option value="priority">Priority</option>
-                        <option value="status">Status</option>
-                        <option value="none">None</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact"
-                      id="followUpSortControl" style="display:none;">
-                      <label for="followUpSort">Sort By</label>
-                      <select id="followUpSort" class="visit-log-select">
-                        <option value="dueAsc">Due Date (Soonest)</option>
-                        <option value="dueDesc">Due Date (Latest)</option>
-                        <option value="priority">Priority (High-Low)</option>
-                        <option value="createdDesc">Date Added (Newest)</option>
-                        <option value="createdAsc">Date Added (Oldest)</option>
-                        <option value="bakeryAsc">Bakery Name (A-Z)</option>
-                      </select>
-                    </div>
                     <div class="visit-log-filter-control">
                       <label for="visitLogType">Visit Type</label>
                       <select id="visitLogType" class="visit-log-select">
@@ -1558,15 +1593,6 @@
 
               <!-- AT-A-GLANCE SUMMARY BAR (total + per-type counts, chips filter on click) -->
               <div id="visitLogSummary" class="visit-log-summary" hidden></div>
-
-              <!-- FOLLOW-UPS STATUS SUB-FILTER (only shown in the Follow-ups view) -->
-              <div id="followUpStatusToggle" class="visit-log-toggle follow-up-status-toggle" role="group"
-                aria-label="Follow-up status" style="margin-bottom:10px; display:none; gap:8px;">
-                <button type="button" class="visit-log-toggle-btn active" data-status="open">Open</button>
-                <button type="button" class="visit-log-toggle-btn" data-status="overdue">Overdue</button>
-                <button type="button" class="visit-log-toggle-btn" data-status="done">Done</button>
-                <button type="button" class="visit-log-toggle-btn" data-status="all">All</button>
-              </div>
 
               <div id="visitLogList" class="visit-log-list">
                 <!-- Rows will be dynamically rendered here -->
@@ -1769,9 +1795,7 @@
               <div class="form-field-row">
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitPartner">Coffee Partner</label>
-                  <input type="text" id="addVisitPartner" placeholder="Enter name..." class="visit-log-input"
-                    data-mention-field autocomplete="off">
-                  <p class="mention-field-hint">Type <strong>@</strong> to assign this visit to someone.</p>
+                  <input type="text" id="addVisitPartner" placeholder="Enter name..." class="visit-log-input">
                 </div>
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitMod">Barista</label>
@@ -1882,7 +1906,8 @@
         style="max-width: 460px; height: auto; background: var(--card); border: 1px solid var(--card-border-h); box-shadow: var(--shadow-md);">
         <div class="drill-modal-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
           <div>
-            <h3 style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Delete Check-in</h3>
+            <h3 style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Delete
+              Check-in</h3>
             <p style="font-size:0.86rem;color:var(--muted-l);margin:5px 0 0 0;">This action is permanent and cannot be
               undone.</p>
           </div>
@@ -1919,8 +1944,10 @@
         style="max-width: 440px; height: auto; background: var(--card); border: 1px solid var(--card-border-h); box-shadow: var(--shadow-md);">
         <div class="drill-modal-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
           <div>
-            <h3 id="saveConfirmTitle" style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Confirm</h3>
-            <p id="saveConfirmSubtitle" style="font-size:0.86rem;color:var(--muted-l);margin:5px 0 0 0;">Please review before saving.</p>
+            <h3 id="saveConfirmTitle"
+              style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Confirm</h3>
+            <p id="saveConfirmSubtitle" style="font-size:0.86rem;color:var(--muted-l);margin:5px 0 0 0;">Please review
+              before saving.</p>
           </div>
           <button type="button" class="modal-close-btn" onclick="GAILS.closeSaveConfirmModal()"
             aria-label="Close confirmation" title="Close">&#10005;</button>
@@ -1994,9 +2021,6 @@
   <script src="js/cqv-criticals.js"></script>
   <script src="js/cqv-shared.js"></script>
   <script src="js/nbo-shared.js"></script>
-  <script src="js/mentions.js"></script>
-  <script src="js/mention-field.js"></script>
-  <script src="js/attribution.js"></script>
   <script src="js/visit-report.js"></script>
   <script src="js/upload.js"></script>
   <script src="js/custom-selects.js"></script>
@@ -2007,4 +2031,3 @@
 </body>
 
 </html>
-
