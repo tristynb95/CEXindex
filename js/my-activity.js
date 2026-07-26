@@ -248,12 +248,37 @@ function matchesMyUid(value) {
 // must not silently move the visit into the admin's activity.
 function visitIsMine(visit) {
   if (!visit) return false;
+  if (visitAssignedToMe(visit)) return true;
   var meta = visit.meta || {};
   if (matchesMyUid(meta.createdByUid)) return true;
   if (matchesMyEmail(meta.createdBy) || matchesMyEmail(visit.email) || matchesMyEmail(visit.createdBy)) return true;
   if (!meta.createdBy && meta.updatedBy && (!meta.updatedAt || meta.updatedAt === meta.createdAt) &&
     matchesMyEmail(meta.updatedBy)) return true;
   return matchesMyName(visit.coffeePartner) || matchesMyName(visit.auditorName);
+}
+
+// A visit handed over with an "@Name" in its Coffee Partner field. The uid is
+// the reliable signal (it survives a rename); email and name cover assignments
+// made before the person had a directory entry to resolve against.
+function visitAssignedToMe(visit) {
+  var assigned = visit && visit.assignedTo;
+  if (!assigned) return false;
+  return matchesMyUid(assigned.uid) || matchesMyEmail(assigned.email) || matchesMyName(assigned.name);
+}
+
+function visitAssignedToSomeoneElse(visit) {
+  var assigned = visit && visit.assignedTo;
+  return !!(assigned && assigned.name) && !visitAssignedToMe(visit);
+}
+
+// Who logged the visit, as opposed to who it was assigned to.
+function visitLoggedByMe(visit) {
+  if (!visit) return false;
+  var meta = visit.meta || {};
+  if (matchesMyUid(meta.createdByUid)) return true;
+  if (matchesMyEmail(meta.createdBy) || matchesMyEmail(visit.email)) return true;
+  return !meta.createdBy && !!meta.updatedBy && (!meta.updatedAt || meta.updatedAt === meta.createdAt) &&
+    matchesMyEmail(meta.updatedBy);
 }
 
 function taskRaisedByMe(task) {
@@ -344,12 +369,32 @@ function visitNotesText(visit) {
 
 function visitPersonLabel(visit) {
   if (visit.type === 'cqv' || visit.type === 'nbo') return visit.auditorName || '';
-  return visit.coffeePartner || '';
+  return mentionText(visit.coffeePartner);
+}
+
+// The reading form of stored mention text: "@Sam Partner" -> "Sam Partner".
+function mentionText(value) {
+  var text = String(value == null ? '' : value);
+  if (!text) return '';
+  return G.Mentions ? G.Mentions.toText(text) : text;
+}
+
+function mentionHtml(value) {
+  var text = String(value == null ? '' : value);
+  if (!text) return '';
+  return G.Mentions ? G.Mentions.toHtml(text) : escapeHtml(text);
 }
 
 function visitTimestamp(visit) {
   var meta = visit.meta || {};
   return toMillis(meta.createdAt) || toMillis(visit.date ? visit.date + 'T' + (visit.time || '00:00') : '');
+}
+
+// Who logged a visit, for an assignee reading their own feed. Falls back to the
+// last editor for records saved before authorship was stamped.
+function visitLoggerLabel(visit) {
+  var meta = (visit && visit.meta) || {};
+  return meta.createdBy || visit.email || meta.updatedBy || 'a colleague';
 }
 
 // ---------- follow-up presentation ----------
@@ -633,6 +678,7 @@ function filteredVisits() {
     if (search) {
       var haystack = [
         bakeryLabel(v.bakery), v.bakery, visitTypeLabel(v), visitPersonLabel(v),
+        (v.assignedTo && v.assignedTo.name) || '',
         v.mod, visitNotesText(v), bakeryOps(v.bakery), bakeryRegion(v.bakery)
       ].join(' ').toLowerCase();
       if (haystack.indexOf(search) === -1) return false;
@@ -668,7 +714,18 @@ function visitSorter(sortVal) {
 function visitRowHtml(visit) {
   var notes = visitNotesText(visit);
   var preview = notes.length > 140 ? notes.slice(0, 140) + '…' : notes;
-  var person = visitPersonLabel(visit);
+  var isAudited = visit.type === 'cqv' || visit.type === 'nbo';
+  var personHtml = isAudited ? escapeHtml(visit.auditorName || '') : mentionHtml(visit.coffeePartner);
+
+  // An assigned visit shows in both people's hubs, so each needs to see which
+  // side of the handover they are on at a glance.
+  var assignmentTag = '';
+  if (visitAssignedToMe(visit) && !visitLoggedByMe(visit)) {
+    assignmentTag = '<span class="my-activity-tag my-activity-tag--blue">Assigned to you</span>';
+  } else if (visitAssignedToSomeoneElse(visit)) {
+    assignmentTag = '<span class="my-activity-tag my-activity-tag--blue">Assigned to ' +
+      escapeHtml(visit.assignedTo.name) + '</span>';
+  }
 
   return '<article class="my-activity-visit" data-visit-id="' + escapeHtml(visit.id) + '">' +
     '<div class="my-activity-visit__date">' +
@@ -680,8 +737,9 @@ function visitRowHtml(visit) {
     escapeHtml(bakeryLabel(visit.bakery)) + '</a>' +
     '<div class="my-activity-visit__tags">' +
     '<span class="my-activity-tag my-activity-tag--' + visitTypeTone(visit) + '">' + escapeHtml(visitTypeLabel(visit)) + '</span>' +
+    assignmentTag +
     '<span class="my-activity-visit__ops">' + escapeHtml(bakeryOps(visit.bakery)) + '</span>' +
-    (person ? '<span class="my-activity-visit__ops">' + escapeHtml(person) + '</span>' : '') +
+    (personHtml ? '<span class="my-activity-visit__ops">' + personHtml + '</span>' : '') +
     '</div>' +
     '<p class="my-activity-visit__notes">' + escapeHtml(preview || 'No notes recorded.') + '</p>' +
     '</div>' +
@@ -780,6 +838,7 @@ function buildExportData(visits, filters) {
       { label: 'Ops Area', type: 'text', width: 18 },
       { label: 'Visit Type', type: 'text', width: 20 },
       { label: 'Coffee Partner / Auditor', type: 'text', width: 24 },
+      { label: 'Assigned To', type: 'text', width: 22 },
       { label: 'Score %', type: 'percent', width: 10 },
       { label: 'Points', type: 'number', width: 8 },
       { label: 'Points Available', type: 'number', width: 15 },
@@ -796,6 +855,7 @@ function buildExportData(visits, filters) {
         bakeryOps(v.bakery),
         visitTypeLabel(v),
         visitPersonLabel(v),
+        (v.assignedTo && v.assignedTo.name) || '',
         pct == null ? '' : pct / 100,
         isRoutine ? v.score : '',
         isRoutine ? v.scoreMax : '',
@@ -968,19 +1028,31 @@ function buildTimelineEvents() {
   Object.keys(visitsObj).forEach(function (id) {
     var visit = Object.assign({ id: id }, visitsObj[id]);
     if (!visit.bakery || !visitIsMine(visit)) return;
+    var href = 'index.html?visit=' + encodeURIComponent(visit.id) + '#visit-log';
+
+    // A visit assigned to someone else is still theirs to *do* — from this
+    // user's side the event is the handover, not the logging.
+    var assignedAway = visitAssignedToSomeoneElse(visit);
+    var assignedHere = visitAssignedToMe(visit) && !visitLoggedByMe(visit);
+
     events.push({
       kind: 'visit',
       at: visitTimestamp(visit),
       bakery: visit.bakery,
       // The tag beside the title already names the visit type, and lower-casing
       // it into the sentence would mangle the acronyms ("logged a cqv").
-      title: 'Logged a visit',
+      title: assignedHere
+        ? 'Was assigned a visit'
+        : (assignedAway ? 'Logged and assigned a visit' : 'Logged a visit'),
       detail: visitNotesText(visit),
-      tone: visitTypeTone(visit),
+      tone: assignedHere ? 'blue' : visitTypeTone(visit),
       tag: visitTypeLabel(visit),
-      href: 'index.html?visit=' + encodeURIComponent(visit.id) + '#visit-log',
+      href: href,
       linkLabel: 'View report',
-      footnote: 'Visit date ' + formatIsoDate(visit.date) + (visit.time ? ' at ' + visit.time : '')
+      footnote: (assignedHere
+        ? 'Assigned by ' + visitLoggerLabel(visit) + ' · '
+        : (assignedAway ? 'Assigned to ' + visit.assignedTo.name + ' · ' : '')) +
+        'Visit date ' + formatIsoDate(visit.date) + (visit.time ? ' at ' + visit.time : '')
     });
   });
 
@@ -1216,6 +1288,7 @@ function renderAll() {
 function startLiveData() {
   onValue(ref(db, 'routineVisits'), function (snapshot) {
     visitsObj = snapshot.exists() ? snapshot.val() : {};
+    if (G.Mentions) G.Mentions.addHarvested({ visits: visitsObj });
     dataReady.visits = true;
     renderAll();
   }, function (error) {
@@ -1248,6 +1321,7 @@ function startLiveData() {
       });
     });
     notesList = flattened;
+    if (G.Mentions) G.Mentions.addHarvested({ notes: flattened });
     dataReady.notes = true;
     renderAll();
   }, function (error) {
@@ -1408,7 +1482,13 @@ async function loadActivityHub(user) {
   var initial = await Promise.all([
     get(ref(db, 'admins/' + user.uid)),
     get(ref(db, 'users/' + user.uid)),
-    get(ref(db, 'portalData/siteMeta'))
+    get(ref(db, 'portalData/siteMeta')),
+    // Best-effort: the directory only sharpens how a mention renders and which
+    // uid it resolves to, so a read the rules reject must not block the page.
+    get(ref(db, 'userDirectory')).catch(function (error) {
+      console.warn('Shared people directory unavailable:', error);
+      return null;
+    })
   ]);
 
   var isAdmin = initial[0].exists() && initial[0].val() === true;
@@ -1423,6 +1503,14 @@ async function loadActivityHub(user) {
   var sitePayload = initial[2].exists() ? initial[2].val() : null;
   var siteEntries = sitePayload && sitePayload.entries ? sitePayload.entries : sitePayload;
   if (typeof G.setBakeryMeta === 'function') G.setBakeryMeta(siteEntries);
+
+  if (G.Mentions) {
+    var directory = initial[3] && initial[3].exists() ? initial[3].val() : {};
+    G.Mentions.addPeople(Object.keys(directory).map(function (uid) {
+      return { uid: uid, name: directory[uid] && directory[uid].name, email: directory[uid] && directory[uid].email };
+    }));
+    G.Mentions.addHarvested({ regionAssignments: (sitePayload && sitePayload.regionAssignments) || [] });
+  }
 
   var roleId = isAdmin ? 'admin' : (userProfile && userProfile.role) || 'viewer';
   var customRole = null;

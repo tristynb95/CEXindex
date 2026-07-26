@@ -247,6 +247,7 @@ let dashboardDataUnsubscribe = null;
 let routineVisitsUnsubscribe = null;
 let followUpActionsUnsubscribe = null;
 let appSettingsUnsubscribe = null;
+let userDirectoryUnsubscribe = null;
 let _freshLogin = false;
 let pendingInvitationUserRef = null;
 
@@ -343,6 +344,13 @@ function applySiteMeta(payload) {
   if (window.GAILS && typeof window.GAILS.setBakeryMeta === 'function') {
     window.GAILS.setBakeryMeta(meta);
   }
+  // The regional coffee team is the curated list of who actually runs these
+  // visits, so it feeds the @mention picker (js/mentions.js).
+  if (window.GAILS && window.GAILS.Mentions) {
+    window.GAILS.Mentions.addHarvested({
+      regionAssignments: (payload && payload.regionAssignments) || []
+    });
+  }
   window.dispatchEvent(new CustomEvent('gails:site-meta-sync', {
     detail: {
       payload: payload || null,
@@ -395,6 +403,9 @@ function computeLastVisitRecords(visitsObj) {
 
 function applyLastVisitDates(visitsObj) {
   if (window.GAILS) {
+    if (window.GAILS.Mentions) {
+      window.GAILS.Mentions.addHarvested({ visits: visitsObj || {} });
+    }
     if (typeof window.GAILS.setLastVisitRecords === 'function') {
       window.GAILS.setLastVisitRecords(computeLastVisitRecords(visitsObj));
     }
@@ -445,6 +456,52 @@ function startRoutineVisitsSync() {
     applyFollowUpActions(snapshot.exists() ? snapshot.val() : {});
   }, function(error) {
     console.error('Failed to sync follow-up actions:', error);
+  });
+}
+
+// ---- Shared people directory ----
+// Who can be @mentioned in a visit's Coffee Partner field. It exists because
+// /users is deliberately unreadable to ordinary users (see database.rules.json)
+// — a name-and-email-only node can be world-readable to signed-in staff when the
+// full user record, carrying roles and ops areas, must not be.
+//
+// Self-maintaining: every user republishes their own entry at sign-in, so the
+// directory converges without anyone curating it. Both the read and the write
+// are best-effort — before the matching rules are deployed they simply fail, and
+// the picker falls back to names harvested from readable data.
+function publishDirectoryEntry(user, profile) {
+  var name = [profile && profile.firstName, profile && profile.lastName]
+    .filter(Boolean).join(' ').trim() || user.displayName || '';
+  if (!name) return Promise.resolve();
+  return set(ref(db, 'userDirectory/' + user.uid), {
+    name: name,
+    email: user.email || (profile && profile.email) || ''
+  }).catch(function(error) {
+    console.warn('Could not publish your directory entry:', error);
+  });
+}
+
+function stopUserDirectorySync() {
+  if (userDirectoryUnsubscribe) {
+    userDirectoryUnsubscribe();
+    userDirectoryUnsubscribe = null;
+  }
+}
+
+function startUserDirectorySync() {
+  stopUserDirectorySync();
+  userDirectoryUnsubscribe = onValue(ref(db, 'userDirectory'), function(snapshot) {
+    var entries = snapshot.exists() ? snapshot.val() : {};
+    if (!window.GAILS || !window.GAILS.Mentions) return;
+    window.GAILS.Mentions.addPeople(Object.keys(entries).map(function(uid) {
+      return {
+        uid: uid,
+        name: entries[uid] && entries[uid].name,
+        email: entries[uid] && entries[uid].email
+      };
+    }));
+  }, function(error) {
+    console.warn('Shared people directory unavailable, falling back to names already in the data:', error);
   });
 }
 
@@ -650,6 +707,8 @@ onAuthStateChanged(auth, async (user) => {
         startSiteMetaSync();
         startRoutineVisitsSync();
         startReportVisibilitySync();
+        startUserDirectorySync();
+        publishDirectoryEntry(user, userProfile);
         await loadSharedDashboardData(isAdmin || permissions.admin.dataset === 'edit');
       } else {
         loginError.textContent = "You don't have access to this dashboard. Contact your administrator.";
@@ -657,6 +716,7 @@ onAuthStateChanged(auth, async (user) => {
         stopSiteMetaSync();
         stopRoutineVisitsSync();
         stopReportVisibilitySync();
+        stopUserDirectorySync();
         await signOut(auth);
         showApp(undefined);
       }
@@ -667,6 +727,7 @@ onAuthStateChanged(auth, async (user) => {
       stopSiteMetaSync();
       stopRoutineVisitsSync();
       stopReportVisibilitySync();
+      stopUserDirectorySync();
       await signOut(auth);
       showApp(undefined);
     }
@@ -675,6 +736,7 @@ onAuthStateChanged(auth, async (user) => {
     stopDashboardDataSync();
     stopRoutineVisitsSync();
     stopReportVisibilitySync();
+    stopUserDirectorySync();
     window.GAILS.userOpsArea = '';
     applySiteMeta(null);
     clearLoginForm();

@@ -17834,3 +17834,146 @@ html {
     scroll-behavior: auto !important;
   }
 }
+
+/* ========== @MENTIONS ==========
+   A Coffee Partner assigned by @mention. The "@" is only ever a typing
+   affordance — it is stored, but never rendered. What people read is the bare
+   name in blue with an underline, which is the same treatment wherever a Coffee
+   Partner appears: visit rows, the visit report, the admin table, bakery
+   profiles, and the My Activity hub. See js/mentions.js. */
+.mention {
+  color: var(--blue);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(30, 112, 196, 0.45);
+}
+
+/* The two faces of an editable mention field (js/mention-field.js). Only one is
+   in the layout at a time, so the field never changes size when it is clicked
+   into: both faces carry the same metrics as a .visit-log-input. */
+.mention-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.mention-field__display,
+.mention-field .mention-field__input {
+  width: 100%;
+  min-height: var(--control-h);
+  padding: 6px 11px;
+  border: 1px solid var(--card-border-h);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--text);
+  text-align: left;
+}
+
+.mention-field__display {
+  display: flex;
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(34, 31, 26, 0.04) 0%, rgba(34, 31, 26, 0.01) 100%),
+    rgba(255, 255, 255, 0.96);
+  cursor: text;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mention-field__display:hover {
+  border-color: var(--accent);
+}
+
+/* One flex item holding the whole value, so a mention sitting inside a sentence
+   stays inline with the words around it. */
+.mention-field__value {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mention-field__placeholder {
+  color: var(--muted);
+}
+
+.mention-field .mention-field__input {
+  display: none;
+}
+
+.mention-field.is-editing .mention-field__display {
+  display: none;
+}
+
+.mention-field.is-editing .mention-field__input {
+  display: block;
+}
+
+/* The suggestion list. Sits above the modal's own stacking context, which is
+   why the z-index is well clear of the surrounding form. */
+.mention-field__menu {
+  position: absolute;
+  display: block;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 232px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--card-border-h);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: var(--shadow-md);
+}
+
+.mention-field__menu[hidden] {
+  display: none;
+}
+
+.mention-field__option {
+  width: 100%;
+  display: grid;
+  gap: 1px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mention-field__option:hover,
+.mention-field__option.is-active {
+  background: var(--card-hover);
+}
+
+.mention-field__option-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mention-field__option-email {
+  font-size: 0.74rem;
+  color: var(--muted-l);
+}
+
+/* The hint under an assignable field, explaining the "@" once so the affordance
+   is discoverable without a tooltip. */
+.mention-field-hint {
+  display: block;
+  margin: 5px 0 0;
+  font-size: 0.72rem;
+  color: var(--muted-l);
+}
+
+.mention-field-hint strong {
+  color: var(--blue);
+  font-weight: 700;
+}

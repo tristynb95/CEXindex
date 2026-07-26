@@ -8,7 +8,7 @@ import {
   updatePassword,
   updateProfile
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { ref, get, update as updateRecord, remove } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { ref, get, set, update as updateRecord, remove } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { BUILTIN_ROLES } from './permissions.js';
 
 const authGuard = document.getElementById('profileAuthGuard');
@@ -165,6 +165,19 @@ async function saveProfileDetails(user, details, includeEmail) {
   if (includeEmail) updates.email = details.email;
 
   await updateRecord(ref(db, 'users/' + user.uid), updates);
+
+  // Keep the shared people directory in step, so a renamed colleague is
+  // @mentionable under their new name straight away. Best-effort: the directory
+  // is a convenience for the mention picker, not part of the profile record.
+  try {
+    await set(ref(db, 'userDirectory/' + user.uid), {
+      name: displayName.trim(),
+      email: (includeEmail ? details.email : user.email) || ''
+    });
+  } catch (directoryError) {
+    console.warn('Could not update your entry in the shared people directory:', directoryError);
+  }
+
   profileRecord = Object.assign({}, profileRecord, updates);
   renderProfile(user, profileRecord);
 }

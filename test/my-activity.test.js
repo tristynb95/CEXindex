@@ -109,7 +109,8 @@ test('a check-in records its author separately from whoever last edited it', () 
 
 test('an admin editing someone else\'s visit does not inherit it', () => {
   const context = extract(
-    ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid', 'visitIsMine'],
+    ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid',
+      'visitAssignedToMe', 'visitIsMine'],
     { identity: { uid: 'uid-admin', emails: new Set(['admin@gailsbread.co.uk']), names: new Set(['ada admin']) } }
   );
 
@@ -150,7 +151,8 @@ test('an admin editing someone else\'s visit does not inherit it', () => {
 
 test('visits are attributed by form respondent and by printed auditor name', () => {
   const context = extract(
-    ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid', 'visitIsMine'],
+    ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid',
+      'visitAssignedToMe', 'visitIsMine'],
     { identity: { uid: 'uid-1', emails: new Set(['sam.partner@gailsbread.co.uk']), names: new Set(['sam partner']) } }
   );
 

@@ -39,12 +39,55 @@ Shared code lives in one place per concern; prefer extending these over re-copyi
 - `js/cqv-criticals.js` — `GAILS.CQVCriticals`, the canonical zero-tolerance question list.
 - `js/cqv-shared.js` — `GAILS.CQVShared`, CQV band derivation and presentation.
 - `js/profile-menu.js` — the header profile popover (ES module).
+- `js/mentions.js` — `GAILS.Mentions`, parsing and rendering `@mention` text.
+- `js/mention-field.js` — `GAILS.MentionField`, the two-face editor for it.
+
+## Assigning a visit with @mentions
+
+A visit's **Coffee Partner** field doubles as its assignment control: type `@`,
+pick a colleague, and the visit becomes theirs as well as yours.
+
+The `@` is a typing affordance, not something anyone should have to read. It is
+stored (`coffeePartner: "@Sam Partner"`) but never rendered: every read-only
+surface shows the bare name in blue with an underline, and the `@` only
+reappears while the field is being edited. `js/mention-field.js` does that by
+swapping between two elements — a display face and the real `<input>` — because
+an `<input>` cannot style part of its own value. The input stays the single
+source of truth; the display face is only ever rendered from `input.value`.
+
+The stored text is the human-editable form, so parsing it back out is a
+presentation concern and can be ambiguous. The authoritative record is the
+separate `assignedTo` object on the visit (`{ uid, name, email }`), resolved at
+save time — which is why deleting the mention really does un-assign the visit,
+and why a name typed *without* an `@` stays an ordinary label. Every visit
+logged before this existed is therefore unassigned, not mis-assigned.
+
+### Who can be mentioned
+
+`/users` is deliberately unreadable to ordinary users (it carries roles and ops
+areas), so the picker reads **`userDirectory/{uid}`** instead: name and email
+only, readable by any signed-in user, and rejected by the rules if it ever tries
+to carry a `role` or `opsArea`. It is self-maintaining — everyone republishes
+their own entry at sign-in, the profile page keeps it in step with a rename, and
+the admin portal publishes the full user list and prunes revoked accounts.
+
+> **This needs a rules deploy.** `userDirectory` is new in
+> `database.rules.json`, and CI never pushes rules — run
+> `firebase deploy --only database`. Until then every read and write of the node
+> fails harmlessly and the picker falls back to names harvested from data
+> everyone can already read: the regional coffee team, and names already on past
+> visits and notes. Harvested names carry no uid, so a real directory entry
+> always wins once it arrives.
 
 ## Who a record belongs to
 
 `my-activity.html` is the one screen that asks "whose record is this", so the
 authorship fields matter there in a way they don't elsewhere:
 
+- **Assigned visits** (`routineVisits/{id}.assignedTo`) — a visit handed over by
+  @mention belongs to the assignee *and* the person who logged it. Both see it,
+  each labelled with which side of the handover they are on. Assignment shares a
+  visit; it never moves it.
 - **Visits** (`routineVisits/{id}`) — `meta.createdBy` / `meta.createdByUid` are
   the durable signals, written when a check-in is saved. `meta.updatedBy` is
   **not** a substitute: an admin editing a visit overwrites it, which would

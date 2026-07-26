@@ -1,0 +1,263 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+const vm = require('node:vm');
+
+const root = path.resolve(__dirname, '..');
+const mentionsSource = fs.readFileSync(path.join(root, 'js', 'mentions.js'), 'utf8');
+const fieldSource = fs.readFileSync(path.join(root, 'js', 'mention-field.js'), 'utf8');
+const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+const indexHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const adminHtml = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
+const visitReport = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
+const adminScript = fs.readFileSync(path.join(root, 'js', 'admin-page.js'), 'utf8');
+const bakeryProfile = fs.readFileSync(path.join(root, 'js', 'bakery-profile.js'), 'utf8');
+const myActivity = fs.readFileSync(path.join(root, 'js', 'my-activity.js'), 'utf8');
+const authScript = fs.readFileSync(path.join(root, 'js', 'auth.js'), 'utf8');
+const rules = JSON.parse(fs.readFileSync(path.join(root, 'database.rules.json'), 'utf8'));
+
+// js/mentions.js is a classic script that self-registers on window.GAILS, so it
+// runs whole rather than being picked apart function by function.
+function load(people) {
+  const sandbox = { window: {}, console: { warn() {} } };
+  vm.createContext(sandbox);
+  vm.runInContext(mentionsSource, sandbox);
+  const mentions = sandbox.window.GAILS.Mentions;
+  if (people) mentions.setPeople(people);
+  return mentions;
+}
+
+// Objects built inside the vm realm have a different prototype, so
+// deepStrictEqual would reject them on identity alone. Comparing the plain data
+// is what the assertions are actually about.
+function plain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+const TEAM = [
+  { uid: 'uid-sam', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' },
+  { uid: 'uid-jo', name: 'Jo Bloggs', email: 'jo@gailsbread.co.uk' },
+  { uid: 'uid-joanne', name: 'Joanne Fielding', email: 'joanne@gailsbread.co.uk' }
+];
+
+test('the stored @ never reaches the reading form', () => {
+  const mentions = load(TEAM);
+
+  assert.equal(mentions.toText('@Sam Partner'), 'Sam Partner');
+  assert.equal(mentions.toText('Sam Partner'), 'Sam Partner');
+  assert.equal(mentions.toText(''), '');
+  assert.equal(mentions.toText('Covered by @Jo Bloggs today'), 'Covered by Jo Bloggs today');
+});
+
+test('a mentioned name renders blue and underlined, the rest as plain text', () => {
+  const mentions = load(TEAM);
+
+  assert.equal(
+    mentions.toHtml('@Sam Partner'),
+    '<span class="mention" title="sam@gailsbread.co.uk">Sam Partner</span>'
+  );
+  // A name typed without the "@" is just a label, and stays unstyled.
+  assert.equal(mentions.toHtml('Sam Partner'), 'Sam Partner');
+  assert.match(mentions.toHtml('Covered by @Jo Bloggs'), /^Covered by <span class="mention"/);
+  assert.equal(styles.includes('.mention {'), true);
+  assert.match(styles.slice(styles.indexOf('.mention {')), /text-decoration: underline;/);
+  assert.match(styles.slice(styles.indexOf('.mention {')), /color: var\(--blue\);/);
+});
+
+test('rendered mention text is escaped', () => {
+  const mentions = load([{ uid: 'x', name: 'Sam <script>', email: '' }]);
+  assert.doesNotMatch(mentions.toHtml('@Sam <script> hi'), /<script>/);
+  assert.match(mentions.toHtml('a & b'), /a &amp; b/);
+});
+
+test('a mention stops at the end of the name, not the end of the sentence', () => {
+  const mentions = load(TEAM);
+
+  const segments = mentions.parse('@Sam Partner and the team');
+  assert.equal(segments.length, 2);
+  assert.deepEqual(plain(segments[0]), { type: 'mention', text: 'Sam Partner', person: TEAM[0] });
+  assert.equal(segments[1].text, ' and the team');
+});
+
+test('a longer directory name wins over a shorter one it starts with', () => {
+  const mentions = load(TEAM);
+
+  assert.equal(mentions.parse('@Joanne Fielding')[0].text, 'Joanne Fielding');
+  assert.equal(mentions.parse('@Jo Bloggs')[0].text, 'Jo Bloggs');
+});
+
+test('someone absent from the directory can still be mentioned', () => {
+  const mentions = load(TEAM);
+
+  const segments = mentions.parse('@Nina Newstarter');
+  assert.equal(segments[0].type, 'mention');
+  assert.equal(segments[0].text, 'Nina Newstarter');
+  assert.equal(segments[0].person, null);
+  // Two words is the ceiling for an unknown name.
+  assert.equal(mentions.parse('@Nina Newstarter covered it')[1].text, ' covered it');
+});
+
+test('a bare @ and an email address are not mentions', () => {
+  const mentions = load(TEAM);
+
+  assert.deepEqual(plain(mentions.parse('@')), [{ type: 'text', text: '@' }]);
+  assert.equal(mentions.hasMention('email sam@gailsbread.co.uk'), true);
+  // ...but the picker must not open inside one.
+  assert.equal(mentions.activeMentionAt('sam@gails', 9), null);
+  assert.notEqual(mentions.activeMentionAt('ask @gails', 10), null);
+});
+
+test('the assignee comes from the mention, never from a plain name', () => {
+  const mentions = load(TEAM);
+
+  assert.deepEqual(plain(mentions.resolveAssignee('@Sam Partner')), {
+    uid: 'uid-sam', name: 'Sam Partner', email: 'sam@gailsbread.co.uk'
+  });
+  // Every visit logged before mentions existed stays unassigned.
+  assert.equal(mentions.resolveAssignee('Sam Partner'), null);
+  assert.equal(mentions.resolveAssignee(''), null);
+  // An unknown name still assigns, just without an identity to hang it on.
+  assert.deepEqual(plain(mentions.resolveAssignee('@Nina Newstarter')), {
+    uid: '', name: 'Nina Newstarter', email: ''
+  });
+});
+
+test('the picker tracks the @ the caret is sitting in', () => {
+  const mentions = load(TEAM);
+
+  assert.deepEqual(plain(mentions.activeMentionAt('@Sa', 3)), { start: 0, end: 3, query: 'Sa' });
+  assert.deepEqual(plain(mentions.activeMentionAt('Covered by @Jo', 14)), { start: 11, end: 14, query: 'Jo' });
+  // The caret has moved back before the "@".
+  assert.equal(mentions.activeMentionAt('@Sam Partner', 0), null);
+  // Too long to still be a name.
+  assert.equal(mentions.activeMentionAt('@one two three four', 19), null);
+});
+
+test('choosing a name replaces just the query and reports the caret', () => {
+  const mentions = load(TEAM);
+
+  const range = mentions.activeMentionAt('Covered by @Sa', 14);
+  const applied = mentions.applyMention('Covered by @Sa', range, 'Sam Partner');
+  assert.equal(applied.value, 'Covered by @Sam Partner');
+  assert.equal(applied.caret, applied.value.length);
+});
+
+test('search ranks a prefix match above a mid-name one', () => {
+  const mentions = load(TEAM.concat([{ uid: 'uid-p', name: 'Ada Partnership', email: '' }]));
+
+  const results = mentions.search('partner').map((person) => person.name);
+  assert.equal(results[0], 'Sam Partner');
+  assert.ok(results.includes('Ada Partnership'));
+  // An empty query offers the whole team.
+  assert.equal(mentions.search('').length, 4);
+});
+
+test('a directory entry outranks a name harvested from old data', () => {
+  const mentions = load();
+
+  mentions.addHarvested({ visits: { v1: { coffeePartner: 'Sam Partner' } } });
+  assert.deepEqual(plain(mentions.findPerson('Sam Partner')), { uid: '', name: 'Sam Partner', email: '' });
+
+  mentions.addPeople([{ uid: 'uid-sam', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' }]);
+  assert.equal(mentions.findPerson('Sam Partner').uid, 'uid-sam');
+
+  // ...and a later harvest must not blank the identity back out.
+  mentions.addHarvested({ visits: { v2: { coffeePartner: 'Sam Partner' } } });
+  assert.equal(mentions.findPerson('Sam Partner').uid, 'uid-sam');
+  assert.equal(mentions.findPerson('Sam Partner').email, 'sam@gailsbread.co.uk');
+});
+
+test('harvesting keeps one-word names out of the picker', () => {
+  const mentions = load();
+
+  mentions.addHarvested({
+    regionAssignments: [{ coffeePartner: 'Sam Partner', coffeeTrainer: 'Jo' }],
+    visits: { v1: { coffeePartner: '@Ida Trainer', auditorName: 'Ada Auditor' } },
+    notes: [{ createdBy: { uid: 'uid-n', name: 'Nina Notewriter', email: 'nina@gailsbread.co.uk' } }]
+  });
+
+  const names = mentions.getPeople().map((person) => person.name);
+  assert.deepEqual(plain(names), ['Ada Auditor', 'Ida Trainer', 'Nina Notewriter', 'Sam Partner']);
+  assert.ok(!names.includes('Jo'), 'a bare first name would assign visits to the wrong person');
+  // The harvested Coffee Partner was itself a mention, so its "@" is stripped.
+  assert.ok(!names.some((name) => name.startsWith('@')));
+});
+
+test('the Coffee Partner field is the assignment control on both editors', () => {
+  // Dashboard check-in modal.
+  const partnerField = indexHtml.slice(indexHtml.indexOf('id="addVisitPartner"'));
+  assert.match(partnerField.slice(0, 300), /data-mention-field/);
+  assert.match(partnerField.slice(0, 400), /Type <strong>@<\/strong> to assign this visit to someone/);
+
+  // Admin visit detail form.
+  assert.match(adminScript, /field\.key === 'coffeePartner'/);
+  assert.match(adminScript, /window\.GAILS\.MentionField\.enhanceAll\(visitDetailBody\)/);
+
+  [indexHtml, adminHtml].forEach((page) => {
+    assert.match(page, /<script src="js\/mentions\.js"><\/script>/);
+    assert.match(page, /<script src="js\/mention-field\.js"><\/script>/);
+  });
+});
+
+test('the editor swaps faces rather than restyling one input', () => {
+  assert.match(fieldSource, /wrapper\.classList\.toggle\('is-editing', editing\)/);
+  // At rest the display face is shown; editing swaps in the real input.
+  const displayRule = styles.slice(styles.indexOf('.mention-field.is-editing .mention-field__display'));
+  assert.match(displayRule.slice(0, 120), /display: none;/);
+  assert.match(styles, /\.mention-field \.mention-field__input \{\s*display: none;/);
+});
+
+test('the assignment is resolved at save, so deleting the mention un-assigns', () => {
+  assert.match(visitReport, /assignedTo: \(window\.GAILS\.MentionField\s*\n?\s*\? window\.GAILS\.MentionField\.assigneeFor\(partnerField\)\s*\n?\s*: null\) \|\| null/);
+  assert.match(adminScript, /payload\.assignedTo = \(window\.GAILS\.Mentions[\s\S]{0,140}resolveAssignee\(collected\.general\.coffeePartner\)/);
+});
+
+test('every surface that shows a Coffee Partner renders it without the @', () => {
+  // Dashboard: visit rows, the report modal, and the export.
+  assert.match(visitReport, /function partnerHtml\(value, fallback\)/);
+  assert.match(visitReport, /var partnerColHtml = isAudited/);
+  assert.match(visitReport, /partnerText\(v\.coffeePartner\)/);
+  // Admin table, bakery profile, and the My Activity hub.
+  assert.match(adminScript, /window\.GAILS\.Mentions\s*\n?\s*\? window\.GAILS\.Mentions\.toHtml\(v\.coffeePartner\)/);
+  assert.match(bakeryProfile, /G\.Mentions\.toHtml\(visit\.coffeePartner\)/);
+  assert.match(myActivity, /function mentionHtml\(value\)/);
+  assert.match(myActivity, /return mentionText\(visit\.coffeePartner\);/);
+});
+
+test('an assigned visit reaches the assignee, and the export names them', () => {
+  assert.match(myActivity, /function visitAssignedToMe\(visit\)/);
+  // Ownership is checked before anything else, so an assigned visit is theirs
+  // even when someone else logged it.
+  assert.match(myActivity, /if \(visitAssignedToMe\(visit\)\) return true;/);
+  assert.match(myActivity, /'Was assigned a visit'/);
+  assert.match(myActivity, /Assigned to you</);
+  [visitReport, myActivity].forEach((source) => {
+    assert.match(source, /\{ label: 'Assigned To', type: 'text', width: 22 \}/);
+  });
+});
+
+test('the shared people directory is readable but never carries a role', () => {
+  const directory = rules.rules.userDirectory;
+
+  assert.equal(directory['.read'], 'auth != null');
+  // Anyone may publish their own entry; only admins may touch someone else's.
+  assert.match(directory.$uid['.write'], /\$uid === auth\.uid/);
+  assert.match(directory.$uid['.write'], /root\.child\('admins'\)\.child\(auth\.uid\)/);
+  // The whole point of a separate node is that it cannot leak the user record.
+  assert.match(directory.$uid['.validate'], /!newData\.hasChild\('role'\)/);
+  assert.match(directory.$uid['.validate'], /!newData\.hasChild\('opsArea'\)/);
+
+  // It is self-maintaining: signing in republishes your own entry.
+  assert.match(authScript, /function publishDirectoryEntry\(user, profile\)/);
+  assert.match(authScript, /publishDirectoryEntry\(user, userProfile\);/);
+  assert.match(adminScript, /function publishDirectoryEntries\(users\)/);
+});
+
+test('a directory the rules reject degrades to harvested names', () => {
+  // Every read and write of the directory is best-effort, so the picker still
+  // works before database.rules.json has been deployed.
+  assert.match(authScript, /Shared people directory unavailable, falling back to names already in the data/);
+  assert.match(myActivity, /get\(ref\(db, 'userDirectory'\)\)\.catch\(/);
+  assert.match(adminScript, /Could not publish ' \+ person\.name \+ ' to the shared people directory/);
+});

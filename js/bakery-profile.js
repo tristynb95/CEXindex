@@ -1017,14 +1017,18 @@ function renderVisits() {
     var score = visit.score !== null && visit.score !== undefined
       ? String(visit.score) + (visit.scoreMax ? '/' + visit.scoreMax : '')
       : '';
-    var visitor = visit.coffeePartner || visit.meta && visit.meta.updatedBy || '';
+    // An assigned visit names its assignee as "@Name"; the stored "@" is never
+    // rendered, just the blue underlined name (see js/mentions.js).
+    var visitorHtml = visit.coffeePartner && G.Mentions
+      ? G.Mentions.toHtml(visit.coffeePartner)
+      : escapeHtml(visit.coffeePartner || (visit.meta && (visit.meta.createdBy || visit.meta.updatedBy)) || '');
     return '<article class="bakery-activity-row">' +
       '<div class="bakery-activity-row__marker" aria-hidden="true"></div>' +
       '<div class="bakery-activity-row__body">' +
       '<div class="bakery-activity-row__top"><strong>' + escapeHtml(formatVisitType(visit.type)) + '</strong>' +
       (score ? '<span class="bakery-profile-tag">' + escapeHtml(score) + '</span>' : '') + '</div>' +
       '<p>' + escapeHtml(formatDate(visit.date, false)) + (visit.time ? ' · ' + escapeHtml(visit.time) : '') + '</p>' +
-      (visitor ? '<small>' + escapeHtml(visitor) + '</small>' : '') +
+      (visitorHtml ? '<small>' + visitorHtml + '</small>' : '') +
       '</div></article>';
   }).join('');
   renderStats();
@@ -1246,6 +1250,7 @@ function startLiveData() {
   visitsUnsubscribe = onValue(ref(db, 'routineVisits'), function(snapshot) {
     var value = snapshot.exists() ? snapshot.val() : {};
     visits = Object.keys(value).map(function(id) { return Object.assign({ id: id }, value[id]); });
+    if (G.Mentions) G.Mentions.addHarvested({ visits: value });
     renderVisits();
   }, function(error) {
     console.error('Could not load visits:', error);
@@ -1272,6 +1277,21 @@ function startLiveData() {
       '<div class="bakery-profile-empty bakery-profile-empty--notes"><strong>Bakery notes unavailable.</strong>' +
       '<span>Try refreshing the page.</span></div>';
   });
+}
+
+// Best-effort: the directory only sharpens how mentions render, so a page that
+// cannot read it still shows the names, just without the resolved email.
+async function loadPeopleDirectory() {
+  if (!G.Mentions) return;
+  try {
+    var snapshot = await get(ref(db, 'userDirectory'));
+    var entries = snapshot.exists() ? snapshot.val() : {};
+    G.Mentions.addPeople(Object.keys(entries).map(function(uid) {
+      return { uid: uid, name: entries[uid] && entries[uid].name, email: entries[uid] && entries[uid].email };
+    }));
+  } catch (error) {
+    console.warn('Shared people directory unavailable:', error);
+  }
 }
 
 async function loadBakeryProfile(user) {
@@ -1350,6 +1370,7 @@ async function loadBakeryProfile(user) {
   // Admins keep the composer so they can revise any note, even without logVisits.
   noteForm.hidden = !canEdit && !isAdmin;
 
+  loadPeopleDirectory();
   renderIdentity(sitePayload);
   renderBakerySelector(reportScopeActive);
   renderStats();

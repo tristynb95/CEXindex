@@ -1760,7 +1760,9 @@
               <div class="form-field-row">
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitPartner">Coffee Partner</label>
-                  <input type="text" id="addVisitPartner" placeholder="Enter name..." class="visit-log-input">
+                  <input type="text" id="addVisitPartner" placeholder="Enter name..." class="visit-log-input"
+                    data-mention-field autocomplete="off">
+                  <p class="mention-field-hint">Type <strong>@</strong> to assign this visit to someone.</p>
                 </div>
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitMod">Barista</label>
@@ -1983,6 +1985,8 @@
   <script src="js/cqv-criticals.js"></script>
   <script src="js/cqv-shared.js"></script>
   <script src="js/nbo-shared.js"></script>
+  <script src="js/mentions.js"></script>
+  <script src="js/mention-field.js"></script>
   <script src="js/visit-report.js"></script>
   <script src="js/upload.js"></script>
   <script src="js/custom-selects.js"></script>

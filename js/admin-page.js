@@ -1287,7 +1287,9 @@ function getVisibleVisits() {
   if (!search) return rows;
   return rows.filter(function(v) {
     return String(v.bakery || '').toLowerCase().includes(search)
-      || String(v.coffeePartner || '').toLowerCase().includes(search)
+      || (window.GAILS.Mentions
+        ? window.GAILS.Mentions.toText(v.coffeePartner).toLowerCase().includes(search)
+        : String(v.coffeePartner || '').toLowerCase().includes(search))
       || String(v.auditorName || '').toLowerCase().includes(search)
       || String(v.mod || '').toLowerCase().includes(search);
   });
@@ -1341,7 +1343,11 @@ function renderVisits() {
         : escapeHtml('Unknown')) + '</div>'
       + '  ' + typeBadge
       + '</div></td>'
-      + '<td>' + escapeHtml((isCqv || isNbo) ? (v.auditorName || '—') : (v.coffeePartner || '—')) + '</td>'
+      + '<td>' + ((isCqv || isNbo)
+        ? escapeHtml(v.auditorName || '—')
+        : (v.coffeePartner && window.GAILS.Mentions
+          ? window.GAILS.Mentions.toHtml(v.coffeePartner)
+          : escapeHtml(v.coffeePartner || '—'))) + '</td>'
       + '<td>' + escapeHtml(scoreText) + '</td>'
       + '<td>' + escapeHtml(v.mod || '—') + '</td>'
       + '<td><div class="admin-table__actions admin-table__actions--icons">'
@@ -1701,6 +1707,11 @@ function fieldInputHtml(sectionKey, field, value) {
     input = '<input type="date" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
   } else if (field.type === 'time') {
     input = '<input type="time" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
+  } else if (field.key === 'coffeePartner') {
+    // Assignable: typing "@" hands the visit to a colleague. Enhanced into its
+    // two-face editor by openVisitDetail once the markup is in the DOM.
+    input = '<input type="text" value="' + escapeHtml(value || '') + '" autocomplete="off" data-mention-field ' + dataAttrs + '>'
+      + '<small class="mention-field-hint">Type <strong>@</strong> to assign this visit to someone.</small>';
   } else {
     input = '<input type="text" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
   }
@@ -1927,6 +1938,7 @@ function openVisitDetail(id) {
   if (!visit) return;
   state.visitDetailId = id;
   visitDetailBody.innerHTML = buildVisitDetailHtml(visit);
+  if (window.GAILS.MentionField) window.GAILS.MentionField.enhanceAll(visitDetailBody);
   visitDetailModal.style.display = 'flex';
 }
 
@@ -1983,6 +1995,11 @@ async function saveVisitDetail(id) {
       payload[section.key] = collected[section.key];
     });
   }
+  // Editing the Coffee Partner text re-resolves the assignment, so removing a
+  // mention here really does un-assign the visit.
+  payload.assignedTo = (window.GAILS.Mentions
+    ? window.GAILS.Mentions.resolveAssignee(collected.general.coffeePartner)
+    : null) || null;
   payload.meta = Object.assign({}, existing.meta, {
     updatedAt: nowIso(),
     updatedBy: currentUserEmail()
@@ -2183,6 +2200,32 @@ async function saveUserRole(uid) {
   setMessage(createMsg, 'success', 'Updated access level for ' + (user.email || 'user') + '.');
 }
 
+// Mirrors the readable name/email of every user into the shared directory that
+// powers @mention assignment, and feeds this page's own picker. Best-effort and
+// idempotent: a write that the rules reject (because userDirectory has not been
+// deployed yet) must not break the user list this runs off.
+function publishDirectoryEntries(users) {
+  var people = (users || []).map(function(user) {
+    return {
+      uid: user.uid,
+      name: [user.firstName, user.lastName].filter(Boolean).join(' ').trim(),
+      email: user.email === 'Unknown' ? '' : user.email
+    };
+  }).filter(function(person) { return !!person.name; });
+
+  if (window.GAILS.Mentions) window.GAILS.Mentions.addPeople(people);
+  if (!canEdit('users')) return;
+
+  people.forEach(function(person) {
+    set(ref(db, 'userDirectory/' + person.uid), {
+      name: person.name,
+      email: person.email || ''
+    }).catch(function(error) {
+      console.warn('Could not publish ' + person.name + ' to the shared people directory:', error);
+    });
+  });
+}
+
 async function revokeUser(uid) {
   var user = state.users.find(function(u) { return u.uid === uid; });
   if (!user || uid === currentUserId()) return;
@@ -2190,6 +2233,12 @@ async function revokeUser(uid) {
   await remove(ref(db, 'users/' + uid));
   if (state.isAdmin) {
     await remove(ref(db, 'admins/' + uid));
+  }
+  // Someone without dashboard access should not stay in the @mention picker.
+  try {
+    await remove(ref(db, 'userDirectory/' + uid));
+  } catch (directoryErr) {
+    console.warn('Could not remove the user from the shared people directory:', directoryErr);
   }
   setMessage(createMsg, 'success', 'Removed access for ' + (user.email || 'user') + '.');
 }
@@ -2280,7 +2329,13 @@ function ensurePortalSync() {
             opsArea: users[uid].opsArea || '',
             invitation: users[uid].invitation || null
           };
-        }).sort(function(a, b) {
+        });
+        // Admins can read the full user list, so the @mention picker on this
+        // page is built from it directly. It also republishes the shared
+        // directory (see database.rules.json), which is how a colleague becomes
+        // mentionable before they have ever signed in.
+        publishDirectoryEntries(state.users);
+        state.users = state.users.sort(function(a, b) {
           var aLabel = [a.firstName, a.lastName].filter(Boolean).join(' ') || a.email;
           var bLabel = [b.firstName, b.lastName].filter(Boolean).join(' ') || b.email;
           return aLabel.localeCompare(bLabel);
@@ -2322,6 +2377,7 @@ function ensurePortalSync() {
       state.visits = Object.keys(visits).map(function(id) {
         return Object.assign({ id: id }, visits[id]);
       });
+      if (window.GAILS.Mentions) window.GAILS.Mentions.addHarvested({ visits: visits });
     }
     renderVisits();
     updateCqvBackfillButton();
