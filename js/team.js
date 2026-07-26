@@ -210,6 +210,62 @@ window.GAILS = window.GAILS || {};
     }));
   }
 
+  // Every bakery owned by one or more people through the Region Coffee Team
+  // mapping. UID attribution is authoritative; the saved display name/email
+  // is only a backward-compatible fallback for assignments created before UIDs
+  // were stored.
+  function assignedBakeries(uids, people, assignments, bakeryMeta) {
+    var wanted = {};
+    (Array.isArray(uids) ? uids : [uids]).forEach(function(uid) {
+      var key = cleanText(uid);
+      if (key) wanted[key] = true;
+    });
+    if (!Object.keys(wanted).length) return [];
+
+    var identities = normalizeRoster(people).filter(function(person) {
+      return !!wanted[person.uid];
+    }).map(function(person) {
+      return {
+        uid: person.uid,
+        name: cleanText(person.name).toLowerCase(),
+        email: normalizeEmail(person.email)
+      };
+    });
+
+    function legacyLabelMatches(label) {
+      var value = cleanText(label).toLowerCase();
+      return !!value && identities.some(function(identity) {
+        return value === identity.name || value === identity.email;
+      });
+    }
+
+    var records = Array.isArray(assignments)
+      ? assignments
+      : Object.values(assignments && typeof assignments === 'object' ? assignments : {});
+    var regions = {};
+    records.forEach(function(record) {
+      var source = record && typeof record === 'object' ? record : {};
+      var region = cleanText(source.region);
+      if (!region) return;
+      var partnerUid = cleanText(source.coffeePartnerUid || source.partnerUid);
+      var trainerUid = cleanText(source.coffeeTrainerUid || source.trainerUid);
+      var partnerMatches = partnerUid
+        ? !!wanted[partnerUid]
+        : legacyLabelMatches(source.coffeePartner || source.partner);
+      var trainerMatches = trainerUid
+        ? !!wanted[trainerUid]
+        : legacyLabelMatches(source.coffeeTrainer || source.trainer);
+      if (partnerMatches || trainerMatches) regions[region.toLowerCase()] = true;
+    });
+
+    return Object.keys(bakeryMeta || {}).filter(function(bakery) {
+      var entry = bakeryMeta[bakery] || {};
+      return !!regions[cleanText(entry.r || entry.region).toLowerCase()];
+    }).sort(function(a, b) {
+      return a.localeCompare(b);
+    });
+  }
+
   G.Team = {
     normalizePerson: normalizePerson,
     normalizeRoster: normalizeRoster,
@@ -219,6 +275,7 @@ window.GAILS = window.GAILS || {};
     assignmentWouldCycle: assignmentWouldCycle,
     visibleTeam: visibleTeam,
     teamRows: teamRows,
-    branchUids: branchUids
+    branchUids: branchUids,
+    assignedBakeries: assignedBakeries
   };
 })();

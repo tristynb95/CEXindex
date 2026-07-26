@@ -224,3 +224,54 @@ test('a branch is the person plus everyone beneath them', () => {
   assert.deepEqual(plain(Team.branchUids('baristaA1', THREE_LEVELS)), ['baristaA1']);
   assert.deepEqual(plain(Team.branchUids('', THREE_LEVELS)), []);
 });
+
+test('assigned bakery coverage comes from regional ownership, not visit history', () => {
+  const assignments = [
+    {
+      region: 'North Region',
+      coffeePartner: 'Alex Partner',
+      coffeePartnerUid: 'partnerA',
+      coffeeTrainer: 'Tam Trainer',
+      coffeeTrainerUid: 'trainer'
+    },
+    {
+      region: 'South Region',
+      coffeePartner: 'Blake Partner',
+      coffeePartnerUid: 'partnerB'
+    }
+  ];
+  const bakeryMeta = {
+    Cambridge: { r: 'North Region', o: 'Area 1' },
+    Euston: { r: 'North Region', o: 'Area 2' },
+    Soho: { r: 'South Region', o: 'Area 3' }
+  };
+
+  assert.deepEqual(
+    plain(Team.assignedBakeries(['partnerA'], ROSTER, assignments, bakeryMeta)),
+    ['Cambridge', 'Euston']
+  );
+  assert.deepEqual(
+    plain(Team.assignedBakeries(['partnerA', 'partnerB'], ROSTER, assignments, bakeryMeta)),
+    ['Cambridge', 'Euston', 'Soho']
+  );
+});
+
+test('legacy name-only regional assignments still count bakeries', () => {
+  const assigned = Team.assignedBakeries(
+    ['partnerA'],
+    ROSTER,
+    [{ region: 'North Region', coffeePartner: 'Alex Partner' }],
+    { Cambridge: { r: 'north region' }, Soho: { r: 'South Region' } }
+  );
+  assert.deepEqual(plain(assigned), ['Cambridge']);
+});
+
+test('a saved uid outranks a stale display name', () => {
+  const assigned = Team.assignedBakeries(
+    ['partnerA'],
+    ROSTER,
+    [{ region: 'North Region', coffeePartner: 'Alex Partner', coffeePartnerUid: 'partnerB' }],
+    { Cambridge: { r: 'North Region' } }
+  );
+  assert.deepEqual(plain(assigned), []);
+});

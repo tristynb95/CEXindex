@@ -54,49 +54,106 @@
     </header>
 
     <main class="my-activity-main">
-      <div class="my-activity-intro">
-        <p class="my-activity-eyebrow">Team performance</p>
-        <h1>My Team</h1>
-        <p id="myTeamGreeting" class="my-activity-intro__copy">What your coffee team is doing, where they are going,
-          and what they have opened.</p>
-      </div>
+      <section class="my-activity-overview my-team-overview" aria-labelledby="myTeamTitle">
+        <div class="my-activity-overview__top">
+          <div class="my-activity-intro">
+            <p class="my-activity-eyebrow">Team performance</p>
+            <h1 id="myTeamTitle">My Team</h1>
+            <p id="myTeamGreeting" class="my-activity-intro__copy">See workload, contribution and where attention is
+              needed.</p>
+          </div>
 
-      <div class="my-team-period">
-        <label for="myTeamPeriod">Showing</label>
-        <select id="myTeamPeriod" class="visit-log-select">
-          <option value="currentMonth">This month</option>
-          <option value="1">Last month</option>
-          <option value="3" selected>Last 3 months</option>
-          <option value="6">Last 6 months</option>
-          <option value="12">Last 12 months</option>
-          <option value="0">All time</option>
-        </select>
-        <span id="myTeamScopeNote" class="my-team-scope-note"></span>
-      </div>
+          <div class="my-team-period">
+            <label for="myTeamPeriod">Period</label>
+            <select id="myTeamPeriod" class="visit-log-select">
+              <option value="currentMonth">This month</option>
+              <option value="1">Last month</option>
+              <option value="3" selected>Last 3 months</option>
+              <option value="6">Last 6 months</option>
+              <option value="12">Last 12 months</option>
+              <option value="0">All time</option>
+            </select>
+          </div>
+        </div>
 
-      <div id="myTeamStats" class="my-activity-stats" aria-label="Your team at a glance"></div>
+        <div class="my-team-overview__context">
+          <span id="myTeamScopeNote" class="my-team-scope-note"></span>
+          <nav id="myTeamJump" class="my-activity-jump" aria-label="Jump to a section">
+            <a href="#section-team-insights" class="my-activity-jump__link"
+              data-section-link="section-team-insights">Insights</a>
+            <a href="#section-roster" class="my-activity-jump__link" data-section-link="section-roster">People</a>
+            <a href="#section-team-actions" class="my-activity-jump__link"
+              data-section-link="section-team-actions">Actions</a>
+            <a href="#section-team-visits" class="my-activity-jump__link"
+              data-section-link="section-team-visits">Visits</a>
+          </nav>
+        </div>
 
-      <nav id="myTeamJump" class="my-activity-jump" aria-label="Jump to a section">
-        <a href="#section-roster" class="my-activity-jump__link" data-section-link="section-roster">The team</a>
-        <a href="#section-team-actions" class="my-activity-jump__link"
-          data-section-link="section-team-actions">Open actions</a>
-        <a href="#section-team-visits" class="my-activity-jump__link"
-          data-section-link="section-team-visits">Recent visits</a>
-      </nav>
+        <div id="myTeamStats" class="my-activity-stats" aria-label="Your team at a glance"></div>
+      </section>
 
       <div id="myTeamSelection" class="my-team-selection" hidden aria-live="polite">
         <span id="myTeamSelectionText"></span>
         <button type="button" id="myTeamSelectionClear">Show whole team</button>
       </div>
 
-      <!-- ========== 1. THE TEAM ========== -->
+      <!-- ========== 1. TEAM INSIGHTS ========== -->
+      <section id="section-team-insights" class="my-activity-card my-team-insights"
+        aria-labelledby="myTeamInsightsTitle">
+        <div class="my-activity-card__head">
+          <div>
+            <p class="my-activity-card__eyebrow">Manager view</p>
+            <h2 id="myTeamInsightsTitle">Team insights</h2>
+            <p class="my-activity-card__copy">Compare contribution, workload and activity across the selected team.</p>
+          </div>
+          <span id="myTeamInsightsBadge" class="my-activity-pill">Live team data</span>
+        </div>
+
+        <div id="myTeamInsightCallout" class="my-team-insight-callout" role="status" aria-live="polite"></div>
+        <div class="my-team-chart-grid">
+          <article class="my-team-chart-card" aria-labelledby="myTeamContributionTitle">
+            <div class="my-team-chart-card__head">
+              <div>
+                <p class="my-team-chart-card__kicker">Contribution</p>
+                <h3 id="myTeamContributionTitle">Visits by person</h3>
+              </div>
+              <span id="myTeamContributionTotal" class="my-team-chart-card__value">0</span>
+            </div>
+            <div id="myTeamContributionChart" class="my-team-bar-chart"></div>
+          </article>
+
+          <article class="my-team-chart-card" aria-labelledby="myTeamWorkloadTitle">
+            <div class="my-team-chart-card__head">
+              <div>
+                <p class="my-team-chart-card__kicker">Workload &amp; risk</p>
+                <h3 id="myTeamWorkloadTitle">Open actions</h3>
+              </div>
+              <span class="my-team-chart-legend"><i></i> Overdue</span>
+            </div>
+            <div id="myTeamWorkloadChart" class="my-team-bar-chart"></div>
+          </article>
+
+          <article class="my-team-chart-card my-team-chart-card--trend" aria-labelledby="myTeamTrendTitle">
+            <div class="my-team-chart-card__head">
+              <div>
+                <p class="my-team-chart-card__kicker">Activity</p>
+                <h3 id="myTeamTrendTitle">Visit trend</h3>
+              </div>
+              <span id="myTeamTrendDirection" class="my-team-trend-direction">No trend yet</span>
+            </div>
+            <div id="myTeamTrendChart" class="my-team-trend-chart"></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ========== 2. THE TEAM ========== -->
       <section id="section-roster" class="my-activity-card" aria-labelledby="myTeamRosterTitle">
         <div class="my-activity-card__head">
           <div>
             <p class="my-activity-card__eyebrow">Who reports to you</p>
             <h2 id="myTeamRosterTitle">The team</h2>
-            <p class="my-activity-card__copy">One row per person, credited the same way their own My Activity hub
-              credits them. Select someone to see their visits and open actions.</p>
+            <p class="my-activity-card__copy">Visits and actions use the same attribution as My Activity. Bakery totals
+              come from each person’s saved Region Coffee Team assignments.</p>
           </div>
           <div class="my-activity-card__actions">
             <span id="myTeamRosterCount" class="my-activity-pill">0 people</span>
@@ -137,7 +194,7 @@
         <div id="myTeamRoster" class="my-team-roster"></div>
       </section>
 
-      <!-- ========== 2. OPEN ACTIONS ========== -->
+      <!-- ========== 3. OPEN ACTIONS ========== -->
       <section id="section-team-actions" class="my-activity-card" aria-labelledby="myTeamActionsTitle">
         <div class="my-activity-card__head">
           <div>
@@ -194,7 +251,7 @@
         <div id="myTeamActionsList" class="my-activity-actions-list"></div>
       </section>
 
-      <!-- ========== 3. RECENT VISITS ========== -->
+      <!-- ========== 4. RECENT VISITS ========== -->
       <section id="section-team-visits" class="my-activity-card" aria-labelledby="myTeamVisitsTitle">
         <div class="my-activity-card__head">
           <div>

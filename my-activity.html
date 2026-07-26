@@ -55,20 +55,26 @@
     </header>
 
     <main class="my-activity-main">
-      <div class="my-activity-intro">
-        <p class="my-activity-eyebrow">Your workspace</p>
-        <h1 id="myActivityTitle">My Activity</h1>
-        <p id="myActivityGreeting" class="my-activity-intro__copy">Everything you have logged, raised, and written
-          across the estate — in one place.</p>
-      </div>
+      <section class="my-activity-overview" aria-labelledby="myActivityTitle">
+        <div class="my-activity-overview__top">
+          <div class="my-activity-intro">
+            <p class="my-activity-eyebrow">Your workspace</p>
+            <h1 id="myActivityTitle">My Activity</h1>
+            <p id="myActivityGreeting" class="my-activity-intro__copy">Your work, priorities and progress in one
+              place.</p>
+          </div>
 
-      <div id="myActivityStats" class="my-activity-stats" aria-label="Your activity at a glance"></div>
+          <nav id="myActivityJump" class="my-activity-jump" aria-label="Jump to a section">
+            <a href="#section-actions" class="my-activity-jump__link" data-section-link="section-actions">Actions</a>
+            <a href="#section-visits" class="my-activity-jump__link" data-section-link="section-visits">Visits</a>
+            <a href="#section-timeline" class="my-activity-jump__link"
+              data-section-link="section-timeline">Activity</a>
+          </nav>
+        </div>
 
-      <nav id="myActivityJump" class="my-activity-jump" aria-label="Jump to a section">
-        <a href="#section-actions" class="my-activity-jump__link" data-section-link="section-actions">Open actions</a>
-        <a href="#section-visits" class="my-activity-jump__link" data-section-link="section-visits">My visits</a>
-        <a href="#section-timeline" class="my-activity-jump__link" data-section-link="section-timeline">Activity feed</a>
-      </nav>
+        <div id="myActivityFocus" class="my-activity-focus" role="status" aria-live="polite"></div>
+        <div id="myActivityStats" class="my-activity-stats" aria-label="Your activity at a glance"></div>
+      </section>
 
       <!-- ========== 1. OPEN ACTIONS ========== -->
       <section id="section-actions" class="my-activity-card" aria-labelledby="myActionsTitle">

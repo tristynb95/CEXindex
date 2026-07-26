@@ -382,7 +382,9 @@ window.GAILS.setRegionAssignments = function (assignments) {
     var normalized = {
       region: region,
       coffeePartner: String(record && record.coffeePartner || '').trim(),
-      coffeeTrainer: String(record && record.coffeeTrainer || '').trim()
+      coffeePartnerUid: String(record && record.coffeePartnerUid || '').trim(),
+      coffeeTrainer: String(record && record.coffeeTrainer || '').trim(),
+      coffeeTrainerUid: String(record && record.coffeeTrainerUid || '').trim()
     };
     records.push(normalized);
     lookup[_normalizeRegionAssignmentKey(region)] = normalized;
@@ -411,7 +413,9 @@ window.GAILS.getRegionAssignmentsSnapshot = function () {
     return {
       region: record.region,
       coffeePartner: record.coffeePartner,
-      coffeeTrainer: record.coffeeTrainer
+      coffeePartnerUid: record.coffeePartnerUid,
+      coffeeTrainer: record.coffeeTrainer,
+      coffeeTrainerUid: record.coffeeTrainerUid
     };
   });
 };

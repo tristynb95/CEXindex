@@ -14,7 +14,9 @@
     return {
       region: cleanText(value.region || fallbackRegion),
       coffeePartner: cleanText(value.coffeePartner || value.partner),
-      coffeeTrainer: cleanText(value.coffeeTrainer || value.trainer)
+      coffeePartnerUid: cleanText(value.coffeePartnerUid || value.partnerUid),
+      coffeeTrainer: cleanText(value.coffeeTrainer || value.trainer),
+      coffeeTrainerUid: cleanText(value.coffeeTrainerUid || value.trainerUid)
     };
   }
 
@@ -44,7 +46,9 @@
       // an existing contact with an empty value.
       byRegion[key].region = normalized.region || byRegion[key].region;
       byRegion[key].coffeePartner = normalized.coffeePartner || byRegion[key].coffeePartner;
+      byRegion[key].coffeePartnerUid = normalized.coffeePartnerUid || byRegion[key].coffeePartnerUid;
       byRegion[key].coffeeTrainer = normalized.coffeeTrainer || byRegion[key].coffeeTrainer;
+      byRegion[key].coffeeTrainerUid = normalized.coffeeTrainerUid || byRegion[key].coffeeTrainerUid;
     });
 
     return Object.keys(byRegion).map(function (key) {
@@ -83,14 +87,17 @@
       return {
         region: region,
         coffeePartner: cleanText(previous.coffeePartner),
-        coffeeTrainer: cleanText(previous.coffeeTrainer)
+        coffeePartnerUid: cleanText(previous.coffeePartnerUid),
+        coffeeTrainer: cleanText(previous.coffeeTrainer),
+        coffeeTrainerUid: cleanText(previous.coffeeTrainerUid)
       };
     });
 
     existing.forEach(function (record) {
       var key = regionKey(record.region);
       if (activeKeys[key]) return;
-      if (!record.coffeePartner && !record.coffeeTrainer) return;
+      if (!record.coffeePartner && !record.coffeePartnerUid &&
+          !record.coffeeTrainer && !record.coffeeTrainerUid) return;
       merged.push(record);
     });
 
@@ -108,7 +115,8 @@
   }
 
   function updateAssignment(regions, assignments, region, field, value) {
-    if (field !== 'coffeePartner' && field !== 'coffeeTrainer') {
+    if (field !== 'coffeePartner' && field !== 'coffeePartnerUid' &&
+        field !== 'coffeeTrainer' && field !== 'coffeeTrainerUid') {
       return mergeDetectedRegions(regions, assignments);
     }
 
@@ -119,7 +127,13 @@
     });
 
     if (!target && targetKey) {
-      target = { region: cleanText(region), coffeePartner: '', coffeeTrainer: '' };
+      target = {
+        region: cleanText(region),
+        coffeePartner: '',
+        coffeePartnerUid: '',
+        coffeeTrainer: '',
+        coffeeTrainerUid: ''
+      };
       merged.push(target);
     }
     if (target) target[field] = cleanText(value);

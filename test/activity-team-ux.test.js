@@ -34,6 +34,40 @@ test('summary metrics and section navigation are actionable on both pages', () =
   assert.match(teamScript, /new IntersectionObserver/);
 });
 
+test('the compact page overviews combine context, navigation and live priorities', () => {
+  assert.match(activityHtml, /class="my-activity-overview"/);
+  assert.match(activityHtml, /id="myActivityFocus"/);
+  assert.match(activityScript, /function renderFocus\(\)/);
+  assert.match(activityScript, /renderFocus\(\);\s*renderStats\(\)/);
+  assert.match(teamHtml, /class="my-activity-overview my-team-overview"/);
+  assert.match(activityStyles, /\.my-activity-overview__top/);
+  assert.match(activityScript, /All clear — nothing overdue or due in the next seven days/);
+});
+
+test('My Activity keeps desktop filter controls on efficient rows', () => {
+  assert.match(activityStyles, /#section-actions \.my-activity-filters[\s\S]*?grid-template-columns:/);
+  assert.match(activityStyles, /#section-visits \.my-activity-filters[\s\S]*?grid-template-columns:/);
+  assert.match(activityStyles, /\.my-activity-card \{[\s\S]*?scroll-margin-top: 82px/);
+});
+
+test('My Team provides data-backed manager charts and an actionable insight', () => {
+  [
+    'myTeamContributionChart',
+    'myTeamWorkloadChart',
+    'myTeamTrendChart',
+    'myTeamInsightCallout'
+  ].forEach((id) => {
+    assert.match(teamHtml, new RegExp('id="' + id + '"'));
+    assert.match(teamScript, new RegExp("getElementById\\('" + id + "'\\)"));
+  });
+  assert.match(teamScript, /function renderAnalytics\(\)/);
+  assert.match(teamScript, /function visitTrend\(visits\)/);
+  assert.match(teamScript, /data-chart-person/);
+  assert.match(teamScript, /renderAnalytics\(\);/);
+  assert.match(teamStyles, /\.my-team-chart-grid/);
+  assert.match(teamStyles, /\.my-team-trend-chart/);
+});
+
 test('My Team provides manager-grade search and ordering controls', () => {
   [
     'myTeamRosterSearch', 'myTeamRosterSort',
@@ -73,6 +107,17 @@ test('selecting a person exposes clear context and scopes the headline metrics',
   assert.match(teamScript, /function renderSelection/);
   assert.match(teamScript, /var visits = forSelected\(teamVisits\(\)\)/);
   assert.match(teamScript, /selectionClear\.addEventListener/);
+});
+
+test('team bakery totals use saved regional ownership rather than visited sites', () => {
+  assert.match(teamScript, /G\.Team\.assignedBakeries\(/);
+  assert.match(teamScript, /G\.getRegionAssignmentsSnapshot\(\)/);
+  assert.match(teamScript, /G\.getBakeryMetaSnapshot\(\)/);
+  assert.match(teamScript, /G\.setRegionAssignments\(\(sitePayload && sitePayload\.regionAssignments\) \|\| \[\]\)/);
+  assert.doesNotMatch(
+    teamScript,
+    /bakeries:\s*new Set\(theirVisits\.map\(function \(visit\) \{ return visit\.bakery; \}\)\)\.size/
+  );
 });
 
 test('the page shell and result rows use the compact density system', () => {

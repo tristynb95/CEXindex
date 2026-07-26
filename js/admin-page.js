@@ -54,6 +54,8 @@ const userAccessRemove  = document.getElementById('userAccessRemove');
 const userAccessResetPw = document.getElementById('userAccessResetPassword');
 const userAccessTitle   = document.getElementById('userAccessTitle');
 const userAccessEmail   = document.getElementById('userAccessEmail');
+const userAccessFirstName = document.getElementById('userAccessFirstName');
+const userAccessLastName = document.getElementById('userAccessLastName');
 const userAccessRole    = document.getElementById('userAccessRole');
 const userAccessManager = document.getElementById('userAccessManager');
 const userAccessOps     = document.getElementById('userAccessOps');
@@ -95,6 +97,7 @@ const regionList      = document.getElementById('adminRegionList');
 const managerList     = document.getElementById('adminManagerList');
 const regionAssignmentList = document.getElementById('regionAssignmentList');
 const regionAssignmentMeta = document.getElementById('regionAssignmentMeta');
+const regionAssignmentPeople = document.getElementById('regionAssignmentPeople');
 const dataGrid        = document.getElementById('adminDataGrid');
 const dataMsg         = document.getElementById('dataMsg');
 const datasetImportZone = document.getElementById('datasetImportZone');
@@ -1045,6 +1048,8 @@ function renderUsers() {
 // Bakery Reports scope, and their feature switches.
 function accessDraftFor(user) {
   return {
+    firstName: user.firstName || '',
+    lastName: user.lastName || '',
     role: user.role || 'viewer',
     managerUid: user.managerUid || '',
     opsArea: user.opsArea || '',
@@ -1090,6 +1095,14 @@ function openAccessModal(uid) {
   if (userAccessTitle) userAccessTitle.textContent = userLabel(user);
   if (userAccessEmail) userAccessEmail.textContent = user.email || 'No email on record';
   if (userAccessSelfNote) userAccessSelfNote.hidden = !isCurrent;
+  if (userAccessFirstName) {
+    userAccessFirstName.value = state.accessDraft.firstName;
+    userAccessFirstName.disabled = !canEdit('users');
+  }
+  if (userAccessLastName) {
+    userAccessLastName.value = state.accessDraft.lastName;
+    userAccessLastName.disabled = !canEdit('users');
+  }
 
   if (userAccessRole) {
     userAccessRole.innerHTML = roleOptionsHtml(state.accessDraft.role);
@@ -1121,7 +1134,7 @@ function openAccessModal(uid) {
     userAccessResetPw.hidden = !canEdit('users') || isCurrent;
   }
   if (userAccessRemove) userAccessRemove.hidden = !editable;
-  if (userAccessSave) userAccessSave.hidden = !editable;
+  if (userAccessSave) userAccessSave.hidden = !canEdit('users');
 
   renderAccessReadout();
   userAccessModal.style.display = 'flex';
@@ -1391,11 +1404,46 @@ function renderDatalists() {
   managerList.innerHTML = managers.map(function(m) { return '<option value="' + escapeHtml(m) + '">'; }).join('');
 }
 
+function regionAssignmentOptionValue(user) {
+  var name = userLabel(user);
+  var email = user && user.email !== 'Unknown' ? String(user.email || '').trim() : '';
+  return email ? name + ' — ' + email : name;
+}
+
+function renderRegionAssignmentPeople() {
+  if (!regionAssignmentPeople) return;
+  regionAssignmentPeople.innerHTML = state.users.map(function(user) {
+    var detail = roleDisplayName(user.role);
+    return '<option value="' + escapeHtml(regionAssignmentOptionValue(user)) + '">' +
+      escapeHtml(detail) + '</option>';
+  }).join('');
+}
+
+function resolveRegionAssignmentUser(value) {
+  var wanted = String(value || '').trim().toLowerCase();
+  if (!wanted) return null;
+  var exact = state.users.filter(function(user) {
+    var name = userLabel(user).toLowerCase();
+    var email = String(user.email || '').trim().toLowerCase();
+    var option = regionAssignmentOptionValue(user).toLowerCase();
+    return wanted === option || wanted === email || wanted === name;
+  });
+  return exact.length === 1 ? exact[0] : null;
+}
+
+function regionAssignmentDisplayName(row, field) {
+  var uid = row[field + 'Uid'];
+  var user = uid && findUser(uid);
+  return user ? userLabel(user) : (row[field] || '');
+}
+
 function renderRegionAssignments() {
   if (!regionAssignmentList) return;
+  renderRegionAssignmentPeople();
   var rows = visibleRegionAssignments();
   var assignmentsComplete = rows.filter(function(row) {
-    return !!(row.coffeePartner || row.coffeeTrainer);
+    return !!(row.coffeePartner || row.coffeePartnerUid ||
+      row.coffeeTrainer || row.coffeeTrainerUid);
   }).length;
 
   if (regionAssignmentMeta) {
@@ -1415,8 +1463,12 @@ function renderRegionAssignments() {
   regionAssignmentList.innerHTML = rows.map(function(row) {
     return '<tr>'
       + '<td><div class="admin-table__title">' + escapeHtml(row.region) + '</div></td>'
-      + '<td><input type="text" value="' + escapeHtml(row.coffeePartner || '') + '" data-region="' + escapeHtml(row.region) + '" data-field="coffeePartner" placeholder="Coffee Partner"' + inputDisabled + '></td>'
-      + '<td><input type="text" value="' + escapeHtml(row.coffeeTrainer || '') + '" data-region="' + escapeHtml(row.region) + '" data-field="coffeeTrainer" placeholder="Coffee Trainer"' + inputDisabled + '></td>'
+      + '<td><input type="text" value="' + escapeHtml(regionAssignmentDisplayName(row, 'coffeePartner')) + '"'
+        + ' data-region="' + escapeHtml(row.region) + '" data-field="coffeePartner"'
+        + ' list="regionAssignmentPeople" autocomplete="off" placeholder="Type a person’s name"' + inputDisabled + '></td>'
+      + '<td><input type="text" value="' + escapeHtml(regionAssignmentDisplayName(row, 'coffeeTrainer')) + '"'
+        + ' data-region="' + escapeHtml(row.region) + '" data-field="coffeeTrainer"'
+        + ' list="regionAssignmentPeople" autocomplete="off" placeholder="Type a person’s name"' + inputDisabled + '></td>'
       + '</tr>';
   }).join('');
 }
@@ -2450,9 +2502,35 @@ function syncSiteMetaFromSource(payload) {
 async function saveAccessModal() {
   var uid = state.accessUserUid;
   var user = findUser(uid);
-  if (!user || !state.accessDraft || uid === currentUserId()) return;
+  if (!user || !state.accessDraft) return;
 
   var draft = state.accessDraft;
+  var firstName = String(draft.firstName || '').trim();
+  var lastName = String(draft.lastName || '').trim();
+  if ((firstName && !lastName) || (!firstName && lastName)) {
+    throw new Error('Enter both a first name and a last name, or leave both blank.');
+  }
+  if (firstName.length > 50 || lastName.length > 50) {
+    throw new Error('First and last names must be 50 characters or fewer.');
+  }
+
+  // The signed-in admin may safely update their own name, but their role and
+  // reporting line remain locked to prevent an accidental lockout.
+  if (uid === currentUserId()) {
+    await update(ref(db, 'users/' + uid), {
+      firstName: firstName,
+      lastName: lastName
+    });
+    if (primaryAuth.currentUser) {
+      await updateProfile(primaryAuth.currentUser, {
+        displayName: [firstName, lastName].filter(Boolean).join(' ')
+      }).catch(function(error) {
+        console.warn('The profile name was saved, but the auth display name could not be refreshed:', error);
+      });
+    }
+    return;
+  }
+
   var api = teamApi();
   if (draft.managerUid && api && api.assignmentWouldCycle(uid, draft.managerUid, state.users)) {
     throw new Error(managerLabel(draft.managerUid) + ' already reports to ' + userLabel(user)
@@ -2460,6 +2538,8 @@ async function saveAccessModal() {
   }
 
   await update(ref(db, 'users/' + uid), {
+    firstName: firstName,
+    lastName: lastName,
     role: draft.role,
     opsArea: draft.opsArea,
     managerUid: draft.managerUid,
@@ -2567,20 +2647,29 @@ function updateSiteDraft(name, field, value) {
   renderDataControls();
 }
 
-function updateRegionAssignmentDraft(region, field, value) {
-  state.regionAssignmentsDraft = regionAssignmentApi().updateAssignment(
+function updateRegionAssignmentDraft(region, field, value, userUid) {
+  var next = regionAssignmentApi().updateAssignment(
     detectedSiteRegions(state.siteMetaDraft),
     state.regionAssignmentsDraft,
     region,
     field,
     value
   );
+  next = regionAssignmentApi().updateAssignment(
+    detectedSiteRegions(state.siteMetaDraft),
+    next,
+    region,
+    field + 'Uid',
+    userUid || ''
+  );
+  state.regionAssignmentsDraft = next;
   setDirty(true);
   updateSiteTableMeta(getVisibleSiteMeta().length);
   if (regionAssignmentMeta) {
     var rows = visibleRegionAssignments();
     var assignmentsComplete = rows.filter(function(row) {
-      return !!(row.coffeePartner || row.coffeeTrainer);
+      return !!(row.coffeePartner || row.coffeePartnerUid ||
+        row.coffeeTrainer || row.coffeeTrainerUid);
     }).length;
     regionAssignmentMeta.textContent = rows.length + ' detected region'
       + (rows.length === 1 ? '' : 's')
@@ -2663,6 +2752,7 @@ function ensurePortalSync() {
       renderOverview();
       renderUsers();
       renderRoles();
+      renderRegionAssignments();
     }, function(err) {
       console.error('Failed to sync users:', err);
       setMessage(createMsg, 'error', 'Could not load active users from Firebase.');
@@ -3036,6 +3126,20 @@ userList.addEventListener('click', function(e) {
 });
 
 // ── Person access modal ──
+if (userAccessFirstName) {
+  userAccessFirstName.addEventListener('input', function() {
+    if (!state.accessDraft) return;
+    state.accessDraft.firstName = userAccessFirstName.value;
+  });
+}
+
+if (userAccessLastName) {
+  userAccessLastName.addEventListener('input', function() {
+    if (!state.accessDraft) return;
+    state.accessDraft.lastName = userAccessLastName.value;
+  });
+}
+
 if (userAccessRole) {
   userAccessRole.addEventListener('change', function() {
     if (!state.accessDraft) return;
@@ -3297,10 +3401,26 @@ if (regionAssignmentList) {
   regionAssignmentList.addEventListener('input', function(e) {
     var input = e.target;
     if (!input.dataset.region || !input.dataset.field) return;
+    var user = resolveRegionAssignmentUser(input.value);
     updateRegionAssignmentDraft(
       input.dataset.region,
       input.dataset.field,
-      input.value
+      user ? userLabel(user) : input.value,
+      user ? user.uid : ''
+    );
+  });
+
+  regionAssignmentList.addEventListener('change', function(e) {
+    var input = e.target;
+    if (!input.dataset.region || !input.dataset.field) return;
+    var user = resolveRegionAssignmentUser(input.value);
+    if (!user) return;
+    input.value = userLabel(user);
+    updateRegionAssignmentDraft(
+      input.dataset.region,
+      input.dataset.field,
+      userLabel(user),
+      user.uid
     );
   });
 }

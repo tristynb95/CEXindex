@@ -27,6 +27,7 @@ const guardText = document.getElementById('myActivityGuardText');
 const page = document.getElementById('myActivityPage');
 const greetingEl = document.getElementById('myActivityGreeting');
 const statsEl = document.getElementById('myActivityStats');
+const focusEl = document.getElementById('myActivityFocus');
 const backLink = document.getElementById('myActivityBackLink');
 
 const actionsStatusToggle = document.getElementById('myActionsStatus');
@@ -1593,7 +1594,43 @@ function renderStats() {
   }).join('');
 }
 
+function renderFocus() {
+  if (!focusEl) return;
+  var open = myTasks()
+    .filter(function (task) { return !taskIsDone(task); })
+    .sort(function (a, b) {
+      var aDue = a.dueDate || '9999-12-31';
+      var bDue = b.dueDate || '9999-12-31';
+      return aDue.localeCompare(bDue);
+    });
+  var overdue = open.filter(taskIsOverdue);
+  var dueSoon = open.filter(taskIsDueSoon);
+  var message = '';
+  var tone = '';
+
+  if (overdue.length) {
+    tone = 'alert';
+    message = plural(overdue.length, 'overdue action') + ' need' +
+      (overdue.length === 1 ? 's' : '') + ' attention';
+    if (overdue[0].title) message += ': ' + overdue[0].title;
+  } else if (dueSoon.length) {
+    tone = 'warning';
+    message = 'Due soon: ' + (dueSoon[0].title || plural(dueSoon.length, 'action'));
+    if (dueSoon[0].dueDate) message += ' — ' + dueMeta(dueSoon[0].dueDate).label;
+    if (dueSoon.length > 1) message += ' · ' + (dueSoon.length - 1) + ' more';
+  } else if (open.length) {
+    message = 'All clear — nothing overdue or due in the next seven days';
+  } else {
+    message = 'You are all caught up — there are no open actions';
+  }
+
+  focusEl.className = 'my-activity-focus' + (tone ? ' my-activity-focus--' + tone : '');
+  focusEl.innerHTML = '<span>' + escapeHtml(message) + '</span>' +
+    '<a href="#section-actions">' + (open.length ? 'View actions' : 'View activity') + ' →</a>';
+}
+
 function renderAll() {
+  renderFocus();
   renderStats();
   renderActions();
   renderVisits();

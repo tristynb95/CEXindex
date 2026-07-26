@@ -604,11 +604,32 @@ test('the access modal reads a person back, including a missing flag', () => {
   vm.createContext(sandbox);
   vm.runInContext(source + '\nthis.accessDraftFor = accessDraftFor;', sandbox);
 
-  const on = sandbox.accessDraftFor({ role: 'admin', myActivity: true, opsArea: 'North', managerUid: 'm1' });
-  assert.deepEqual({ ...on }, { role: 'admin', managerUid: 'm1', opsArea: 'North', myActivity: true });
+  const on = sandbox.accessDraftFor({
+    firstName: 'Alex',
+    lastName: 'Partner',
+    role: 'admin',
+    myActivity: true,
+    opsArea: 'North',
+    managerUid: 'm1'
+  });
+  assert.deepEqual({ ...on }, {
+    firstName: 'Alex',
+    lastName: 'Partner',
+    role: 'admin',
+    managerUid: 'm1',
+    opsArea: 'North',
+    myActivity: true
+  });
 
   // Absent means off, and an unset role means Viewer — a record that predates
   // any of these fields is readable, not broken.
   const bare = sandbox.accessDraftFor({});
-  assert.deepEqual({ ...bare }, { role: 'viewer', managerUid: '', opsArea: '', myActivity: false });
+  assert.deepEqual({ ...bare }, {
+    firstName: '',
+    lastName: '',
+    role: 'viewer',
+    managerUid: '',
+    opsArea: '',
+    myActivity: false
+  });
 });

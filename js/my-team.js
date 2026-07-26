@@ -45,6 +45,14 @@ const backLink = document.getElementById('myTeamBackLink');
 const periodSelect = document.getElementById('myTeamPeriod');
 const scopeNote = document.getElementById('myTeamScopeNote');
 const statsEl = document.getElementById('myTeamStats');
+const insightsSection = document.getElementById('section-team-insights');
+const insightsBadge = document.getElementById('myTeamInsightsBadge');
+const insightCallout = document.getElementById('myTeamInsightCallout');
+const contributionChart = document.getElementById('myTeamContributionChart');
+const contributionTotal = document.getElementById('myTeamContributionTotal');
+const workloadChart = document.getElementById('myTeamWorkloadChart');
+const trendChart = document.getElementById('myTeamTrendChart');
+const trendDirection = document.getElementById('myTeamTrendDirection');
 
 const rosterEl = document.getElementById('myTeamRoster');
 const rosterCount = document.getElementById('myTeamRosterCount');
@@ -378,13 +386,21 @@ function statsFor(uids, visits, tasks) {
   var theirVisits = visits.filter(belongs);
   var theirTasks = tasks.filter(belongs);
   var open = theirTasks.filter(function (task) { return !taskIsDone(task); });
+  var assignedBakeries = G.Team && typeof G.Team.assignedBakeries === 'function'
+    ? G.Team.assignedBakeries(
+      wanted,
+      roster,
+      typeof G.getRegionAssignmentsSnapshot === 'function' ? G.getRegionAssignmentsSnapshot() : [],
+      typeof G.getBakeryMetaSnapshot === 'function' ? G.getBakeryMetaSnapshot() : {}
+    )
+    : [];
   var lastVisit = theirVisits.reduce(function (latest, visit) {
     return !latest || String(visit.date) > String(latest.date) ? visit : latest;
   }, null);
 
   return {
     visits: theirVisits.length,
-    bakeries: new Set(theirVisits.map(function (visit) { return visit.bakery; })).size,
+    bakeries: assignedBakeries.length,
     open: open.length,
     overdue: open.filter(taskIsOverdue).length,
     completed: theirTasks.length - open.length,
@@ -454,6 +470,219 @@ function renderStats() {
   }).join('');
 }
 
+function analyticsPeople() {
+  if (!selectedUid) return roster.slice();
+  var branch = branchOf(selectedUid);
+  return roster.filter(function (person) { return branch.indexOf(person.uid) !== -1; });
+}
+
+function chartPersonName(person) {
+  var name = person.name || person.email || 'Unnamed';
+  var parts = name.trim().split(/\s+/);
+  return parts.length > 1 ? parts[0] + ' ' + parts[parts.length - 1].charAt(0) + '.' : name;
+}
+
+function chartRowHtml(person, value, max, risk, workload) {
+  var width = max ? Math.round((value / max) * 100) : 0;
+  var riskWidth = value && risk ? Math.round((risk / value) * width) : 0;
+  var label = chartPersonName(person);
+  var description = workload
+    ? label + ': ' + plural(value, 'open action') + (risk ? ', ' + plural(risk, 'overdue action') : '')
+    : label + ': ' + plural(value, 'visit');
+
+  return '<button type="button" class="my-team-chart-row" data-chart-person="' +
+    escapeHtml(person.uid) + '" aria-label="' + escapeHtml(description) + '">' +
+    '<span class="my-team-chart-row__label" title="' + escapeHtml(person.name || label) + '">' +
+    escapeHtml(label) + '</span>' +
+    '<span class="my-team-chart-row__track" aria-hidden="true">' +
+    '<i class="my-team-chart-row__bar' + (workload ? ' my-team-chart-row__bar--workload' : '') +
+    (width ? '' : ' is-zero') + '" style="width:' + width + '%"></i>' +
+    (risk ? '<i class="my-team-chart-row__risk" style="width:' + riskWidth + '%"></i>' : '') +
+    '</span>' +
+    '<strong class="my-team-chart-row__value">' + value + '</strong>' +
+    '</button>';
+}
+
+function chartRowsHtml(rows, valueKey, riskKey, workload) {
+  var ordered = rows.slice().sort(function (a, b) {
+    return b[valueKey] - a[valueKey] ||
+      (riskKey ? b[riskKey] - a[riskKey] : 0) ||
+      (a.person.name || '').localeCompare(b.person.name || '');
+  });
+  var max = ordered.reduce(function (largest, row) { return Math.max(largest, row[valueKey]); }, 0);
+  var visible = ordered.slice(0, 6);
+  if (!visible.length) {
+    return '<div class="my-team-chart-empty">No team members to compare yet.</div>';
+  }
+  var html = visible.map(function (row) {
+    return chartRowHtml(row.person, row[valueKey], max, riskKey ? row[riskKey] : 0, workload);
+  }).join('');
+  if (ordered.length > visible.length) {
+    html += '<p class="my-team-chart-more">Top 6 of ' + ordered.length + ' people shown</p>';
+  }
+  return html;
+}
+
+function monthKey(date) {
+  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+}
+
+function monthlyTrend(visits, count, endDate) {
+  var series = [];
+  for (var offset = count - 1; offset >= 0; offset -= 1) {
+    var date = new Date(endDate.getFullYear(), endDate.getMonth() - offset, 1);
+    series.push({
+      key: monthKey(date),
+      label: date.toLocaleDateString('en-GB', { month: 'short' }),
+      value: 0
+    });
+  }
+  var byKey = {};
+  series.forEach(function (point) { byKey[point.key] = point; });
+  visits.forEach(function (visit) {
+    var date = new Date(String(visit.date || '').slice(0, 10) + 'T00:00:00');
+    var point = !isNaN(date.getTime()) && byKey[monthKey(date)];
+    if (point) point.value += 1;
+  });
+  return series;
+}
+
+function weeklyMonthTrend(visits, monthDate) {
+  var daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+  var series = [];
+  for (var start = 1; start <= daysInMonth; start += 7) {
+    series.push({
+      start: start,
+      end: Math.min(start + 6, daysInMonth),
+      label: start + '–' + Math.min(start + 6, daysInMonth),
+      value: 0
+    });
+  }
+  visits.forEach(function (visit) {
+    var date = new Date(String(visit.date || '').slice(0, 10) + 'T00:00:00');
+    if (isNaN(date.getTime()) || date.getFullYear() !== monthDate.getFullYear() ||
+        date.getMonth() !== monthDate.getMonth()) return;
+    var point = series[Math.floor((date.getDate() - 1) / 7)];
+    if (point) point.value += 1;
+  });
+  return series;
+}
+
+function visitTrend(visits) {
+  var now = new Date();
+  if (period === 'currentMonth') return weeklyMonthTrend(visits, now);
+  if (period === '1') return weeklyMonthTrend(visits, new Date(now.getFullYear(), now.getMonth() - 1, 1));
+
+  var count = parseInt(period, 10);
+  if (!count) {
+    var dated = visits.map(function (visit) {
+      return new Date(String(visit.date || '').slice(0, 10) + 'T00:00:00');
+    }).filter(function (date) { return !isNaN(date.getTime()); })
+      .sort(function (a, b) { return a - b; });
+    var end = dated.length
+      ? dated.reduce(function (latest, date) { return date > latest ? date : latest; }, dated[0])
+      : now;
+    count = dated.length
+      ? Math.min(12, Math.max(3, (end.getFullYear() - dated[0].getFullYear()) * 12 +
+        end.getMonth() - dated[0].getMonth() + 1))
+      : 6;
+    return monthlyTrend(visits, count, end);
+  }
+  return monthlyTrend(visits, count, now);
+}
+
+function renderTrend(visits) {
+  if (!trendChart) return;
+  var series = visitTrend(visits);
+  var max = series.reduce(function (largest, point) { return Math.max(largest, point.value); }, 0);
+  trendChart.style.setProperty('--trend-count', series.length);
+  trendChart.innerHTML = series.map(function (point) {
+    var height = max ? Math.max(4, Math.round((point.value / max) * 100)) : 0;
+    return '<div class="my-team-trend-column" title="' + escapeHtml(point.label + ': ' + plural(point.value, 'visit')) + '">' +
+      '<div class="my-team-trend-column__plot"><div class="my-team-trend-column__bar' +
+      (height ? '' : ' is-zero') + '" style="height:' + height + '%">' +
+      '<span>' + point.value + '</span></div></div>' +
+      '<span class="my-team-trend-column__label">' + escapeHtml(point.label) + '</span>' +
+      '</div>';
+  }).join('');
+
+  if (!trendDirection) return;
+  trendDirection.className = 'my-team-trend-direction';
+  var latest = series[series.length - 1] ? series[series.length - 1].value : 0;
+  var previous = series[series.length - 2] ? series[series.length - 2].value : 0;
+  if (!latest && !previous) {
+    trendDirection.textContent = 'No activity yet';
+  } else if (latest > previous) {
+    trendDirection.textContent = previous ? '↑ ' + (latest - previous) + ' vs prior period' : '↑ Activity increased';
+    trendDirection.classList.add('my-team-trend-direction--up');
+  } else if (latest < previous) {
+    trendDirection.textContent = '↓ ' + (previous - latest) + ' vs prior period';
+    trendDirection.classList.add('my-team-trend-direction--down');
+  } else {
+    trendDirection.textContent = '→ Steady vs prior period';
+  }
+}
+
+function renderAnalytics() {
+  var people = analyticsPeople();
+  var visits = forSelected(teamVisits());
+  var tasks = forSelected(teamTasks());
+  var rows = people.map(function (person) {
+    var stats = statsFor([person.uid], visits, tasks);
+    return {
+      person: person,
+      visits: stats.visits,
+      open: stats.open,
+      overdue: stats.overdue
+    };
+  });
+
+  if (contributionTotal) contributionTotal.textContent = visits.length;
+  if (contributionChart) contributionChart.innerHTML = chartRowsHtml(rows, 'visits', '', false);
+  if (workloadChart) workloadChart.innerHTML = chartRowsHtml(rows, 'open', 'overdue', true);
+  if (insightsBadge) {
+    var selected = selectedUid && roster.find(function (person) { return person.uid === selectedUid; });
+    insightsBadge.textContent = selected ? selected.name + ' area' : plural(people.length, 'person', 'people');
+  }
+
+  renderTrend(visits);
+  if (!insightCallout) return;
+
+  var risk = rows.slice().sort(function (a, b) {
+    return b.overdue - a.overdue || b.open - a.open;
+  })[0];
+  var inactive = rows.filter(function (row) { return row.visits === 0; });
+  var topContributor = rows.slice().sort(function (a, b) { return b.visits - a.visits; })[0];
+  var creditedVisits = rows.reduce(function (sum, row) { return sum + row.visits; }, 0);
+  var message = '';
+  var tone = 'positive';
+
+  if (risk && risk.overdue) {
+    tone = 'alert';
+    message = 'Priority: ' + (risk.person.name || 'A team member') + ' has ' +
+      plural(risk.overdue, 'overdue action') + ' across ' + plural(risk.open, 'open action') + '.';
+  } else if (inactive.length) {
+    tone = '';
+    message = 'Coverage opportunity: ' + plural(inactive.length, 'person', 'people') +
+      ' have no credited visits ' + periodLabel() + '.';
+  } else if (topContributor && creditedVisits && people.length > 2 &&
+      topContributor.visits / creditedVisits >= 0.5) {
+    tone = '';
+    message = (topContributor.person.name || 'One person') + ' accounts for ' +
+      Math.round((topContributor.visits / creditedVisits) * 100) +
+      '% of credited visit activity. Check that coverage is distributed as intended.';
+  } else if (people.length) {
+    message = 'The team has no overdue actions and everyone has credited visit activity ' + periodLabel() + '.';
+  } else {
+    tone = '';
+    message = 'Team insights will appear once people are added to your reporting line.';
+  }
+
+  insightCallout.className = 'my-team-insight-callout' +
+    (tone ? ' my-team-insight-callout--' + tone : '');
+  insightCallout.textContent = message;
+}
+
 // A row is indented by its depth in the reporting tree, so a coffee partner's
 // area head baristas sit visibly underneath them rather than in the same flat
 // list. A manager's own figures cover their work only; the branch roll-up is
@@ -482,7 +711,8 @@ function personRowHtml(row, stats, branchStats) {
     '</div>' +
     '<div class="my-team-person__figures">' +
     '<span class="my-team-figure"><strong>' + stats.visits + '</strong>visits</span>' +
-    '<span class="my-team-figure"><strong>' + stats.bakeries + '</strong>bakeries</span>' +
+    '<span class="my-team-figure" title="Bakeries assigned through Region Coffee Team"><strong>' +
+    stats.bakeries + '</strong>bakeries</span>' +
     '<span class="my-team-figure"><strong>' + stats.open + '</strong>open</span>' +
     '<span class="my-team-figure' + (stats.overdue ? ' my-team-figure--alert' : '') + '">' +
     '<strong>' + stats.overdue + '</strong>overdue</span>' +
@@ -779,6 +1009,7 @@ function emptyStateHtml(icon, message) {
 function renderAll() {
   renderSelection();
   renderStats();
+  renderAnalytics();
   renderRoster();
   renderActions();
   renderVisits();
@@ -1024,6 +1255,17 @@ if (selectionClear) {
   });
 }
 
+if (insightsSection) {
+  insightsSection.addEventListener('click', function (event) {
+    var target = event.target.closest('[data-chart-person]');
+    if (!target) return;
+    selectedUid = target.getAttribute('data-chart-person') || '';
+    visitLimit = VISIT_CHUNK;
+    saveFilters();
+    renderAll();
+  });
+}
+
 if (visitsMoreBtn) {
   visitsMoreBtn.addEventListener('click', function () {
     visitLimit += VISIT_CHUNK;
@@ -1042,7 +1284,7 @@ if (jumpNav && 'IntersectionObserver' in window) {
     });
   }, { rootMargin: '-15% 0px -65% 0px', threshold: [0, 0.1, 0.5] });
 
-  ['section-roster', 'section-team-actions', 'section-team-visits'].forEach(function (id) {
+  ['section-team-insights', 'section-roster', 'section-team-actions', 'section-team-visits'].forEach(function (id) {
     var section = document.getElementById(id);
     if (section) sectionObserver.observe(section);
   });
@@ -1104,6 +1346,9 @@ async function loadTeam(user) {
   var sitePayload = initial[2].exists() ? initial[2].val() : null;
   var siteEntries = sitePayload && sitePayload.entries ? sitePayload.entries : sitePayload;
   if (typeof G.setBakeryMeta === 'function') G.setBakeryMeta(siteEntries);
+  if (typeof G.setRegionAssignments === 'function') {
+    G.setRegionAssignments((sitePayload && sitePayload.regionAssignments) || []);
+  }
 
   var roleId = isAdmin ? 'admin' : (userProfile && userProfile.role) || 'viewer';
   var customRole = null;

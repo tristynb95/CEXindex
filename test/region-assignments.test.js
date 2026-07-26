@@ -26,8 +26,20 @@ test('keeps partner and trainer details when an upload detects the same regions'
   ));
 
   assert.deepEqual(merged, [
-    { region: 'north region', coffeePartner: 'Sam', coffeeTrainer: 'Taylor' },
-    { region: 'SOUTH REGION', coffeePartner: 'Alex', coffeeTrainer: 'Jordan' }
+    {
+      region: 'north region',
+      coffeePartner: 'Sam',
+      coffeePartnerUid: '',
+      coffeeTrainer: 'Taylor',
+      coffeeTrainerUid: ''
+    },
+    {
+      region: 'SOUTH REGION',
+      coffeePartner: 'Alex',
+      coffeePartnerUid: '',
+      coffeeTrainer: 'Jordan',
+      coffeeTrainerUid: ''
+    }
   ]);
 });
 
@@ -38,8 +50,20 @@ test('adds newly detected regions without copying another region assignment', ()
   ));
 
   assert.deepEqual(merged, [
-    { region: 'New Region', coffeePartner: '', coffeeTrainer: '' },
-    { region: 'North Region', coffeePartner: 'Sam', coffeeTrainer: 'Taylor' }
+    {
+      region: 'New Region',
+      coffeePartner: '',
+      coffeePartnerUid: '',
+      coffeeTrainer: '',
+      coffeeTrainerUid: ''
+    },
+    {
+      region: 'North Region',
+      coffeePartner: 'Sam',
+      coffeePartnerUid: '',
+      coffeeTrainer: 'Taylor',
+      coffeeTrainerUid: ''
+    }
   ]);
 });
 
@@ -54,8 +78,20 @@ test('retains meaningful assignments for regions temporarily absent from an uplo
   ));
 
   assert.deepEqual(merged, [
-    { region: 'South Region', coffeePartner: 'Alex', coffeeTrainer: 'Jordan' },
-    { region: 'North Region', coffeePartner: 'Sam', coffeeTrainer: 'Taylor' }
+    {
+      region: 'South Region',
+      coffeePartner: 'Alex',
+      coffeePartnerUid: '',
+      coffeeTrainer: 'Jordan',
+      coffeeTrainerUid: ''
+    },
+    {
+      region: 'North Region',
+      coffeePartner: 'Sam',
+      coffeePartnerUid: '',
+      coffeeTrainer: 'Taylor',
+      coffeeTrainerUid: ''
+    }
   ]);
 });
 
@@ -69,7 +105,33 @@ test('updates one regional role without replacing the other saved role', () => {
   ));
 
   assert.deepEqual(updated, [
-    { region: 'South Region', coffeePartner: 'Morgan', coffeeTrainer: 'Jordan' }
+    {
+      region: 'South Region',
+      coffeePartner: 'Morgan',
+      coffeePartnerUid: '',
+      coffeeTrainer: 'Jordan',
+      coffeeTrainerUid: ''
+    }
+  ]);
+});
+
+test('keeps stable user ids with the readable regional names', () => {
+  const updated = assignments.updateAssignment(
+    ['South Region'],
+    [{ region: 'South Region', coffeePartner: 'Alex', coffeePartnerUid: 'u-alex' }],
+    'South Region',
+    'coffeeTrainerUid',
+    'u-jordan'
+  );
+
+  assert.deepEqual(plain(updated), [
+    {
+      region: 'South Region',
+      coffeePartner: 'Alex',
+      coffeePartnerUid: 'u-alex',
+      coffeeTrainer: '',
+      coffeeTrainerUid: 'u-jordan'
+    }
   ]);
 });
 
@@ -79,7 +141,10 @@ test('wires the region table and preserved assignments into admin saves and uplo
   const authSource = fs.readFileSync(path.join(root, 'js', 'auth.js'), 'utf8');
 
   assert.match(adminHtml, /id="regionAssignmentList"/);
+  assert.match(adminHtml, /id="regionAssignmentPeople"/);
   assert.match(adminHtml, /src="js\/region-assignments\.js"/);
+  assert.match(adminSource, /list="regionAssignmentPeople"/);
+  assert.match(adminSource, /user \? user\.uid : ''/);
   assert.match(adminSource, /regionAssignments:\s*mergeRegionAssignmentsForMeta\(entries, regionAssignments\)/);
   assert.match(adminSource, /preservedRegionAssignments[\s\S]*buildSiteMetaPayload\(imported\.meta, importInfo, preservedRegionAssignments\)/);
   assert.match(authSource, /existingPayload && existingPayload\.regionAssignments/);

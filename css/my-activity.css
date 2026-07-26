@@ -109,6 +109,25 @@
   gap: 14px;
 }
 
+.my-activity-overview {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-xl);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(181, 49, 42, 0.09), transparent 30%),
+    rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow-md);
+}
+
+.my-activity-overview__top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
 .my-activity-intro {
   max-width: 760px;
 }
@@ -135,12 +154,82 @@
   font-size: 0.9rem;
 }
 
+.my-activity-focus {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(24, 120, 100, 0.18);
+  border-radius: 10px;
+  background: rgba(24, 120, 100, 0.07);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.my-activity-focus::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 0 4px rgba(24, 120, 100, 0.1);
+  content: "";
+}
+
+.my-activity-focus--alert {
+  border-color: rgba(178, 42, 36, 0.22);
+  background: rgba(178, 42, 36, 0.07);
+}
+
+.my-activity-focus--alert::before {
+  background: var(--red);
+  box-shadow: 0 0 0 4px rgba(178, 42, 36, 0.1);
+}
+
+.my-activity-focus--warning {
+  border-color: rgba(201, 132, 42, 0.25);
+  background: rgba(201, 132, 42, 0.08);
+}
+
+.my-activity-focus--warning::before {
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(201, 132, 42, 0.11);
+}
+
+.my-activity-focus a {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.my-activity-focus > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---------- at-a-glance stats ---------- */
 
 .my-activity-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 8px;
+}
+
+.my-activity-overview .my-activity-stat {
+  padding: 9px 12px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.my-activity-overview .my-activity-stat__value {
+  font-size: 1.35rem;
 }
 
 .my-activity-stat {
@@ -215,6 +304,32 @@ a.my-activity-stat:focus-visible {
   backdrop-filter: blur(12px);
 }
 
+.my-activity-overview .my-activity-jump {
+  flex: 0 0 auto;
+  border-color: rgba(181, 49, 42, 0.14);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: none;
+}
+
+@media (min-width: 1040px) {
+  .my-activity-overview {
+    grid-template-columns: minmax(270px, 0.72fr) minmax(620px, 1.7fr);
+    align-items: stretch;
+  }
+
+  .my-activity-overview__top {
+    grid-column: 1 / -1;
+  }
+
+  .my-activity-overview .my-activity-focus {
+    grid-column: 1;
+  }
+
+  .my-activity-overview .my-activity-stats {
+    grid-column: 2;
+  }
+}
+
 .my-activity-jump__link {
   padding: 6px 12px;
   border: 1px solid transparent;
@@ -246,7 +361,7 @@ a.my-activity-stat:focus-visible {
   border-radius: var(--r-xl);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow-md);
-  scroll-margin-top: 24px;
+  scroll-margin-top: 82px;
 }
 
 .my-activity-card__head {
@@ -280,6 +395,14 @@ a.my-activity-stat:focus-visible {
   color: var(--muted-l);
   font-size: 0.88rem;
   line-height: 1.4;
+}
+
+@media (min-width: 960px) {
+  .my-activity-card__copy {
+    margin-top: 3px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
 }
 
 .my-activity-card__actions {
@@ -333,6 +456,20 @@ a.my-activity-stat:focus-visible {
   margin-bottom: 10px;
   padding: 10px;
   gap: 8px 10px;
+}
+
+/* These pages have fewer filters than the dashboard visit log. Use the full
+   card width so Reset never consumes an otherwise empty row. */
+@media (min-width: 960px) {
+  #section-actions .my-activity-filters {
+    grid-template-columns: minmax(190px, 1.3fr) repeat(3, minmax(145px, 1fr)) var(--control-h);
+  }
+}
+
+@media (min-width: 1200px) {
+  #section-visits .my-activity-filters {
+    grid-template-columns: minmax(210px, 1.3fr) repeat(4, minmax(155px, 1fr)) var(--control-h);
+  }
 }
 
 /* .visit-log-filter-control and .visit-log-show-more both set `display`, which
@@ -433,6 +570,31 @@ a.my-activity-stat:focus-visible {
   gap: 4px;
 }
 
+@media (min-width: 760px) {
+  .my-activity-action__body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 18px;
+    row-gap: 2px;
+  }
+
+  .my-activity-action__bakery,
+  .my-activity-action__title,
+  .my-activity-action__detail {
+    grid-column: 1 / -1;
+  }
+
+  .my-activity-action__context {
+    grid-column: 1;
+  }
+
+  .my-activity-action__meta {
+    grid-column: 2;
+    align-self: end;
+    text-align: right;
+    white-space: nowrap;
+  }
+}
+
 .my-activity-action__bakery {
   color: var(--muted-l);
   font-size: 0.74rem;
@@ -457,6 +619,10 @@ a.my-activity-stat:focus-visible {
   color: var(--text-2);
   font-size: 0.86rem;
   line-height: 1.45;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .my-activity-action__context {
@@ -572,6 +738,10 @@ a.my-activity-stat:focus-visible {
   color: var(--text-2);
   font-size: 0.84rem;
   line-height: 1.45;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
 }
 
 .my-activity-visit__score {
@@ -750,6 +920,10 @@ a.my-activity-stat:focus-visible {
   color: var(--text-2);
   font-size: 0.85rem;
   line-height: 1.5;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .my-activity-event__meta {
@@ -872,6 +1046,19 @@ body.my-activity-modal-open {
   margin-top: 12px;
 }
 
+/* Dense work-queue rows: keep the information, remove card-like air. */
+#section-actions .my-activity-action {
+  padding: 9px 12px;
+}
+
+#section-visits .my-activity-visit {
+  padding: 8px 12px;
+}
+
+#section-timeline .my-activity-event {
+  padding: 8px 12px;
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 900px) {
@@ -925,6 +1112,16 @@ body.my-activity-modal-open {
     padding-top: 14px;
   }
 
+  .my-activity-overview {
+    padding: 13px;
+  }
+
+  .my-activity-overview__top {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
   .my-activity-intro__copy {
     max-width: 52ch;
   }
@@ -933,6 +1130,24 @@ body.my-activity-modal-open {
     width: 100%;
     overflow-x: auto;
     flex-wrap: nowrap;
+  }
+
+  .my-activity-overview .my-activity-jump {
+    width: 100%;
+  }
+
+  .my-activity-focus {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .my-activity-focus > span {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .my-activity-focus a {
+    margin-left: 17px;
   }
 
   .my-activity-jump__link {

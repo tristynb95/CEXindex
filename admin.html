@@ -436,7 +436,8 @@
                   <div class="admin-region-assignments__header">
                     <div>
                       <h4>Region Coffee Team</h4>
-                      <p>Regions are detected automatically from the site directory. Matching regions keep their saved Coffee Partner and Coffee Trainer when new directory data is uploaded.</p>
+                      <p>Regions are detected automatically from the site directory. Start typing a colleague’s name,
+                        then choose their account to assign every bakery in that region.</p>
                     </div>
                     <div class="admin-toolbar__meta" id="regionAssignmentMeta">Loading regions&hellip;</div>
                   </div>
@@ -452,6 +453,7 @@
                       <tbody id="regionAssignmentList"></tbody>
                     </table>
                   </div>
+                  <datalist id="regionAssignmentPeople"></datalist>
                 </div>
 
                 <div class="admin-toolbar">
@@ -652,6 +654,14 @@
                         This is the account you are signed in with. Its role and reporting line are locked so you cannot lock yourself out.
                       </div>
                       <div class="access-modal__fields">
+                        <label class="admin-form-field" for="userAccessFirstName">
+                          <span>First name</span>
+                          <input type="text" id="userAccessFirstName" autocomplete="given-name" maxlength="50">
+                        </label>
+                        <label class="admin-form-field" for="userAccessLastName">
+                          <span>Last name</span>
+                          <input type="text" id="userAccessLastName" autocomplete="family-name" maxlength="50">
+                        </label>
                         <label class="admin-form-field" for="userAccessRole">
                           <span>Role</span>
                           <select id="userAccessRole"></select>

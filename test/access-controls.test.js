@@ -63,8 +63,11 @@ test('the roles table shows visibility, editing, and team view side by side', ()
 
 // ── The access modals ─────────────────────────────────────────────────────
 
-test('one dialog holds every access decision about a person', () => {
-  ['userAccessRole', 'userAccessManager', 'userAccessOps', 'userAccessMyActivity'].forEach((id) => {
+test('one dialog holds every profile and access decision about a person', () => {
+  [
+    'userAccessFirstName', 'userAccessLastName',
+    'userAccessRole', 'userAccessManager', 'userAccessOps', 'userAccessMyActivity'
+  ].forEach((id) => {
     assert.match(adminHtml, new RegExp('id="' + id + '"'));
   });
   // And shows what those choices add up to, before they are saved.
@@ -98,10 +101,11 @@ test('an admin cannot demote or orphan their own account', () => {
   assert.match(fn, /var editable = canEdit\('users'\) && !isCurrent/);
   assert.match(fn, /userAccessRole\.disabled = !editable/);
   assert.match(fn, /userAccessManager\.disabled = !editable/);
-  assert.match(fn, /userAccessSave\.hidden = !editable/);
+  assert.match(fn, /userAccessSave\.hidden = !canEdit\('users'\)/);
   assert.match(fn, /userAccessRemove\.hidden = !editable/);
-  // The save path refuses it too, not just the disabled control.
-  assert.match(adminScript, /if \(!user \|\| !state\.accessDraft \|\| uid === currentUserId\(\)\) return;/);
+  // The self-save branch writes only names, then returns before role or
+  // reporting-line updates.
+  assert.match(adminScript, /if \(uid === currentUserId\(\)\) \{[\s\S]*?firstName: firstName,[\s\S]*?lastName: lastName[\s\S]*?return;/);
 });
 
 // ── Reporting lines ───────────────────────────────────────────────────────
