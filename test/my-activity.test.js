@@ -92,14 +92,18 @@ test('the activity feed covers visits, notes, and tasks added, completed, and ed
   assert.match(script, /\.sort\(function \(a, b\) \{ return b\.at - a\.at; \}\)/);
 });
 
-test('no visit file is written until the download is confirmed', () => {
-  const start = script.indexOf('function requestVisitExport()');
+test('no file is written until the download is confirmed', () => {
+  const start = script.indexOf('function requestExport(data)');
   const handler = script.slice(start, script.indexOf('\n}', start));
 
   assert.ok(start >= 0);
   assert.match(handler, /openConfirmModal\(\{/);
   assert.match(handler, /onConfirm: function \(\) \{ downloadWorkbook\(data\); \}/);
   assert.doesNotMatch(handler, /triggerDownload\(/);
+  // Both exportable sections route through the one confirmed path, each passing
+  // the rows its own filters produced.
+  assert.match(script, /visitsExportBtn\.addEventListener\('click', function \(\) \{ requestExport\(pendingVisitExport\); \}\)/);
+  assert.match(script, /actionsExportBtn\.addEventListener\('click', function \(\) \{ requestExport\(pendingActionsExport\); \}\)/);
 
   // The dashboard owns the codebase's only XLSX.writeFile call
   // (test/excel-export-confirmation.test.js asserts there is exactly one), so
@@ -292,4 +296,113 @@ test('the page styles cover both the desktop grid and small screens', () => {
   assert.match(styles, /\.my-activity-visit \{/);
   assert.match(styles, /@media \(max-width: 720px\)/);
   assert.match(styles, /\.my-activity-modal__dialog/);
+});
+
+test('open actions can be filtered by site and searched', () => {
+  ['myActionsSearch', 'myActionsBakery', 'myActionsSort'].forEach((id) => {
+    assert.match(html, new RegExp('id="' + id + '"'), id + ' control is missing');
+    assert.match(script, new RegExp("getElementById\\('" + id + "'\\)"), id + ' is never read');
+  });
+  // The Site list is built from the user's own actions, not the whole estate.
+  assert.match(script, /function syncActionFilterOptions\(\)/);
+  assert.match(script, /myTasks\(\)\.forEach\(function \(task\) \{\s*if \(task\.bakery\) bakerySet\.add\(task\.bakery\);/);
+  assert.match(script, /if \(filters\.bakery && task\.bakery !== filters\.bakery\) return false;/);
+});
+
+test('open actions offer the same orderings as the dashboard follow-up list', () => {
+  ['dueAsc', 'dueDesc', 'priority', 'createdDesc', 'createdAsc', 'bakeryAsc'].forEach((value) => {
+    assert.match(html, new RegExp('value="' + value + '"'), value + ' sort option is missing');
+  });
+
+  const context = extract(
+    ['taskIsDone', 'todayMidnight', 'formatIsoDate', 'dueMeta', 'normalizePriority',
+      'taskSortByDue', 'toMillis', 'bakeryLabel', 'bakerySiteName', 'actionSorter'],
+    { G: {}, PRIORITY_ORDER: { high: 0, medium: 1, low: 2, none: 3 } }
+  );
+
+  const tasks = [
+    { title: 'Later', dueDate: '2026-09-01', priority: 'high', bakery: 'Zeta' },
+    { title: 'Sooner', dueDate: '2026-08-01', priority: 'low', bakery: 'Alpha' },
+    { title: 'Finished', status: 'done', completedAt: '2026-07-01T00:00:00.000Z', bakery: 'Beta' }
+  ];
+
+  assert.deepEqual(tasks.slice().sort(context.actionSorter('dueAsc')).map((t) => t.title),
+    ['Sooner', 'Later', 'Finished']);
+  assert.deepEqual(tasks.slice().sort(context.actionSorter('dueDesc')).map((t) => t.title),
+    ['Later', 'Sooner', 'Finished']);
+  assert.deepEqual(tasks.slice().sort(context.actionSorter('priority')).map((t) => t.title),
+    ['Later', 'Sooner', 'Finished']);
+  assert.deepEqual(tasks.slice().sort(context.actionSorter('bakeryAsc')).map((t) => t.title),
+    ['Sooner', 'Later', 'Finished']);
+  // Completed work sinks below open work whichever ordering is chosen.
+  ['dueAsc', 'dueDesc', 'priority', 'bakeryAsc', 'createdAsc'].forEach((sort) => {
+    assert.equal(tasks.slice().sort(context.actionSorter(sort)).at(-1).title, 'Finished', sort);
+  });
+});
+
+test('open actions export the filtered list, not the whole hub', () => {
+  assert.match(html, /id="myActionsExportBtn"/);
+  assert.match(script, /pendingActionsExport = buildActionsExportData\(shown, filters\)/);
+  // Nothing to export means nothing to click.
+  assert.match(script, /if \(actionsExportBtn\) actionsExportBtn\.disabled = !shown\.length;/);
+  assert.match(script, /pendingActionsExport = null;/);
+
+  const start = script.indexOf('function buildActionsExportData(');
+  const builder = script.slice(start, script.indexOf('\n}', start));
+  ['Site', 'Region', 'Ops Area', 'Action', 'Detail', 'Priority', 'Due Date',
+    'Days Overdue', 'Status', 'Added', 'Completed', 'Attributed To'].forEach((label) => {
+    assert.ok(builder.includes("label: '" + label + "'"), 'export is missing the ' + label + ' column');
+  });
+  assert.match(builder, /sheetName: 'My Actions'/);
+});
+
+test('the visit cards and site filter drop the GAIL\'s prefix', () => {
+  const context = extract(['bakeryLabel', 'bakerySiteName'], {
+    G: { getBakeryMapLabel: (name) => "GAIL's " + name }
+  });
+
+  assert.equal(context.bakerySiteName('Balham'), 'Balham');
+  assert.equal(context.bakerySiteName('Battersea Square'), 'Battersea Square');
+
+  // Whatever shape the stored display name takes.
+  const curly = extract(['bakeryLabel', 'bakerySiteName'], {
+    G: { getBakeryMapLabel: () => 'GAIL’s Kings Cross' }
+  });
+  assert.equal(curly.bakerySiteName('x'), 'Kings Cross');
+  const plainPrefix = extract(['bakeryLabel', 'bakerySiteName'], {
+    G: { getBakeryMapLabel: () => 'Gails Wandsworth' }
+  });
+  assert.equal(plainPrefix.bakerySiteName('x'), 'Wandsworth');
+  // A name that merely contains the word is left alone.
+  const unrelated = extract(['bakeryLabel', 'bakerySiteName'], {
+    G: { getBakeryMapLabel: () => 'Nightingale Gails Corner' }
+  });
+  assert.equal(unrelated.bakerySiteName('x'), 'Nightingale Gails Corner');
+
+  // Every card, filter option, ordering, and export column on the page uses the
+  // short name — one section keeping the prefix would read as a bug.
+  assert.match(script, /escapeHtml\(bakerySiteName\(visit\.bakery\)\) \+ '<\/a>'/);
+  assert.match(script, /escapeHtml\(bakerySiteName\(task\.bakery\)\) \+ '<\/a>'/);
+  assert.match(script, /escapeHtml\(bakerySiteName\(event\.bakery\)\)/);
+  assert.match(script, /\}\), 'All Sites', bakerySiteName\);/);
+  assert.match(script, /sortVal === 'nameAsc'\) return bakerySiteName/);
+  // Both exports name the column after the filter beside it.
+  assert.match(script, /\{ label: 'Site', type: 'text', width: 26 \}/);
+  assert.match(script, /\{ label: 'Site', type: 'text', width: 24 \}/);
+  // Only the search haystacks keep the full label, so a bakery is still found
+  // whether or not someone types the prefix.
+  assert.match(script, /bakeryLabel\(v\.bakery\), bakerySiteName\(v\.bakery\)/);
+  assert.match(script, /bakerySiteName\(task\.bakery\), bakeryLabel\(task\.bakery\)/);
+});
+
+test('a bakery opened from the hub comes back to the hub', () => {
+  const start = script.indexOf('function bakeryProfileHref(');
+  const builder = script.slice(start, script.indexOf('\n}', start));
+
+  assert.match(builder, /'my-activity\.html#' \+ \(section \|\| 'section-actions'\)/);
+  assert.match(builder, /fromLabel=' \+ encodeURIComponent\('My Activity'\)/);
+  // Each section sends people back to where they were.
+  assert.match(script, /bakeryProfileHref\(task\.bakery, 'section-actions'\)/);
+  assert.match(script, /bakeryProfileHref\(visit\.bakery, 'section-visits'\)/);
+  assert.match(script, /bakeryProfileHref\(task\.bakery, 'section-timeline'\)/);
 });

@@ -97,8 +97,17 @@ const RETURN_LABELS = {
   feedback: 'Customer Feedback',
   'visit-log': 'Bakery Directory',
   sites: 'Site Data',
-  visits: 'Bakery Visits'
+  visits: 'Bakery Visits',
+  // my-activity.html sections, which arrive as the same #hash on the return URL.
+  'section-actions': 'My Activity',
+  'section-visits': 'My Activity',
+  'section-timeline': 'My Activity'
 };
+
+// The pages a bakery profile may return to. Anything else — including another
+// origin — is discarded rather than followed, so the ?from parameter can't be
+// used to bounce someone off the site.
+const RETURN_PAGES = ['index.html', 'admin.html', 'my-activity.html'];
 
 function escapeHtml(value) {
   return String(value == null ? '' : value)
@@ -114,8 +123,7 @@ function safeReturnUrl(value) {
   try {
     var parsed = new URL(value, window.location.href);
     var pageName = parsed.pathname.split('/').pop().toLowerCase();
-    if (parsed.origin !== window.location.origin ||
-        (pageName !== 'index.html' && pageName !== 'admin.html')) return '';
+    if (parsed.origin !== window.location.origin || RETURN_PAGES.indexOf(pageName) === -1) return '';
     return pageName + parsed.search + parsed.hash;
   } catch {
     return '';
@@ -124,7 +132,10 @@ function safeReturnUrl(value) {
 
 function labelFromReturnUrl(returnUrl) {
   var hash = String(returnUrl || '').split('#')[1] || '';
-  return RETURN_LABELS[hash.replace(/^tab-/, '')] || '';
+  var byHash = RETURN_LABELS[hash.replace(/^tab-/, '')];
+  if (byHash) return byHash;
+  // My Activity has no required hash, so the page itself names the way back.
+  return String(returnUrl || '').split(/[?#]/)[0] === 'my-activity.html' ? 'My Activity' : '';
 }
 
 function getProfileReturnContext() {

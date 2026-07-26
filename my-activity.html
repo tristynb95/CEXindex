@@ -78,6 +78,15 @@
           </div>
           <div class="my-activity-card__actions">
             <span id="myActionsCount" class="my-activity-pill">0 open</span>
+            <button type="button" id="myActionsExportBtn" class="btn my-activity-export-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </svg>
+              Export to Excel
+            </button>
           </div>
         </div>
 
@@ -90,6 +99,46 @@
           <button type="button" class="visit-log-toggle-btn" data-status="all">All</button>
         </div>
 
+        <div class="visit-log-filters my-activity-filters">
+          <div class="visit-log-filter-control">
+            <label for="myActionsSearch">Search</label>
+            <input type="search" id="myActionsSearch" class="visit-log-input" placeholder="Action or detail&hellip;"
+              autocomplete="off">
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact">
+            <label for="myActionsBakery">Site</label>
+            <select id="myActionsBakery" class="visit-log-select">
+              <option value="">All Sites</option>
+            </select>
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact">
+            <label for="myActionsSort">Sort By</label>
+            <select id="myActionsSort" class="visit-log-select">
+              <option value="dueAsc">Due Date (Soonest)</option>
+              <option value="dueDesc">Due Date (Latest)</option>
+              <option value="priority">Priority (High-Low)</option>
+              <option value="createdDesc">Date Added (Newest)</option>
+              <option value="createdAsc">Date Added (Oldest)</option>
+              <option value="bakeryAsc">Site Name (A-Z)</option>
+            </select>
+          </div>
+          <button type="button" id="myActionsResetBtn" class="visit-log-reset-btn" title="Reset action filters"
+            aria-label="Reset action filters">
+            <svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
+            </svg>
+            <svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
+              <path d="m22 3-5 5" />
+              <path d="m17 3 5 5" />
+            </svg>
+            <span class="visit-log-reset-btn__label">Reset</span>
+          </button>
+        </div>
+
+        <div id="myActionsSummary" class="my-activity-summary" role="status" aria-live="polite"></div>
         <div id="myActionsList" class="my-activity-actions-list"></div>
       </section>
 

@@ -14,7 +14,7 @@ exists only for tooling (ESLint); nothing is bundled, compiled, or minified.
 | `admin.html` | `js/admin-page.js` | Admin portal, CQV PDF import |
 | `profile.html` | `js/profile-page.js` | User profile |
 | `bakery-profile.html` | `js/bakery-profile.js` | Per-bakery performance, visits, tasks, map, and team notes |
-| `my-activity.html` | `js/my-activity.js` | The signed-in user's own open actions, visits (with Excel export), and activity feed |
+| `my-activity.html` | `js/my-activity.js` | The signed-in user's own open actions and visits (both filterable and exportable to Excel), plus their activity feed |
 
 ## The two JavaScript worlds
 
