@@ -111,16 +111,29 @@ test('a bare @ and an email address are not mentions', () => {
 test('the assignee comes from the mention, never from a plain name', () => {
   const mentions = load(TEAM);
 
-  assert.deepEqual(plain(mentions.resolveAssignee('@Sam Partner')), {
+  assert.deepEqual(plain(mentions.resolveAssignees('@Sam Partner')), [{
     uid: 'uid-sam', name: 'Sam Partner', email: 'sam@gailsbread.co.uk'
-  });
+  }]);
   // Every visit logged before mentions existed stays unassigned.
-  assert.equal(mentions.resolveAssignee('Sam Partner'), null);
-  assert.equal(mentions.resolveAssignee(''), null);
+  assert.deepEqual(plain(mentions.resolveAssignees('Sam Partner')), []);
+  assert.deepEqual(plain(mentions.resolveAssignees('')), []);
   // An unknown name still assigns, just without an identity to hang it on.
-  assert.deepEqual(plain(mentions.resolveAssignee('@Nina Newstarter')), {
+  assert.deepEqual(plain(mentions.resolveAssignees('@Nina Newstarter')), [{
     uid: '', name: 'Nina Newstarter', email: ''
-  });
+  }]);
+});
+
+test('a Coffee Partner can name more than one person', () => {
+  const mentions = load(TEAM);
+
+  const both = mentions.resolveAssignees('@Sam Partner + @Jo Bloggs');
+  assert.deepEqual(plain(both).map((p) => p.name), ['Sam Partner', 'Jo Bloggs']);
+  // The reading form keeps the separator the author typed.
+  assert.equal(mentions.toText('@Sam Partner + @Jo Bloggs'), 'Sam Partner + Jo Bloggs');
+  // Both names are styled, the separator is not.
+  const html = mentions.toHtml('@Sam Partner + @Jo Bloggs');
+  assert.equal((html.match(/class="mention"/g) || []).length, 2);
+  assert.match(html, /<\/span> \+ <span/);
 });
 
 test('the picker tracks the @ the caret is sitting in', () => {
@@ -209,8 +222,14 @@ test('the editor swaps faces rather than restyling one input', () => {
 });
 
 test('the assignment is resolved at save, so deleting the mention un-assigns', () => {
-  assert.match(visitReport, /assignedTo: \(window\.GAILS\.MentionField\s*\n?\s*\? window\.GAILS\.MentionField\.assigneeFor\(partnerField\)\s*\n?\s*: null\) \|\| null/);
-  assert.match(adminScript, /payload\.assignedTo = \(window\.GAILS\.Mentions[\s\S]{0,140}resolveAssignee\(collected\.general\.coffeePartner\)/);
+  assert.match(visitReport, /assignedTo: assignees\.length \? assignees : null/);
+  assert.match(adminScript, /resolveAssignees\(collected\.general\.coffeePartner\)/);
+  assert.match(adminScript, /payload\.assignedTo = editedAssignees\.length \? editedAssignees : null/);
+});
+
+test('picking a name leaves room to pick another', () => {
+  // A trailing space so a second "@" can follow straight away.
+  assert.match(fieldSource, /applied\.value \+= ' ';/);
 });
 
 test('every surface that shows a Coffee Partner renders it without the @', () => {
@@ -227,13 +246,18 @@ test('every surface that shows a Coffee Partner renders it without the @', () =>
 
 test('an assigned visit reaches the assignee, and the export names them', () => {
   assert.match(myActivity, /function visitAssignedToMe\(visit\)/);
-  // Ownership is checked before anything else, so an assigned visit is theirs
+  // Ownership is checked before anything else, so a credited visit is theirs
   // even when someone else logged it.
-  assert.match(myActivity, /if \(visitAssignedToMe\(visit\)\) return true;/);
+  assert.match(myActivity, /if \(attributedToMe\(visitAttribution\(visit\)\)\) return true;/);
   assert.match(myActivity, /'Was assigned a visit'/);
-  assert.match(myActivity, /Assigned to you</);
+  assert.match(myActivity, /'Assigned to you'/);
+  // Being named alongside a colleague is not the same as owning it alone.
+  assert.match(myActivity, /'Assigned to you &amp; ' \+ escapeHtml/);
+  // The export column carries the derived attribution, so a form visit and an
+  // imported CQV name someone too.
   [visitReport, myActivity].forEach((source) => {
-    assert.match(source, /\{ label: 'Assigned To', type: 'text', width: 22 \}/);
+    assert.match(source, /\{ label: 'Attributed To', type: 'text', width: 24 \}/);
+    assert.match(source, /Attribution\.namesText\(/);
   });
 });
 

@@ -1618,10 +1618,14 @@ window.GAILS = window.GAILS || {};
         { label: 'Coffee Partner', html: partnerHtml(record.coffeePartner) },
         { label: 'Barista', value: record.mod || '—' }
       ];
-      if (record.assignedTo && record.assignedTo.name) {
+      var assignedList = window.GAILS.Mentions
+        ? window.GAILS.Mentions.toAssigneeList(record.assignedTo) : [];
+      if (assignedList.length) {
         stats.splice(1, 0, {
-          label: 'Assigned To',
-          html: '<span class="mention">' + escapeHtml(record.assignedTo.name) + '</span>'
+          label: assignedList.length > 1 ? 'Assigned To (' + assignedList.length + ')' : 'Assigned To',
+          html: assignedList.map(function (entry) {
+            return '<span class="mention">' + escapeHtml(entry.name) + '</span>';
+          }).join(', ')
         });
       }
 
@@ -2823,21 +2827,23 @@ window.GAILS = window.GAILS || {};
           if (errorEl) errorEl.style.display = 'none';
 
           var partnerField = document.getElementById('addVisitPartner');
+          // Resolved at submit rather than at pick time, so deleting a mention
+          // afterwards really does un-assign. A field naming two people
+          // ("@Jamie @Tristen") assigns the visit to both.
+          var assignees = window.GAILS.MentionField
+            ? window.GAILS.MentionField.assigneesFor(partnerField)
+            : [];
           var record = {
             bakery: document.getElementById('addVisitBakery').value,
             visitKind: document.getElementById('addVisitType').value || 'checkin',
             date: document.getElementById('addVisitDate').value,
             time: document.getElementById('addVisitTime').value,
-            coffeePartner: partnerField.value || '',
+            coffeePartner: (partnerField.value || '').trim(),
             mod: document.getElementById('addVisitMod').value || '',
             comments: document.getElementById('addVisitComments').value || '',
-            // Resolved at submit rather than at pick time, so deleting the
-            // mention afterwards really does un-assign the visit. Null when the
-            // partner was typed as a plain name, which keeps every visit logged
-            // before mentions existed unassigned.
-            assignedTo: (window.GAILS.MentionField
-              ? window.GAILS.MentionField.assigneeFor(partnerField)
-              : null) || null
+            // Absent rather than empty when nobody was mentioned, which is what
+            // keeps every visit logged before assignment existed unassigned.
+            assignedTo: assignees.length ? assignees : null
           };
 
           // Follow-ups raised/ticked on this visit, collected before the async
@@ -2866,7 +2872,10 @@ window.GAILS = window.GAILS || {};
                 title: t.title,
                 dueDate: t.dueDate,
                 priority: t.priority,
-                sourceVisitId: newVisitId || null
+                sourceVisitId: newVisitId || null,
+                // Actions raised during a visit belong to whoever the visit was
+                // handed to — assigning a visit assigns its follow-ups with it.
+                assignedTo: assignees.length ? assignees : null
               }));
             });
             if (followUpOps.length) {
@@ -3251,7 +3260,7 @@ window.GAILS = window.GAILS || {};
           { label: 'Ops Area', type: 'text', width: 18 },
           { label: 'Visit Type', type: 'text', width: 20 },
           { label: 'Coffee Partner / Auditor', type: 'text', width: 24 },
-          { label: 'Assigned To', type: 'text', width: 22 },
+          { label: 'Attributed To', type: 'text', width: 24 },
           // Scores land as a real percentage across every visit type so the
           // column sorts; routine visits keep their raw points alongside.
           { label: 'Score %', type: 'percent', width: 9 },
@@ -3275,7 +3284,7 @@ window.GAILS = window.GAILS || {};
             G.getBakeryOps ? G.getBakeryOps(v.bakery) : '',
             visitTypeLabel(v),
             (v.type === 'cqv' || v.type === 'nbo') ? (v.auditorName || '') : partnerText(v.coffeePartner),
-            (v.assignedTo && v.assignedTo.name) || '',
+            window.GAILS.Attribution ? window.GAILS.Attribution.namesText(window.GAILS.Attribution.forVisit(v)) : '',
             pct != null ? pct / 100 : '',
             isRoutine ? v.score : '',
             isRoutine ? v.scoreMax : '',

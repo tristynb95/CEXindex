@@ -151,6 +151,13 @@ window.GAILS = window.GAILS || {};
       var person = state.matches[index];
       if (!person || !state.range) return;
       var applied = mentions().applyMention(input.value, state.range, person.name);
+      // A trailing space so a second "@" can follow immediately — a visit
+      // covered by two people is named in one field ("@Jamie @Tristen"). Only
+      // added when the pick lands at the end; mid-text there is already one.
+      if (applied.caret === applied.value.length) {
+        applied.value += ' ';
+        applied.caret += 1;
+      }
       input.value = applied.value;
       closeMenu();
       input.focus();
@@ -228,7 +235,7 @@ window.GAILS = window.GAILS || {};
       refresh: function () {
         if (!wrapper.classList.contains('is-editing')) renderDisplay();
       },
-      assignee: function () { return mentions().resolveAssignee(input.value); }
+      assignees: function () { return mentions().resolveAssignees(input.value); }
     };
     input._mentionField = api;
     return api;
@@ -247,15 +254,15 @@ window.GAILS = window.GAILS || {};
     }).filter(Boolean);
   }
 
-  function assigneeFor(input) {
-    if (!input || !G.Mentions) return null;
-    return G.Mentions.resolveAssignee(input.value);
+  function assigneesFor(input) {
+    if (!input || !G.Mentions) return [];
+    return G.Mentions.resolveAssignees(input.value);
   }
 
   G.MentionField = {
     enhance: enhance,
     enhanceAll: enhanceAll,
     refresh: refresh,
-    assigneeFor: assigneeFor
+    assigneesFor: assigneesFor
   };
 })();

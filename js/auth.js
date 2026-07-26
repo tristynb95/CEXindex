@@ -169,6 +169,10 @@ window.GAILS_Firebase = {
       priority: 'none',
       status: 'open',
       sourceVisitId: null,
+      // Who the action belongs to. Raised during a check-in it inherits that
+      // visit's assignees; raised standalone it stays null and falls back to
+      // the person who created it (see js/attribution.js).
+      assignedTo: null,
       completedAt: null,
       completedBy: null
     }, task, {

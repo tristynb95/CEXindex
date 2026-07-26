@@ -248,7 +248,8 @@ function matchesMyUid(value) {
 // must not silently move the visit into the admin's activity.
 function visitIsMine(visit) {
   if (!visit) return false;
-  if (visitAssignedToMe(visit)) return true;
+  // Credited to me — assigned by @mention, or attributed automatically.
+  if (attributedToMe(visitAttribution(visit))) return true;
   var meta = visit.meta || {};
   if (matchesMyUid(meta.createdByUid)) return true;
   if (matchesMyEmail(meta.createdBy) || matchesMyEmail(visit.email) || matchesMyEmail(visit.createdBy)) return true;
@@ -257,18 +258,38 @@ function visitIsMine(visit) {
   return matchesMyName(visit.coffeePartner) || matchesMyName(visit.auditorName);
 }
 
-// A visit handed over with an "@Name" in its Coffee Partner field. The uid is
-// the reliable signal (it survives a rename); email and name cover assignments
-// made before the person had a directory entry to resolve against.
+// Everyone a record is credited to, derived by js/attribution.js. This is what
+// lets a Google Form visit or an imported CQV reach the right hub with nobody
+// having assigned it: the resolver falls back through the auditor name, the
+// Coffee Partner, and the form respondent's email.
+function visitAttribution(visit) {
+  return G.Attribution ? G.Attribution.forVisit(visit) : [];
+}
+
+function taskAttribution(task) {
+  return G.Attribution ? G.Attribution.forTask(task) : [];
+}
+
+function attributedToMe(list) {
+  return !!G.Attribution && G.Attribution.matches(list, identity);
+}
+
+// An explicit @mention hand-over, as opposed to a derived credit. Only these
+// are announced as an assignment — telling someone a routine visit was
+// "assigned to you" when the form simply carried their name would be a lie.
 function visitAssignedToMe(visit) {
-  var assigned = visit && visit.assignedTo;
-  if (!assigned) return false;
-  return matchesMyUid(assigned.uid) || matchesMyEmail(assigned.email) || matchesMyName(assigned.name);
+  var list = visitAttribution(visit);
+  return G.Attribution ? G.Attribution.isExplicit(list) && attributedToMe(list) : false;
 }
 
 function visitAssignedToSomeoneElse(visit) {
-  var assigned = visit && visit.assignedTo;
-  return !!(assigned && assigned.name) && !visitAssignedToMe(visit);
+  var list = visitAttribution(visit);
+  if (!G.Attribution || !G.Attribution.isExplicit(list)) return false;
+  return list.length > 0 && !attributedToMe(list);
+}
+
+function visitAssigneeLabel(visit) {
+  return G.Attribution ? G.Attribution.label(visitAttribution(visit)) : '';
 }
 
 // Who logged the visit, as opposed to who it was assigned to.
@@ -290,7 +311,13 @@ function taskCompletedByMe(task) {
 }
 
 function taskIsMine(task) {
-  return taskRaisedByMe(task) || taskCompletedByMe(task);
+  return taskRaisedByMe(task) || taskCompletedByMe(task) || attributedToMe(taskAttribution(task));
+}
+
+// A follow-up handed over with the visit it was raised on.
+function taskAssignedToMe(task) {
+  var list = taskAttribution(task);
+  return !!G.Attribution && G.Attribution.isExplicit(list) && attributedToMe(list);
 }
 
 function noteAuthorIsMine(author) {
@@ -599,6 +626,7 @@ function actionRowHtml(task) {
   if (task.createdAt) footnotes.push('Added ' + formatDay(task.createdAt));
   if (done && task.completedAt) footnotes.push('Completed ' + formatDay(task.completedAt));
   if (!taskRaisedByMe(task) && taskCompletedByMe(task)) footnotes.push('Raised by ' + (task.createdBy || 'a colleague'));
+  if (taskAssignedToMe(task) && !taskRaisedByMe(task)) footnotes.push('Assigned to you with a visit');
 
   return '<div class="my-activity-action' + (done ? ' my-activity-action--done' : '') +
     '" data-task-id="' + escapeHtml(task.id) + '">' +
@@ -678,7 +706,7 @@ function filteredVisits() {
     if (search) {
       var haystack = [
         bakeryLabel(v.bakery), v.bakery, visitTypeLabel(v), visitPersonLabel(v),
-        (v.assignedTo && v.assignedTo.name) || '',
+        G.Attribution ? G.Attribution.namesText(visitAttribution(v)) : '',
         v.mod, visitNotesText(v), bakeryOps(v.bakery), bakeryRegion(v.bakery)
       ].join(' ').toLowerCase();
       if (haystack.indexOf(search) === -1) return false;
@@ -720,11 +748,19 @@ function visitRowHtml(visit) {
   // An assigned visit shows in both people's hubs, so each needs to see which
   // side of the handover they are on at a glance.
   var assignmentTag = '';
-  if (visitAssignedToMe(visit) && !visitLoggedByMe(visit)) {
-    assignmentTag = '<span class="my-activity-tag my-activity-tag--blue">Assigned to you</span>';
+  if (visitAssignedToMe(visit)) {
+    // Named alongside colleagues, say so — "assigned to you" alone would hide
+    // that someone else is covering it too.
+    var others = visitAttribution(visit).filter(function (entry) {
+      return !attributedToMe([entry]);
+    });
+    assignmentTag = '<span class="my-activity-tag my-activity-tag--blue">' +
+      (others.length
+        ? 'Assigned to you &amp; ' + escapeHtml(G.Attribution.label(others))
+        : 'Assigned to you') + '</span>';
   } else if (visitAssignedToSomeoneElse(visit)) {
     assignmentTag = '<span class="my-activity-tag my-activity-tag--blue">Assigned to ' +
-      escapeHtml(visit.assignedTo.name) + '</span>';
+      escapeHtml(visitAssigneeLabel(visit)) + '</span>';
   }
 
   return '<article class="my-activity-visit" data-visit-id="' + escapeHtml(visit.id) + '">' +
@@ -838,7 +874,7 @@ function buildExportData(visits, filters) {
       { label: 'Ops Area', type: 'text', width: 18 },
       { label: 'Visit Type', type: 'text', width: 20 },
       { label: 'Coffee Partner / Auditor', type: 'text', width: 24 },
-      { label: 'Assigned To', type: 'text', width: 22 },
+      { label: 'Attributed To', type: 'text', width: 24 },
       { label: 'Score %', type: 'percent', width: 10 },
       { label: 'Points', type: 'number', width: 8 },
       { label: 'Points Available', type: 'number', width: 15 },
@@ -855,7 +891,7 @@ function buildExportData(visits, filters) {
         bakeryOps(v.bakery),
         visitTypeLabel(v),
         visitPersonLabel(v),
-        (v.assignedTo && v.assignedTo.name) || '',
+        G.Attribution ? G.Attribution.namesText(visitAttribution(v)) : '',
         pct == null ? '' : pct / 100,
         isRoutine ? v.score : '',
         isRoutine ? v.scoreMax : '',
@@ -1051,7 +1087,7 @@ function buildTimelineEvents() {
       linkLabel: 'View report',
       footnote: (assignedHere
         ? 'Assigned by ' + visitLoggerLabel(visit) + ' · '
-        : (assignedAway ? 'Assigned to ' + visit.assignedTo.name + ' · ' : '')) +
+        : (assignedAway ? 'Assigned to ' + visitAssigneeLabel(visit) + ' · ' : '')) +
         'Visit date ' + formatIsoDate(visit.date) + (visit.time ? ' at ' + visit.time : '')
     });
   });

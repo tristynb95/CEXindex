@@ -13,6 +13,19 @@ const adminHtml = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
 const authScript = fs.readFileSync(path.join(root, 'js', 'auth.js'), 'utf8');
 const visitReportScript = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
 const eslintConfig = fs.readFileSync(path.join(root, 'eslint.config.mjs'), 'utf8');
+const mentionsSource = fs.readFileSync(path.join(root, 'js', 'mentions.js'), 'utf8');
+const attributionSource = fs.readFileSync(path.join(root, 'js', 'attribution.js'), 'utf8');
+
+// Ownership runs through the shared window.GAILS helpers, so the classic
+// scripts that provide them are loaded for real rather than stubbed.
+function gails(people) {
+  const host = { window: {}, console: { warn() {} } };
+  vm.createContext(host);
+  vm.runInContext(mentionsSource, host);
+  vm.runInContext(attributionSource, host);
+  host.window.GAILS.Mentions.setPeople(people || []);
+  return host.window.GAILS;
+}
 
 // Top-level functions in js/my-activity.js are lifted out one at a time and run
 // in a bare context, which is how the rest of this suite tests browser-only
@@ -110,8 +123,11 @@ test('a check-in records its author separately from whoever last edited it', () 
 test('an admin editing someone else\'s visit does not inherit it', () => {
   const context = extract(
     ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid',
-      'visitAssignedToMe', 'visitIsMine'],
-    { identity: { uid: 'uid-admin', emails: new Set(['admin@gailsbread.co.uk']), names: new Set(['ada admin']) } }
+      'visitAttribution', 'attributedToMe', 'visitIsMine'],
+    {
+      G: gails([{ uid: 'uid-admin', name: 'Ada Admin', email: 'admin@gailsbread.co.uk' }]),
+      identity: { uid: 'uid-admin', emails: new Set(['admin@gailsbread.co.uk']), names: new Set(['ada admin']) }
+    }
   );
 
   // A visit logged by a colleague, later corrected by the signed-in admin:
@@ -152,8 +168,11 @@ test('an admin editing someone else\'s visit does not inherit it', () => {
 test('visits are attributed by form respondent and by printed auditor name', () => {
   const context = extract(
     ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid',
-      'visitAssignedToMe', 'visitIsMine'],
-    { identity: { uid: 'uid-1', emails: new Set(['sam.partner@gailsbread.co.uk']), names: new Set(['sam partner']) } }
+      'visitAttribution', 'attributedToMe', 'visitIsMine'],
+    {
+      G: gails([{ uid: 'uid-1', name: 'Sam Partner', email: 'sam.partner@gailsbread.co.uk' }]),
+      identity: { uid: 'uid-1', emails: new Set(['sam.partner@gailsbread.co.uk']), names: new Set(['sam partner']) }
+    }
   );
 
   // Google Forms records the respondent's email on routine visits.
@@ -179,8 +198,11 @@ test('a single-word name is too weak to attribute a visit on', () => {
 test('a task completed by this user counts even when a colleague raised it', () => {
   const context = extract(
     ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName',
-      'taskRaisedByMe', 'taskCompletedByMe', 'taskIsMine'],
-    { identity: { uid: 'uid-1', emails: new Set(['sam@gailsbread.co.uk']), names: new Set() } }
+      'taskAttribution', 'attributedToMe', 'taskRaisedByMe', 'taskCompletedByMe', 'taskIsMine'],
+    {
+      G: gails([{ uid: 'uid-1', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' }]),
+      identity: { uid: 'uid-1', emails: new Set(['sam@gailsbread.co.uk']), names: new Set() }
+    }
   );
 
   const task = { createdBy: 'other@gailsbread.co.uk', completedBy: 'sam@gailsbread.co.uk' };

@@ -1557,11 +1557,17 @@ async function backfillCqvAuditors() {
         notFound++;
         continue;
       }
-      await update(ref(db, 'routineVisits/' + visit.id), {
+      var backfillPatch = {
         auditorName: auditorName,
         'meta/auditorBackfilledAt': nowIso(),
         'meta/auditorBackfilledBy': currentUserEmail()
-      });
+      };
+      // Recovering the name is also the moment the report can be credited.
+      var backfilledAuditor = window.GAILS.Mentions
+        ? window.GAILS.Mentions.resolvePerson(auditorName)
+        : null;
+      if (backfilledAuditor && !visit.assignedTo) backfillPatch.assignedTo = [backfilledAuditor];
+      await update(ref(db, 'routineVisits/' + visit.id), backfillPatch);
       updated++;
     } catch (err) {
       failed++;
@@ -1621,15 +1627,26 @@ async function saveCqvRecord() {
     var pdfUrl = await getDownloadURL(fileRef);
 
     var nowIsoStr = nowIso();
+    // The auditor printed on the PDF is the person this report belongs to, not
+    // the admin importing it. Resolving it here stamps the attribution once, so
+    // the report reaches their My Activity hub without anyone assigning it.
+    var auditor = window.GAILS.Mentions
+      ? window.GAILS.Mentions.resolvePerson(pending.record.auditorName)
+      : null;
+
     var record = Object.assign({}, pending.record, {
       bakery: bakery,
       date: date,
       pdfUrl: pdfUrl,
       pdfPath: storagePath,
       pdfFileName: pending.file.name,
+      assignedTo: auditor ? [auditor] : null,
       meta: {
         source: 'pdf-import',
         createdAt: nowIsoStr,
+        // The importer is recorded separately from the auditor so a report is
+        // never credited to whoever happened to upload the file.
+        importedBy: currentUserEmail(),
         updatedAt: nowIsoStr,
         updatedBy: currentUserEmail()
       }
@@ -1996,10 +2013,12 @@ async function saveVisitDetail(id) {
     });
   }
   // Editing the Coffee Partner text re-resolves the assignment, so removing a
-  // mention here really does un-assign the visit.
-  payload.assignedTo = (window.GAILS.Mentions
-    ? window.GAILS.Mentions.resolveAssignee(collected.general.coffeePartner)
-    : null) || null;
+  // mention here really does un-assign the visit, and naming two people assigns
+  // it to both.
+  var editedAssignees = window.GAILS.Mentions
+    ? window.GAILS.Mentions.resolveAssignees(collected.general.coffeePartner)
+    : [];
+  payload.assignedTo = editedAssignees.length ? editedAssignees : null;
   payload.meta = Object.assign({}, existing.meta, {
     updatedAt: nowIso(),
     updatedBy: currentUserEmail()

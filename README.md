@@ -41,11 +41,15 @@ Shared code lives in one place per concern; prefer extending these over re-copyi
 - `js/profile-menu.js` — the header profile popover (ES module).
 - `js/mentions.js` — `GAILS.Mentions`, parsing and rendering `@mention` text.
 - `js/mention-field.js` — `GAILS.MentionField`, the two-face editor for it.
+- `js/attribution.js` — `GAILS.Attribution`, who a visit or follow-up belongs to.
 
 ## Assigning a visit with @mentions
 
 A visit's **Coffee Partner** field doubles as its assignment control: type `@`,
-pick a colleague, and the visit becomes theirs as well as yours.
+pick a colleague, and the visit becomes theirs as well as yours. Mention more
+than one person (`@Jamie + @Tristen`) and the visit — and any follow-up raised
+during it — belongs to all of them. Whatever you type between the names is kept
+as ordinary text; only the names are styled.
 
 The `@` is a typing affordance, not something anyone should have to read. It is
 stored (`coffeePartner: "@Sam Partner"`) but never rendered: every read-only
@@ -57,8 +61,8 @@ source of truth; the display face is only ever rendered from `input.value`.
 
 The stored text is the human-editable form, so parsing it back out is a
 presentation concern and can be ambiguous. The authoritative record is the
-separate `assignedTo` object on the visit (`{ uid, name, email }`), resolved at
-save time — which is why deleting the mention really does un-assign the visit,
+separate `assignedTo` **list** on the visit (`[{ uid, name, email }]`), resolved
+at save time — which is why deleting the mention really does un-assign the visit,
 and why a name typed *without* an `@` stays an ordinary label. Every visit
 logged before this existed is therefore unassigned, not mis-assigned.
 
@@ -81,13 +85,46 @@ the admin portal publishes the full user list and prunes revoked accounts.
 
 ## Who a record belongs to
 
-`my-activity.html` is the one screen that asks "whose record is this", so the
-authorship fields matter there in a way they don't elsewhere:
+Most records are not created by the person they belong to. Routine Coffee Visits
+arrive from a Google Form, CQV and NBO reports are PDFs an admin imports, and
+follow-ups are raised during someone else's check-in. So attribution is
+**derived, not typed** — `js/attribution.js` resolves each record against the
+shared people directory, strongest signal first:
+
+| | Visit is credited to |
+| --- | --- |
+| 1 | an explicit `@mention` assignment (`assignedTo`) |
+| 2 | the auditor printed on an imported CQV / NBO report |
+| 3 | the Coffee Partner named on a routine visit |
+| 4 | the Google Form respondent's email |
+| 5 | whoever saved it in this app |
+
+A tier wins outright rather than blending, so a visit handed to two people is
+theirs alone and is not diluted by the admin who imported the file. Follow-ups
+resolve the same way: an assignment first, then whoever raised it.
+
+This is all read-time, so **nothing needs migrating** — it works on every record
+ever stored, including those predating assignment. `js/attribution.js` has no
+write path at all. The one thing that *is* stamped at write time is the auditor
+on a PDF import, because that resolution happens once and is worth keeping;
+`meta.importedBy` records the admin separately so a report is never credited to
+whoever uploaded the file.
+
+Two caveats worth knowing:
+
+- On a **check-in**, Coffee Partner is free text about who was on the bar, so it
+  is deliberately *not* an attribution signal — that visit stays with whoever
+  logged it unless someone `@mentions` a colleague.
+- Only tier 1 is announced as "assigned". Telling someone a routine visit was
+  "assigned to you" when the form merely carried their name would be a lie, so
+  derived credit simply makes the record appear in their hub.
+
+The underlying authorship fields:
 
 - **Assigned visits** (`routineVisits/{id}.assignedTo`) — a visit handed over by
-  @mention belongs to the assignee *and* the person who logged it. Both see it,
-  each labelled with which side of the handover they are on. Assignment shares a
-  visit; it never moves it.
+  @mention belongs to the assignee(s) *and* the person who logged it. Both see
+  it, each labelled with which side of the handover they are on. Assignment
+  shares a visit; it never moves it.
 - **Visits** (`routineVisits/{id}`) — `meta.createdBy` / `meta.createdByUid` are
   the durable signals, written when a check-in is saved. `meta.updatedBy` is
   **not** a substitute: an admin editing a visit overwrites it, which would

@@ -190,18 +190,61 @@ window.GAILS = window.GAILS || {};
     return parse(raw).some(function (segment) { return segment.type === 'mention'; });
   }
 
-  // The person a visit is assigned to, resolved from its Coffee Partner text.
-  // Only a mention counts — a name typed without "@" stays a plain label, which
-  // is what keeps every pre-existing visit unassigned.
-  function resolveAssignee(raw) {
-    var mention = parse(raw).find(function (segment) { return segment.type === 'mention'; });
-    if (!mention) return null;
-    var person = mention.person || findPerson(mention.text);
-    return {
-      uid: (person && person.uid) || '',
-      name: (person && person.name) || mention.text,
-      email: (person && person.email) || ''
-    };
+  // Everyone a visit is assigned to, in the order they were mentioned. A field
+  // can name a pair covering the visit together ("@Jamie + @Tristen"), so this
+  // is always a list. Only a mention counts — a name typed without "@" stays a
+  // plain label, which is what keeps every pre-existing visit unassigned.
+  function resolveAssignees(raw) {
+    var seen = {};
+    var people = [];
+    parse(raw).forEach(function (segment) {
+      if (segment.type !== 'mention') return;
+      var person = segment.person || findPerson(segment.text);
+      var resolved = {
+        uid: (person && person.uid) || '',
+        name: (person && person.name) || segment.text,
+        email: (person && person.email) || ''
+      };
+      // The same person named twice is one assignee.
+      var key = resolved.uid || normalizeName(resolved.name);
+      if (!key || seen[key]) return;
+      seen[key] = true;
+      people.push(resolved);
+    });
+    return people;
+  }
+
+  // Matches a bare reference — a printed auditor name, a form respondent's
+  // email — against the directory. This is what lets records the app did not
+  // author (a CQV PDF, a Google Form visit) attribute themselves to a real
+  // person without anyone typing an "@".
+  function resolvePerson(reference) {
+    var value = String(reference == null ? '' : reference).trim();
+    if (!value) return null;
+
+    if (value.indexOf('@') !== -1 && value.indexOf(' ') === -1) {
+      var email = normalizeEmail(value);
+      var byEmail = getPeople().find(function (person) { return person.email === email; });
+      if (byEmail) return byEmail;
+      return null;
+    }
+    return findPerson(value);
+  }
+
+  // Normalizes however an assignment was stored — a list, a single object from
+  // before multiple assignees existed, or nothing at all.
+  function toAssigneeList(value) {
+    if (!value) return [];
+    var list = Array.isArray(value) ? value : [value];
+    return list.filter(function (entry) {
+      return entry && String(entry.name || '').trim();
+    }).map(function (entry) {
+      return {
+        uid: entry.uid || '',
+        name: cleanName(entry.name),
+        email: normalizeEmail(entry.email)
+      };
+    });
   }
 
   // The "@…" the caret currently sits in, if any — what the suggestion menu
@@ -263,7 +306,7 @@ window.GAILS = window.GAILS || {};
       // taken from its reading form rather than raw.
       harvested.push({ name: toText(visit.coffeePartner) });
       harvested.push({ name: visit.auditorName });
-      if (visit.assignedTo) harvested.push(visit.assignedTo);
+      toAssigneeList(visit.assignedTo).forEach(function (person) { harvested.push(person); });
     });
 
     (input.notes || []).forEach(function (note) {
@@ -320,7 +363,9 @@ window.GAILS = window.GAILS || {};
     toText: toText,
     toHtml: toHtml,
     hasMention: hasMention,
-    resolveAssignee: resolveAssignee,
+    resolveAssignees: resolveAssignees,
+    resolvePerson: resolvePerson,
+    toAssigneeList: toAssigneeList,
     activeMentionAt: activeMentionAt,
     applyMention: applyMention,
     search: search
