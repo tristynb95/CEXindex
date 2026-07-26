@@ -156,13 +156,13 @@ window.GAILS = window.GAILS || {};
   function partnerHtml(value, fallback) {
     var text = String(value == null ? '' : value);
     if (!text) return escapeHtml(fallback || '—');
-    return window.GAILS.Mentions ? window.GAILS.Mentions.toHtml(text) : escapeHtml(text);
+    return window.GAILS.Mentions ? window.GAILS.Mentions.formatSelectionHtml(text) : escapeHtml(text);
   }
 
   function partnerText(value) {
     var text = String(value == null ? '' : value);
     if (!text) return '';
-    return window.GAILS.Mentions ? window.GAILS.Mentions.toText(text) : text;
+    return window.GAILS.Mentions ? window.GAILS.Mentions.formatSelectionText(text) : text;
   }
 
   // A check-in has one user-facing ownership concept: Coffee Partner. Selected
@@ -189,10 +189,10 @@ window.GAILS = window.GAILS || {};
     }
 
     if (!attributed.length) return '—';
-    return attributed.map(function (entry) {
-      var label = entry.name || entry.email || entry.uid;
-      return '<span class="mention">' + escapeHtml(label) + '</span>';
-    }).join(' + ');
+    if (window.GAILS.Mentions) return window.GAILS.Mentions.formatPeopleHtml(attributed);
+    return escapeHtml(attributed.map(function (entry) {
+      return entry.name || entry.email || entry.uid;
+    }).join(' & '));
   }
 
   function buildHeaderStatsHtml(record) {
@@ -1125,6 +1125,7 @@ window.GAILS = window.GAILS || {};
     var bakeryControl = document.getElementById('visitLogBakeryControl');
     var directorySortControl = document.getElementById('visitLogDirectorySortControl');
     var directoryGroupControl = document.getElementById('visitLogDirectoryGroupControl');
+    var followUpAssigneeControl = document.getElementById('followUpAssigneeControl');
     var followUpGroupControl = document.getElementById('followUpGroupControl');
     var followUpSortControl = document.getElementById('followUpSortControl');
     var typeControl = typeEl ? typeEl.closest('.visit-log-filter-control') : null;
@@ -1150,6 +1151,7 @@ window.GAILS = window.GAILS || {};
     if (bakeryControl) bakeryControl.style.display = isBakeryList ? '' : 'none';
     if (directorySortControl) directorySortControl.style.display = isBakeryList ? '' : 'none';
     if (directoryGroupControl) directoryGroupControl.style.display = isBakeryList ? '' : 'none';
+    if (followUpAssigneeControl) followUpAssigneeControl.style.display = isFollowUps ? '' : 'none';
     if (followUpGroupControl) followUpGroupControl.style.display = isFollowUps ? '' : 'none';
     if (followUpSortControl) followUpSortControl.style.display = isFollowUps ? '' : 'none';
     // Follow-ups use their task-specific Group By and Sort By controls and
@@ -1357,6 +1359,74 @@ window.GAILS = window.GAILS || {};
     }).join('') + '</div>';
   }
 
+  function followUpAttributionLabel(task) {
+    var people = followUpResponsiblePeople(task);
+    if (window.GAILS.Attribution) return window.GAILS.Attribution.label(people);
+    return window.GAILS.Mentions ? window.GAILS.Mentions.formatPeople(people) : '';
+  }
+
+  function followUpPersonLabel(person) {
+    return String(person && (person.name || person.email || person.uid) || '').trim();
+  }
+
+  function followUpPersonFilterValue(person) {
+    return followUpPersonLabel(person).toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  function followUpTaskMatchesAssignee(task, assigneeValue) {
+    if (!assigneeValue) return true;
+    return followUpResponsiblePeople(task).some(function (person) {
+      return followUpPersonFilterValue(person) === assigneeValue;
+    });
+  }
+
+  // The filter is data-led: only people who own at least one accessible
+  // follow-up are offered. One person appears once even if they own many tasks.
+  function populateFollowUpAssigneeOptions() {
+    var select = document.getElementById('followUpAssignee');
+    if (!select) return;
+
+    var peopleByValue = {};
+    getFollowUpList().forEach(function (task) {
+      followUpResponsiblePeople(task).forEach(function (person) {
+        var value = followUpPersonFilterValue(person);
+        var label = followUpPersonLabel(person);
+        if (value && label && !peopleByValue[value]) peopleByValue[value] = label;
+      });
+    });
+
+    var options = Object.keys(peopleByValue).map(function (value) {
+      return { value: value, label: peopleByValue[value] };
+    }).sort(function (a, b) {
+      return a.label.localeCompare(b.label);
+    });
+    var signature = JSON.stringify(options);
+    var wantedValue = select.value || window.GAILS._pendingFollowUpAssigneeFilter || '';
+
+    if (select.dataset.assigneeOptions !== signature) {
+      select.innerHTML = '';
+      var allOption = document.createElement('option');
+      allOption.value = '';
+      allOption.textContent = 'All';
+      select.appendChild(allOption);
+      options.forEach(function (option) {
+        var el = document.createElement('option');
+        el.value = option.value;
+        el.textContent = option.label;
+        select.appendChild(el);
+      });
+      select.dataset.assigneeOptions = signature;
+    }
+
+    if (wantedValue && options.some(function (option) { return option.value === wantedValue; })) {
+      select.value = wantedValue;
+      window.GAILS._pendingFollowUpAssigneeFilter = '';
+    } else if (wantedValue) {
+      select.value = '';
+    }
+    if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect(select);
+  }
+
   function followUpGroupSorter(groupVal) {
     var priorityOrder = { 'High priority': 0, 'Medium priority': 1, 'Low priority': 2, 'No priority': 3 };
     var statusOrder = { Overdue: 0, Open: 1, Done: 2 };
@@ -1479,14 +1549,18 @@ window.GAILS = window.GAILS || {};
     var form = document.getElementById('addSiteVisitForm');
     if (form) form.reset();
 
-    // The Coffee Partner field doubles as the assignment control: type "@" to
-    // hand the visit to a colleague. Enhanced on first open (the modal markup
+    // The Coffee Partner field doubles as the assignment control: start typing
+    // to pick a colleague. Enhanced on first open (the modal markup
     // is static, so once is enough) and re-rendered after every reset, because
     // form.reset() clears the input without telling its display face.
     var partnerInput = document.getElementById('addVisitPartner');
-    if (partnerInput && window.GAILS.MentionField) {
-      window.GAILS.MentionField.enhance(partnerInput);
-      window.GAILS.MentionField.refresh(partnerInput);
+    if (partnerInput) {
+      var currentPerson = window.GAILS.currentPerson;
+      partnerInput.value = currentPerson && currentPerson.name ? currentPerson.name : '';
+      if (window.GAILS.MentionField) {
+        window.GAILS.MentionField.enhance(partnerInput);
+        window.GAILS.MentionField.refresh(partnerInput);
+      }
     }
 
     // Pre-select the bakery when launched from an unvisited-site card
@@ -1533,6 +1607,17 @@ window.GAILS = window.GAILS || {};
 
   // Standalone add/edit follow-up modal (opened from the Follow-ups view).
   // Pass an existing task to edit it; otherwise a new task is created.
+  function followUpResponsiblePeople(task) {
+    if (!task) return window.GAILS.currentPerson ? [window.GAILS.currentPerson] : [];
+    var sourceVisit = task.sourceVisitId && window.GAILS._allVisitsObj
+      ? window.GAILS._allVisitsObj[task.sourceVisitId]
+      : null;
+    if (window.GAILS.Attribution) return window.GAILS.Attribution.forTask(task, sourceVisit);
+    return window.GAILS.Mentions
+      ? window.GAILS.Mentions.toAssigneeList(task.assignedTo)
+      : [];
+  }
+
   window.GAILS.openFollowUpModal = function (presetBakery, editTask) {
     if (!canLogVisits()) return;
     var modal = document.getElementById('addFollowUpModal');
@@ -1567,6 +1652,18 @@ window.GAILS = window.GAILS || {};
     document.getElementById('followUpDueDate').value = editTask && editTask.dueDate ? editTask.dueDate : '';
     document.getElementById('followUpDetail').value = editTask ? (editTask.detail || '') : '';
     document.getElementById('followUpPriority').value = normalizePriority(editTask && editTask.priority);
+    var assigneeInput = document.getElementById('followUpAssignees');
+    if (assigneeInput) {
+      var responsible = followUpResponsiblePeople(editTask);
+      assigneeInput.value = window.GAILS.Mentions
+        ? window.GAILS.Mentions.formatPeople(responsible)
+        : responsible.map(function (person) { return person.name || person.email || ''; })
+          .filter(Boolean).join(' & ');
+      if (window.GAILS.MentionField) {
+        window.GAILS.MentionField.enhance(assigneeInput);
+        window.GAILS.MentionField.refresh(assigneeInput);
+      }
+    }
 
     if (window.GAILS.syncCustomSelect) {
       window.GAILS.syncCustomSelect('followUpBakery');
@@ -1870,6 +1967,7 @@ window.GAILS = window.GAILS || {};
     var groupEl = document.getElementById('visitLogGroup');
     var sortEl = document.getElementById('visitLogSort');
     var periodEl = document.getElementById('visitLogPeriod');
+    var followUpAssigneeEl = document.getElementById('followUpAssignee');
     var followUpGroupEl = document.getElementById('followUpGroup');
     var followUpSortEl = document.getElementById('followUpSort');
 
@@ -1908,6 +2006,10 @@ window.GAILS = window.GAILS || {};
       if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
       if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
       if (opsVal) pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
+      if (followUpAssigneeEl && followUpAssigneeEl.value) {
+        pills.push('<span class="header-pill-filter">Assigned to ' +
+          escapeHtml(exportFilterLabel('followUpAssignee', 'All')) + '</span>');
+      }
       if (followUpGroupEl && followUpGroupEl.value !== 'bakery') {
         pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('followUpGroup', 'Bakery')) + '</span>');
       }
@@ -2058,6 +2160,7 @@ window.GAILS = window.GAILS || {};
     populateDropdown('visitLogRegion', new Set(getVisitLogRegions()), 'All Regions');
     populateDropdown('visitLogOps', new Set(getVisitLogOps(regionVal)), 'All Areas');
     populateDirectoryBakeryOptions();
+    populateFollowUpAssigneeOptions();
     if (window.GAILS.syncCustomSelect) {
       window.GAILS.syncCustomSelect('visitLogRegion');
       window.GAILS.syncCustomSelect('visitLogOps');
@@ -2093,6 +2196,7 @@ window.GAILS = window.GAILS || {};
     var periodEl = document.getElementById('visitLogPeriod');
     var directorySortEl = document.getElementById('visitLogDirectorySort');
     var directoryGroupEl = document.getElementById('visitLogDirectoryGroup');
+    var followUpAssigneeEl = document.getElementById('followUpAssignee');
     var followUpGroupEl = document.getElementById('followUpGroup');
     var followUpSortEl = document.getElementById('followUpSort');
     var activeView = window.GAILS._activeVisitLogView || 'bakeries';
@@ -2109,6 +2213,7 @@ window.GAILS = window.GAILS || {};
     if (isBakeryList && bakeryEl && bakeryEl.value) count++;
     if (isBakeryList && directorySortEl && directorySortEl.value !== 'nameAsc') count++;
     if (isBakeryList && directoryGroupEl && directoryGroupEl.value !== 'none') count++;
+    if (isFollowUps && followUpAssigneeEl && followUpAssigneeEl.value) count++;
     if (isFollowUps && followUpGroupEl && followUpGroupEl.value !== 'bakery') count++;
     if (isFollowUps && followUpSortEl && followUpSortEl.value !== 'dueAsc') count++;
     if (isHistoryView && typeEl && typeEl.value) count++;
@@ -2235,6 +2340,9 @@ window.GAILS = window.GAILS || {};
     setSelectValueIfPresent(document.getElementById('visitLogGroup'), saved.group);
     setSelectValueIfPresent(document.getElementById('visitLogSort'), saved.sort);
     setSelectValueIfPresent(document.getElementById('visitLogPeriod'), saved.period);
+    window.GAILS._pendingFollowUpAssigneeFilter =
+      typeof saved.followUpAssignee === 'string' ? saved.followUpAssignee : '';
+    setSelectValueIfPresent(document.getElementById('followUpAssignee'), saved.followUpAssignee);
     setSelectValueIfPresent(document.getElementById('followUpGroup'), saved.followUpGroup);
     setSelectValueIfPresent(document.getElementById('followUpSort'), saved.followUpSort);
     syncCqvRatingVisibility();
@@ -2606,6 +2714,7 @@ window.GAILS = window.GAILS || {};
       var bakeryEl = document.getElementById('visitLogBakery');
       var directorySortEl = document.getElementById('visitLogDirectorySort');
       var directoryGroupEl = document.getElementById('visitLogDirectoryGroup');
+      var followUpAssigneeEl = document.getElementById('followUpAssignee');
       var periodEl = document.getElementById('visitLogPeriod');
       var resetBtn = document.getElementById('visitLogResetBtn');
       var mobileFilterBtn = document.getElementById('visitLogMobileFilterBtn');
@@ -2671,6 +2780,11 @@ window.GAILS = window.GAILS || {};
       if (bakeryEl) bakeryEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       if (directorySortEl) directorySortEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       if (directoryGroupEl) directoryGroupEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (followUpAssigneeEl) followUpAssigneeEl.addEventListener('change', function () {
+        window.GAILS._pendingFollowUpAssigneeFilter = '';
+        syncVisitLogMobileFilterButton();
+        window.GAILS.renderVisitLog();
+      });
       if (periodEl) periodEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var typeEl = document.getElementById('visitLogType');
       var ratingEl = document.getElementById('visitLogRating');
@@ -2848,9 +2962,9 @@ window.GAILS = window.GAILS || {};
           if (errorEl) errorEl.style.display = 'none';
 
           var partnerField = document.getElementById('addVisitPartner');
-          // Resolved at submit rather than at pick time, so deleting a mention
-          // afterwards really does un-assign. A field naming two people
-          // ("@Jamie @Tristen") assigns the visit to both.
+          // Resolved at submit rather than at pick time, so deleting a selected
+          // name afterwards really does un-assign. Commas, "+" and "&" separate
+          // multiple people.
           var assignees = window.GAILS.MentionField
             ? window.GAILS.MentionField.assigneesFor(partnerField)
             : [];
@@ -2859,7 +2973,9 @@ window.GAILS = window.GAILS || {};
             visitKind: document.getElementById('addVisitType').value || 'checkin',
             date: document.getElementById('addVisitDate').value,
             time: document.getElementById('addVisitTime').value,
-            coffeePartner: (partnerField.value || '').trim(),
+            coffeePartner: assignees.length && window.GAILS.Mentions
+              ? window.GAILS.Mentions.formatPeople(assignees)
+              : (partnerField.value || '').trim(),
             mod: document.getElementById('addVisitMod').value || '',
             comments: document.getElementById('addVisitComments').value || '',
             // Absent rather than empty when nobody was mentioned, which is what
@@ -2984,12 +3100,26 @@ window.GAILS = window.GAILS || {};
           if (errorEl) errorEl.style.display = 'none';
 
           var editId = document.getElementById('followUpEditId').value;
+          var assigneeField = document.getElementById('followUpAssignees');
+          var followUpAssignees = window.GAILS.MentionField
+            ? window.GAILS.MentionField.assigneesFor(assigneeField)
+            : [];
+          var existingTask = editId && window.GAILS._followUpActionsObj
+            ? window.GAILS._followUpActionsObj[editId]
+            : null;
+          var existingResponsible = followUpResponsiblePeople(existingTask);
+          if (!followUpAssignees.length && assigneeField && assigneeField.value.trim() &&
+              window.GAILS.Mentions &&
+              assigneeField.value.trim() === window.GAILS.Mentions.formatPeople(existingResponsible)) {
+            followUpAssignees = existingResponsible;
+          }
           var payload = {
             bakery: document.getElementById('followUpBakery').value,
             title: document.getElementById('followUpTitle').value.trim(),
             dueDate: document.getElementById('followUpDueDate').value || null,
             priority: normalizePriority(document.getElementById('followUpPriority').value),
-            detail: document.getElementById('followUpDetail').value.trim()
+            detail: document.getElementById('followUpDetail').value.trim(),
+            assignedTo: followUpAssignees.length ? followUpAssignees : null
           };
 
           try {
@@ -3049,6 +3179,8 @@ window.GAILS = window.GAILS || {};
           if (bakeryEl) bakeryEl.value = '';
           if (directorySortEl) directorySortEl.value = 'nameAsc';
           if (directoryGroupEl) directoryGroupEl.value = 'none';
+          if (followUpAssigneeEl) followUpAssigneeEl.value = '';
+          window.GAILS._pendingFollowUpAssigneeFilter = '';
           if (followUpGroupEl) followUpGroupEl.value = 'bakery';
           if (followUpSortEl) followUpSortEl.value = 'dueAsc';
           window.GAILS._followUpStatusFilter = 'open';
@@ -3063,6 +3195,7 @@ window.GAILS = window.GAILS || {};
             window.GAILS.syncCustomSelect('visitLogBakery');
             window.GAILS.syncCustomSelect('visitLogDirectorySort');
             window.GAILS.syncCustomSelect('visitLogDirectoryGroup');
+            window.GAILS.syncCustomSelect('followUpAssignee');
             window.GAILS.syncCustomSelect('visitLogType');
             window.GAILS.syncCustomSelect('visitLogRating');
             window.GAILS.syncCustomSelect('visitLogGroup');
@@ -3089,6 +3222,10 @@ window.GAILS = window.GAILS || {};
       syncVisitLogMobileFilterButton();
     }
 
+    // Follow-up records arrive over their own live Firebase listener, so keep
+    // this data-led dropdown in sync after the static filters are initialized.
+    populateFollowUpAssigneeOptions();
+
     var view = window.GAILS._activeVisitLogView || 'bakeries';
 
     // Lets CSS keep view-specific supporting UI in step with the selected
@@ -3113,6 +3250,7 @@ window.GAILS = window.GAILS || {};
     var sortVal = document.getElementById('visitLogSort') ? document.getElementById('visitLogSort').value : 'date';
     var followUpGroupVal = document.getElementById('followUpGroup') ? document.getElementById('followUpGroup').value : 'bakery';
     var followUpSortVal = document.getElementById('followUpSort') ? document.getElementById('followUpSort').value : 'dueAsc';
+    var followUpAssigneeVal = document.getElementById('followUpAssignee') ? document.getElementById('followUpAssignee').value : '';
     var periodVal = document.getElementById('visitLogPeriod')
       ? document.getElementById('visitLogPeriod').value
       : getVisitLogDefaultPeriod(view);
@@ -3136,6 +3274,7 @@ window.GAILS = window.GAILS || {};
       period: periodVal,
       followUpGroup: followUpGroupVal,
       followUpSort: followUpSortVal,
+      followUpAssignee: followUpAssigneeVal,
       followUpStatus: followUpStatus,
       view: view
     });
@@ -3281,7 +3420,7 @@ window.GAILS = window.GAILS || {};
           { label: 'Ops Area', type: 'text', width: 18 },
           { label: 'Visit Type', type: 'text', width: 20 },
           { label: 'Coffee Partner / Auditor', type: 'text', width: 24 },
-          { label: 'Attributed To', type: 'text', width: 24 },
+          { label: 'Assigned To', type: 'text', width: 24 },
           // Scores land as a real percentage across every visit type so the
           // column sorts; routine visits keep their raw points alongside.
           { label: 'Score %', type: 'percent', width: 9 },
@@ -3590,17 +3729,20 @@ window.GAILS = window.GAILS || {};
       var followStatus = window.GAILS._followUpStatusFilter || 'open';
       var allTasks = getFollowUpList();
 
-      // Scope by search / region / ops (but NOT the status sub-filter), so the
-      // summary's open/overdue counts stay stable as you switch Open/Done/etc.
+      // Scope by search / region / ops / assignee (but NOT the status
+      // sub-filter), so the summary's open/overdue counts stay stable as you
+      // switch Open/Done/etc.
       function taskInScope(t) {
         if (!t.bakery) return false;
         var label = (G.getBakeryMapLabel ? G.getBakeryMapLabel(t.bakery) : t.bakery) || t.bakery;
         if (searchVal) {
-          var hay = (label + ' ' + (t.title || '') + ' ' + (t.detail || '')).toLowerCase();
+          var hay = (label + ' ' + (t.title || '') + ' ' + (t.detail || '') + ' ' +
+            followUpAttributionLabel(t)).toLowerCase();
           if (hay.indexOf(searchVal) === -1) return false;
         }
         if (regionVal && (G.getBakeryRegion ? G.getBakeryRegion(t.bakery) : 'Unknown') !== regionVal) return false;
         if (opsVal && (G.getBakeryOps ? G.getBakeryOps(t.bakery) : 'Unknown') !== opsVal) return false;
+        if (!followUpTaskMatchesAssignee(t, followUpAssigneeVal)) return false;
         return true;
       }
       var scopeTasks = allTasks.filter(taskInScope);
@@ -3633,6 +3775,7 @@ window.GAILS = window.GAILS || {};
         filename: buildExportFilename('Follow-Up Actions'),
         meta: baseExportMeta().concat([
           ['Status filter', FOLLOW_UP_STATUS_LABELS[followStatus] || 'All'],
+          ['Assigned to', exportFilterLabel('followUpAssignee', 'All')],
           ['Grouped by', exportFilterLabel('followUpGroup', 'Bakery')],
           ['Sorted by', exportFilterLabel('followUpSort', 'Due Date (Soonest)')],
           ['Tasks exported', filteredTasks.length],
@@ -3650,7 +3793,8 @@ window.GAILS = window.GAILS || {};
           { label: 'Days Overdue', type: 'number', width: 13 },
           { label: 'Status', type: 'text', width: 10 },
           { label: 'Added', type: 'date', width: 12 },
-          { label: 'Completed', type: 'date', width: 13 }
+          { label: 'Completed', type: 'date', width: 13 },
+          { label: 'Assigned To', type: 'text', width: 24 }
         ],
         // Bakery groups are ordered on screen; the export follows the same
         // sequence so the two can be read side by side.
@@ -3669,7 +3813,8 @@ window.GAILS = window.GAILS || {};
             followUpIsOverdue(t) ? Math.abs(due.days) : '',
             followUpIsDone(t) ? 'Done' : (followUpIsOverdue(t) ? 'Overdue' : 'Open'),
             t.createdAt ? t.createdAt.slice(0, 10) : '',
-            t.completedAt ? t.completedAt.slice(0, 10) : ''
+            t.completedAt ? t.completedAt.slice(0, 10) : '',
+            followUpAttributionLabel(t)
           ];
         })
       };
@@ -3700,6 +3845,9 @@ window.GAILS = window.GAILS || {};
             : (t.dueDate ? '<span class="follow-up-pill follow-up-pill--' + m.state + '">' + escapeHtml(m.label) + '</span>' : '');
 
           var metaBits = [];
+          var attributionLabel = followUpAttributionLabel(t);
+          var assigneeHtml = '<div class="follow-up-item__assignee"><strong>Assigned to:</strong> ' +
+            escapeHtml(attributionLabel || 'Unassigned') + '</div>';
           if (t.createdAt) metaBits.push('Added ' + formatVisitDate(t.createdAt.slice(0, 10)).split(', ').slice(1).join(', '));
           if (done && t.completedAt) metaBits.push('Completed ' + formatVisitDate(t.completedAt.slice(0, 10)).split(', ').slice(1).join(', '));
 
@@ -3711,6 +3859,7 @@ window.GAILS = window.GAILS || {};
             followUpTaskBakeryHtml(t, followUpGroupVal) +
             '<div class="follow-up-item__title">' + escapeHtml(t.title || 'Untitled task') + '</div>' +
             followUpTaskContextHtml(t, followUpGroupVal) +
+            assigneeHtml +
             (t.detail ? '<div class="follow-up-item__detail">' + escapeHtml(t.detail) + '</div>' : '') +
             (metaBits.length ? '<div class="follow-up-item__meta">' + escapeHtml(metaBits.join(' · ')) + '</div>' : '') +
             '</div>' +

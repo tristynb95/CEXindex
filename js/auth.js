@@ -158,7 +158,14 @@ window.GAILS_Firebase = {
     }
     var who = auth.currentUser.email || auth.currentUser.uid;
     var whoUid = auth.currentUser.uid;
-    var whoName = auth.currentUser.displayName || '';
+    var whoName = window.GAILS.currentPerson && window.GAILS.currentPerson.name
+      ? window.GAILS.currentPerson.name
+      : (auth.currentUser.displayName || '');
+    var defaultAssignee = whoName ? [{
+      uid: whoUid,
+      name: whoName,
+      email: auth.currentUser.email || ''
+    }] : null;
     var nowIsoStr = nowIso();
     var newRef = push(ref(db, 'followUpActions'));
     var payload = Object.assign({
@@ -171,10 +178,10 @@ window.GAILS_Firebase = {
       priority: 'none',
       status: 'open',
       sourceVisitId: null,
-      // Who the action belongs to. Raised during a check-in it inherits that
-      // visit's assignees; raised standalone it stays null and falls back to
-      // the person who created it (see js/attribution.js).
-      assignedTo: null,
+      // Every new action starts with its creator as the responsible person.
+      // Callers can replace this list (for example, a follow-up raised during
+      // an attributed visit) or explicitly clear it with null.
+      assignedTo: defaultAssignee,
       completedAt: null,
       completedBy: null
     }, task, {
@@ -701,6 +708,21 @@ onAuthStateChanged(auth, async (user) => {
         }
         updateProfileMenu(user, userProfile);
         showInvitationNotice(user, userProfile, roleId, customRoleDef);
+        var currentPersonName = [
+          userProfile && userProfile.firstName,
+          userProfile && userProfile.lastName
+        ].filter(Boolean).join(' ').trim() || user.displayName || '';
+        if (!currentPersonName && window.GAILS && window.GAILS.Mentions) {
+          currentPersonName = window.GAILS.Mentions.nameFromEmail(user.email);
+        }
+        window.GAILS.currentPerson = {
+          uid: user.uid,
+          name: currentPersonName,
+          email: user.email || (userProfile && userProfile.email) || ''
+        };
+        if (currentPersonName && window.GAILS.Mentions) {
+          window.GAILS.Mentions.addPeople([window.GAILS.currentPerson]);
+        }
         const action = _freshLogin ? 'login' : 'session_resume';
         _freshLogin = false;
         if (shouldLogActivity(user.uid, action)) {
@@ -758,6 +780,7 @@ onAuthStateChanged(auth, async (user) => {
     stopReportVisibilitySync();
     stopUserDirectorySync();
     window.GAILS.userOpsArea = '';
+    window.GAILS.currentPerson = null;
     applyMyActivityAccess(null);
     applyMyTeamAccess(null);
     applySiteMeta(null);

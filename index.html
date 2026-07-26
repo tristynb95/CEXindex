@@ -1499,6 +1499,12 @@
                         <option value="">All Areas</option>
                       </select>
                     </div>
+                    <div class="visit-log-filter-control" id="followUpAssigneeControl" style="display:none;">
+                      <label for="followUpAssignee">Assigned To</label>
+                      <select id="followUpAssignee" class="visit-log-select" data-searchable="true">
+                        <option value="">All</option>
+                      </select>
+                    </div>
                     <div class="visit-log-filter-control" id="visitLogBakeryControl" style="display:none;">
                       <label for="visitLogBakery">Bakery</label>
                       <select id="visitLogBakery" class="visit-log-select" data-searchable="true">
@@ -1811,9 +1817,9 @@
               <div class="form-field-row">
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitPartner">Coffee Partner</label>
-                  <input type="text" id="addVisitPartner" placeholder="Defaults to you" class="visit-log-input"
+                  <input type="text" id="addVisitPartner" placeholder="Start typing a name" class="visit-log-input"
                     autocomplete="off" data-mention-field>
-                  <small class="mention-field-hint">Type <strong>@</strong> to credit another Coffee Partner instead.</small>
+                  <small class="mention-field-hint">Choose a name, then press <strong>Space</strong> to add another. <strong>Backspace</strong> removes the last person.</small>
                 </div>
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitMod">Barista</label>
@@ -1886,6 +1892,13 @@
             <div class="filter-control form-field">
               <label class="form-field__label" for="followUpTitle">Action</label>
               <input type="text" id="followUpTitle" required placeholder="What needs doing?" class="visit-log-input">
+            </div>
+            <div class="filter-control form-field">
+              <label class="form-field__label" for="followUpAssignees">Assigned to</label>
+              <input type="text" id="followUpAssignees" placeholder="Start typing a name"
+                class="visit-log-input" autocomplete="off" data-mention-field>
+              <small class="mention-field-hint">You're selected automatically. Press <strong>Space</strong> to add another person;
+                <strong>Backspace</strong> removes the last.</small>
             </div>
             <div class="form-field-row">
               <div class="filter-control form-field">

@@ -11947,6 +11947,14 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 }
 
+/* Follow-up Tasks adds an assignee alongside Search, Region, and Ops Area.
+   Keep the compact Reset button on that same row on wide screens. */
+@media (min-width: 901px) {
+  #tab-visit-log[data-visit-view="followups"] .visit-log-filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  }
+}
+
 /* No single-row variant here, deliberately. Packing all seven controls plus
    Reset onto one row saves ~65px, but .container caps the workspace at
    1440px, so that row is stuck at roughly 1030px however wide the monitor
@@ -13674,6 +13682,18 @@ body.visit-log-filter-open .mobile-bottom-nav {
 
 .follow-up-item__context-item strong {
   font-weight: 500;
+}
+
+.follow-up-item__assignee {
+  margin-top: 7px;
+  color: var(--text-2);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.follow-up-item__assignee strong {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .follow-up-item__detail {

@@ -40,34 +40,46 @@ Shared code lives in one place per concern; prefer extending these over re-copyi
 - `js/cqv-criticals.js` — `GAILS.CQVCriticals`, the canonical zero-tolerance question list.
 - `js/cqv-shared.js` — `GAILS.CQVShared`, CQV band derivation and presentation.
 - `js/profile-menu.js` — the header profile popover (ES module).
-- `js/mentions.js` — `GAILS.Mentions`, parsing and rendering `@mention` text.
+- `js/mentions.js` — `GAILS.Mentions`, people-directory matching and legacy `@mention` support.
 - `js/mention-field.js` — `GAILS.MentionField`, the two-face editor for it.
 - `js/attribution.js` — `GAILS.Attribution`, who a visit or follow-up belongs to.
 - `js/team.js` — `GAILS.Team`, the reporting hierarchy: who reports to whom.
 - `js/permissions.js` — roles, the see/edit access grid, and team scope (ES module).
 
-## Assigning a visit with @mentions
+## Assigning a visit
 
-A visit's **Coffee Partner** field doubles as its assignment control: type `@`,
-pick a colleague, and the visit becomes theirs as well as yours. Mention more
-than one person (`@Jamie + @Tristen`) and the visit — and any follow-up raised
-during it — belongs to all of them. Whatever you type between the names is kept
-as ordinary text; only the names are styled.
+A visit's **Coffee Partner** field doubles as its assignment control. Start
+typing to search the people directory, then pick a colleague. New check-ins
+start with the signed-in person's name already selected; it can be removed like
+any other selection. Press **Space** to start the next person; **Backspace**
+removes the last selected person as a whole. The visit and any follow-up raised
+during it belong to everyone selected.
 
-The `@` is a typing affordance, not something anyone should have to read. It is
-stored (`coffeePartner: "@Sam Partner"`) but never rendered: every read-only
-surface shows the bare name in blue with an underline, and the `@` only
-reappears while the field is being edited. `js/mention-field.js` does that by
-swapping between two elements — a display face and the real `<input>` — because
-an `<input>` cannot style part of its own value. The input stays the single
-source of truth; the display face is only ever rendered from `input.value`.
+People lists are normalized for reading: two people appear as `Jamie & Tristen`;
+three or more appear as `Jamie, Tristen & Ada`. Older comma, `+`, `&`, and
+`@Name` values remain compatible.
 
-The stored text is the human-editable form, so parsing it back out is a
-presentation concern and can be ambiguous. The authoritative record is the
-separate `assignedTo` **list** on the visit (`[{ uid, name, email }]`), resolved
-at save time — which is why deleting the mention really does un-assign the visit,
-and why a name typed *without* an `@` stays an ordinary label. Every visit
-logged before this existed is therefore unassigned, not mis-assigned.
+The admin **Visits** editor uses the same control. It hydrates selected people
+from the visit's authoritative `assignedTo` list, then supports the same search,
+Space-to-add, and Backspace-to-remove behavior.
+
+Older stored `@Name` values remain supported and render without the `@`. New
+selections are stored as plain names. `js/mention-field.js` swaps between a
+styled display face and the real `<input>` because an `<input>` cannot style
+only the selected names.
+
+The authoritative record is the separate `assignedTo` **list** on the visit
+(`[{ uid, name, email }]`), resolved from exact directory matches at save time.
+Deleting a selected name therefore un-assigns that person. Read-time legacy
+parsing still requires `@`, so old visits containing an ordinary Coffee Partner
+name are not retroactively reassigned.
+
+Standalone follow-up tasks use the same picker. A new task starts with the
+signed-in user selected, but that person can be removed or replaced before the
+task is saved. Editing a follow-up hydrates its existing `assignedTo` list, and
+task cards and exports show the resulting assignment. The Follow-up Tasks view
+also builds its **Assigned To** filter from the people who own at least one
+accessible follow-up.
 
 ### Who can be mentioned
 
@@ -206,7 +218,7 @@ shared people directory, strongest signal first:
 
 | | Visit is credited to |
 | --- | --- |
-| 1 | an explicit `@mention` assignment (`assignedTo`) |
+| 1 | an explicit picker selection (`assignedTo`) |
 | 2 | the auditor printed on an imported CQV / NBO report |
 | 3 | the Coffee Partner named on a routine visit |
 | 4 | the Google Form respondent's email |
@@ -227,15 +239,15 @@ Two caveats worth knowing:
 
 - On a **check-in**, Coffee Partner is free text about who was on the bar, so it
   is deliberately *not* an attribution signal — that visit stays with whoever
-  logged it unless someone `@mentions` a colleague.
+  logged it unless someone selects a colleague in the Coffee Partner picker.
 - Only tier 1 is announced as "assigned". Telling someone a routine visit was
   "assigned to you" when the form merely carried their name would be a lie, so
   derived credit simply makes the record appear in their hub.
 
 The underlying authorship fields:
 
-- **Assigned visits** (`routineVisits/{id}.assignedTo`) — a visit handed over by
-  @mention belongs to the assignee(s) *and* the person who logged it. Both see
+- **Assigned visits** (`routineVisits/{id}.assignedTo`) — a visit handed over
+  through the people picker belongs to the assignee(s) *and* the person who logged it. Both see
   it, each labelled with which side of the handover they are on. Assignment
   shares a visit; it never moves it.
 - **Visits** (`routineVisits/{id}`) — `meta.createdBy` / `meta.createdByUid` are

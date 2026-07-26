@@ -460,13 +460,13 @@ function visitPersonLabel(visit) {
 function mentionText(value) {
   var text = String(value == null ? '' : value);
   if (!text) return '';
-  return G.Mentions ? G.Mentions.toText(text) : text;
+  return G.Mentions ? G.Mentions.formatSelectionText(text) : text;
 }
 
 function mentionHtml(value) {
   var text = String(value == null ? '' : value);
   if (!text) return '';
-  return G.Mentions ? G.Mentions.toHtml(text) : escapeHtml(text);
+  return G.Mentions ? G.Mentions.formatSelectionHtml(text) : escapeHtml(text);
 }
 
 function visitTimestamp(visit) {
@@ -1095,7 +1095,7 @@ function buildActionsExportData(tasks, filters) {
       { label: 'Status', type: 'text', width: 10 },
       { label: 'Added', type: 'date', width: 12 },
       { label: 'Completed', type: 'date', width: 13 },
-      { label: 'Attributed To', type: 'text', width: 24 }
+      { label: 'Assigned To', type: 'text', width: 24 }
     ],
     rows: tasks.map(function (task) {
       var due = dueMeta(task.dueDate);
@@ -1144,7 +1144,7 @@ function buildExportData(visits, filters) {
       { label: 'Ops Area', type: 'text', width: 18 },
       { label: 'Visit Type', type: 'text', width: 20 },
       { label: 'Coffee Partner / Auditor', type: 'text', width: 24 },
-      { label: 'Attributed To', type: 'text', width: 24 },
+      { label: 'Assigned To', type: 'text', width: 24 },
       { label: 'Score %', type: 'percent', width: 10 },
       { label: 'Points', type: 'number', width: 8 },
       { label: 'Points Available', type: 'number', width: 15 },

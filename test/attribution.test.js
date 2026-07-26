@@ -327,7 +327,7 @@ test('a shared visit is labelled for both people without losing either', () => {
   assert.equal(G.Attribution.namesText(two), 'Jamie Smith, Tristen Bayley');
   // A crowd is summarised on screen but never truncated in an export.
   const three = two.concat([{ uid: 'uid-ada', name: 'Ada Auditor', email: '' }]);
-  assert.equal(G.Attribution.label(three), 'Jamie Smith +2');
+  assert.equal(G.Attribution.label(three), 'Jamie Smith, Tristen Bayley & Ada Auditor');
   assert.equal(G.Attribution.namesText(three), 'Jamie Smith, Tristen Bayley, Ada Auditor');
 });
 
@@ -350,14 +350,23 @@ test('the PDF import stamps the auditor and records the importer separately', ()
 
 test('follow-ups raised during a check-in inherit that visit\'s assignees', () => {
   assert.match(visitReport, /sourceVisitId: newVisitId \|\| null,[\s\S]{0,220}assignedTo: assignees\.length \? assignees : null/);
-  assert.match(authScript, /assignedTo: null,\s*\n\s*completedAt: null/);
+  assert.match(authScript, /assignedTo: defaultAssignee,\s*\n\s*completedAt: null/);
   assert.match(authScript, /createdByUid: whoUid/);
   assert.match(authScript, /completedByUid: done \? whoUid : null/);
 });
 
-test('a check-in saves every mentioned assignee', () => {
+test('standalone follow-ups default attribution to their creator and can be reassigned', () => {
+  assert.match(authScript, /var defaultAssignee = whoName \? \[\{/);
+  assert.match(authScript, /uid: whoUid,\s*\n\s*name: whoName,\s*\n\s*email: auth\.currentUser\.email/);
+  assert.match(visitReport, /return window\.GAILS\.currentPerson \? \[window\.GAILS\.currentPerson\] : \[\]/);
+  assert.match(visitReport, /MentionField\.assigneesFor\(assigneeField\)/);
+  assert.match(visitReport, /assignedTo: followUpAssignees\.length \? followUpAssignees : null/);
+  assert.match(visitReport, /class="follow-up-item__assignee"><strong>Assigned to:<\/strong>/);
+  assert.match(visitReport, /\{ label: 'Assigned To', type: 'text', width: 24 \}/);
+});
+
+test('a check-in saves every selected assignee', () => {
   assert.match(visitReport, /assigneesFor\(partnerField\)/);
   assert.match(visitReport, /assignedTo: assignees\.length \? assignees : null/);
-  // Trailing whitespace from the picker never reaches the stored value.
-  assert.match(visitReport, /coffeePartner: \(partnerField\.value \|\| ''\)\.trim\(\)/);
+  assert.match(visitReport, /Mentions\.formatPeople\(assignees\)/);
 });

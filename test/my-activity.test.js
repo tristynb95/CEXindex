@@ -446,7 +446,7 @@ test('open actions export the filtered list, not the whole hub', () => {
   const start = script.indexOf('function buildActionsExportData(');
   const builder = script.slice(start, script.indexOf('\n}', start));
   ['Bakery', 'Region', 'Ops Area', 'Action', 'Detail', 'Priority', 'Due Date',
-    'Days Overdue', 'Status', 'Added', 'Completed', 'Attributed To'].forEach((label) => {
+    'Days Overdue', 'Status', 'Added', 'Completed', 'Assigned To'].forEach((label) => {
     assert.ok(builder.includes("label: '" + label + "'"), 'export is missing the ' + label + ' column');
   });
   assert.match(builder, /sheetName: 'My Actions'/);

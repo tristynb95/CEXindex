@@ -220,13 +220,14 @@ window.GAILS = window.GAILS || {};
     });
   }
 
-  // "Jamie Smith", "Jamie Smith & Tristen Bayley", "Jamie Smith +2".
+  // "Jamie Smith", "Jamie Smith & Tristen Bayley",
+  // "Jamie Smith, Tristen Bayley & Ada Auditor".
   function label(list) {
     var names = (list || []).map(function (entry) { return entry.name || entry.email; }).filter(Boolean);
     if (!names.length) return '';
     if (names.length === 1) return names[0];
     if (names.length === 2) return names[0] + ' & ' + names[1];
-    return names[0] + ' +' + (names.length - 1);
+    return names.slice(0, -1).join(', ') + ' & ' + names[names.length - 1];
   }
 
   // Every name, for an exported cell where truncation would lose information.

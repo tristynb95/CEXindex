@@ -271,6 +271,30 @@ test('a Coffee Partner can name more than one person', () => {
   assert.match(html, /<\/span> \+ <span/);
 });
 
+test('plain selected names resolve only when they exactly match the directory', () => {
+  const mentions = load(TEAM);
+
+  for (const raw of [
+    'Sam Partner, Jo Bloggs',
+    'Sam Partner + Jo Bloggs',
+    'Sam Partner & Jo Bloggs'
+  ]) {
+    assert.deepEqual(
+      plain(mentions.resolveSelections(raw).map((person) => person.name)),
+      ['Sam Partner', 'Jo Bloggs'],
+      raw
+    );
+  }
+
+  assert.deepEqual(plain(mentions.resolveSelections('Sam')), []);
+  assert.deepEqual(plain(mentions.resolveSelections('Someone Else')), []);
+  assert.deepEqual(
+    plain(mentions.resolveSelections('@Sam Partner + Jo Bloggs').map((person) => person.name)),
+    ['Sam Partner', 'Jo Bloggs']
+  );
+  assert.deepEqual(plain(mentions.resolveAssignees('Sam Partner')), []);
+});
+
 test('the picker tracks the @ the caret is sitting in', () => {
   const mentions = load(TEAM);
 
@@ -289,6 +313,53 @@ test('choosing a name replaces just the query and reports the caret', () => {
   const applied = mentions.applyMention('Covered by @Sa', range, 'Sam Partner');
   assert.equal(applied.value, 'Covered by @Sam Partner');
   assert.equal(applied.caret, applied.value.length);
+});
+
+test('the simplified picker searches from typing and after each separator', () => {
+  const mentions = load(TEAM);
+
+  assert.deepEqual(
+    plain(mentions.activeSelectionAt('Sa', 2)),
+    { start: 0, end: 2, query: 'Sa' }
+  );
+  assert.deepEqual(
+    plain(mentions.activeSelectionAt('Sam Partner, Jo', 15)),
+    { start: 13, end: 15, query: 'Jo' }
+  );
+  assert.deepEqual(
+    plain(mentions.activeSelectionAt('Sam Partner + Jo', 16)),
+    { start: 14, end: 16, query: 'Jo' }
+  );
+  assert.deepEqual(
+    plain(mentions.activeSelectionAt('Sam Partner & Jo', 16)),
+    { start: 14, end: 16, query: 'Jo' }
+  );
+  assert.equal(mentions.activeSelectionAt('Sam Partner, ', 13), null);
+
+  const applied = mentions.applySelection('Sam Partner, Jo', { start: 13, end: 15 }, 'Jo Bloggs');
+  assert.deepEqual(plain(applied), { value: 'Sam Partner, Jo Bloggs', caret: 22 });
+});
+
+test('the editable display highlights plain selected names', () => {
+  const mentions = load(TEAM);
+  const html = mentions.selectionsToHtml('Sam Partner + Jo Bloggs');
+
+  assert.equal((html.match(/class="mention"/g) || []).length, 2);
+  assert.match(html, /Sam Partner<\/span> &amp; <span/);
+  assert.doesNotMatch(html, />@/);
+
+  assert.equal(
+    mentions.formatPeople(TEAM),
+    'Sam Partner, Jo Bloggs & Joanne Fielding'
+  );
+  assert.equal(
+    mentions.formatSelectionText('Sam Partner + Jo Bloggs + Joanne Fielding'),
+    'Sam Partner, Jo Bloggs & Joanne Fielding'
+  );
+  assert.equal(
+    mentions.formatSelectionText('@Sam Partner @Jo Bloggs'),
+    'Sam Partner & Jo Bloggs'
+  );
 });
 
 test('search ranks a prefix match above a mid-name one', () => {
@@ -399,17 +470,64 @@ test('the Coffee Partner field is the assignment control on both editors', () =>
   // Dashboard check-in modal.
   const partnerField = indexHtml.slice(indexHtml.indexOf('id="addVisitPartner"'));
   assert.match(partnerField.slice(0, 300), /data-mention-field/);
-  assert.match(partnerField.slice(0, 300), /Defaults to you/);
-  assert.match(partnerField.slice(0, 400), /Type <strong>@<\/strong> to credit another Coffee Partner instead/);
+  assert.match(partnerField.slice(0, 300), /placeholder="Start typing a name"/);
+  assert.match(partnerField.slice(0, 400), /press <strong>Space<\/strong> to add another/);
+  assert.match(partnerField.slice(0, 400), /<strong>Backspace<\/strong> removes the last person/);
 
   // Admin visit detail form.
   assert.match(adminScript, /field\.key === 'coffeePartner'/);
+  assert.match(adminScript, /press <strong>Space<\/strong> to add another/);
   assert.match(adminScript, /window\.GAILS\.MentionField\.enhanceAll\(visitDetailBody\)/);
 
   [indexHtml, adminHtml].forEach((page) => {
     assert.match(page, /<script src="js\/mentions\.js"><\/script>/);
     assert.match(page, /<script src="js\/mention-field\.js"><\/script>/);
   });
+});
+
+test('the follow-up modal uses the same multi-person attribution field', () => {
+  const field = indexHtml.slice(indexHtml.indexOf('id="followUpAssignees"'));
+  assert.match(field.slice(0, 350), /data-mention-field/);
+  assert.match(field.slice(0, 350), /press <strong>Space<\/strong>/i);
+  assert.match(field.slice(0, 350), /<strong>Backspace<\/strong>/);
+  assert.match(visitReport, /followUpResponsiblePeople\(editTask\)/);
+  assert.match(visitReport, /MentionField\.enhance\(assigneeInput\)/);
+  assert.match(visitReport, /MentionField\.refresh\(assigneeInput\)/);
+});
+
+test('follow-up cards show their assignees and can be filtered by assigned person', () => {
+  assert.match(indexHtml, /id="followUpAssigneeControl"[\s\S]{0,260}<label for="followUpAssignee">Assigned To<\/label>/);
+  assert.match(indexHtml, /id="followUpAssignee"[\s\S]{0,160}<option value="">All<\/option>/);
+  assert.match(visitReport, /getFollowUpList\(\)\.forEach\(function \(task\)[\s\S]{0,240}followUpResponsiblePeople\(task\)/);
+  assert.match(visitReport, /if \(!followUpTaskMatchesAssignee\(t, followUpAssigneeVal\)\) return false/);
+  assert.match(visitReport, /followUpAssignee:\s*followUpAssigneeVal/);
+  assert.match(visitReport, /class="follow-up-item__assignee"><strong>Assigned to:<\/strong>/);
+  assert.match(styles, /\.follow-up-item__assignee\s*\{/);
+});
+
+test('a new check-in prefills the signed-in person as an editable selection', () => {
+  assert.match(authScript, /window\.GAILS\.currentPerson = \{\s*uid: user\.uid,\s*name: currentPersonName,/);
+  assert.match(authScript, /Mentions\.addPeople\(\[window\.GAILS\.currentPerson\]\)/);
+  assert.match(visitReport, /var currentPerson = window\.GAILS\.currentPerson;/);
+  assert.match(visitReport, /partnerInput\.value = currentPerson && currentPerson\.name \? currentPerson\.name : '';/);
+
+  const resetIndex = visitReport.indexOf('if (form) form.reset();');
+  const prefillIndex = visitReport.indexOf('partnerInput.value = currentPerson');
+  const refreshIndex = visitReport.indexOf('window.GAILS.MentionField.refresh(partnerInput);');
+  assert.ok(resetIndex < prefillIndex && prefillIndex < refreshIndex);
+});
+
+test('the Visits edit modal hydrates the same picker from stored attribution', () => {
+  assert.match(adminScript, /function visitForAttributionEdit\(visit\)/);
+  assert.match(adminScript, /M\.toAssigneeList\(visit\.assignedTo\)/);
+  assert.match(adminScript, /editable\.coffeePartner = M\.formatPeople\(assigned\)/);
+  assert.match(adminScript, /buildVisitDetailHtml\(visitForAttributionEdit\(visit\)\)/);
+  assert.match(adminScript, /MentionField\.enhanceAll\(visitDetailBody\)/);
+
+  // Saving an untouched edit cannot clear stable assignees if the directory is
+  // temporarily unavailable; deleting the visible text still clears them.
+  assert.match(adminScript, /storedAssignees\.length[\s\S]{0,180}formatPeople\(storedAssignees\)/);
+  assert.match(adminScript, /editedAssignees = storedAssignees;/);
 });
 
 test('the editor swaps faces rather than restyling one input', () => {
@@ -420,23 +538,22 @@ test('the editor swaps faces rather than restyling one input', () => {
   assert.match(styles, /\.mention-field \.mention-field__input \{\s*display: none;/);
 });
 
-test('the assignment is resolved at save, so deleting the mention un-assigns', () => {
+test('the assignment is resolved at save, so deleting selected names un-assigns', () => {
   assert.match(visitReport, /assignedTo: assignees\.length \? assignees : null/);
   assert.match(adminScript, /var attributionText = isAudited[\s\S]{0,180}collected\.general\.coffeePartner;/);
-  assert.match(adminScript, /resolveEditedAssignees\(attributionText, existing\.type\)/);
+  assert.match(adminScript, /resolveEditedAssignees\(attributionText\)/);
   assert.match(adminScript, /payload\.assignedTo = editedAssignees\.length \? editedAssignees : null/);
-  // The admin editor also honours a name typed without "@", but only when it
-  // resolves to a real colleague — and never on a check-in, where the field
-  // records who was on the bar rather than whose visit it is.
-  assert.match(adminScript, /if \(mentioned\.length \|\| visitType === 'siteVisit'\) return mentioned;/);
-  assert.match(adminScript, /M\.splitPeople\(M\.toText\(partnerText\)\)[\s\S]{0,120}M\.resolvePerson\(part\)/);
+  // Both save paths resolve the new plain-name format against the directory.
+  assert.match(adminScript, /return M\.resolveSelections\(partnerText\);/);
+  assert.match(fieldSource, /resolveSelections\(input\.value\)/);
 });
 
-test('picking a name leaves room to pick another', () => {
-  // A trailing space so a second "@" can follow straight away.
-  assert.match(fieldSource, /applied\.value \+= ' ';/);
+test('Space starts another person and Backspace removes the last selection', () => {
   assert.match(fieldSource, /state\.committedMention = \{/);
-  assert.match(fieldSource, /input\.value\.slice\(committed\.end, caret\)\.indexOf\('@'\) === -1/);
+  assert.match(fieldSource, /activeSelectionAt\(input\.value, caret\)/);
+  assert.match(fieldSource, /applySelection\(input\.value, chosenRange, person\.name\)/);
+  assert.match(fieldSource, /event\.key === ' ' && beginNextSelection\(\)/);
+  assert.match(fieldSource, /event\.key === 'Backspace' && removeLastSelection\(\)/);
 });
 
 test('Enter, Tab and clicking an option commit in place and close the picker', () => {
@@ -449,7 +566,7 @@ test('Enter, Tab and clicking an option commit in place and close the picker', (
   assert.match(keyboard, /choose\(state\.activeIndex\)/);
 
   assert.match(fieldSource, /menu\.addEventListener\('mousedown'[\s\S]{0,240}event\.preventDefault\(\)[\s\S]{0,120}choose\(Number/);
-  assert.match(fieldSource, /input\.value = applied\.value;[\s\S]{0,260}closeMenu\(\);[\s\S]{0,120}input\.focus\(\)/);
+  assert.match(fieldSource, /input\.value = mentions\(\)\.formatPeople\(selected\);[\s\S]{0,360}closeMenu\(\);[\s\S]{0,120}input\.focus\(\)/);
   // The synthetic input event still reaches dirty flags, but does not reopen
   // the picker around the mention that was just selected.
   assert.match(fieldSource, /state\.ignoreNextInput = true;[\s\S]{0,100}dispatchEvent/);
@@ -462,37 +579,42 @@ test('the real picker handlers keep focus and stay closed after each selection m
   input.addEventListener('input', () => { inputEvents += 1; });
   input.focus();
 
-  input.value = '@Sa';
+  input.value = 'Sa';
   input.setSelectionRange(input.value.length, input.value.length);
   input.dispatchEvent(new FakeEvent('input'));
   assert.equal(menu.hidden, false);
 
   const enter = new FakeEvent('keydown', { key: 'Enter' });
   input.dispatchEvent(enter);
-  assert.equal(input.value, '@Sam Partner ');
+  assert.equal(input.value, 'Sam Partner');
   assert.equal(menu.hidden, true);
   assert.equal(inputEvents, 2, 'typing and the committed selection both emit input');
   assert.equal(enter.defaultPrevented, true);
   assert.equal(enter.propagationStopped, true);
 
-  input.value += 'notes';
-  input.setSelectionRange(input.value.length, input.value.length);
-  input.dispatchEvent(new FakeEvent('input'));
-  assert.equal(menu.hidden, true, 'normal typing after a selection must not reopen its menu');
+  const firstSpace = new FakeEvent('keydown', { key: ' ' });
+  input.dispatchEvent(firstSpace);
+  assert.equal(input.value, 'Sam Partner & ');
+  assert.equal(firstSpace.defaultPrevented, true);
+  assert.equal(firstSpace.propagationStopped, true);
 
-  input.value += ' @Jo B';
+  input.value += 'Jo B';
   input.setSelectionRange(input.value.length, input.value.length);
   input.dispatchEvent(new FakeEvent('input'));
   assert.equal(menu.hidden, false);
 
   const tab = new FakeEvent('keydown', { key: 'Tab' });
   input.dispatchEvent(tab);
-  assert.match(input.value, /@Jo Bloggs $/);
+  assert.equal(input.value, 'Sam Partner & Jo Bloggs');
   assert.equal(menu.hidden, true);
   assert.equal(tab.defaultPrevented, true);
   assert.equal(tab.propagationStopped, true);
 
-  input.value += '@Joan';
+  const secondSpace = new FakeEvent('keydown', { key: ' ' });
+  input.dispatchEvent(secondSpace);
+  assert.equal(input.value, 'Sam Partner & Jo Bloggs & ');
+
+  input.value += 'Joan';
   input.setSelectionRange(input.value.length, input.value.length);
   input.dispatchEvent(new FakeEvent('input'));
   assert.equal(menu.hidden, false);
@@ -504,10 +626,17 @@ test('the real picker handlers keep focus and stay closed after each selection m
     }
   };
   menu.dispatchEvent(mouse);
-  assert.match(input.value, /@Joanne Fielding $/);
+  assert.equal(input.value, 'Sam Partner, Jo Bloggs & Joanne Fielding');
   assert.equal(menu.hidden, true);
   assert.equal(mouse.defaultPrevented, true);
   assert.equal(document.activeElement, input);
+
+  for (const expected of ['Sam Partner & Jo Bloggs', 'Sam Partner', '']) {
+    const backspace = new FakeEvent('keydown', { key: 'Backspace' });
+    input.dispatchEvent(backspace);
+    assert.equal(input.value, expected);
+    assert.equal(backspace.defaultPrevented, true);
+  }
 });
 
 test('every surface that shows a Coffee Partner renders it without the @', () => {
@@ -516,8 +645,8 @@ test('every surface that shows a Coffee Partner renders it without the @', () =>
   assert.match(visitReport, /var partnerColHtml = isAudited/);
   assert.match(visitReport, /partnerText\(v\.coffeePartner\)/);
   // Admin table, bakery profile, and the My Activity hub.
-  assert.match(adminScript, /window\.GAILS\.Mentions\s*\n?\s*\? window\.GAILS\.Mentions\.toHtml\(v\.coffeePartner\)/);
-  assert.match(bakeryProfile, /G\.Mentions\.toHtml\(visit\.coffeePartner\)/);
+  assert.match(adminScript, /window\.GAILS\.Mentions\s*\n?\s*\? window\.GAILS\.Mentions\.formatSelectionHtml\(v\.coffeePartner\)/);
+  assert.match(bakeryProfile, /G\.Mentions\.formatSelectionHtml\(visit\.coffeePartner\)/);
   assert.match(myActivity, /function mentionHtml\(value\)/);
   assert.match(myActivity, /return mentionText\(visit\.coffeePartner\);/);
 });
@@ -534,7 +663,7 @@ test('an assigned visit reaches the assignee, and the export names them', () => 
   // The export column carries the derived attribution, so a form visit and an
   // imported CQV name someone too.
   [visitReport, myActivity].forEach((source) => {
-    assert.match(source, /\{ label: 'Attributed To', type: 'text', width: 24 \}/);
+    assert.match(source, /\{ label: 'Assigned To', type: 'text', width: 24 \}/);
     assert.match(source, /Attribution\.namesText\(/);
   });
 });

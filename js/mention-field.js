@@ -1,10 +1,10 @@
 // ========== MENTION FIELD ==========
-// Turns a plain text <input> into a field that assigns a visit to someone:
-// type "@", pick a name, done.
+// Turns a plain text <input> into a field that assigns a visit to people:
+// start typing a name, pick it, then press Space to add another.
 //
 // The field has two faces. At rest it shows the editable *display* face — the
-// name with no "@", underlined and blue. Clicking or tabbing into it swaps in
-// the real <input>, which holds the stored text and so does show the "@".
+// selected names underlined and blue. Clicking or tabbing into it swaps in
+// the real <input>.
 // Read-only surfaces render mentions as ordinary black text.
 //
 // The input remains the single source of truth throughout: the display face is
@@ -70,7 +70,7 @@ window.GAILS = window.GAILS || {};
     function renderDisplay() {
       var value = input.value;
       var inner = value
-        ? mentions().toHtml(value)
+        ? mentions().selectionsToHtml(value)
         : '<span class="mention-field__placeholder">' +
           (input.placeholder ? escapeText(input.placeholder) : 'Enter name…') + '</span>';
       display.innerHTML = '<span class="mention-field__value">' + inner + '</span>';
@@ -144,14 +144,14 @@ window.GAILS = window.GAILS || {};
         if (!mentionStillMatches) {
           state.committedMention = null;
         } else if (caret >= committed.end &&
-            input.value.slice(committed.end, caret).indexOf('@') === -1) {
-          // The last chosen mention is complete. Normal typing after it should
-          // stay normal text until the user starts another mention with "@".
+            !/[,+&]/.test(input.value.slice(committed.end, caret))) {
+          // The last chosen person is complete. Wait for a supported separator
+          // before treating later typing as another person.
           closeMenu();
           return;
         }
       }
-      var range = mentions().activeMentionAt(input.value, caret);
+      var range = mentions().activeSelectionAt(input.value, caret);
       if (!range) {
         closeMenu();
         return;
@@ -171,30 +171,57 @@ window.GAILS = window.GAILS || {};
       var person = state.matches[index];
       if (!person || !state.range) return;
       var chosenRange = state.range;
-      var applied = mentions().applyMention(input.value, chosenRange, person.name);
-      var mentionEnd = applied.caret;
-      var mentionValue = applied.value.slice(chosenRange.start, mentionEnd);
-      // A trailing space so a second "@" can follow immediately — a visit
-      // covered by two people is named in one field ("@Jamie @Tristen"). Only
-      // added when the pick lands at the end; mid-text there is already one.
-      if (applied.caret === applied.value.length) {
-        applied.value += ' ';
-        applied.caret += 1;
-      }
-      input.value = applied.value;
+      var applied = mentions().applySelection(input.value, chosenRange, person.name);
+      var selected = mentions().resolveSelections(applied.value);
+      input.value = mentions().formatPeople(selected);
+      var mentionEnd = input.value.lastIndexOf(person.name) + person.name.length;
       state.committedMention = {
-        start: chosenRange.start,
+        start: mentionEnd - person.name.length,
         end: mentionEnd,
-        value: mentionValue
+        value: person.name
       };
       closeMenu();
       input.focus();
-      try { input.setSelectionRange(applied.caret, applied.caret); } catch { /* ignore */ }
+      try { input.setSelectionRange(input.value.length, input.value.length); } catch { /* ignore */ }
       // Anything listening for edits (a dirty flag, a live preview) should see
       // a programmatic pick exactly as it sees typing.
       state.ignoreNextInput = true;
       input.dispatchEvent(new Event('input', { bubbles: true }));
       if (typeof config.onSelect === 'function') config.onSelect(person, input);
+    }
+
+    function replaceValue(value) {
+      input.value = value;
+      state.committedMention = null;
+      closeMenu();
+      input.focus();
+      try { input.setSelectionRange(value.length, value.length); } catch { /* ignore */ }
+      state.ignoreNextInput = true;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function beginNextSelection() {
+      var caret = typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
+      if (caret !== input.value.length || input.selectionEnd !== caret) return false;
+      var selected = mentions().resolveSelections(input.value);
+      if (!selected.length) return false;
+      var canonical = mentions().formatPeople(selected);
+      if (input.value.trim() !== canonical) return false;
+      replaceValue(canonical + ' & ');
+      return true;
+    }
+
+    function removeLastSelection() {
+      var caret = typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
+      if (caret !== input.value.length || input.selectionEnd !== caret) return false;
+      var selected = mentions().resolveSelections(input.value);
+      if (!selected.length) return false;
+      var canonical = mentions().formatPeople(selected);
+      var pendingNext = /[,+&]\s*$/.test(input.value);
+      if (!pendingNext && input.value.trim() !== canonical) return false;
+      selected.pop();
+      replaceValue(mentions().formatPeople(selected));
+      return true;
     }
 
     display.addEventListener('click', function () { startEditing(); });
@@ -220,6 +247,16 @@ window.GAILS = window.GAILS || {};
     });
 
     input.addEventListener('keydown', function (event) {
+      if (event.key === ' ' && beginNextSelection()) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (event.key === 'Backspace' && removeLastSelection()) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       if (!state.open) {
         if (event.key === 'Escape') input.blur();
         return;
@@ -269,7 +306,7 @@ window.GAILS = window.GAILS || {};
       refresh: function () {
         if (!wrapper.classList.contains('is-editing')) renderDisplay();
       },
-      assignees: function () { return mentions().resolveAssignees(input.value); }
+      assignees: function () { return mentions().resolveSelections(input.value); }
     };
     input._mentionField = api;
     return api;
@@ -290,7 +327,7 @@ window.GAILS = window.GAILS || {};
 
   function assigneesFor(input) {
     if (!input || !G.Mentions) return [];
-    return G.Mentions.resolveAssignees(input.value);
+    return G.Mentions.resolveSelections(input.value);
   }
 
   G.MentionField = {

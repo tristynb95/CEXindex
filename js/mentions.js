@@ -1,18 +1,16 @@
-// ========== @MENTIONS (shared) ==========
-// A visit's Coffee Partner field can name the person the visit belongs to by
-// typing "@" and their name. The "@" is a typing affordance, not something
-// anyone should have to read: stored text keeps it, but every rendered surface
-// shows the bare name as ordinary text. Editable mention fields add their own
-// blue, underlined selection treatment (see js/mention-field.js).
+// ========== PEOPLE SELECTIONS (shared) ==========
+// A visit's Coffee Partner field can name the people the visit belongs to.
+// Typing any part of a name opens the picker; commas, "+" and "&" start another
+// selection. Older "@Name" values remain readable and assignable.
 //
 // Loaded as a plain <script> by every page that renders a Coffee Partner:
 // index.html, admin.html, bakery-profile.html, and my-activity.html.
 //
-// The stored text is the human-editable form ("@Sam Partner"), which is why
-// parsing it back out needs a directory to be exact. The *authoritative* record
-// of who a visit was assigned to is the separate `assignedTo` object on the
-// visit ({ uid, name, email }) — this parser only drives presentation, so a
-// directory miss softens the styling rather than losing the assignment.
+// The stored text is the human-editable form ("Sam Partner + Jo Bloggs"). The
+// *authoritative* record of who a visit was assigned to is the `assignedTo` list
+// (`[{ uid, name, email }]`). Parsing text only drives the editor and legacy
+// presentation, so a directory miss softens styling rather than losing an
+// assignment.
 window.GAILS = window.GAILS || {};
 
 (function () {
@@ -214,6 +212,98 @@ window.GAILS = window.GAILS || {};
     return people;
   }
 
+  // New editors store exact directory names separated by ",", "+" or "&".
+  // Keep resolveAssignees() legacy-only so plain Coffee Partner text on older
+  // visits does not silently change their historical attribution at read time.
+  var SELECTION_JOINER = /\s*([,+&])\s*/;
+
+  function resolveSelections(raw) {
+    var seen = {};
+    var selected = [];
+
+    function add(person) {
+      if (!person) return;
+      var resolved = {
+        uid: person.uid || '',
+        name: cleanName(person.name),
+        email: normalizeEmail(person.email)
+      };
+      var key = resolved.uid || normalizeName(resolved.name);
+      if (!key || seen[key]) return;
+      seen[key] = true;
+      selected.push(resolved);
+    }
+
+    // Recover old @mentions first; unlike the new list format, some were
+    // separated only by prose or whitespace.
+    resolveAssignees(raw).forEach(add);
+
+    String(raw == null ? '' : raw)
+      .split(SELECTION_JOINER)
+      .forEach(function (part) {
+        var name = cleanName(part).replace(/^@/, '');
+        if (!name || /^[,+&]$/.test(name)) return;
+        add(findPerson(name));
+      });
+
+    return selected;
+  }
+
+  function formatPeople(list) {
+    var names = (list || []).map(function (person) {
+      return cleanName(person && (person.name || person.email || person.uid));
+    }).filter(Boolean);
+    if (names.length < 2) return names[0] || '';
+    if (names.length === 2) return names[0] + ' & ' + names[1];
+    return names.slice(0, -1).join(', ') + ' & ' + names[names.length - 1];
+  }
+
+  function formatPeopleHtml(list) {
+    var people = (list || []).filter(function (person) {
+      return person && (person.name || person.email || person.uid);
+    });
+    var rendered = people.map(function (person) {
+      var label = cleanName(person.name || person.email || person.uid);
+      var title = person.email ? ' title="' + escapeHtml(person.email) + '"' : '';
+      return '<span class="mention"' + title + '>' + escapeHtml(label) + '</span>';
+    });
+    if (rendered.length < 2) return rendered[0] || '';
+    if (rendered.length === 2) return rendered[0] + ' &amp; ' + rendered[1];
+    return rendered.slice(0, -1).join(', ') + ' &amp; ' + rendered[rendered.length - 1];
+  }
+
+  function isCompleteSelection(raw) {
+    var legacySegments = parse(raw);
+    var legacyMentions = legacySegments.filter(function (segment) {
+      return segment.type === 'mention';
+    });
+    if (legacyMentions.length && legacySegments.every(function (segment) {
+      return segment.type === 'mention' ||
+        /^\s*(?:(?:[,+&]|\band\b)\s*)?$/i.test(segment.text);
+    })) return true;
+
+    var parts = String(raw == null ? '' : raw).split(SELECTION_JOINER);
+    var names = parts.filter(function (part) { return !/^[,+&]$/.test(cleanName(part)); });
+    return names.length > 0 && names.every(function (part) {
+      var name = cleanName(part).replace(/^@/, '');
+      return !!findPerson(name);
+    });
+  }
+
+  function formatSelectionText(raw) {
+    var selected = resolveSelections(raw);
+    return selected.length && isCompleteSelection(raw)
+      ? formatPeople(selected)
+      : toText(raw);
+  }
+
+  function formatSelectionHtml(raw) {
+    var selected = resolveSelections(raw);
+    return selected.length && isCompleteSelection(raw)
+      ? formatPeopleHtml(selected)
+      : toHtml(raw);
+  }
+
   // Before "@" existed, a Coffee Partner naming the pair who did the visit
   // together was written out longhand — "Jamie + Tristen", "Jamie and Tristen".
   // Splitting on the joiners recovers the individual people, so those visits
@@ -329,6 +419,55 @@ window.GAILS = window.GAILS || {};
     return { value: value, caret: range.start + inserted.length };
   }
 
+  // The current picker needs no "@". A query begins at the start of the field
+  // or immediately after one of the supported person separators.
+  function activeSelectionAt(raw, caret) {
+    var text = String(raw == null ? '' : raw);
+    var position = Math.max(0, Math.min(Number(caret) || 0, text.length));
+    var before = text.slice(0, position);
+    var separator = Math.max(
+      before.lastIndexOf(','),
+      before.lastIndexOf('+'),
+      before.lastIndexOf('&')
+    );
+    var start = separator + 1;
+    while (start < position && /\s/.test(text.charAt(start))) start++;
+    if (text.charAt(start) === '@') start++;
+
+    var query = text.slice(start, position);
+    if (!query || /[\n\t]/.test(query) || query.length > 40) return null;
+    if (query.split(/\s+/).length > 3) return null;
+    return { start: start, end: position, query: query };
+  }
+
+  function applySelection(raw, range, name) {
+    var text = String(raw == null ? '' : raw);
+    var chosen = cleanName(name);
+    var value = text.slice(0, range.start) + chosen + text.slice(range.end);
+    return { value: value, caret: range.start + chosen.length };
+  }
+
+  // Editable fields highlight exact selected people. Read-only surfaces still
+  // render .mention as ordinary black text, and legacy @mentions still work.
+  function selectionsToHtml(raw) {
+    var text = String(raw == null ? '' : raw);
+    if (isCompleteSelection(text)) return formatSelectionHtml(text);
+    return text.split(/([,+&])/).map(function (part) {
+      if (/^[,+&]$/.test(part)) return escapeHtml(part);
+
+      var leading = (part.match(/^\s*/) || [''])[0];
+      var trailing = (part.match(/\s*$/) || [''])[0];
+      var bodyEnd = trailing.length ? part.length - trailing.length : part.length;
+      var body = part.slice(leading.length, bodyEnd);
+      var person = findPerson(body.replace(/^@/, ''));
+      if (!person) return toHtml(part);
+
+      var title = person.email ? ' title="' + escapeHtml(person.email) + '"' : '';
+      return escapeHtml(leading) + '<span class="mention"' + title + '>' +
+        escapeHtml(person.name) + '</span>' + escapeHtml(trailing);
+    }).join('');
+  }
+
   // Names already visible in data every signed-in user can read. This is what
   // makes the picker useful without the shared directory: the region coffee-team
   // assignments are the curated list of who does these visits, and past visits
@@ -417,12 +556,20 @@ window.GAILS = window.GAILS || {};
     toHtml: toHtml,
     hasMention: hasMention,
     resolveAssignees: resolveAssignees,
+    resolveSelections: resolveSelections,
+    formatPeople: formatPeople,
+    formatPeopleHtml: formatPeopleHtml,
+    formatSelectionText: formatSelectionText,
+    formatSelectionHtml: formatSelectionHtml,
     resolvePerson: resolvePerson,
     splitPeople: splitPeople,
     nameFromEmail: nameFromEmail,
     toAssigneeList: toAssigneeList,
     activeMentionAt: activeMentionAt,
     applyMention: applyMention,
+    activeSelectionAt: activeSelectionAt,
+    applySelection: applySelection,
+    selectionsToHtml: selectionsToHtml,
     search: search
   };
 })();

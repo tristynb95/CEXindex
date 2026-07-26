@@ -1608,7 +1608,7 @@ function renderVisits() {
       + '<td>' + ((isCqv || isNbo)
         ? escapeHtml(v.auditorName || '—')
         : (v.coffeePartner && window.GAILS.Mentions
-          ? window.GAILS.Mentions.toHtml(v.coffeePartner)
+          ? window.GAILS.Mentions.formatSelectionHtml(v.coffeePartner)
           : escapeHtml(v.coffeePartner || '—'))) + '</td>'
       + '<td>' + escapeHtml(scoreText) + '</td>'
       + '<td>' + escapeHtml(v.mod || '—') + '</td>'
@@ -1987,10 +1987,10 @@ function fieldInputHtml(sectionKey, field, value) {
   } else if (field.type === 'time') {
     input = '<input type="time" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
   } else if (field.key === 'coffeePartner') {
-    // Assignable: typing "@" hands the visit to a colleague. Enhanced into its
-    // two-face editor by openVisitDetail once the markup is in the DOM.
+    // Assignable: typing searches for a colleague. Enhanced into its two-face
+    // editor by openVisitDetail once the markup is in the DOM.
     input = '<input type="text" value="' + escapeHtml(value || '') + '" autocomplete="off" data-mention-field ' + dataAttrs + '>'
-      + '<small class="mention-field-hint">Type <strong>@</strong> to assign this visit to someone.</small>';
+      + '<small class="mention-field-hint">Choose a name, then press <strong>Space</strong> to add another. <strong>Backspace</strong> removes the last person.</small>';
   } else {
     input = '<input type="text" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
   }
@@ -2212,11 +2212,25 @@ function buildVisitDetailHtml(visit) {
   }
 }
 
+function visitForAttributionEdit(visit) {
+  var editable = Object.assign({}, visit);
+  var isAudited = visit.type === 'cqv' || visit.type === 'nbo';
+  var M = window.GAILS.Mentions;
+  if (isAudited || !M) return editable;
+
+  // assignedTo is authoritative. Older records can have that list while their
+  // Coffee Partner display text is blank or still uses legacy @ syntax.
+  var assigned = M.toAssigneeList(visit.assignedTo);
+  if (!assigned.length) assigned = M.resolveSelections(visit.coffeePartner);
+  if (assigned.length) editable.coffeePartner = M.formatPeople(assigned);
+  return editable;
+}
+
 function openVisitDetail(id) {
   var visit = state.visits.find(function(v) { return v.id === id; });
   if (!visit) return;
   state.visitDetailId = id;
-  visitDetailBody.innerHTML = buildVisitDetailHtml(visit);
+  visitDetailBody.innerHTML = buildVisitDetailHtml(visitForAttributionEdit(visit));
   if (window.GAILS.MentionField) window.GAILS.MentionField.enhanceAll(visitDetailBody);
   visitDetailModal.style.display = 'flex';
 }
@@ -2258,36 +2272,12 @@ function collectVisitFormValues() {
   return result;
 }
 
-// Who the Coffee Partner box hands this visit to. An "@" mention is the plain
-// case, and the only one on a check-in — there the field records who was on the
-// bar, so a name in it is not a claim about whose visit this is.
-//
-// On every other type the box is taken at its word even without the "@", because
-// editing a visit here is a deliberate act of attribution and every visit
-// predating mentions names its people longhand ("Jamie + Tristen"). Only names
-// resolving to a real account count, so an unfamiliar name leaves the visit
-// unassigned rather than inventing a colleague — and a visit whose box never
-// names you stops being credited to you just for having logged it.
-function resolveEditedAssignees(partnerText, visitType) {
+// Exact directory names separated by ",", "+" or "&" become explicit visit
+// assignees. Legacy @mentions remain valid, while unfamiliar text is ignored.
+function resolveEditedAssignees(partnerText) {
   var M = window.GAILS.Mentions;
   if (!M) return [];
-
-  var mentioned = M.resolveAssignees(partnerText);
-  if (mentioned.length || visitType === 'siteVisit') return mentioned;
-
-  var seen = {};
-  return M.splitPeople(M.toText(partnerText))
-    .map(function(part) { return M.resolvePerson(part); })
-    .filter(function(person) {
-      if (!person) return false;
-      var key = person.uid || M.normalizeName(person.name);
-      if (!key || seen[key]) return false;
-      seen[key] = true;
-      return true;
-    })
-    .map(function(person) {
-      return { uid: person.uid || '', name: person.name, email: person.email || '' };
-    });
+  return M.resolveSelections(partnerText);
 }
 
 async function saveVisitDetail(id) {
@@ -2313,13 +2303,26 @@ async function saveVisitDetail(id) {
   var attributionText = isAudited
     ? (collected.general.auditorName || existing.auditorName || '')
     : collected.general.coffeePartner;
-  var editedAssignees = resolveEditedAssignees(attributionText, existing.type);
+  var editedAssignees = resolveEditedAssignees(attributionText);
+  var storedAssignees = window.GAILS.Mentions
+    ? window.GAILS.Mentions.toAssigneeList(existing.assignedTo)
+    : [];
+  if (!isAudited && !editedAssignees.length && storedAssignees.length &&
+      String(attributionText || '').trim() ===
+        window.GAILS.Mentions.formatPeople(storedAssignees)) {
+    // A temporarily unavailable directory must not erase an unchanged,
+    // authoritative assignment merely because this visit was opened and saved.
+    editedAssignees = storedAssignees;
+  }
   if (isAudited && !editedAssignees.length &&
       String(attributionText || '').trim() === String(existing.auditorName || '').trim() &&
       window.GAILS.Mentions) {
     editedAssignees = window.GAILS.Mentions.toAssigneeList(existing.assignedTo);
   }
   payload.assignedTo = editedAssignees.length ? editedAssignees : null;
+  if (!isAudited && editedAssignees.length && window.GAILS.Mentions) {
+    payload.coffeePartner = window.GAILS.Mentions.formatPeople(editedAssignees);
+  }
   payload.meta = Object.assign({}, existing.meta, {
     updatedAt: nowIso(),
     updatedBy: currentUserEmail()

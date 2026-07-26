@@ -1031,7 +1031,7 @@ function renderVisits() {
     // An assigned visit names its assignee as "@Name"; the stored "@" is never
     // rendered, just the plain-text name (see js/mentions.js).
     var visitorHtml = visit.coffeePartner && G.Mentions
-      ? G.Mentions.toHtml(visit.coffeePartner)
+      ? G.Mentions.formatSelectionHtml(visit.coffeePartner)
       : escapeHtml(visit.coffeePartner || (visit.meta && (visit.meta.createdBy || visit.meta.updatedBy)) || '');
     return '<article class="bakery-activity-row">' +
       '<div class="bakery-activity-row__marker" aria-hidden="true"></div>' +
