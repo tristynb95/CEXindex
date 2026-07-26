@@ -2572,80 +2572,6 @@ canvas {
   font-weight: 600;
 }
 
-/* Mobile-only filter button — the global floating filter tab is hidden on the
-   league table view, so this pill gives phone users access to the same panel. */
-.league-table-toolbar__filter-btn {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex: 0 0 auto;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 1px solid rgba(70, 14, 11, 0.4);
-  background: linear-gradient(135deg, #B5312A 0%, #A32520 100%);
-  color: #fff;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgba(120, 28, 22, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  transition: border-color 0.28s ease, box-shadow 0.28s ease, background 0.28s ease, transform 0.2s ease;
-}
-
-.league-table-toolbar__filter-btn:hover {
-  border-color: rgba(70, 14, 11, 0.5);
-  background: linear-gradient(135deg, #C0362E 0%, #AC2822 100%);
-  box-shadow: 0 8px 26px rgba(120, 28, 22, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.16);
-}
-
-.league-table-toolbar__filter-btn:active {
-  transform: scale(0.95);
-}
-
-.league-table-toolbar__filter-btn.has-active-filters {
-  border-color: rgba(70, 14, 11, 0.55);
-  background: linear-gradient(135deg, #8F1F1B 0%, #7C1A16 100%);
-  box-shadow: 0 6px 22px rgba(120, 28, 22, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-
-.league-table-toolbar__filter-icon {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-}
-
-.league-table-toolbar__filter-label {
-  font: 700 0.76rem/1 Inter, system-ui, sans-serif;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #fff;
-}
-
-.league-table-toolbar__filter-badge {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 50%;
-  background: #fff;
-  color: var(--accent);
-  font-size: 0.62rem;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  box-shadow: 0 2px 8px rgba(178, 42, 36, 0.55);
-}
-
-.league-table-toolbar__filter-badge[hidden] {
-  display: none;
-}
-
-@media (max-width: 720px) {
-  .league-table-toolbar__filter-btn {
-    display: inline-flex;
-  }
-}
-
 .table-fullscreen-shell {
   display: flex;
   flex-direction: column;
@@ -10956,24 +10882,21 @@ a,
     min-height: 360px;
   }
 
-  /* League table sort row on mobile. Three controls (sort, Filters pill,
-     full-screen) cannot share one line at phone widths: the select's 160px
-     floor stopped the row shrinking, so it overflowed and the Filters pill
-     sat on top of the sort control. Lay the row out as a grid instead — the
-     sort control keeps the first line alongside the full-screen button, and
-     the Filters pill (phones only) drops onto a full-width second line. */
+  /* League table sort row on mobile: sort control on the left, full-screen
+     button pinned right. Filters live on the floating tab, as on every other
+     view. */
   .league-table-toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
     align-items: center;
-    gap: 10px 12px;
+    justify-content: space-between;
+    gap: 12px;
     margin-bottom: 20px;
     width: 100%;
+    flex-wrap: nowrap;
   }
 
   .league-table-toolbar__label {
-    grid-column: 1;
-    grid-row: 1;
+    flex: 0 1 auto;
     flex-wrap: nowrap;
     min-width: 0;
     max-width: none;
@@ -10986,18 +10909,6 @@ a,
     flex: 0 1 auto;
     min-width: 0;
     width: auto;
-  }
-
-  .league-table-toolbar .table-fullscreen-toolbar--inline {
-    grid-column: 2;
-    grid-row: 1;
-    margin-left: 0;
-  }
-
-  /* Hidden above 720px, so the second line only exists on phones. */
-  .league-table-toolbar__filter-btn {
-    grid-column: 1 / -1;
-    width: 100%;
   }
 
   .tracker-table-header {
