@@ -3719,6 +3719,20 @@ body.table-fullscreen-lock {
   margin: 0;
 }
 
+/* Guard errors swap the inline row for a centred stack (message + return link) */
+.auth-loading__text--stacked {
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  max-width: min(420px, calc(100vw - 40px));
+  text-align: center;
+  line-height: 1.5;
+}
+
+.auth-loading__text--stacked a {
+  text-decoration: none;
+}
+
 .auth-small-spinner {
   display: inline-block;
   width: 14px;
@@ -4949,29 +4963,7 @@ body.table-fullscreen-lock {
   color: var(--muted-l);
 }
 
-/* Per-user access editor: stacks the Role and Bakery Reports scope selects. */
-.admin-user-access {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 180px;
-}
-
-.admin-user-access__field {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.admin-user-access__label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted-l);
-}
-
-/* Read-only scope note under a user's role pill. */
+/* Read-only scope note on a person's row. */
 .admin-user-scope {
   margin-top: 4px;
 }
@@ -13974,32 +13966,9 @@ body.visit-log-filter-open .mobile-bottom-nav {
   transform: translateY(-1px);
 }
 
-/* Table header layout keeps the shared full-screen control on one line. */
-.admin-table--roles td {
-  vertical-align: top;
-}
-
-.admin-table--roles th:nth-child(1),
-.admin-table--roles td:nth-child(1) {
-  width: 240px;
-  max-width: 240px;
-}
-
-.admin-table--roles td:nth-child(1) .admin-status-note {
-  max-width: 220px;
-  white-space: normal;
-}
-
-.admin-table--roles th:nth-child(4),
-.admin-table--roles td:nth-child(4) {
-  width: 90px;
-}
-
-.admin-table--roles th:nth-child(5),
-.admin-table--roles td:nth-child(5) {
-  width: 150px;
-}
-
+/* Table header layout keeps the shared full-screen control on one line.
+   The roles table's own column widths live with the rest of the People &
+   Access styles, so there is one place to change them. */
 .admin-table th .table-fullscreen-inline-anchor {
   flex-wrap: nowrap;
 }
@@ -14219,184 +14188,434 @@ table.nps-splits-collapsed .nps-split-col {
 }
 
 /* ══════════════════════════════════════════
-   ROLE CREATOR (admin portal)
+   PEOPLE & ACCESS (admin portal)
    ══════════════════════════════════════════ */
 
-/* The base .admin-form is a 4-column grid for inline forms — the role form
-   needs a single stacked column instead, so reset the display too. */
-.admin-form.admin-role-form {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 18px;
-  margin-bottom: 16px;
+/* Visually hidden, but still read out. The access grid's checkboxes carry no
+   visible label of their own — the column header and the row label say what
+   they are — so each needs one for a screen reader. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.admin-role-form__basics {
+.admin-section__header-actions {
   display: flex;
-  flex-wrap: wrap;
-  align-items: end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── The people table ── */
+
+.admin-table--people td {
+  vertical-align: top;
+}
+
+.admin-table--people th:nth-child(1),
+.admin-table--people td:nth-child(1) {
+  width: 220px;
+}
+
+.admin-table--people th:nth-child(2),
+.admin-table--people td:nth-child(2),
+.admin-table--people th:nth-child(3),
+.admin-table--people td:nth-child(3) {
+  width: 150px;
+}
+
+.admin-table--people th:last-child,
+.admin-table--people td:last-child {
+  width: 110px;
+}
+
+.admin-table__title--sm {
+  font-size: 0.84rem;
+}
+
+.admin-status-note--self {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.admin-status-note--pending,
+.admin-status-note--warn {
+  color: #9a6b1f;
+  font-weight: 600;
+}
+
+.admin-status-note--team {
+  color: var(--text-2);
+  font-style: italic;
+}
+
+/* ── The access modal ──
+   Shared by the person, role, and invitation dialogs. Follows the modal design
+   kit: a semantic top accent, no wash behind the header. */
+
+.access-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(86vh, 820px);
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(34, 31, 26, 0.22);
+}
+
+.access-modal--wide {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.access-modal__accent {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  border-radius: 16px 16px 0 0;
+}
+
+.access-modal__accent--access {
+  background: var(--accent);
+}
+
+.access-modal__accent--role {
+  background: #2f6f6b;
+}
+
+.access-modal__accent--invite {
+  background: #1f6fb2;
+}
+
+.access-modal__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px 26px 16px;
+}
+
+.access-modal__eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-l);
+}
+
+.access-modal__head h3 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.access-modal__sub {
+  margin: 5px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--muted-l);
+}
+
+.access-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 26px 20px;
+  overflow-y: auto;
+}
+
+.access-modal__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 14px;
 }
 
-.admin-role-form__basics .admin-form-field {
-  flex: 1 1 240px;
+.admin-form-field__hint {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted-l);
 }
 
-.admin-role-form__basics .admin-form-field--grow {
-  flex: 2 1 320px;
-}
-
-.admin-role-matrix {
+/* The read-out: what this person can actually reach, in the same words the
+   People table and the Roles table use. */
+.access-modal__readout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: rgba(34, 31, 26, 0.02);
+}
+
+.access-modal__readout-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
 }
 
-.admin-role-matrix__group {
+.access-modal__readout-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-l);
+}
+
+.access-modal__readout-col strong {
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.access-modal__note {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted-l);
+}
+
+.access-modal__note--warn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(181, 49, 42, 0.25);
+  background: rgba(181, 49, 42, 0.05);
+  color: var(--text-2);
+}
+
+.access-modal__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 16px 26px 20px;
+  border-top: 1px solid var(--card-border);
+  background: rgba(34, 31, 26, 0.015);
+}
+
+.access-modal__footer-main {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* ── The access grid ──
+   One row per capability, one column for "can see" and one for "can edit".
+   The whole point is that both questions are answered in the same place, so
+   the two columns are deliberately identical in weight. */
+
+.access-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.access-grid__group {
   border: 1px solid var(--card-border);
   border-radius: 14px;
-  padding: 18px 20px;
+  padding: 16px 18px;
   background: rgba(34, 31, 26, 0.02);
-  min-width: 0;
 }
 
-.admin-role-matrix__group h4 {
-  margin: 0 0 4px;
+.access-grid__group-head h4 {
+  margin: 0 0 3px;
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--text);
 }
 
-.admin-role-matrix__group>p {
-  margin: 0 0 14px;
-  font-size: 0.76rem;
+.access-grid__group-head p {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
   line-height: 1.45;
   color: var(--muted-l);
 }
 
-.admin-role-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.admin-role-tab {
-  display: inline-flex;
+.access-grid__head,
+.access-grid__row {
+  display: grid;
+  grid-template-columns: 1fr 78px 78px;
   align-items: center;
-  gap: 7px;
-  padding: 7px 12px;
-  border: 1px solid var(--card-border);
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-  user-select: none;
-  background: var(--bg);
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.admin-role-tab:hover {
-  border-color: var(--accent);
-}
-
-.admin-role-tab:has(input:checked) {
-  border-color: var(--accent);
-  background: var(--accent-light, rgba(181, 49, 42, 0.08));
-}
-
-.admin-role-tab input {
-  accent-color: var(--accent);
-  margin: 0;
-}
-
-.admin-role-areas {
-  display: flex;
-  flex-direction: column;
   gap: 10px;
 }
 
-.admin-role-area {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 12px 14px;
-  border: 1px solid var(--card-border);
-  border-radius: 10px;
-  background: var(--bg);
-  transition: border-color 0.15s ease;
+.access-grid__head {
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--card-border);
 }
 
-.admin-role-area:hover {
-  border-color: var(--accent);
+.access-grid__head span {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-l);
+  text-align: center;
 }
 
-.admin-role-area__info {
+.access-grid__head span:first-child {
+  text-align: left;
+}
+
+.access-grid__row {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(34, 31, 26, 0.06);
+}
+
+.access-grid__row:last-child {
+  border-bottom: none;
+}
+
+.access-grid__label {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  flex: 1 1 200px;
 }
 
-.admin-role-area__info strong {
+.access-grid__label strong {
   font-size: 0.84rem;
+  font-weight: 600;
   color: var(--text);
 }
 
-.admin-role-area__info span {
-  font-size: 0.72rem;
+.access-grid__label span {
+  font-size: 0.71rem;
+  line-height: 1.4;
   color: var(--muted-l);
-  line-height: 1.35;
 }
 
-.admin-role-area__levels {
-  display: inline-flex;
-  border: 1px solid var(--card-border);
-  border-radius: 10px;
-  overflow: hidden;
-  flex-shrink: 0;
+.access-grid__edit-hint {
+  font-style: italic;
 }
 
-.admin-role-level {
+.access-grid__cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   cursor: pointer;
 }
 
-.admin-role-level input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+.access-grid__cell input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
-.admin-role-level span {
-  display: inline-block;
-  padding: 6px 13px;
-  font-size: 0.74rem;
-  font-weight: 700;
+.access-grid__cell--empty {
   color: var(--muted-l);
-  background: transparent;
-  border-right: 1px solid var(--card-border);
-  transition: background 0.15s ease, color 0.15s ease;
+  opacity: 0.45;
+  cursor: default;
 }
 
-.admin-role-level:last-child span {
-  border-right: none;
+/* ── Team scope ── */
+
+.access-team {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: rgba(34, 31, 26, 0.02);
 }
 
-.admin-role-level:has(input:checked) span {
-  background: var(--accent);
-  color: #fff;
+.access-team legend {
+  padding: 0 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.admin-role-form__actions {
+.access-team__copy {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted-l);
+}
+
+.access-team__options {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.access-team__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.access-team__option:hover {
+  border-color: var(--accent);
+}
+
+.access-team__option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-light, rgba(181, 49, 42, 0.08));
+}
+
+.access-team__option input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.access-team__option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.access-team__option-body strong {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.access-team__option-body span {
+  font-size: 0.73rem;
+  line-height: 1.4;
+  color: var(--muted-l);
+}
+
+@media (max-width: 620px) {
+  .access-modal__head,
+  .access-modal__body,
+  .access-modal__footer {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .access-modal__footer-main {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .access-grid__head,
+  .access-grid__row {
+    grid-template-columns: 1fr 58px 58px;
+  }
 }
 
 .admin-table--roles td {
@@ -14405,76 +14624,27 @@ table.nps-splits-collapsed .nps-split-col {
 
 .admin-table--roles th:nth-child(1),
 .admin-table--roles td:nth-child(1) {
-  width: 240px;
-  max-width: 240px;
+  width: 200px;
+  max-width: 200px;
 }
 
-.admin-table--roles th:nth-child(4),
-.admin-table--roles td:nth-child(4) {
-  width: 90px;
+.admin-table--roles td:nth-child(1) .admin-status-note {
+  white-space: normal;
 }
 
 .admin-table--roles th:nth-child(5),
 .admin-table--roles td:nth-child(5) {
-  width: 150px;
+  width: 90px;
+}
+
+.admin-table--roles th:nth-child(6),
+.admin-table--roles td:nth-child(6) {
+  width: 110px;
 }
 
 /* Panels a role has no access to stay hidden even if force-activated. */
 .admin-portal__panel[data-role-hidden="true"] {
   display: none !important;
-}
-
-/* Dashboard actions inside the role creator tab group */
-.admin-role-actions {
-  width: 100%;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--card-border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.admin-role-actions__title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted-l);
-}
-
-.admin-role-action {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 9px 12px;
-  border: 1px solid var(--card-border);
-  border-radius: 10px;
-  background: var(--bg);
-  cursor: pointer;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: var(--text-2);
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.admin-role-action:hover {
-  border-color: var(--accent);
-}
-
-.admin-role-action:has(input:checked) {
-  border-color: var(--accent);
-  background: var(--accent-light, rgba(181, 49, 42, 0.08));
-}
-
-.admin-role-action input {
-  accent-color: var(--accent);
-  margin-top: 2px;
-  flex-shrink: 0;
-}
-
-.admin-role-action strong {
-  color: var(--text);
 }
 
 /* ── Profile menu ─────────────────────────────────────────────────────── */
@@ -14486,6 +14656,74 @@ table.nps-splits-collapsed .nps-split-col {
 
 .profile-menu__trigger {
   white-space: nowrap;
+}
+
+/* Standalone authenticated pages use the same compact pill controls as the
+   dashboard's Admin Portal and Profile buttons. Page-specific header classes
+   remain for layout only; this is the shared visual contract. */
+[data-standalone-account-menu] {
+  display: inline-flex;
+}
+
+.my-activity-header .standalone-header-button,
+.profile-page__header .standalone-header-button,
+.bakery-profile-header .standalone-header-button,
+.standalone-profile-menu__trigger {
+  min-height: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: rgba(255, 248, 242, 0.94);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.my-activity-header .standalone-header-button:hover,
+.profile-page__header .standalone-header-button:hover,
+.bakery-profile-header .standalone-header-button:hover,
+.standalone-profile-menu__trigger:hover,
+.standalone-profile-menu__trigger[aria-expanded="true"] {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 10px rgba(70, 14, 11, 0.25);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.standalone-profile-menu__trigger:focus-visible,
+.my-activity-header .standalone-header-button:focus-visible,
+.profile-page__header .standalone-header-button:focus-visible,
+.bakery-profile-header .standalone-header-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 2px;
+}
+
+.standalone-profile-menu .profile-menu__popover {
+  z-index: 1000;
+}
+
+/* The admin workspace is light rather than red, but its two header actions
+   use the same 34px pill geometry as the dashboard controls. */
+.admin-workspace__actions .admin-secondary-btn {
+  min-height: 34px;
+  height: 34px;
+  padding: 5px 14px;
+  border-radius: var(--r-pill);
+  font-size: 0.8rem;
+  line-height: 1;
 }
 
 .profile-menu__avatar {
@@ -14609,6 +14847,22 @@ table.nps-splits-collapsed .nps-split-col {
 .profile-menu__popover .profile-menu__item--danger,
 .header .profile-menu__popover .profile-menu__item--danger {
   color: var(--accent);
+}
+
+@media (max-width: 520px) {
+  .standalone-profile-menu__label {
+    display: none;
+  }
+
+  .standalone-profile-menu__trigger {
+    width: 34px;
+    padding: 5px;
+    justify-content: center;
+  }
+
+  .standalone-profile-menu__trigger .profile-menu__chevron {
+    display: none;
+  }
 }
 
 #createUserForm {
@@ -17976,51 +18230,4 @@ html {
 .mention-field-hint strong {
   color: var(--blue);
   font-weight: 700;
-}
-
-/* Per-user My Activity switch in the admin users table. Kept out of the row's
-   Edit flow — role and scope lock themselves against self-editing to prevent
-   self-demotion, but a feature switch is safe to flip on yourself, and with a
-   single admin account nobody else could. */
-.admin-user-toggle {
-  margin-top: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 10px 4px 7px;
-  border: 1px solid var(--card-border-h);
-  border-radius: var(--r-pill);
-  background: var(--card-2);
-  color: var(--muted-l);
-  font-size: 0.74rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.admin-user-toggle:hover {
-  border-color: var(--card-border-h);
-  background: var(--card-hover);
-}
-
-.admin-user-toggle.is-on {
-  border-color: rgba(30, 112, 196, 0.35);
-  background: var(--blue-d);
-  color: var(--blue);
-}
-
-.admin-user-toggle input {
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  accent-color: var(--blue);
-  cursor: pointer;
-}
-
-.admin-user-toggle input:disabled {
-  cursor: not-allowed;
-}
-
-.admin-user-toggle:has(input:disabled) {
-  opacity: 0.55;
-  cursor: not-allowed;
 }

@@ -1,7 +1,7 @@
 import { auth, db } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { ref, get, set, update, remove, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess } from './permissions.js';
+import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess, canSeeTeam } from './permissions.js';
 import { createProfileMenu } from './profile-menu.js';
 
 function nowIso() {
@@ -474,12 +474,18 @@ function startRoutineVisitsSync() {
 // are best-effort — before the matching rules are deployed they simply fail, and
 // the picker falls back to names harvested from readable data.
 function publishDirectoryEntry(user, profile) {
+  var email = user.email || (profile && profile.email) || '';
   var name = [profile && profile.firstName, profile && profile.lastName]
     .filter(Boolean).join(' ').trim() || user.displayName || '';
+  // Until they set a name, their work address stands in for one — otherwise
+  // they cannot be @mentioned and their visits cannot be credited to them.
+  if (!name && window.GAILS && window.GAILS.Mentions) {
+    name = window.GAILS.Mentions.nameFromEmail(email);
+  }
   if (!name) return Promise.resolve();
   return set(ref(db, 'userDirectory/' + user.uid), {
     name: name,
-    email: user.email || (profile && profile.email) || ''
+    email: email
   }).catch(function(error) {
     console.warn('Could not publish your directory entry:', error);
   });
@@ -707,6 +713,7 @@ onAuthStateChanged(auth, async (user) => {
         // the master switch (live-synced), are read by js/visit-report.js.
         window.GAILS.userOpsArea = (userProfile && userProfile.opsArea) || '';
         applyMyActivityAccess(userProfile);
+        applyMyTeamAccess(permissions);
         showApp(isAdmin, permissions);
         applyDashboardTabPermissions(permissions);
         startSiteMetaSync();
@@ -744,6 +751,7 @@ onAuthStateChanged(auth, async (user) => {
     stopUserDirectorySync();
     window.GAILS.userOpsArea = '';
     applyMyActivityAccess(null);
+    applyMyTeamAccess(null);
     applySiteMeta(null);
     clearLoginForm();
     updateProfileMenu(null);
@@ -759,6 +767,15 @@ onAuthStateChanged(auth, async (user) => {
 function applyMyActivityAccess(userProfile) {
   var link = document.querySelector('.header [data-my-activity-link]');
   if (link) link.hidden = !(userProfile && userProfile.myActivity === true);
+}
+
+// My Team comes from the *role* rather than a per-user switch: a manager needs
+// it because of the job they do, not because someone remembered to tick a box.
+// The page checks the same thing on load, and the database rules refuse the
+// roster read — this only decides whether the menu entry appears.
+function applyMyTeamAccess(permissions) {
+  var link = document.querySelector('.header [data-my-team-link]');
+  if (link) link.hidden = !canSeeTeam(permissions);
 }
 
 // Hides dashboard tab buttons (desktop nav + mobile bottom nav) that the

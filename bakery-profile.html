@@ -44,10 +44,11 @@
         </span>
       </a>
       <div class="bakery-profile-header__actions">
-        <a id="bakeryProfileBackLink" href="index.html#visit-log" class="bakery-profile-header__link">← Back To Bakery Directory</a>
+        <a id="bakeryProfileBackLink" href="index.html#visit-log"
+          class="bakery-profile-header__link standalone-header-button">← Back To Bakery Directory</a>
         <div class="bakery-profile-switcher">
           <button type="button" id="bakeryProfileSwitcherToggle"
-            class="bakery-profile-header__link bakery-profile-switcher__toggle"
+            class="bakery-profile-header__link bakery-profile-switcher__toggle standalone-header-button"
             aria-haspopup="listbox" aria-expanded="false" aria-controls="bakeryProfileSwitcherMenu">
             <svg class="bakery-profile-switcher__pin" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path>
@@ -77,7 +78,7 @@
               role="listbox" aria-label="Other bakery profiles"></div>
           </div>
         </div>
-        <button type="button" id="bakeryProfileSignOut" class="bakery-profile-header__link">Sign out</button>
+        <div data-standalone-account-menu></div>
       </div>
     </header>
 

@@ -9,7 +9,8 @@ import {
   updateProfile
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { ref, get, set, update as updateRecord, remove } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-import { BUILTIN_ROLES } from './permissions.js';
+import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
+import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
 
 const authGuard = document.getElementById('profileAuthGuard');
 const page = document.getElementById('profilePage');
@@ -23,7 +24,6 @@ const identityEmail = document.getElementById('profileIdentityEmail');
 const picturePlaceholder = document.getElementById('profilePicturePlaceholder');
 const messageEl = document.getElementById('profileMessage');
 const saveBtn = document.getElementById('profileSaveBtn');
-const signOutBtn = document.getElementById('profilePageSignOut');
 
 const passwordForm = document.getElementById('profilePasswordForm');
 const currentPasswordInput = document.getElementById('profileCurrentPassword');
@@ -44,7 +44,9 @@ const emailConfirmBtn = document.getElementById('profileEmailConfirmBtn');
 
 let profileRecord = null;
 let currentRoleName = 'Viewer';
+let currentPermissions = null;
 let pendingProfileSave = null;
+let headerProfileMenu = null;
 
 function splitDisplayName(displayName) {
   var parts = String(displayName || '').trim().split(/\s+/).filter(Boolean);
@@ -73,12 +75,8 @@ function setButtonBusy(button, busy, busyText, readyText) {
 }
 
 // My Activity is opt-in per user (users/{uid}.myActivity, granted in the admin
-// portal), so the header link is hidden until it has been turned on.
-function applyMyActivityAccess(record) {
-  var link = document.querySelector('[data-my-activity-link]');
-  if (link) link.hidden = !(record && record.myActivity === true);
-}
-
+// portal), so the header link is hidden until it has been turned on. My Team
+// is granted by the role instead, so it follows the role's team scope.
 function renderProfile(user, record) {
   var fallbackName = splitDisplayName(user.displayName);
   var firstName = String(record.firstName || fallbackName.firstName || '').trim();
@@ -93,18 +91,27 @@ function renderProfile(user, record) {
   identityEmail.textContent = email;
   picturePlaceholder.textContent = initials(firstName, lastName, fullName || email);
   roleEl.textContent = currentRoleName;
-  applyMyActivityAccess(record);
+  if (headerProfileMenu) headerProfileMenu.update(user, record);
 }
 
-async function resolveRoleName(roleId) {
-  if (BUILTIN_ROLES[roleId]) return BUILTIN_ROLES[roleId].name;
+// Resolves the role once, for both its display name and what it grants —
+// avoiding a second read of the same record just to decide whether the My Team
+// link belongs in the header.
+async function loadRole(roleId) {
+  if (BUILTIN_ROLES[roleId]) {
+    return { name: BUILTIN_ROLES[roleId].name, permissions: resolveRolePermissions(roleId, null) };
+  }
+  var definition = null;
   try {
     var roleSnapshot = await get(ref(db, 'roles/' + roleId));
-    if (roleSnapshot.exists() && roleSnapshot.val().name) return roleSnapshot.val().name;
+    definition = roleSnapshot.exists() ? roleSnapshot.val() : null;
   } catch (error) {
-    console.warn('Could not load the assigned role name:', error);
+    console.warn('Could not load the assigned role:', error);
   }
-  return roleId || 'Viewer';
+  return {
+    name: (definition && definition.name) || roleId || 'Viewer',
+    permissions: resolveRolePermissions(roleId, definition)
+  };
 }
 
 function hasPasswordProvider(user) {
@@ -261,7 +268,19 @@ onAuthStateChanged(auth, async function(user) {
     }
 
     var roleId = isAdmin ? 'admin' : (profileRecord.role || 'viewer');
-    currentRoleName = await resolveRoleName(roleId);
+    var role = await loadRole(roleId);
+    currentRoleName = role.name;
+    currentPermissions = role.permissions;
+    headerProfileMenu = mountStandaloneProfileMenu({
+      user: user,
+      profile: profileRecord,
+      showActivity: profileRecord.myActivity === true,
+      showTeam: canSeeTeam(currentPermissions),
+      onSignOut: async function() {
+        await signOut(auth);
+        window.location.href = 'index.html';
+      }
+    });
     renderProfile(user, profileRecord);
     authGuard.style.display = 'none';
     page.hidden = false;
@@ -394,9 +413,4 @@ passwordForm.addEventListener('submit', async function(event) {
 
 document.addEventListener('keydown', function(event) {
   if (event.key === 'Escape' && !emailModal.hidden) closeEmailModal();
-});
-
-signOutBtn.addEventListener('click', async function() {
-  await signOut(auth);
-  window.location.href = 'index.html';
 });

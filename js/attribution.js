@@ -106,9 +106,14 @@ window.GAILS = window.GAILS || {};
       function () {
         // Only for visit types where the Coffee Partner is a record of who did
         // the visit. On a check-in it is free text about who was on the bar.
-        return isAudited || visit.type === 'siteVisit'
-          ? []
-          : [fromReference(mentions() ? mentions().toText(visit.coffeePartner) : visit.coffeePartner, 'partner')];
+        if (isAudited || visit.type === 'siteVisit') return [];
+        var text = mentions() ? mentions().toText(visit.coffeePartner) : visit.coffeePartner;
+        var parts = mentions() ? mentions().splitPeople(text) : [text];
+        if (parts.length < 2) return [fromReference(text, 'partner')];
+        // A field naming two people is a pair who covered the visit together —
+        // written longhand before "@" could assign it — so both are credited,
+        // and neither dilutes the other into a single made-up person.
+        return parts.map(function (part) { return fromReference(part, 'partner'); });
       },
       function () { return [fromReference(visit.email, 'respondent')]; },
       function () {

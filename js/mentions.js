@@ -214,6 +214,53 @@ window.GAILS = window.GAILS || {};
     return people;
   }
 
+  // Before "@" existed, a Coffee Partner naming the pair who did the visit
+  // together was written out longhand — "Jamie + Tristen", "Jamie and Tristen".
+  // Splitting on the joiners recovers the individual people, so those visits
+  // credit both of them and the pair never enters the name pool as if it were
+  // one person. Word boundaries keep "and" from cutting "Alexander" in half.
+  var PEOPLE_JOINER = /\s*(?:[+&/,]|\band\b)\s*/i;
+
+  function splitPeople(raw) {
+    return String(raw == null ? '' : raw)
+      .split(PEOPLE_JOINER)
+      .map(cleanName)
+      .filter(Boolean);
+  }
+
+  // A lone first name resolves only when exactly one person answers to it.
+  // Two Jamies means neither is returned, which is the safe answer — the name
+  // stays an unresolved credit rather than landing in the wrong person's hub.
+  function findByFirstName(value) {
+    var key = normalizeName(value);
+    if (!key || key.indexOf(' ') !== -1) return null;
+    var found = getPeople().filter(function (person) {
+      return normalizeName(person.name).split(' ')[0] === key;
+    });
+    // A real account outranks a name merely harvested from an old record, so a
+    // barista called Jamie named on a past check-in cannot claim Jamie's visits.
+    var accounts = found.filter(function (person) { return !!person.uid; });
+    var candidates = accounts.length ? accounts : found;
+    return candidates.length === 1 ? candidates[0] : null;
+  }
+
+  // A colleague who has not filled in their profile has no name to be mentioned
+  // by, which leaves them unpickable and their visits uncredited. A work address
+  // already carries the name — jamie_vu@ is Jamie Vu — so it stands in until
+  // they set their own, which then overwrites it (see addPeople).
+  //
+  // Only a local part that actually separates the two parts qualifies: guessing
+  // where "tristendbayley" divides would invent a name rather than read one.
+  function nameFromEmail(value) {
+    var local = normalizeEmail(value).split('@')[0];
+    if (!local) return '';
+    var words = local.split(/[._\-+]+/).filter(Boolean);
+    if (words.length < 2) return '';
+    return words.map(function (word) {
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  }
+
   // Matches a bare reference — a printed auditor name, a form respondent's
   // email — against the directory. This is what lets records the app did not
   // author (a CQV PDF, a Google Form visit) attribute themselves to a real
@@ -228,7 +275,7 @@ window.GAILS = window.GAILS || {};
       if (byEmail) return byEmail;
       return null;
     }
-    return findPerson(value);
+    return findPerson(value) || findByFirstName(value);
   }
 
   // Normalizes however an assignment was stored — a list, a single object from
@@ -292,10 +339,16 @@ window.GAILS = window.GAILS || {};
     var input = sources || {};
     var harvested = [];
 
+    // A field naming a pair contributes the two people, never the pair itself:
+    // "Jamie + Tristen" is not someone the picker should ever offer.
+    function harvestNames(value) {
+      splitPeople(value).forEach(function (name) { harvested.push({ name: name }); });
+    }
+
     (input.regionAssignments || []).forEach(function (assignment) {
       if (!assignment) return;
-      harvested.push({ name: assignment.coffeePartner });
-      harvested.push({ name: assignment.coffeeTrainer });
+      harvestNames(assignment.coffeePartner);
+      harvestNames(assignment.coffeeTrainer);
     });
 
     var visits = input.visits || {};
@@ -304,7 +357,7 @@ window.GAILS = window.GAILS || {};
       if (!visit) return;
       // Stored Coffee Partner text may itself contain a mention, so the name is
       // taken from its reading form rather than raw.
-      harvested.push({ name: toText(visit.coffeePartner) });
+      harvestNames(toText(visit.coffeePartner));
       harvested.push({ name: visit.auditorName });
       toAssigneeList(visit.assignedTo).forEach(function (person) { harvested.push(person); });
     });
@@ -365,6 +418,8 @@ window.GAILS = window.GAILS || {};
     hasMention: hasMention,
     resolveAssignees: resolveAssignees,
     resolvePerson: resolvePerson,
+    splitPeople: splitPeople,
+    nameFromEmail: nameFromEmail,
     toAssigneeList: toAssigneeList,
     activeMentionAt: activeMentionAt,
     applyMention: applyMention,

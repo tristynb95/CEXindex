@@ -17,7 +17,8 @@
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-import { BUILTIN_ROLES, resolveRolePermissions } from './permissions.js';
+import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
+import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
 
 const G = window.GAILS || {};
 
@@ -26,7 +27,6 @@ const guardText = document.getElementById('myActivityGuardText');
 const page = document.getElementById('myActivityPage');
 const greetingEl = document.getElementById('myActivityGreeting');
 const statsEl = document.getElementById('myActivityStats');
-const signOutBtn = document.getElementById('myActivitySignOut');
 const backLink = document.getElementById('myActivityBackLink');
 
 const actionsStatusToggle = document.getElementById('myActionsStatus');
@@ -50,13 +50,17 @@ const visitsSort = document.getElementById('myVisitsSort');
 const visitsReset = document.getElementById('myVisitsResetBtn');
 const visitsSummary = document.getElementById('myVisitsSummary');
 const visitsListEl = document.getElementById('myVisitsList');
+const visitsMoreBtn = document.getElementById('myVisitsMore');
 const visitsExportBtn = document.getElementById('myVisitsExportBtn');
 const customRangeControls = Array.from(document.querySelectorAll('.my-activity-custom-range'));
 
 const timelineFilter = document.getElementById('myTimelineFilter');
 const timelineList = document.getElementById('myTimelineList');
 const timelineCount = document.getElementById('myTimelineCount');
+const timelineSearch = document.getElementById('myTimelineSearch');
+const timelineSummary = document.getElementById('myTimelineSummary');
 const timelineMoreBtn = document.getElementById('myTimelineMore');
+const jumpNav = document.getElementById('myActivityJump');
 
 const confirmModal = document.getElementById('myActivityConfirmModal');
 const confirmBackdrop = document.getElementById('myActivityConfirmBackdrop');
@@ -68,6 +72,7 @@ const confirmBtn = document.getElementById('myActivityConfirmBtn');
 
 const FILTER_STORAGE_KEY = 'gails_my_activity_filters';
 const TIMELINE_CHUNK = 25;
+const VISIT_CHUNK = 30;
 
 let currentUser = null;
 let userProfile = null;
@@ -88,6 +93,7 @@ let dataReady = { visits: false, tasks: false, notes: false };
 let actionsStatus = 'open';
 let timelineKind = 'all';
 let timelineLimit = TIMELINE_CHUNK;
+let visitLimit = VISIT_CHUNK;
 let visitOptionsSignature = '';
 let actionOptionsSignature = '';
 let pendingVisitExport = null;
@@ -265,6 +271,13 @@ function matchesMyUid(value) {
 // a PDF. `meta.updatedBy` is only trusted on records that have never been
 // edited — an admin correcting someone else's visit overwrites it, and that
 // must not silently move the visit into the admin's activity.
+// A CQV or NBO that arrived as a PDF. The importer is stamped on it, but the
+// report belongs to the auditor printed inside it — meta.importedBy is recorded
+// separately for exactly that reason.
+function wasImported(meta) {
+  return !!meta && (meta.source === 'pdf-import' || !!meta.importedBy);
+}
+
 function visitIsMine(visit) {
   if (!visit) return false;
   // Credited to me — assigned by @mention, or attributed automatically.
@@ -272,9 +285,25 @@ function visitIsMine(visit) {
   var meta = visit.meta || {};
   if (matchesMyUid(meta.createdByUid)) return true;
   if (matchesMyEmail(meta.createdBy) || matchesMyEmail(visit.email) || matchesMyEmail(visit.createdBy)) return true;
-  if (!meta.createdBy && meta.updatedBy && (!meta.updatedAt || meta.updatedAt === meta.createdAt) &&
+
+  // Legacy fallback: on a record saved before authorship was stamped, and never
+  // edited since, updatedBy is the closest thing to an author it has.
+  //
+  // It must not reach an imported report. A PDF import writes no createdBy,
+  // stamps updatedBy with the *importer*, and leaves createdAt and updatedAt
+  // identical — satisfying every condition here and pulling every CQV an admin
+  // imported into that admin's own hub, over the top of the auditor the
+  // resolver had already credited correctly.
+  if (!wasImported(meta) && !meta.createdBy && meta.updatedBy &&
+    (!meta.updatedAt || meta.updatedAt === meta.createdAt) &&
     matchesMyEmail(meta.updatedBy)) return true;
-  return matchesMyName(visit.coffeePartner) || matchesMyName(visit.auditorName);
+
+  // On a check-in, Coffee Partner is free text about who was on the bar rather
+  // than a record of who did the visit, so being named there is not a claim to
+  // it. js/attribution.js excludes it for the same reason, and re-adding it
+  // here for every type would quietly contradict that.
+  if (visit.type !== 'siteVisit' && matchesMyName(visit.coffeePartner)) return true;
+  return matchesMyName(visit.auditorName);
 }
 
 // Everyone a record is credited to, derived by js/attribution.js. This is what
@@ -536,7 +565,8 @@ function saveFilters() {
       visits: readVisitFilters(),
       actions: readActionFilters(),
       actionsStatus: actionsStatus,
-      timelineKind: timelineKind
+      timelineKind: timelineKind,
+      timelineSearch: timelineSearch ? timelineSearch.value : ''
     }));
   } catch { /* storage unavailable (private browsing) — filters just don't persist */ }
 }
@@ -572,6 +602,9 @@ function restoreFilters() {
   if (stored.timelineKind) {
     timelineKind = stored.timelineKind;
     setToggleActive(timelineFilter, 'kind', timelineKind);
+  }
+  if (timelineSearch && typeof stored.timelineSearch === 'string') {
+    timelineSearch.value = stored.timelineSearch;
   }
   syncCustomRangeVisibility();
   if (typeof G.syncCustomSelect === 'function') {
@@ -640,6 +673,40 @@ function readActionFilters() {
     bakery: actionsBakery ? actionsBakery.value : '',
     sort: actionsSort ? actionsSort.value : 'dueAsc'
   };
+}
+
+function setFilterResetState(button, active, filterLabel) {
+  if (!button) return;
+  button.classList.toggle('has-active-filters', !!active);
+  var description = active
+    ? 'Clear ' + filterLabel + ' filters'
+    : 'No ' + filterLabel + ' filters to clear';
+  button.setAttribute('title', description);
+  button.setAttribute('aria-label', description);
+}
+
+function syncActionResetState(filters) {
+  var current = filters || readActionFilters();
+  setFilterResetState(actionsReset, !!(
+    current.search ||
+    current.ops ||
+    current.bakery ||
+    current.sort !== 'dueAsc' ||
+    actionsStatus !== 'open'
+  ), 'action');
+}
+
+function syncVisitResetState(filters) {
+  var current = filters || readVisitFilters();
+  setFilterResetState(visitsReset, !!(
+    current.search ||
+    current.period !== '12' ||
+    current.from ||
+    current.to ||
+    current.ops ||
+    current.bakery ||
+    current.sort !== 'dateDesc'
+  ), 'visit');
 }
 
 // The Ops Area and Bakery lists only offer values this user actually has actions
@@ -766,6 +833,7 @@ function renderActions() {
   var tasks = myTasks();
   var openTasks = tasks.filter(function (t) { return !taskIsDone(t); });
   var filters = readActionFilters();
+  syncActionResetState(filters);
 
   if (actionsCount) {
     actionsCount.textContent = plural(openTasks.length, 'open action');
@@ -903,7 +971,10 @@ function visitRowHtml(visit) {
     '</div>' +
     '<div class="my-activity-visit__score">' + escapeHtml(visitScoreText(visit)) + '</div>' +
     '<div class="my-activity-visit__action">' +
-    '<a class="my-activity-visit__link" href="index.html?visit=' + encodeURIComponent(visit.id) + '#visit-log">View report</a>' +
+    // Still a real link to the dashboard: the modal is an enhancement, so the
+    // report stays reachable if js/visit-report.js never loaded.
+    '<a class="my-activity-visit__link" data-open-visit-report="' + escapeHtml(visit.id) + '"' +
+    ' href="index.html?visit=' + encodeURIComponent(visit.id) + '#visit-log">View report</a>' +
     '</div>' +
     '</article>';
 }
@@ -914,6 +985,7 @@ function renderVisits() {
 
   var visits = filteredVisits();
   var filters = readVisitFilters();
+  syncVisitResetState(filters);
 
   if (visitsSummary) {
     if (visits.length) {
@@ -935,12 +1007,22 @@ function renderVisits() {
     visitsListEl.innerHTML = emptyStateHtml('&#128196;', dataReady.visits
       ? 'No visits match these filters. Widen the date range or clear the search.'
       : 'Loading your visits…');
+    if (visitsMoreBtn) visitsMoreBtn.hidden = true;
     return;
   }
 
+  var shown = visits.slice(0, visitLimit);
+  if (visitsSummary && shown.length < visits.length) {
+    visitsSummary.textContent += ' · Showing first ' + shown.length;
+  }
   visitsListEl.innerHTML = '<div class="my-activity-visit-head" aria-hidden="true">' +
     '<span>Date</span><span>Bakery &amp; notes</span><span>Score</span><span></span></div>' +
-    visits.map(visitRowHtml).join('');
+    shown.map(visitRowHtml).join('');
+
+  if (visitsMoreBtn) {
+    visitsMoreBtn.hidden = visits.length <= visitLimit;
+    visitsMoreBtn.textContent = 'Show more (' + (visits.length - shown.length) + ' left)';
+  }
 
   // Cached so the export always mirrors exactly what the filters produced,
   // never a stale list from a previous render.
@@ -1265,6 +1347,9 @@ function buildTimelineEvents() {
       tag: visitTypeLabel(visit),
       href: href,
       linkLabel: 'View report',
+      // Opens the report in place, like the visits list above. Only visit
+      // events carry this; the rest of the feed links to a bakery profile.
+      visitId: visit.id,
       footnote: (assignedHere
         ? 'Assigned by ' + visitLoggerLabel(visit) + ' · '
         : (assignedAway ? 'Assigned to ' + visitAssigneeLabel(visit) + ' · ' : '')) +
@@ -1380,7 +1465,9 @@ function timelineEventHtml(event) {
     '<span class="my-activity-event__title">' + escapeHtml(event.title) + '</span>' +
     '<span class="my-activity-tag my-activity-tag--' + event.tone + '">' + escapeHtml(event.tag) + '</span>' +
     '</div>' +
-    '<a class="my-activity-event__bakery" href="' + escapeHtml(event.href) + '">' +
+    '<a class="my-activity-event__bakery"' +
+    (event.visitId ? ' data-open-visit-report="' + escapeHtml(event.visitId) + '"' : '') +
+    ' href="' + escapeHtml(event.href) + '">' +
     escapeHtml(bakerySiteName(event.bakery)) + '<span class="my-activity-event__link-hint">' +
     escapeHtml(event.linkLabel) + '</span></a>' +
     (detail ? '<p class="my-activity-event__detail">' + escapeHtml(detail) + '</p>' : '') +
@@ -1395,15 +1482,26 @@ function timelineEventHtml(event) {
 
 function renderTimeline() {
   if (!timelineList) return;
+  var search = timelineSearch ? timelineSearch.value.trim().toLowerCase() : '';
   var events = buildTimelineEvents().filter(function (event) {
-    return timelineKind === 'all' || event.kind === timelineKind;
+    if (timelineKind !== 'all' && event.kind !== timelineKind) return false;
+    if (!search) return true;
+    return [event.title, event.detail, event.bakery, event.tag, event.footnote, event.kind]
+      .join(' ').toLowerCase().indexOf(search) !== -1;
   });
 
   if (timelineCount) timelineCount.textContent = plural(events.length, 'event');
+  if (timelineSummary) {
+    timelineSummary.textContent = search
+      ? plural(events.length, 'matching event') + ' for “' + timelineSearch.value.trim() + '”'
+      : '';
+  }
 
   if (!events.length) {
     timelineList.innerHTML = emptyStateHtml('&#128340;', anyDataReady()
-      ? 'Nothing recorded here yet. Log a visit, add a note, or raise a follow-up and it will appear.'
+      ? (search
+        ? 'No activity matches that search. Try a bakery, action, or visit type.'
+        : 'Nothing recorded here yet. Log a visit, add a note, or raise a follow-up and it will appear.')
       : 'Loading your activity…');
     if (timelineMoreBtn) timelineMoreBtn.hidden = true;
     return;
@@ -1483,12 +1581,15 @@ function renderStats() {
     { label: 'Notes written', value: notesWritten.length, meta: plural(tasks.length, 'task') + ' linked to you' }
   ];
 
-  statsEl.innerHTML = cards.map(function (card) {
-    return '<div class="my-activity-stat' + (card.tone ? ' my-activity-stat--' + card.tone : '') + '">' +
+  var destinations = ['section-actions', 'section-visits', 'section-visits', 'section-timeline'];
+  statsEl.innerHTML = cards.map(function (card, index) {
+    return '<a class="my-activity-stat' + (card.tone ? ' my-activity-stat--' + card.tone : '') + '"' +
+      ' href="#' + destinations[index] + '" aria-label="' +
+      escapeHtml(card.label + ': ' + card.value + '. ' + card.meta) + '">' +
       '<span class="my-activity-stat__label">' + escapeHtml(card.label) + '</span>' +
       '<strong class="my-activity-stat__value">' + escapeHtml(card.value) + '</strong>' +
       '<span class="my-activity-stat__meta">' + escapeHtml(card.meta) + '</span>' +
-      '</div>';
+      '</a>';
   }).join('');
 }
 
@@ -1497,6 +1598,34 @@ function renderAll() {
   renderActions();
   renderVisits();
   renderTimeline();
+}
+
+// ---------- the visit report modal ----------
+// The report is rendered by js/visit-report.js — the dashboard's own renderer,
+// loaded on this page and pointed at the modal markup copied into
+// my-activity.html — so a report reads identically wherever it is opened, and
+// there is one place to change it.
+//
+// It renders whatever is in GAILS._allVisitsObj, which this page deliberately
+// stocks with **only the visits already on screen** rather than every visit in
+// the estate. Two reasons: the report's ‹ › arrows walk that object for other
+// visits to the same bakery, so here they stay inside the user's own history,
+// which is what a page called My Activity should offer; and those arrows apply
+// no ops-area scoping, so handing them the full set would let a scoped user
+// page into bakeries their Bakery Reports tab hides from them.
+function syncReportSource() {
+  var mine = {};
+  myVisits().forEach(function (visit) {
+    mine[visit.id] = visitsObj[visit.id];
+  });
+  G._allVisitsObj = mine;
+}
+
+function openReportModal(visitId) {
+  if (typeof G.openVisitReportById !== 'function') return false;
+  syncReportSource();
+  G.openVisitReportById(visitId);
+  return true;
 }
 
 // ---------- live data ----------
@@ -1591,6 +1720,7 @@ if (actionsList) {
 let actionsSearchDebounce = null;
 if (actionsSearch) {
   actionsSearch.addEventListener('input', function () {
+    syncActionResetState();
     clearTimeout(actionsSearchDebounce);
     actionsSearchDebounce = setTimeout(function () {
       saveFilters();
@@ -1644,11 +1774,25 @@ if (timelineMoreBtn) {
   });
 }
 
+let timelineSearchDebounce = null;
+if (timelineSearch) {
+  timelineSearch.addEventListener('input', function () {
+    clearTimeout(timelineSearchDebounce);
+    timelineSearchDebounce = setTimeout(function () {
+      timelineLimit = TIMELINE_CHUNK;
+      saveFilters();
+      renderTimeline();
+    }, 160);
+  });
+}
+
 let searchDebounce = null;
 if (visitsSearch) {
   visitsSearch.addEventListener('input', function () {
+    syncVisitResetState();
     clearTimeout(searchDebounce);
     searchDebounce = setTimeout(function () {
+      visitLimit = VISIT_CHUNK;
       saveFilters();
       renderVisits();
     }, 200);
@@ -1658,6 +1802,7 @@ if (visitsSearch) {
 [visitsPeriod, visitsOps, visitsBakery, visitsSort, visitsFrom, visitsTo].forEach(function (control) {
   if (!control) return;
   control.addEventListener('change', function () {
+    visitLimit = VISIT_CHUNK;
     syncCustomRangeVisibility();
     saveFilters();
     renderVisits();
@@ -1673,6 +1818,7 @@ if (visitsReset) {
     if (visitsOps) visitsOps.value = '';
     if (visitsBakery) visitsBakery.value = '';
     if (visitsSort) visitsSort.value = 'dateDesc';
+    visitLimit = VISIT_CHUNK;
     if (typeof G.syncCustomSelect === 'function') {
       [visitsPeriod, visitsOps, visitsBakery, visitsSort].forEach(function (select) {
         if (select) G.syncCustomSelect(select);
@@ -1680,6 +1826,13 @@ if (visitsReset) {
     }
     syncCustomRangeVisibility();
     saveFilters();
+    renderVisits();
+  });
+}
+
+if (visitsMoreBtn) {
+  visitsMoreBtn.addEventListener('click', function () {
+    visitLimit += VISIT_CHUNK;
     renderVisits();
   });
 }
@@ -1699,19 +1852,56 @@ document.addEventListener('keydown', function (event) {
   if (event.key === 'Escape' && confirmModal && !confirmModal.hidden) closeConfirmModal();
 });
 
-if (signOutBtn) {
-  signOutBtn.addEventListener('click', async function () {
-    await signOut(auth);
-    window.location.href = 'index.html';
+// Keep the jump bar's active state in sync with the section currently in view.
+// Its ordinary hash links remain the no-JavaScript fallback.
+if (jumpNav && 'IntersectionObserver' in window) {
+  var sectionObserver = new IntersectionObserver(function (entries) {
+    var visible = entries
+      .filter(function (entry) { return entry.isIntersecting; })
+      .sort(function (a, b) { return b.intersectionRatio - a.intersectionRatio; })[0];
+    if (!visible) return;
+    Array.from(jumpNav.querySelectorAll('[data-section-link]')).forEach(function (link) {
+      link.classList.toggle('is-active', link.getAttribute('data-section-link') === visible.target.id);
+    });
+  }, { rootMargin: '-15% 0px -65% 0px', threshold: [0, 0.1, 0.5] });
+
+  ['section-actions', 'section-visits', 'section-timeline'].forEach(function (id) {
+    var section = document.getElementById(id);
+    if (section) sectionObserver.observe(section);
   });
 }
+
+// Opening a report in place, from either the visits list or the activity feed.
+// Bound on the document because both lists are re-rendered wholesale.
+//
+// The attribute is `data-open-visit-report`, deliberately NOT `data-visit-report`:
+// js/visit-report.js binds its own document click handler to that name and reads
+// it as a *bakery* name, so reusing it here would have every click fire both
+// handlers and race a "no visit logged for this bakery" render against the real
+// one.
+//
+// Modified clicks are left alone — ctrl/cmd/middle-click still opens the
+// dashboard report in a new tab, which is the whole reason these stay anchors
+// with a working href rather than becoming buttons.
+document.addEventListener('click', function (event) {
+  if (event.defaultPrevented || event.button !== 0) return;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+  var link = event.target.closest('[data-open-visit-report]');
+  if (!link) return;
+
+  if (openReportModal(link.getAttribute('data-open-visit-report'))) event.preventDefault();
+});
 
 // ---------- bootstrap ----------
 
 function showGuardError(message) {
   if (guardText) {
-    guardText.innerHTML = escapeHtml(message) +
-      '<br><a class="my-activity-header__link" href="index.html">Back to the dashboard</a>';
+    // The loading copy sits in a row next to its spinner; an error needs the
+    // message and the return link stacked and centred instead.
+    guardText.classList.add('auth-loading__text--stacked');
+    guardText.innerHTML = '<span>' + escapeHtml(message) + '</span>' +
+      '<a class="btn" href="index.html">Back to the dashboard</a>';
   }
   if (guard) guard.style.display = '';
   if (page) page.hidden = true;
@@ -1786,9 +1976,23 @@ async function loadActivityHub(user) {
   }
   var permissions = resolveRolePermissions(roleId, customRole);
   canEdit = permissions.actions.logVisits === true;
+  // js/visit-report.js renders the report modal on this page and reads its
+  // permissions from the namespace, exactly as it does on the dashboard where
+  // js/auth.js sets it. Without this it would fall back to "allowed".
+  G.permissions = permissions;
 
   currentUser = user;
   identity = buildIdentity(user, userProfile);
+  mountStandaloneProfileMenu({
+    user: user,
+    profile: userProfile,
+    showActivity: true,
+    showTeam: canSeeTeam(permissions),
+    onSignOut: async function () {
+      await signOut(auth);
+      window.location.href = 'index.html';
+    }
+  });
 
   if (greetingEl) {
     greetingEl.textContent = identityDisplayName().split(' ')[0] +

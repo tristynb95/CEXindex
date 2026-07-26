@@ -12,9 +12,11 @@ const ESM_FILES = [
   'js/firebase-config.js',
   'js/bakery-profile.js',
   'js/my-activity.js',
+  'js/my-team.js',
   'js/permissions.js',
   'js/profile-menu.js',
-  'js/profile-page.js'
+  'js/profile-page.js',
+  'js/standalone-profile-menu.js'
 ];
 
 // Third-party globals loaded from CDN <script> tags rather than npm.

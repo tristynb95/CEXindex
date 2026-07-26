@@ -81,6 +81,15 @@
                     </svg>
                     My Activity
                   </a>
+                  <a class="profile-menu__item" href="my-team.html" role="menuitem" data-my-team-link hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <circle cx="9" cy="9" r="3" />
+                      <path d="M3.5 18a5.5 5.5 0 0 1 11 0" />
+                      <circle cx="17" cy="10" r="2.2" />
+                      <path d="M15.5 18c.4-2 1.7-3.2 3.8-3.2" />
+                    </svg>
+                    My Team
+                  </a>
                   <button type="button" id="adminPageSignOut" class="profile-menu__item profile-menu__item--danger" role="menuitem">
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -154,7 +163,7 @@
                     <span class="admin-pg-nav__meta">Workspace health, activity, and fast actions.</span>
                   </span>
                 </button>
-                <button type="button" class="admin-pg-nav__btn" data-admin-panel="users" aria-label="Users">
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="access" aria-label="People and access">
                   <span class="admin-pg-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
                       <circle cx="9" cy="9" r="2.5"></circle>
@@ -165,21 +174,8 @@
                   </span>
                   <span class="admin-pg-nav__content">
                     <span class="admin-pg-nav__eyebrow">Access</span>
-                    <strong>Users</strong>
-                    <span class="admin-pg-nav__meta">Invite users, change roles, or remove access.</span>
-                  </span>
-                </button>
-                <button type="button" class="admin-pg-nav__btn" data-admin-panel="roles" aria-label="Roles">
-                  <span class="admin-pg-nav__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path d="M12 3.5 5 6.5v4.6c0 4.3 3 7.6 7 9.4 4-1.8 7-5.1 7-9.4V6.5L12 3.5Z"></path>
-                      <path d="M9.2 11.8l2 2 3.6-3.9"></path>
-                    </svg>
-                  </span>
-                  <span class="admin-pg-nav__content">
-                    <span class="admin-pg-nav__eyebrow">Access</span>
-                    <strong>Roles</strong>
-                    <span class="admin-pg-nav__meta">Create roles and decide what each one can see or edit.</span>
+                    <strong>People &amp; Access</strong>
+                    <span class="admin-pg-nav__meta">Who can see what, who can edit what, and who reports to whom.</span>
                   </span>
                 </button>
                 <button type="button" class="admin-pg-nav__btn" data-admin-panel="sites" aria-label="Site data">
@@ -261,15 +257,10 @@
                   </div>
                 </div>
                 <div class="admin-action-grid">
-                  <button type="button" class="admin-action-card" data-admin-panel-target="users">
-                    <span class="admin-action-card__label">Access Control</span>
-                    <strong>Manage who can view or administer the dashboard</strong>
-                    <span>Invite users, change roles, or revoke access.</span>
-                  </button>
-                  <button type="button" class="admin-action-card" data-admin-panel-target="roles">
-                    <span class="admin-action-card__label">Roles</span>
-                    <strong>Create roles and set what each can see and edit</strong>
-                    <span>Build custom access levels, then assign them to users.</span>
+                  <button type="button" class="admin-action-card" data-admin-panel-target="access">
+                    <span class="admin-action-card__label">People &amp; Access</span>
+                    <strong>Set who can see what and who can edit what</strong>
+                    <span>Invite people, assign roles and reporting lines, or revoke access.</span>
                   </button>
                   <button type="button" class="admin-action-card" data-admin-panel-target="sites">
                     <span class="admin-action-card__label">Site Ownership</span>
@@ -316,75 +307,33 @@
               </div>
                 </section>
 
-                <section class="admin-portal__panel" data-admin-panel-content="users">
+                <section class="admin-portal__panel" data-admin-panel-content="access">
+              <!-- PEOPLE — one row per person, and one modal behind each row
+                   holding every access decision about them. -->
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
-                    <h3>Bakery Reports Visibility</h3>
-                    <p>When on, users with an assigned Bakery Reports scope only see visits and follow-ups for their own ops area. Users left unassigned — and admins — always see every site.</p>
+                    <h3>People</h3>
+                    <p>Everyone with dashboard access. Each row shows what that person can see, what they can change, and who they report to &mdash; open <strong>Manage</strong> to change any of it in one place.</p>
                   </div>
-                </div>
-                <label class="admin-toggle-row">
-                  <input type="checkbox" id="reportVisibilityToggle">
-                  <span class="admin-toggle-row__body">
-                    <span class="admin-toggle-row__title">Restrict ops managers to their own sites</span>
-                    <span class="admin-toggle-row__desc" id="reportVisibilityState">Loading current setting…</span>
-                  </span>
-                </label>
-                <div id="reportVisibilityMsg" class="admin-message" style="display:none;"></div>
-              </div>
-
-              <div class="admin-section">
-                <div class="admin-section__header">
-                  <div>
-                    <h3>Invite User</h3>
-                    <p>Create their dashboard access and email them a secure link to choose a password.</p>
-                  </div>
-                </div>
-                <form id="createUserForm" class="admin-form admin-form--inline">
-                  <label class="admin-form-field" for="newFirstNameInput">
-                    <span>First name</span>
-                    <input type="text" id="newFirstNameInput" placeholder="First name" autocomplete="given-name" maxlength="50" required>
-                  </label>
-                  <label class="admin-form-field" for="newLastNameInput">
-                    <span>Last name</span>
-                    <input type="text" id="newLastNameInput" placeholder="Last name" autocomplete="family-name" maxlength="50" required>
-                  </label>
-                  <label class="admin-form-field" for="newEmailInput">
-                    <span>Work email</span>
-                    <input type="email" id="newEmailInput" placeholder="Email address" autocomplete="email" required>
-                  </label>
-                  <label class="admin-form-field" for="newRoleSelect">
-                    <span>Access level</span>
-                    <select id="newRoleSelect">
-                      <option value="viewer">Viewer</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </label>
-                  <button type="submit" class="btn">Send Invitation</button>
-                </form>
-                <div id="createMsg" class="admin-message" style="display:none;"></div>
-              </div>
-
-              <div class="admin-section">
-                <div class="admin-section__header">
-                  <div>
-                    <h3>Active Users</h3>
-                    <p>Update roles in place or remove access for users who no longer need the dashboard.</p>
+                  <div class="admin-section__header-actions">
+                    <button type="button" id="inviteUserBtn" class="btn">&#43; Invite person</button>
                   </div>
                 </div>
                 <div id="usersMsg" class="admin-message" style="display:none;"></div>
+                <div id="createMsg" class="admin-message" style="display:none;"></div>
                 <div class="admin-table-wrap">
-                  <table class="admin-table">
+                  <table class="admin-table admin-table--people">
                     <thead>
                       <tr>
-                        <th>Name</th>
-                        <th>Email</th>
+                        <th>Person</th>
                         <th>Role</th>
-                        <th>Status</th>
+                        <th>Reports to</th>
+                        <th>Can see</th>
+                        <th>Can edit</th>
                         <th>
                           <div class="table-fullscreen-inline-anchor" data-table-fullscreen-anchor="true">
-                            <span>Actions</span>
+                            <span>Access</span>
                           </div>
                         </th>
                       </tr>
@@ -393,64 +342,29 @@
                   </table>
                 </div>
               </div>
-                </section>
 
-                <section class="admin-portal__panel" data-admin-panel-content="roles">
+              <!-- ROLES — the same two questions, asked once per role instead
+                   of once per person. -->
               <div class="admin-section" id="roleFormSection">
                 <div class="admin-section__header">
                   <div>
-                    <h3 id="roleFormTitle">Create Role</h3>
-                    <p id="roleFormHint">Name the role, tick the dashboard tabs it can see, then set what it can do in each admin panel. Assign it to users from the Users panel.</p>
+                    <h3>Roles</h3>
+                    <p>A role answers both questions once, for everyone who holds it. Admin and Viewer are built in and cannot be changed; delete a custom role and anyone holding it drops back to Viewer.</p>
+                  </div>
+                  <div class="admin-section__header-actions">
+                    <button type="button" id="newRoleBtn" class="btn">&#43; New role</button>
                   </div>
                 </div>
-                <form id="roleForm" class="admin-form admin-role-form">
-                  <div class="admin-role-form__basics">
-                    <label class="admin-form-field" for="roleNameInput">
-                      <span>Role name</span>
-                      <input type="text" id="roleNameInput" placeholder="e.g. Ops Manager" maxlength="40" required>
-                    </label>
-                    <label class="admin-form-field admin-form-field--grow" for="roleDescInput">
-                      <span>Description (optional)</span>
-                      <input type="text" id="roleDescInput" placeholder="What is this role for?" maxlength="120">
-                    </label>
-                  </div>
-
-                  <div class="admin-role-matrix">
-                    <div class="admin-role-matrix__group">
-                      <h4>Dashboard &mdash; what they can see</h4>
-                      <p>Unticked tabs are hidden from the dashboard for anyone with this role.</p>
-                      <div class="admin-role-tabs" id="roleTabMatrix"></div>
-                    </div>
-                    <div class="admin-role-matrix__group">
-                      <h4>Admin portal &mdash; what they can do</h4>
-                      <p><strong>None</strong> hides the panel, <strong>View</strong> is read-only, <strong>Edit</strong> allows changes. Any View or Edit access lets the role open this admin portal.</p>
-                      <div class="admin-role-areas" id="roleAreaMatrix"></div>
-                    </div>
-                  </div>
-
-                  <div class="admin-role-form__actions">
-                    <button type="button" id="roleCancelBtn" class="admin-secondary-btn" style="display:none;">Cancel Edit</button>
-                    <button type="submit" id="roleSubmitBtn" class="btn">Create Role</button>
-                  </div>
-                </form>
                 <div id="roleMsg" class="admin-message" style="display:none;"></div>
-              </div>
-
-              <div class="admin-section">
-                <div class="admin-section__header">
-                  <div>
-                    <h3>Existing Roles</h3>
-                    <p>Admin and Viewer are built in and cannot be changed. A role that is still assigned to users cannot be deleted.</p>
-                  </div>
-                </div>
                 <div class="admin-table-wrap">
                   <table class="admin-table admin-table--roles">
                     <thead>
                       <tr>
                         <th>Role</th>
-                        <th>Dashboard</th>
-                        <th>Admin access</th>
-                        <th>Users</th>
+                        <th>Can see</th>
+                        <th>Can edit</th>
+                        <th>Team view</th>
+                        <th>People</th>
                         <th>
                           <div class="table-fullscreen-inline-anchor" data-table-fullscreen-anchor="true">
                             <span>Actions</span>
@@ -461,6 +375,24 @@
                     <tbody id="adminRoleList"></tbody>
                   </table>
                 </div>
+              </div>
+
+              <!-- ESTATE-WIDE RULES — settings that apply on top of every role. -->
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
+                    <h3>Estate-wide rules</h3>
+                    <p>Applied on top of every role, whoever holds it.</p>
+                  </div>
+                </div>
+                <label class="admin-toggle-row">
+                  <input type="checkbox" id="reportVisibilityToggle">
+                  <span class="admin-toggle-row__body">
+                    <span class="admin-toggle-row__title">Restrict people to their own ops area in Bakery Reports</span>
+                    <span class="admin-toggle-row__desc" id="reportVisibilityState">Loading current setting&hellip;</span>
+                  </span>
+                </label>
+                <div id="reportVisibilityMsg" class="admin-message" style="display:none;"></div>
               </div>
                 </section>
 
@@ -700,6 +632,176 @@
                   </div>
                 </div>
 
+                <!-- PERSON ACCESS MODAL — every access decision about one
+                     person in one place: their role, their reporting line,
+                     their Bakery Reports scope, and their feature switches. -->
+                <div id="userAccessModal" class="modal-overlay" style="display:none;">
+                  <div class="access-modal" role="dialog" aria-modal="true" aria-labelledby="userAccessTitle">
+                    <span class="access-modal__accent access-modal__accent--access" aria-hidden="true"></span>
+                    <div class="access-modal__head">
+                      <div>
+                        <p class="access-modal__eyebrow">Manage access</p>
+                        <h3 id="userAccessTitle">Person</h3>
+                        <p id="userAccessEmail" class="access-modal__sub"></p>
+                      </div>
+                      <button type="button" id="userAccessClose" class="modal-close-btn" aria-label="Close access settings" title="Close">&#10005;</button>
+                    </div>
+                    <div class="access-modal__body">
+                      <div id="userAccessMsg" class="admin-message" style="display:none;"></div>
+                      <div id="userAccessSelfNote" class="access-modal__note access-modal__note--warn" hidden>
+                        This is the account you are signed in with. Its role and reporting line are locked so you cannot lock yourself out.
+                      </div>
+                      <div class="access-modal__fields">
+                        <label class="admin-form-field" for="userAccessRole">
+                          <span>Role</span>
+                          <select id="userAccessRole"></select>
+                          <small class="admin-form-field__hint">Decides what they can see and edit everywhere.</small>
+                        </label>
+                        <label class="admin-form-field" for="userAccessManager">
+                          <span>Reports to</span>
+                          <select id="userAccessManager"></select>
+                          <small class="admin-form-field__hint">Their manager sees their visits and tasks on My Team.</small>
+                        </label>
+                        <label class="admin-form-field" for="userAccessOps">
+                          <span>Bakery Reports scope</span>
+                          <select id="userAccessOps"></select>
+                          <small class="admin-form-field__hint">Only applies while the estate-wide rule below is on.</small>
+                        </label>
+                      </div>
+
+                      <div class="access-modal__readout">
+                        <div class="access-modal__readout-col">
+                          <span class="access-modal__readout-label">Can see</span>
+                          <strong id="userAccessSee">&mdash;</strong>
+                        </div>
+                        <div class="access-modal__readout-col">
+                          <span class="access-modal__readout-label">Can edit</span>
+                          <strong id="userAccessEdit">&mdash;</strong>
+                        </div>
+                        <div class="access-modal__readout-col">
+                          <span class="access-modal__readout-label">Team view</span>
+                          <strong id="userAccessTeam">&mdash;</strong>
+                        </div>
+                      </div>
+
+                      <label class="admin-toggle-row" for="userAccessMyActivity">
+                        <input type="checkbox" id="userAccessMyActivity">
+                        <span class="admin-toggle-row__body">
+                          <span class="admin-toggle-row__title">My Activity hub</span>
+                          <span class="admin-toggle-row__desc">Their own page of visits, follow-ups, and activity. Off by default for everyone.</span>
+                        </span>
+                      </label>
+
+                      <p id="userAccessStatusNote" class="access-modal__note"></p>
+                    </div>
+                    <div class="access-modal__footer">
+                      <button type="button" id="userAccessRemove" class="admin-inline-danger">Remove access</button>
+                      <div class="access-modal__footer-main">
+                        <button type="button" id="userAccessResetPassword" class="admin-inline-btn">Reset password</button>
+                        <button type="button" id="userAccessCancel" class="admin-secondary-btn">Cancel</button>
+                        <button type="button" id="userAccessSave" class="btn">Save access</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ROLE EDITOR MODAL — the see/edit grid. Every capability in
+                     the app is one row with two cells, built by
+                     js/admin-page.js from ACCESS_ROWS in js/permissions.js. -->
+                <div id="roleEditorModal" class="modal-overlay" style="display:none;">
+                  <div class="access-modal access-modal--wide" role="dialog" aria-modal="true" aria-labelledby="roleEditorTitle">
+                    <span class="access-modal__accent access-modal__accent--role" aria-hidden="true"></span>
+                    <div class="access-modal__head">
+                      <div>
+                        <p class="access-modal__eyebrow">Role</p>
+                        <h3 id="roleEditorTitle">New role</h3>
+                        <p id="roleEditorHint" class="access-modal__sub">Tick what this role can see, then what it can change. Edit always includes seeing.</p>
+                      </div>
+                      <button type="button" id="roleEditorClose" class="modal-close-btn" aria-label="Close role editor" title="Close">&#10005;</button>
+                    </div>
+                    <form id="roleForm" class="access-modal__body">
+                      <div id="roleEditorMsg" class="admin-message" style="display:none;"></div>
+                      <div class="access-modal__fields">
+                        <label class="admin-form-field" for="roleNameInput">
+                          <span>Role name</span>
+                          <input type="text" id="roleNameInput" placeholder="e.g. Coffee Team Manager" maxlength="40" required>
+                        </label>
+                        <label class="admin-form-field admin-form-field--grow" for="roleDescInput">
+                          <span>Description (optional)</span>
+                          <input type="text" id="roleDescInput" placeholder="Who is this role for?" maxlength="120">
+                        </label>
+                      </div>
+
+                      <div class="access-grid" id="roleAccessGrid"></div>
+
+                      <fieldset class="access-team">
+                        <legend>Team view</legend>
+                        <p class="access-team__copy">What this role sees on the My Team page. Reporting lines are set per person, in their access settings.</p>
+                        <div class="access-team__options" id="roleTeamScope"></div>
+                      </fieldset>
+                    </form>
+                    <div class="access-modal__footer">
+                      <button type="button" id="roleEditorDelete" class="admin-inline-danger" hidden>Delete role</button>
+                      <div class="access-modal__footer-main">
+                        <button type="button" id="roleEditorCancel" class="admin-secondary-btn">Cancel</button>
+                        <button type="submit" form="roleForm" id="roleSubmitBtn" class="btn">Create role</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- INVITE MODAL — the same access decisions, asked once when
+                     the account is created. -->
+                <div id="inviteUserModal" class="modal-overlay" style="display:none;">
+                  <div class="access-modal" role="dialog" aria-modal="true" aria-labelledby="inviteUserTitle">
+                    <span class="access-modal__accent access-modal__accent--invite" aria-hidden="true"></span>
+                    <div class="access-modal__head">
+                      <div>
+                        <p class="access-modal__eyebrow">New account</p>
+                        <h3 id="inviteUserTitle">Invite a person</h3>
+                        <p class="access-modal__sub">They get an email with a secure link to choose their own password.</p>
+                      </div>
+                      <button type="button" id="inviteUserClose" class="modal-close-btn" aria-label="Close invitation" title="Close">&#10005;</button>
+                    </div>
+                    <form id="createUserForm" class="access-modal__body">
+                      <div id="inviteMsg" class="admin-message" style="display:none;"></div>
+                      <div class="access-modal__fields">
+                        <label class="admin-form-field" for="newFirstNameInput">
+                          <span>First name</span>
+                          <input type="text" id="newFirstNameInput" placeholder="First name" autocomplete="given-name" maxlength="50" required>
+                        </label>
+                        <label class="admin-form-field" for="newLastNameInput">
+                          <span>Last name</span>
+                          <input type="text" id="newLastNameInput" placeholder="Last name" autocomplete="family-name" maxlength="50" required>
+                        </label>
+                        <label class="admin-form-field admin-form-field--grow" for="newEmailInput">
+                          <span>Work email</span>
+                          <input type="email" id="newEmailInput" placeholder="name@gails.com" autocomplete="email" required>
+                        </label>
+                        <label class="admin-form-field" for="newRoleSelect">
+                          <span>Role</span>
+                          <select id="newRoleSelect"></select>
+                        </label>
+                        <label class="admin-form-field" for="newManagerSelect">
+                          <span>Reports to</span>
+                          <select id="newManagerSelect"></select>
+                        </label>
+                        <label class="admin-form-field" for="newOpsSelect">
+                          <span>Bakery Reports scope</span>
+                          <select id="newOpsSelect"></select>
+                        </label>
+                      </div>
+                      <div id="inviteSummary" class="access-modal__note"></div>
+                    </form>
+                    <div class="access-modal__footer">
+                      <div class="access-modal__footer-main">
+                        <button type="button" id="inviteUserCancel" class="admin-secondary-btn">Cancel</button>
+                        <button type="submit" form="createUserForm" id="inviteSubmitBtn" class="btn">Send invitation</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <section class="admin-portal__panel" data-admin-panel-content="data">
               <div class="admin-section">
                 <div class="admin-section__header">
@@ -758,6 +860,9 @@
   <script src="js/mention-field.js"></script>
   <script src="js/attribution.js"></script>
   <script src="js/region-assignments.js"></script>
+  <!-- Reporting lines: who reports to whom, and therefore whose work a manager
+       sees on My Team. Must load before js/admin-page.js reads GAILS.Team. -->
+  <script src="js/team.js"></script>
   <!-- Reuses the CQV parser's pdf.js text extraction and the NBO score helpers,
        so it must load after both. -->
   <script src="js/nbo-parser.js"></script>

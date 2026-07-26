@@ -15,6 +15,7 @@ exists only for tooling (ESLint); nothing is bundled, compiled, or minified.
 | `profile.html` | `js/profile-page.js` | User profile |
 | `bakery-profile.html` | `js/bakery-profile.js` | Per-bakery performance, visits, tasks, map, and team notes |
 | `my-activity.html` | `js/my-activity.js` | The signed-in user's own open actions and visits (both filterable and exportable to Excel), plus their activity feed. Opt-in per user — see below |
+| `my-team.html` | `js/my-team.js` | A manager's view of their team's visits, tasks, and coverage. Granted by role — see below |
 
 ## The two JavaScript worlds
 
@@ -42,6 +43,8 @@ Shared code lives in one place per concern; prefer extending these over re-copyi
 - `js/mentions.js` — `GAILS.Mentions`, parsing and rendering `@mention` text.
 - `js/mention-field.js` — `GAILS.MentionField`, the two-face editor for it.
 - `js/attribution.js` — `GAILS.Attribution`, who a visit or follow-up belongs to.
+- `js/team.js` — `GAILS.Team`, the reporting hierarchy: who reports to whom.
+- `js/permissions.js` — roles, the see/edit access grid, and team scope (ES module).
 
 ## Assigning a visit with @mentions
 
@@ -82,17 +85,105 @@ the admin portal publishes the full user list and prunes revoked accounts.
 > names already on past visits and notes. Harvested names carry no uid, so a real
 > directory entry always wins once it arrives.
 
+## Who can see what, and who can edit what
+
+Both questions are answered in one place: **People & Access** in the admin
+portal. It replaced the separate Users and Roles panels — old `#users` and
+`#roles` links still land on it.
+
+The panel is three sections, in the order the questions get asked:
+
+- **People** — one row per person showing their role, who they report to, and a
+  plain-English summary of what they can see and change. **Manage** opens a
+  single dialog holding every access decision about them: role, reporting line,
+  Bakery Reports scope, and their My Activity switch. A read-out under the
+  fields says what those choices add up to *before* they are saved.
+- **Roles** — the same two questions asked once per role, as **one grid with a
+  "Can see" column and a "Can edit" column**. Every capability in the app is a
+  row. Ticking Edit ticks See, and clearing See clears Edit, because "can change
+  it but cannot look at it" is not a state the stored levels can express and
+  would be a lie if it were.
+- **Estate-wide rules** — settings applied on top of every role, whoever holds
+  it. Currently just the Bakery Reports ops-area restriction.
+
+Under the grid, storage is **unchanged**: `roles/{roleId}.permissions` still
+holds `tabs`, `actions`, and `admin` (`'none' | 'view' | 'edit'`) exactly as
+before, so no role needed migrating. `ACCESS_ROWS` in `js/permissions.js` is the
+translation layer — each row knows how to read itself out of a permission object
+and write itself back, so the portal never has to know which sub-object a given
+capability lives in. Add a capability there and it appears in the grid.
+
+The signed-in account's own role and reporting line lock themselves, so an admin
+cannot demote or orphan themselves. Their My Activity switch stays live: it only
+reveals their own work, and with a single admin account nobody else could ever
+turn it on.
+
+## Reporting lines and My Team
+
+`my-team.html` is the management counterpart to My Activity: instead of "what
+have I been doing", it answers "what is my team doing" — their visits, the
+bakeries they covered, and the follow-ups they have open.
+
+Two separate pieces of access control meet on that page, and keeping them
+separate is the point:
+
+| | Decides | Set in |
+| --- | --- | --- |
+| `permissions.teamScope` | whether My Team opens at all, and how far it reaches | the role |
+| `users/{uid}.managerUid` | who is actually in a manager's team | each person |
+
+`teamScope` is `'none'`, `'direct'` (their own reporting line), or `'all'` (the
+whole team, for the Head of Operations). It is granted by **role**, not a
+per-user switch, because a manager needs it for the job they do rather than
+because someone remembered to tick a box. Roles saved before My Team existed
+carry no `teamScope` at all, which reads as `'none'`.
+
+`managerUid` is one field per person, and the whole hierarchy is derived from
+it — so moving someone between managers is a single write and the tree
+re-shapes itself. **`'direct'` follows the line all the way down**, not one
+level: area head baristas report to coffee partners, coffee partners report to
+the coffee manager, and the coffee manager sees both levels, with each barista
+nested under the partner they belong to. Selecting a partner shows their whole
+area, and their row states their own figures and their area's roll-up
+separately — "Alex logged 4 visits" and "Alex's area logged 19" are different
+facts, and conflating them would flatter or bury people.
+
+`js/team.js` (`GAILS.Team`) walks the tree. It treats the line as untrusted
+input: every walk is cycle-safe, and `assignmentWouldCycle` lets the portal
+refuse the write in the first place — the manager picker never offers someone
+who already reports to you, and the save refuses it too.
+
+### Where the roster comes from
+
+`/users` carries roles and ops areas and is deliberately unreadable to ordinary
+users, but a manager has to be able to see who reports to them. So the org chart
+is mirrored into **`teamDirectory/{uid}`** — name, email, `managerUid`, and role
+name — readable only by roles that have a team view, and writable only by
+someone who can edit access. Nobody can add themselves to a team, which is what
+makes the roster worth trusting. It is the same pattern as `userDirectory`
+above, and the admin portal publishes and prunes both together.
+
+> **This needs a rules deploy** (`firebase deploy --only database`), as does the
+> `managerUid` clause that stops someone reassigning their own manager. Until
+> then the roster read fails and My Team shows an empty team rather than
+> breaking.
+
+My Team reads `routineVisits` and `followUpActions` — the same records every
+signed-in user can already read — and only groups them by person, using
+`js/attribution.js` so a visit lands under exactly the name whose own My
+Activity hub would show it. It widens *whose work* is in view, never *which
+sites*. It is also deliberately read-only: a manager reviewing workload should
+not be able to close somebody else's action out from under them.
+
 ## Turning My Activity on
 
 My Activity is **off by default**, for everyone including admins. Access is a
-single per-user flag, `users/{uid}.myActivity`, switched from the Users panel in
-the admin portal — a toggle on each row, alongside the role and Bakery Reports
-scope. Absent means off, so nobody gains the hub by upgrade.
+single per-user flag, `users/{uid}.myActivity`, switched from a person's access
+dialog in People & Access. Absent means off, so nobody gains the hub by upgrade.
 
-That toggle sits deliberately *outside* the row's Edit flow. Role and reports
-scope lock themselves against self-editing so an admin cannot demote themselves,
-but a feature switch is safe to flip on yourself — and with a single admin
-account, nobody else could ever turn it on.
+Unlike My Team, this one is per-user rather than per-role: it is a personal
+workspace, not a job function. The switch stays enabled even on your own
+account — see the self-editing note above.
 
 The flag gates three things, and all three matter:
 

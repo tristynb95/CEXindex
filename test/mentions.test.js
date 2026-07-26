@@ -197,6 +197,69 @@ test('harvesting keeps one-word names out of the picker', () => {
   assert.ok(!names.some((name) => name.startsWith('@')));
 });
 
+test('a pair written longhand never becomes a suggestion of its own', () => {
+  const mentions = load();
+
+  // How every visit logged before @mentions named a pair who went together.
+  mentions.addHarvested({
+    visits: {
+      v1: { coffeePartner: 'Jamie + Tristen' },
+      v2: { coffeePartner: 'Tristen + Jamie' },
+      v3: { coffeePartner: 'Jamie and Tristen' },
+      v4: { coffeePartner: 'Lauryn + Tristen' }
+    }
+  });
+
+  // Each pair splits into two one-word names, which the picker already excludes.
+  assert.deepEqual(plain(mentions.getPeople().map((person) => person.name)), []);
+
+  // A real two-word name still survives the split untouched.
+  mentions.addHarvested({ visits: { v5: { coffeePartner: 'Sam Partner & Ida Trainer' } } });
+  assert.deepEqual(plain(mentions.getPeople().map((person) => person.name)),
+    ['Ida Trainer', 'Sam Partner']);
+});
+
+test('splitting a pair leaves ordinary names whole', () => {
+  const mentions = load();
+
+  assert.deepEqual(plain(mentions.splitPeople('Jamie + Tristen')), ['Jamie', 'Tristen']);
+  assert.deepEqual(plain(mentions.splitPeople('Jamie and Tristen')), ['Jamie', 'Tristen']);
+  assert.deepEqual(plain(mentions.splitPeople('Sam Partner, Ida Trainer')), ['Sam Partner', 'Ida Trainer']);
+  assert.deepEqual(plain(mentions.splitPeople('Sam Partner')), ['Sam Partner']);
+  // "and" inside a name is not a joiner.
+  assert.deepEqual(plain(mentions.splitPeople('Alexander Sandringham')), ['Alexander Sandringham']);
+  assert.deepEqual(plain(mentions.splitPeople('')), []);
+});
+
+test('a colleague who has not set a name is still reachable by their work address', () => {
+  const mentions = load();
+
+  assert.equal(mentions.nameFromEmail('jamie_vu@gailsbread.co.uk'), 'Jamie Vu');
+  assert.equal(mentions.nameFromEmail('lauryn_brown@gailsbread.co.uk'), 'Lauryn Brown');
+  // Guessing where an unseparated local part divides would invent a name.
+  assert.equal(mentions.nameFromEmail('tristendbayley@gmail.com'), '');
+  assert.equal(mentions.nameFromEmail(''), '');
+});
+
+test('a lone first name resolves only when one person answers to it', () => {
+  const mentions = load();
+  mentions.setPeople([
+    { uid: 'uid-jamie', name: 'Jamie Vu', email: 'jamie_vu@gailsbread.co.uk' },
+    { uid: 'uid-tristen', name: 'Tristen Bayley', email: 'tristen_bayley@gailsbread.co.uk' }
+  ]);
+
+  assert.equal(mentions.resolvePerson('Jamie').email, 'jamie_vu@gailsbread.co.uk');
+  assert.equal(mentions.resolvePerson('Tristen').uid, 'uid-tristen');
+
+  // A name harvested from an old record cannot outrank a real account...
+  mentions.addHarvested({ visits: { v1: { coffeePartner: 'Jamie Robinson' } } });
+  assert.equal(mentions.resolvePerson('Jamie').uid, 'uid-jamie');
+
+  // ...but two real accounts sharing a first name resolve to neither.
+  mentions.addPeople([{ uid: 'uid-jt', name: 'Jamie Turner', email: 'jamie_turner@gailsbread.co.uk' }]);
+  assert.equal(mentions.resolvePerson('Jamie'), null);
+});
+
 test('the Coffee Partner field is the assignment control on both editors', () => {
   // Dashboard check-in modal.
   const partnerField = indexHtml.slice(indexHtml.indexOf('id="addVisitPartner"'));
@@ -223,8 +286,13 @@ test('the editor swaps faces rather than restyling one input', () => {
 
 test('the assignment is resolved at save, so deleting the mention un-assigns', () => {
   assert.match(visitReport, /assignedTo: assignees\.length \? assignees : null/);
-  assert.match(adminScript, /resolveAssignees\(collected\.general\.coffeePartner\)/);
+  assert.match(adminScript, /resolveEditedAssignees\(collected\.general\.coffeePartner, existing\.type\)/);
   assert.match(adminScript, /payload\.assignedTo = editedAssignees\.length \? editedAssignees : null/);
+  // The admin editor also honours a name typed without "@", but only when it
+  // resolves to a real colleague — and never on a check-in, where the field
+  // records who was on the bar rather than whose visit it is.
+  assert.match(adminScript, /if \(mentioned\.length \|\| visitType === 'siteVisit'\) return mentioned;/);
+  assert.match(adminScript, /M\.splitPeople\(M\.toText\(partnerText\)\)[\s\S]{0,120}M\.resolvePerson\(part\)/);
 });
 
 test('picking a name leaves room to pick another', () => {

@@ -17,6 +17,9 @@
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/my-activity.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Powers the section-score chart inside a CQV report. js/charts.js degrades
+       without it, so the report still opens if the CDN is unreachable. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 
 <body class="my-activity-body">
@@ -45,9 +48,9 @@
         </span>
       </a>
       <div class="my-activity-header__actions">
-        <a id="myActivityBackLink" href="index.html" class="my-activity-header__link">&#8592; Dashboard</a>
-        <a href="profile.html" class="my-activity-header__link">Profile</a>
-        <button type="button" id="myActivitySignOut" class="my-activity-header__link">Sign out</button>
+        <a id="myActivityBackLink" href="index.html"
+          class="my-activity-header__link standalone-header-button">&#8592; Dashboard</a>
+        <div data-standalone-account-menu></div>
       </div>
     </header>
 
@@ -61,10 +64,10 @@
 
       <div id="myActivityStats" class="my-activity-stats" aria-label="Your activity at a glance"></div>
 
-      <nav class="my-activity-jump" aria-label="Jump to a section">
-        <a href="#section-actions" class="my-activity-jump__link">Open actions</a>
-        <a href="#section-visits" class="my-activity-jump__link">My visits</a>
-        <a href="#section-timeline" class="my-activity-jump__link">Activity feed</a>
+      <nav id="myActivityJump" class="my-activity-jump" aria-label="Jump to a section">
+        <a href="#section-actions" class="my-activity-jump__link" data-section-link="section-actions">Open actions</a>
+        <a href="#section-visits" class="my-activity-jump__link" data-section-link="section-visits">My visits</a>
+        <a href="#section-timeline" class="my-activity-jump__link" data-section-link="section-timeline">Activity feed</a>
       </nav>
 
       <!-- ========== 1. OPEN ACTIONS ========== -->
@@ -241,6 +244,7 @@
 
         <div id="myVisitsSummary" class="my-activity-summary" role="status" aria-live="polite"></div>
         <div id="myVisitsList" class="my-activity-visit-list"></div>
+        <button type="button" id="myVisitsMore" class="visit-log-show-more" hidden>Show more</button>
       </section>
 
       <!-- ========== 3. ACTIVITY FEED ========== -->
@@ -257,14 +261,22 @@
           </div>
         </div>
 
-        <div id="myTimelineFilter" class="visit-log-toggle my-activity-toggle" role="group"
-          aria-label="Filter your activity feed">
-          <button type="button" class="visit-log-toggle-btn active" data-kind="all">Everything</button>
-          <button type="button" class="visit-log-toggle-btn" data-kind="visit">Visits</button>
-          <button type="button" class="visit-log-toggle-btn" data-kind="note">Bakery notes</button>
-          <button type="button" class="visit-log-toggle-btn" data-kind="task">Follow-up tasks</button>
+        <div class="my-activity-inline-tools">
+          <div id="myTimelineFilter" class="visit-log-toggle my-activity-toggle" role="group"
+            aria-label="Filter your activity feed">
+            <button type="button" class="visit-log-toggle-btn active" data-kind="all">Everything</button>
+            <button type="button" class="visit-log-toggle-btn" data-kind="visit">Visits</button>
+            <button type="button" class="visit-log-toggle-btn" data-kind="note">Bakery notes</button>
+            <button type="button" class="visit-log-toggle-btn" data-kind="task">Follow-up tasks</button>
+          </div>
+          <label class="my-activity-compact-search" for="myTimelineSearch">
+            <span class="sr-only">Search activity feed</span>
+            <input type="search" id="myTimelineSearch" class="visit-log-input"
+              placeholder="Search activity&hellip;" autocomplete="off">
+          </label>
         </div>
 
+        <div id="myTimelineSummary" class="my-activity-summary" role="status" aria-live="polite"></div>
         <div id="myTimelineList" class="my-activity-timeline"></div>
         <button type="button" id="myTimelineMore" class="visit-log-show-more" hidden>Show more</button>
       </section>
@@ -293,14 +305,49 @@
     </section>
   </div>
 
+  <!-- VISIT REPORT — the dashboard's modal, markup and all, so js/visit-report.js
+       can render into it unchanged. -->
+  <div id="visitReportModal" class="drill-modal" style="display:none;"
+    onclick="if(event.target===this)GAILS.closeVisitReport()">
+    <div class="drillInner">
+      <div class="drill-modal-header">
+        <div>
+          <h3 class="drill-modal-title" id="visitReportTitle"></h3>
+          <p class="drill-modal-subtitle" id="visitReportSubtitle"></p>
+        </div>
+        <div class="visit-report-header-actions">
+          <div class="visit-report-history-nav" role="group" aria-label="Bakery visit history">
+            <button type="button" class="visit-report-nav-btn" aria-label="Previous visit" disabled>&#8249;</button>
+            <span class="visit-report-history-pos" aria-label="Visit 1 of 1">1 of 1</span>
+            <button type="button" class="visit-report-nav-btn" aria-label="Next visit" disabled>&#8250;</button>
+          </div>
+          <button type="button" class="drill-close-btn visit-report-print-btn" onclick="window.print()">&#128438;
+            Print</button>
+          <button type="button" class="modal-close-btn" onclick="GAILS.closeVisitReport()"
+            aria-label="Close visit report" title="Close">&#10005;</button>
+        </div>
+      </div>
+      <div id="visitReportBody" class="drill-modal-body visit-report-body"></div>
+    </div>
+  </div>
+
   <script src="js/utils.js"></script>
   <script src="js/config.js"></script>
   <!-- The routine visit schema names each section, which is what turns a
        routine visit's per-section comments into readable notes. -->
   <script src="js/visit-schema.js"></script>
+  <script src="js/charts.js"></script>
+  <!-- js/visit-report.js reads GAILS.CQVShared at load time, and CQVShared
+       calls CQVCriticals, so this order is load-bearing. -->
+  <script src="js/cqv-criticals.js"></script>
+  <script src="js/cqv-shared.js"></script>
   <script src="js/nbo-shared.js"></script>
   <script src="js/mentions.js"></script>
   <script src="js/attribution.js"></script>
+  <!-- Renders the report itself. It is the dashboard's own renderer, reused
+       verbatim so a report reads identically on both pages — see the comment
+       above openReportModal in js/my-activity.js for what this page feeds it. -->
+  <script src="js/visit-report.js"></script>
   <script src="js/custom-selects.js"></script>
   <script type="module" src="js/my-activity.js"></script>
 </body>

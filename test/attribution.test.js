@@ -107,6 +107,38 @@ test('a routine visit from the form is credited to its Coffee Partner', () => {
   assert.equal(credited[0].source, 'partner');
 });
 
+test('a pair named longhand credits both people, not one invented one', () => {
+  // Jamie has never set a display name, so the directory carries the one derived
+  // from their work address — exactly what the picker offers.
+  const G = load([
+    { uid: 'uid-jamie', name: 'Jamie Vu', email: 'jamie_vu@gailsbread.co.uk' },
+    { uid: 'uid-lauryn', name: 'Lauryn Brown', email: 'lauryn_brown@gailsbread.co.uk' },
+    { uid: 'uid-tristen', name: 'Tristen Bayley', email: 'tristen_bayley@gailsbread.co.uk' }
+  ]);
+
+  ['Jamie + Tristen', 'Tristen + Jamie', 'Jamie and Tristen'].forEach((partner) => {
+    const credited = G.Attribution.forVisit({ coffeePartner: partner, email: 'form@gailsbread.co.uk' });
+    assert.deepEqual(names(credited).sort(), ['Jamie Vu', 'Tristen Bayley'], partner);
+  });
+
+  const withLauryn = G.Attribution.forVisit({ coffeePartner: 'Lauryn + Tristen' });
+  assert.deepEqual(names(withLauryn).sort(), ['Lauryn Brown', 'Tristen Bayley']);
+
+  // Both hubs find it, by uid and by the email of someone with no name set.
+  const pair = G.Attribution.forVisit({ coffeePartner: 'Jamie + Tristen' });
+  assert.equal(G.Attribution.matches(pair, { uid: 'uid-tristen', emails: new Set(), names: new Set() }), true);
+  assert.equal(G.Attribution.matches(pair, {
+    uid: '', emails: new Set(['jamie_vu@gailsbread.co.uk']), names: new Set()
+  }), true);
+  // ...and a pair that never names you is not yours, however it was logged.
+  const others = G.Attribution.forVisit({
+    coffeePartner: 'Jamie + Lauryn',
+    email: 'tristen_bayley@gailsbread.co.uk',
+    meta: { createdByUid: 'uid-tristen' }
+  });
+  assert.equal(G.Attribution.matches(others, { uid: 'uid-tristen', emails: new Set(), names: new Set() }), false);
+});
+
 test('a form visit with no Coffee Partner falls back to the respondent', () => {
   const G = load(TEAM);
 

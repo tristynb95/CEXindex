@@ -127,7 +127,7 @@ test('a check-in records its author separately from whoever last edited it', () 
 test('an admin editing someone else\'s visit does not inherit it', () => {
   const context = extract(
     ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid',
-      'visitAttribution', 'attributedToMe', 'visitIsMine'],
+      'wasImported', 'visitAttribution', 'attributedToMe', 'visitIsMine'],
     {
       G: gails([{ uid: 'uid-admin', name: 'Ada Admin', email: 'admin@gailsbread.co.uk' }]),
       identity: { uid: 'uid-admin', emails: new Set(['admin@gailsbread.co.uk']), names: new Set(['ada admin']) }
@@ -169,10 +169,74 @@ test('an admin editing someone else\'s visit does not inherit it', () => {
   }), false);
 });
 
+test('importing a CQV does not put it in the importer\'s hub', () => {
+  const context = extract(
+    ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid',
+      'wasImported', 'visitAttribution', 'attributedToMe', 'visitIsMine'],
+    {
+      G: gails([{ uid: 'uid-admin', name: 'Ada Admin', email: 'admin@gailsbread.co.uk' }]),
+      identity: { uid: 'uid-admin', emails: new Set(['admin@gailsbread.co.uk']), names: new Set(['ada admin']) }
+    }
+  );
+
+  // Exactly what saveCqvRecord writes: no createdBy at all, updatedBy stamped
+  // with the importer, and createdAt identical to updatedAt because the record
+  // was created and stamped in the same breath. That trio used to satisfy the
+  // legacy "never edited, so updatedBy is the author" fallback and pulled every
+  // report an admin imported into their own hub — which is the whole reason
+  // meta.importedBy is recorded separately in the first place.
+  const imported = (auditorName) => ({
+    bakery: 'Cheapside',
+    type: 'cqv',
+    auditorName: auditorName,
+    meta: {
+      source: 'pdf-import',
+      createdAt: '2026-07-24T10:00:00.000Z',
+      importedBy: 'admin@gailsbread.co.uk',
+      updatedAt: '2026-07-24T10:00:00.000Z',
+      updatedBy: 'admin@gailsbread.co.uk'
+    }
+  });
+
+  assert.equal(context.visitIsMine(imported('George Austin')), false);
+  // A PDF naming two auditors resolves to neither of them as a directory
+  // person, which must not fall back to the importer either.
+  assert.equal(context.visitIsMine(imported('George Austin  Lauryn Brown')), false);
+  // The importer still gets it when they really are the auditor on the report.
+  assert.equal(context.visitIsMine(imported('Ada Admin')), true);
+});
+
+test('a check-in is not claimed by whoever was on the bar', () => {
+  const context = extract(
+    ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid',
+      'wasImported', 'visitAttribution', 'attributedToMe', 'visitIsMine'],
+    {
+      G: gails([{ uid: 'uid-1', name: 'Sam Partner', email: 'sam.partner@gailsbread.co.uk' }]),
+      identity: { uid: 'uid-1', emails: new Set(['sam.partner@gailsbread.co.uk']), names: new Set(['sam partner']) }
+    }
+  );
+
+  // On a check-in, Coffee Partner is free text about who was working the bar,
+  // so being named there is not a claim to have done the visit. js/attribution
+  // .js excludes it for exactly this reason.
+  assert.equal(context.visitIsMine({
+    bakery: 'Balham', type: 'siteVisit', coffeePartner: 'Sam Partner'
+  }), false);
+
+  // The person who logged that check-in still owns it.
+  assert.equal(context.visitIsMine({
+    bakery: 'Balham', type: 'siteVisit', coffeePartner: 'Someone Else',
+    meta: { createdByUid: 'uid-1', createdBy: 'sam.partner@gailsbread.co.uk' }
+  }), true);
+
+  // On a routine visit, Coffee Partner *is* a record of who did it.
+  assert.equal(context.visitIsMine({ bakery: 'Balham', coffeePartner: 'Sam Partner' }), true);
+});
+
 test('visits are attributed by form respondent and by printed auditor name', () => {
   const context = extract(
     ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid',
-      'visitAttribution', 'attributedToMe', 'visitIsMine'],
+      'wasImported', 'visitAttribution', 'attributedToMe', 'visitIsMine'],
     {
       G: gails([{ uid: 'uid-1', name: 'Sam Partner', email: 'sam.partner@gailsbread.co.uk' }]),
       identity: { uid: 'uid-1', emails: new Set(['sam.partner@gailsbread.co.uk']), names: new Set(['sam partner']) }
@@ -253,11 +317,16 @@ test('unscored check-ins sort last rather than as a zero', () => {
 
 test('a due date reads the same here as it does on the dashboard', () => {
   const context = extract(['todayMidnight', 'formatIsoDate', 'dueMeta'], {});
+  // Built from the local calendar date, not toISOString(): dueMeta compares
+  // against local midnight, and west of UTC — or anywhere on summer time —
+  // toISOString() on a local midnight lands on the previous day and shifts
+  // every expectation here by one.
   const iso = (offsetDays) => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() + offsetDays);
-    return d.toISOString().slice(0, 10);
+    const pad = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   };
 
   assert.equal(context.dueMeta(iso(-3)).state, 'overdue');
@@ -399,6 +468,65 @@ test('the bakery names drop the GAIL\'s prefix everywhere on the page', () => {
   assert.match(script, /bakerySiteName\(task\.bakery\), bakeryLabel\(task\.bakery\)/);
 });
 
+test('a visit report opens in a modal on the hub itself', () => {
+  // The dashboard's own modal markup, so js/visit-report.js renders into it
+  // unchanged rather than the report being reimplemented here.
+  ['visitReportModal', 'visitReportTitle', 'visitReportSubtitle', 'visitReportBody'].forEach((id) => {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  });
+  assert.match(html, /src="js\/visit-report\.js"/);
+
+  // js/visit-report.js reads GAILS.CQVShared at load time, and CQVShared calls
+  // CQVCriticals — so this order is load-bearing, not cosmetic.
+  // Matched on the src attribute, not the bare filename — the comment above
+  // these tags names js/visit-report.js too.
+  const order = ['js/cqv-criticals.js', 'js/cqv-shared.js', 'js/visit-report.js']
+    .map((src) => html.indexOf('src="' + src + '"'));
+  assert.ok(order.every((at) => at > 0), 'a report dependency is missing');
+  assert.deepEqual(order.slice().sort((a, b) => a - b), order, 'report dependencies load out of order');
+
+  assert.match(script, /G\.openVisitReportById\(visitId\)/);
+});
+
+test('the report link degrades to the dashboard when the renderer is absent', () => {
+  // It stays a real anchor with a working href: the modal is an enhancement,
+  // and openReportModal reports whether it handled the click.
+  assert.match(script, /href="index\.html\?visit=' \+ encodeURIComponent\(visit\.id\)/);
+  const start = script.indexOf('function openReportModal(');
+  const fn = script.slice(start, script.indexOf('\n}', start));
+  assert.match(fn, /if \(typeof G\.openVisitReportById !== 'function'\) return false;/);
+  assert.match(script, /if \(openReportModal\([\s\S]*?\)\) event\.preventDefault\(\)/);
+
+  // Ctrl/cmd/middle-click still open the dashboard report in a new tab.
+  assert.match(script, /event\.metaKey \|\| event\.ctrlKey \|\| event\.shiftKey \|\| event\.altKey/);
+  assert.match(script, /event\.button !== 0/);
+});
+
+test('the hub does not collide with the dashboard\'s own report trigger', () => {
+  // js/visit-report.js binds a document click handler to [data-visit-report]
+  // and reads it as a *bakery name*. Reusing that attribute for a visit id
+  // would fire both handlers on every click.
+  assert.match(visitReportScript, /closest\('\[data-visit-report\]'\)/);
+  assert.match(script, /data-open-visit-report=/);
+  assert.doesNotMatch(script, /data-visit-report=/);
+});
+
+test('the report\'s history arrows stay inside the user\'s own visits', () => {
+  const start = script.indexOf('function syncReportSource(');
+  const fn = script.slice(start, script.indexOf('\n}', start));
+
+  // Seeded from myVisits(), not the whole estate: those arrows walk
+  // _allVisitsObj for other visits to the same bakery and apply no ops-area
+  // scoping, so the full set would page a scoped user into bakeries their
+  // Bakery Reports tab hides from them.
+  assert.match(fn, /myVisits\(\)\.forEach/);
+  assert.match(fn, /G\._allVisitsObj = mine/);
+  assert.doesNotMatch(fn, /G\._allVisitsObj = visitsObj/);
+
+  // And the renderer gets the permissions it would have had on the dashboard.
+  assert.match(script, /G\.permissions = permissions;/);
+});
+
 test('a bakery opened from the hub comes back to the hub', () => {
   const start = script.indexOf('function bakeryProfileHref(');
   const builder = script.slice(start, script.indexOf('\n}', start));
@@ -425,9 +553,13 @@ test('My Activity is opt-in per user and off by default', () => {
 
   // Every entry point starts hidden in the markup, so it can never flash before
   // the profile has loaded.
-  [indexHtml, adminHtml, profileHtml].forEach((page) => {
+  [indexHtml, adminHtml].forEach((page) => {
     assert.match(page, /data-my-activity-link hidden/);
   });
+  const standaloneMenu = fs.readFileSync(path.join(root, 'js', 'standalone-profile-menu.js'), 'utf8');
+  assert.match(profileHtml, /data-standalone-account-menu/);
+  assert.match(standaloneMenu, /data-standalone-activity-link hidden/);
+  assert.match(profilePage, /showActivity: profileRecord\.myActivity === true/);
 
   // The page refuses a typed URL, which the hidden menu entry alone cannot do.
   assert.match(script, /showGuardError\('My Activity is not switched on for your account/);
@@ -437,53 +569,46 @@ test('My Activity is opt-in per user and off by default', () => {
   assert.match(selfWrite, /auth\.uid === \$uid[\s\S]*?newData\.child\('myActivity'\)\.val\(\) === data\.child\('myActivity'\)\.val\(\)/);
 });
 
-test('the admin users table can switch My Activity on and off', () => {
+test('the access modal can switch My Activity on and off', () => {
   const adminScript = fs.readFileSync(path.join(root, 'js', 'admin-page.js'), 'utf8');
 
-  assert.match(adminScript, /data-action="toggle-my-activity"/);
-  // Writes the one field, so it never disturbs role or reports scope.
-  assert.match(adminScript, /update\(ref\(db, 'users\/' \+ uid\), \{ myActivity: next \}\)/);
-  // Available on every row including the signed-in admin's, which the role
-  // editor deliberately locks — otherwise a lone admin could never enable it.
-  const start = adminScript.indexOf('var myActivityHtml =');
-  const markup = adminScript.slice(start, adminScript.indexOf('\n\n', start));
-  assert.doesNotMatch(markup, /\bdis\b/);
-  assert.match(markup, /canManageUsers \? '' : ' disabled'/);
-  // View-only admins cannot flip it.
-  assert.match(adminScript, /if \(!canEdit\('users'\)\) \{\s*toggle\.checked = user\.myActivity;/);
+  // The switch lives in the person's access modal, alongside every other
+  // decision about them.
+  assert.match(adminHtml, /id="userAccessMyActivity"/);
+  assert.match(adminScript, /userAccessMyActivity\.checked = state\.accessDraft\.myActivity/);
+
+  // Saving the modal writes it with the rest of that person's access, so the
+  // four fields can never end up half-applied.
+  const saveStart = adminScript.indexOf('async function saveAccessModal()');
+  const save = adminScript.slice(saveStart, adminScript.indexOf('\n}', saveStart));
+  assert.match(save, /myActivity: draft\.myActivity === true/);
+  assert.match(save, /role: draft\.role/);
+  assert.match(save, /managerUid: draft\.managerUid/);
+
+  // Role and reporting line lock on your own account so an admin cannot demote
+  // or orphan themselves — but the feature switch stays live, written on its
+  // own, because with a lone admin nobody else could ever turn it on.
+  assert.match(adminScript, /userAccessMyActivity\.disabled = !canEdit\('users'\)/);
+  assert.match(adminScript, /uid !== currentUserId\(\)[\s\S]{0,200}update\(ref\(db, 'users\/' \+ uid\), \{ myActivity: next \}\)/);
+
+  // A view-only role can read the state without changing it.
+  assert.match(adminScript, /userAccessRole\.disabled = !editable/);
 });
 
-test('the My Activity switch renders checked, unchecked, and read-only', () => {
+test('the access modal reads a person back, including a missing flag', () => {
   const adminScript = fs.readFileSync(path.join(root, 'js', 'admin-page.js'), 'utf8');
-  const start = adminScript.indexOf('var myActivityHtml =');
-  const end = adminScript.indexOf(";\n", adminScript.indexOf("'</label>'", start));
-  const sandbox = {
-    escapeHtml: (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c])),
-    user: null,
-    canManageUsers: true,
-    myActivityHtml: ''
-  };
+  const start = adminScript.indexOf('function accessDraftFor(');
+  const source = adminScript.slice(start, adminScript.indexOf('\n}', start) + 2);
+
+  const sandbox = {};
   vm.createContext(sandbox);
-  const render = (user, canManageUsers) => {
-    sandbox.user = user;
-    sandbox.canManageUsers = canManageUsers;
-    vm.runInContext(adminScript.slice(start, end + 1), sandbox);
-    return sandbox.myActivityHtml;
-  };
+  vm.runInContext(source + '\nthis.accessDraftFor = accessDraftFor;', sandbox);
 
-  const on = render({ uid: 'u1', myActivity: true }, true);
-  assert.match(on, /class="admin-user-toggle is-on"/);
-  assert.match(on, / checked/);
-  assert.doesNotMatch(on, / disabled/);
+  const on = sandbox.accessDraftFor({ role: 'admin', myActivity: true, opsArea: 'North', managerUid: 'm1' });
+  assert.deepEqual({ ...on }, { role: 'admin', managerUid: 'm1', opsArea: 'North', myActivity: true });
 
-  const off = render({ uid: 'u2', myActivity: false }, true);
-  assert.match(off, /class="admin-user-toggle"/);
-  assert.doesNotMatch(off, / checked/);
-
-  // A user record with no flag at all is off, not broken.
-  assert.doesNotMatch(render({ uid: 'u3' }, true), / checked/);
-
-  // Users & Roles at 'view' renders the state without letting anyone change it.
-  assert.match(render({ uid: 'u4', myActivity: true }, false), / disabled/);
+  // Absent means off, and an unset role means Viewer — a record that predates
+  // any of these fields is readable, not broken.
+  const bare = sandbox.accessDraftFor({});
+  assert.deepEqual({ ...bare }, { role: 'viewer', managerUid: '', opsArea: '', myActivity: false });
 });

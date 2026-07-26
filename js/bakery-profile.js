@@ -10,12 +10,12 @@ import {
   set,
   update
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-import { BUILTIN_ROLES, resolveRolePermissions } from './permissions.js';
+import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
+import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
 
 const G = window.GAILS || {};
 const guard = document.getElementById('bakeryProfileGuard');
 const page = document.getElementById('bakeryProfilePage');
-const signOutBtn = document.getElementById('bakeryProfileSignOut');
 const backLink = document.getElementById('bakeryProfileBackLink');
 const brandLink = document.querySelector('.bakery-profile-header__brand');
 const taskAddToggle = document.getElementById('bakeryTaskAddToggle');
@@ -1373,6 +1373,16 @@ async function loadBakeryProfile(user) {
 
   currentUser = user;
   canEdit = permissions.actions.logVisits === true;
+  mountStandaloneProfileMenu({
+    user: user,
+    profile: currentUserProfile,
+    showActivity: !!(currentUserProfile && currentUserProfile.myActivity === true),
+    showTeam: canSeeTeam(permissions),
+    onSignOut: async function() {
+      await signOut(auth);
+      window.location.replace('index.html');
+    }
+  });
   var displayName = profileDisplayName(user, currentUserProfile);
   notePostingAsDefault = 'Posting as ' + displayName;
   document.getElementById('bakeryNoteAvatar').textContent = initials(displayName);
@@ -1601,11 +1611,6 @@ noteDeleteConfirm.addEventListener('click', async function() {
 });
 
 noteCancelEdit.addEventListener('click', resetNoteEditor);
-
-signOutBtn.addEventListener('click', async function() {
-  await signOut(auth);
-  window.location.replace('index.html');
-});
 
 window.addEventListener('beforeunload', function() {
   if (notesUnsubscribe) notesUnsubscribe();
