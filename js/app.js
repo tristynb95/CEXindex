@@ -343,9 +343,12 @@
       filterBar.classList.toggle('filter-bar--hidden', name === 'visit-log');
     }
 
+    // Visit Log carries its own standalone filters, so the shared panel — and
+    // the tab that opens it — has nothing to offer there. Every other view,
+    // League Table included, keeps the floating tab.
     var mobileFilterTab = document.getElementById('filterSideTab');
     if (mobileFilterTab) {
-      if (name === 'table' || name === 'visit-log') {
+      if (name === 'visit-log') {
         mobileFilterTab.style.setProperty('display', 'none', 'important');
       } else {
         mobileFilterTab.style.display = '';
@@ -1597,8 +1600,6 @@
   var filterActiveBadge = document.getElementById('filterActiveBadge');
   var filterSideTab = document.getElementById('filterSideTab');
   var filterSideTabBadge = document.getElementById('filterSideTabBadge');
-  var leagueTableFilterBtn = document.getElementById('leagueTableFilterBtn');
-  var leagueTableFilterBadge = document.getElementById('leagueTableFilterBadge');
   var filterSideBackdrop = document.getElementById('filterSideBackdrop');
   var filterPanelClose = document.getElementById('filterPanelClose');
   var filterPanelCloseFab = document.getElementById('filterPanelCloseFab');
@@ -1727,13 +1728,8 @@
       filterSideTabBadge.hidden = n === 0;
       if (n > 0) filterSideTabBadge.textContent = n;
     }
-    if (leagueTableFilterBadge) {
-      leagueTableFilterBadge.hidden = n === 0;
-      if (n > 0) leagueTableFilterBadge.textContent = n;
-    }
     if (filterPanelReset) filterPanelReset.disabled = n === 0;
     if (filterSideTab) { filterSideTab.classList.toggle('has-active-filters', n > 0); }
-    if (leagueTableFilterBtn) { leagueTableFilterBtn.classList.toggle('has-active-filters', n > 0); }
     if (desktopFilterReset) { desktopFilterReset.classList.toggle('has-active-filters', n > 0); }
   }
 
@@ -1793,11 +1789,6 @@
       filterSidePanelOpen ? closeFilterSidePanel() : openFilterSidePanel();
     });
   }
-  if (leagueTableFilterBtn) {
-    leagueTableFilterBtn.addEventListener('click', function () {
-      filterSidePanelOpen ? closeFilterSidePanel() : openFilterSidePanel();
-    });
-  }
   if (filterControlsPanel) {
     filterControlsPanel.addEventListener('pointerdown', function (event) {
       return; // Disable drag-to-close gesture for top sheet layout
@@ -1852,8 +1843,7 @@
     var path = typeof event.composedPath === 'function' ? event.composedPath() : [];
     var insidePanel = path.indexOf(filterControlsPanel) !== -1;
     var onTab = filterSideTab ? path.indexOf(filterSideTab) !== -1 : false;
-    var onLeagueBtn = leagueTableFilterBtn ? path.indexOf(leagueTableFilterBtn) !== -1 : false;
-    if (!insidePanel && !onTab && !onLeagueBtn) closeFilterSidePanel();
+    if (!insidePanel && !onTab) closeFilterSidePanel();
   });
 
   document.addEventListener('keydown', function (e) {
@@ -1971,7 +1961,7 @@
   // Sync initial mobile filter tab visibility on startup
   var initialMobileFilterTab = document.getElementById('filterSideTab');
   if (initialMobileFilterTab) {
-    if (initialActiveTab === 'table' || initialActiveTab === 'visit-log') {
+    if (initialActiveTab === 'visit-log') {
       initialMobileFilterTab.style.setProperty('display', 'none', 'important');
     } else {
       initialMobileFilterTab.style.display = '';

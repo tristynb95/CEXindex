@@ -2572,80 +2572,6 @@ canvas {
   font-weight: 600;
 }
 
-/* Mobile-only filter button — the global floating filter tab is hidden on the
-   league table view, so this pill gives phone users access to the same panel. */
-.league-table-toolbar__filter-btn {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex: 0 0 auto;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 1px solid rgba(70, 14, 11, 0.4);
-  background: linear-gradient(135deg, #B5312A 0%, #A32520 100%);
-  color: #fff;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgba(120, 28, 22, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  transition: border-color 0.28s ease, box-shadow 0.28s ease, background 0.28s ease, transform 0.2s ease;
-}
-
-.league-table-toolbar__filter-btn:hover {
-  border-color: rgba(70, 14, 11, 0.5);
-  background: linear-gradient(135deg, #C0362E 0%, #AC2822 100%);
-  box-shadow: 0 8px 26px rgba(120, 28, 22, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.16);
-}
-
-.league-table-toolbar__filter-btn:active {
-  transform: scale(0.95);
-}
-
-.league-table-toolbar__filter-btn.has-active-filters {
-  border-color: rgba(70, 14, 11, 0.55);
-  background: linear-gradient(135deg, #8F1F1B 0%, #7C1A16 100%);
-  box-shadow: 0 6px 22px rgba(120, 28, 22, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-
-.league-table-toolbar__filter-icon {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-}
-
-.league-table-toolbar__filter-label {
-  font: 700 0.76rem/1 Inter, system-ui, sans-serif;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #fff;
-}
-
-.league-table-toolbar__filter-badge {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 50%;
-  background: #fff;
-  color: var(--accent);
-  font-size: 0.62rem;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  box-shadow: 0 2px 8px rgba(178, 42, 36, 0.55);
-}
-
-.league-table-toolbar__filter-badge[hidden] {
-  display: none;
-}
-
-@media (max-width: 720px) {
-  .league-table-toolbar__filter-btn {
-    display: inline-flex;
-  }
-}
-
 .table-fullscreen-shell {
   display: flex;
   flex-direction: column;
@@ -10956,8 +10882,11 @@ a,
     min-height: 360px;
   }
 
-  /* League table sort row on mobile */
+  /* League table sort row on mobile: sort control on the left, full-screen
+     button pinned right. Filters live on the floating tab, as on every other
+     view. */
   .league-table-toolbar {
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
@@ -10969,11 +10898,17 @@ a,
   .league-table-toolbar__label {
     flex: 0 1 auto;
     flex-wrap: nowrap;
-    max-width: calc(100% - 42px);
+    min-width: 0;
+    max-width: none;
   }
 
+  /* Keeps its content width where there is room, but drops the 160px floor so
+     it can give way on narrow phones — long option labels ellipsise rather
+     than forcing the row wider than the card. */
   .league-table-toolbar .filter-select {
-    min-width: min(160px, 52vw);
+    flex: 0 1 auto;
+    min-width: 0;
+    width: auto;
   }
 
   .tracker-table-header {
@@ -17115,11 +17050,39 @@ body.profile-modal-open {
 /* ── Responsive ── */
 @media (max-width: 1100px) {
   .focus-page-intro {
+    position: relative;
     flex-direction: column;
   }
 
   .focus-method {
     width: 100%;
+  }
+
+  /* The intro stacks here, so the overlay disclosure sits under the heading
+     rather than opposite it — pin it left in both states. Without this the
+     closed summary picked up the 100% width above (label ranged left) while
+     the open one hugged its label against `margin-left: auto`, so the label
+     jumped to the right edge the moment it was opened. */
+  .focus-page-intro .focus-method--overlay,
+  .focus-page-intro .focus-method--overlay[open] {
+    position: static;
+    width: auto;
+    margin-left: 0;
+    margin-right: auto;
+    align-self: flex-start;
+  }
+
+  /* Panel stays out of flow (so opening never reflows the page) but now hangs
+     off the stacked intro instead of the summary: `top: auto` keeps it at its
+     static position directly under the label, and left/right span the card
+     rather than the right-anchored 72vw the side-by-side layout used. */
+  .focus-page-intro .focus-method--overlay>p {
+    top: auto;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: 400px;
+    margin-top: 8px;
   }
 }
 
