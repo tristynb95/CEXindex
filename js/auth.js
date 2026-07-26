@@ -157,6 +157,8 @@ window.GAILS_Firebase = {
       throw new Error('Your role does not allow adding follow-ups.');
     }
     var who = auth.currentUser.email || auth.currentUser.uid;
+    var whoUid = auth.currentUser.uid;
+    var whoName = auth.currentUser.displayName || '';
     var nowIsoStr = nowIso();
     var newRef = push(ref(db, 'followUpActions'));
     var payload = Object.assign({
@@ -178,6 +180,8 @@ window.GAILS_Firebase = {
     }, task, {
       createdAt: nowIsoStr,
       createdBy: who,
+      createdByUid: whoUid,
+      createdByName: whoName,
       meta: { updatedAt: nowIsoStr, updatedBy: who }
     });
     await set(newRef, payload);
@@ -190,11 +194,15 @@ window.GAILS_Firebase = {
       throw new Error('Your role does not allow updating follow-ups.');
     }
     var who = auth.currentUser.email || auth.currentUser.uid;
+    var whoUid = auth.currentUser.uid;
+    var whoName = auth.currentUser.displayName || '';
     var nowIsoStr = nowIso();
     await update(ref(db, 'followUpActions/' + taskId), {
       status: done ? 'done' : 'open',
       completedAt: done ? nowIsoStr : null,
       completedBy: done ? who : null,
+      completedByUid: done ? whoUid : null,
+      completedByName: done ? whoName : null,
       'meta/updatedAt': nowIsoStr,
       'meta/updatedBy': who
     });

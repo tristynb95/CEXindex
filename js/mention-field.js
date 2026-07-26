@@ -2,11 +2,10 @@
 // Turns a plain text <input> into a field that assigns a visit to someone:
 // type "@", pick a name, done.
 //
-// The field has two faces. At rest it shows the *display* face — the name with
-// no "@", underlined and blue. Clicking or tabbing into it swaps in the real
-// <input>, which holds the stored text and so does show the "@". Blurring swaps
-// back. Two elements rather than one styled input because an <input> cannot
-// render part of its own value differently from the rest.
+// The field has two faces. At rest it shows the editable *display* face — the
+// name with no "@", underlined and blue. Clicking or tabbing into it swaps in
+// the real <input>, which holds the stored text and so does show the "@".
+// Read-only surfaces render mentions as ordinary black text.
 //
 // The input remains the single source of truth throughout: the display face is
 // only ever rendered *from* input.value, and the form still reads input.value.
@@ -56,7 +55,14 @@ window.GAILS = window.GAILS || {};
     wrapper.appendChild(menu);
     input.classList.add('mention-field__input');
 
-    var state = { open: false, activeIndex: -1, matches: [], range: null };
+    var state = {
+      open: false,
+      activeIndex: -1,
+      matches: [],
+      range: null,
+      committedMention: null,
+      ignoreNextInput: false
+    };
 
     // Wrapped in a single child so the button's flex centring treats the whole
     // value as one item — laid out as flex items, the text either side of a
@@ -131,6 +137,20 @@ window.GAILS = window.GAILS || {};
 
     function syncMenu() {
       var caret = typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
+      var committed = state.committedMention;
+      if (committed) {
+        var mentionStillMatches =
+          input.value.slice(committed.start, committed.end) === committed.value;
+        if (!mentionStillMatches) {
+          state.committedMention = null;
+        } else if (caret >= committed.end &&
+            input.value.slice(committed.end, caret).indexOf('@') === -1) {
+          // The last chosen mention is complete. Normal typing after it should
+          // stay normal text until the user starts another mention with "@".
+          closeMenu();
+          return;
+        }
+      }
       var range = mentions().activeMentionAt(input.value, caret);
       if (!range) {
         closeMenu();
@@ -150,7 +170,10 @@ window.GAILS = window.GAILS || {};
     function choose(index) {
       var person = state.matches[index];
       if (!person || !state.range) return;
-      var applied = mentions().applyMention(input.value, state.range, person.name);
+      var chosenRange = state.range;
+      var applied = mentions().applyMention(input.value, chosenRange, person.name);
+      var mentionEnd = applied.caret;
+      var mentionValue = applied.value.slice(chosenRange.start, mentionEnd);
       // A trailing space so a second "@" can follow immediately — a visit
       // covered by two people is named in one field ("@Jamie @Tristen"). Only
       // added when the pick lands at the end; mid-text there is already one.
@@ -159,11 +182,17 @@ window.GAILS = window.GAILS || {};
         applied.caret += 1;
       }
       input.value = applied.value;
+      state.committedMention = {
+        start: chosenRange.start,
+        end: mentionEnd,
+        value: mentionValue
+      };
       closeMenu();
       input.focus();
       try { input.setSelectionRange(applied.caret, applied.caret); } catch { /* ignore */ }
       // Anything listening for edits (a dirty flag, a live preview) should see
       // a programmatic pick exactly as it sees typing.
+      state.ignoreNextInput = true;
       input.dispatchEvent(new Event('input', { bubbles: true }));
       if (typeof config.onSelect === 'function') config.onSelect(person, input);
     }
@@ -177,6 +206,10 @@ window.GAILS = window.GAILS || {};
     input.addEventListener('focus', function () { setEditing(true); });
 
     input.addEventListener('input', function () {
+      if (state.ignoreNextInput) {
+        state.ignoreNextInput = false;
+        return;
+      }
       syncMenu();
     });
 
@@ -200,9 +233,10 @@ window.GAILS = window.GAILS || {};
         state.activeIndex = (state.activeIndex - 1 + state.matches.length) % state.matches.length;
         renderMenu();
       } else if (event.key === 'Enter' || event.key === 'Tab') {
-        // Enter must not submit the surrounding form while a name is being
-        // picked; Tab commits the highlighted name and then moves on normally.
-        if (event.key === 'Enter') event.preventDefault();
+        // Both keys commit in place: the menu closes and focus stays in the
+        // field so another mention or ordinary text can follow immediately.
+        event.preventDefault();
+        event.stopPropagation();
         choose(state.activeIndex);
       } else if (event.key === 'Escape') {
         event.preventDefault();

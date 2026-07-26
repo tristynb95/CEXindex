@@ -2,8 +2,8 @@
 // A visit's Coffee Partner field can name the person the visit belongs to by
 // typing "@" and their name. The "@" is a typing affordance, not something
 // anyone should have to read: stored text keeps it, but every rendered surface
-// shows the bare name, underlined and in blue. The "@" only reappears when the
-// field is being edited (see js/mention-field.js).
+// shows the bare name as ordinary text. Editable mention fields add their own
+// blue, underlined selection treatment (see js/mention-field.js).
 //
 // Loaded as a plain <script> by every page that renders a Coffee Partner:
 // index.html, admin.html, bakery-profile.html, and my-activity.html.
@@ -174,8 +174,8 @@ window.GAILS = window.GAILS || {};
     return parse(raw).map(function (segment) { return segment.text; }).join('');
   }
 
-  // The rendered form, already escaped. Mentions carry .mention so they read as
-  // blue underlined names wherever a Coffee Partner is shown.
+  // The rendered form, already escaped. Mentions carry .mention so editable
+  // fields can distinguish them without changing read-only presentation.
   function toHtml(raw) {
     return parse(raw).map(function (segment) {
       if (segment.type !== 'mention') return escapeHtml(segment.text);

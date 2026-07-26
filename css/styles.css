@@ -18090,12 +18090,16 @@ html {
 }
 
 /* ========== @MENTIONS ==========
-   A Coffee Partner assigned by @mention. The "@" is only ever a typing
-   affordance — it is stored, but never rendered. What people read is the bare
-   name in blue with an underline, which is the same treatment wherever a Coffee
-   Partner appears: visit rows, the visit report, the admin table, bakery
-   profiles, and the My Activity hub. See js/mentions.js. */
+   The "@" is an editing affordance only. Read-only attribution should look
+   like ordinary text; the editable Coffee Partner control adds the blue,
+   underlined treatment below so selections remain easy to recognise there. */
 .mention {
+  color: var(--text);
+  font-weight: inherit;
+  text-decoration: none;
+}
+
+.mention-field__display .mention {
   color: var(--blue);
   font-weight: 700;
   text-decoration: underline;

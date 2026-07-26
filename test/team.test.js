@@ -275,3 +275,27 @@ test('a saved uid outranks a stale display name', () => {
   );
   assert.deepEqual(plain(assigned), []);
 });
+
+test('shared visits contribute one total across all credited people', () => {
+  const visits = [
+    { id: 'solo', owners: [{ uid: 'partnerA' }] },
+    { id: 'shared', owners: [{ uid: 'partnerA' }, { uid: 'partnerB' }] },
+    // A duplicate owner on malformed legacy data must not dilute the split.
+    { id: 'duplicate-owner', owners: [{ uid: 'partnerB' }, { uid: 'partnerB' }] }
+  ];
+
+  const shares = plain(Team.contributionShares(visits, ['partnerA', 'partnerB']));
+  assert.deepEqual(shares, { partnerA: 1.5, partnerB: 1.5 });
+  assert.equal(Object.values(shares).reduce((sum, value) => sum + value, 0), visits.length);
+});
+
+test('a selected branch still receives one total for a visit shared outside it', () => {
+  const visits = [
+    { id: 'shared', owners: [{ uid: 'partnerA' }, { uid: 'trainer' }] }
+  ];
+
+  assert.deepEqual(
+    plain(Team.contributionShares(visits, ['partnerA', 'partnerB'])),
+    { partnerA: 1, partnerB: 0 }
+  );
+});

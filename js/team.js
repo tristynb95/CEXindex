@@ -266,6 +266,36 @@ window.GAILS = window.GAILS || {};
     });
   }
 
+  // Splits each visit into one unit across the credited people in the current
+  // comparison. A shared visit therefore contributes 0.5 + 0.5, never 2.
+  // Roster participation counts can still show that both people attended.
+  function contributionShares(records, uids) {
+    var wanted = {};
+    (Array.isArray(uids) ? uids : [uids]).forEach(function(uid) {
+      var key = cleanText(uid);
+      if (key) wanted[key] = true;
+    });
+
+    var totals = {};
+    Object.keys(wanted).forEach(function(uid) { totals[uid] = 0; });
+
+    (records || []).forEach(function(record) {
+      var seen = {};
+      var owners = (record && Array.isArray(record.owners) ? record.owners : [])
+        .map(function(owner) { return cleanText(owner && owner.uid); })
+        .filter(function(uid) {
+          if (!uid || !wanted[uid] || seen[uid]) return false;
+          seen[uid] = true;
+          return true;
+        });
+      if (!owners.length) return;
+      var share = 1 / owners.length;
+      owners.forEach(function(uid) { totals[uid] += share; });
+    });
+
+    return totals;
+  }
+
   G.Team = {
     normalizePerson: normalizePerson,
     normalizeRoster: normalizeRoster,
@@ -276,6 +306,7 @@ window.GAILS = window.GAILS || {};
     visibleTeam: visibleTeam,
     teamRows: teamRows,
     branchUids: branchUids,
-    assignedBakeries: assignedBakeries
+    assignedBakeries: assignedBakeries,
+    contributionShares: contributionShares
   };
 })();

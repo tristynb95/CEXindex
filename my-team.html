@@ -14,6 +14,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Powers the section-score charts inside CQV and routine visit reports. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <link rel="stylesheet" href="css/styles.css">
   <!-- The page shell, guard, stat tiles, and card chrome are shared with
        My Activity; only the roster and person panels are new. -->
@@ -115,7 +117,8 @@
             <div class="my-team-chart-card__head">
               <div>
                 <p class="my-team-chart-card__kicker">Contribution</p>
-                <h3 id="myTeamContributionTitle">Visits by person</h3>
+                <h3 id="myTeamContributionTitle">Share of team visits</h3>
+                <p class="my-team-chart-card__note">Shared visits split one contribution across everyone credited.</p>
               </div>
               <span id="myTeamContributionTotal" class="my-team-chart-card__value">0</span>
             </div>
@@ -200,8 +203,8 @@
           <div>
             <p class="my-activity-card__eyebrow">Follow-up tasks</p>
             <h2 id="myTeamActionsTitle">Open actions</h2>
-            <p class="my-activity-card__copy">Everything the team has raised and not yet closed, oldest due date
-              first.</p>
+            <p class="my-activity-card__copy">Actions assigned to the team, inherited from their visits, or completed
+              by them. Open work is shown by responsible owner.</p>
           </div>
           <div class="my-activity-card__actions">
             <span id="myTeamActionsCount" class="my-activity-pill">0 open</span>
@@ -302,13 +305,43 @@
     </main>
   </div>
 
+  <!-- Reuse the dashboard report renderer in-place so managers keep their
+       selected person, period and filters while reviewing a visit. -->
+  <div id="visitReportModal" class="drill-modal" style="display:none;"
+    onclick="if(event.target===this)GAILS.closeVisitReport()">
+    <div class="drillInner">
+      <div class="drill-modal-header">
+        <div>
+          <h3 class="drill-modal-title" id="visitReportTitle"></h3>
+          <p class="drill-modal-subtitle" id="visitReportSubtitle"></p>
+        </div>
+        <div class="visit-report-header-actions">
+          <div class="visit-report-history-nav" role="group" aria-label="Team visit history">
+            <button type="button" class="visit-report-nav-btn" aria-label="Previous visit" disabled>&#8249;</button>
+            <span class="visit-report-history-pos" aria-label="Visit 1 of 1">1 of 1</span>
+            <button type="button" class="visit-report-nav-btn" aria-label="Next visit" disabled>&#8250;</button>
+          </div>
+          <button type="button" class="drill-close-btn visit-report-print-btn" onclick="window.print()">&#128438;
+            Print</button>
+          <button type="button" class="modal-close-btn" onclick="GAILS.closeVisitReport()"
+            aria-label="Close visit report" title="Close">&#10005;</button>
+        </div>
+      </div>
+      <div id="visitReportBody" class="drill-modal-body visit-report-body"></div>
+    </div>
+  </div>
+
   <script src="js/utils.js"></script>
   <script src="js/config.js"></script>
   <script src="js/visit-schema.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/cqv-criticals.js"></script>
+  <script src="js/cqv-shared.js"></script>
   <script src="js/nbo-shared.js"></script>
   <script src="js/mentions.js"></script>
   <script src="js/attribution.js"></script>
   <script src="js/team.js"></script>
+  <script src="js/visit-report.js"></script>
   <script src="js/custom-selects.js"></script>
   <script type="module" src="js/my-team.js"></script>
 </body>

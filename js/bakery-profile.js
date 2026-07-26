@@ -1029,7 +1029,7 @@ function renderVisits() {
       ? String(visit.score) + (visit.scoreMax ? '/' + visit.scoreMax : '')
       : '';
     // An assigned visit names its assignee as "@Name"; the stored "@" is never
-    // rendered, just the blue underlined name (see js/mentions.js).
+    // rendered, just the plain-text name (see js/mentions.js).
     var visitorHtml = visit.coffeePartner && G.Mentions
       ? G.Mentions.toHtml(visit.coffeePartner)
       : escapeHtml(visit.coffeePartner || (visit.meta && (visit.meta.createdBy || visit.meta.updatedBy)) || '');
@@ -1480,6 +1480,8 @@ taskForm.addEventListener('submit', async function(event) {
       completedBy: null,
       createdAt: new Date().toISOString(),
       createdBy: who,
+      createdByUid: currentUser.uid,
+      createdByName: currentUser.displayName || '',
       meta: {
         updatedAt: new Date().toISOString(),
         updatedBy: who
@@ -1512,6 +1514,8 @@ document.getElementById('bakeryTaskList').addEventListener('click', async functi
       status: done ? 'done' : 'open',
       completedAt: done ? now : null,
       completedBy: done ? (currentUser.email || currentUser.uid) : null,
+      completedByUid: done ? currentUser.uid : null,
+      completedByName: done ? (currentUser.displayName || '') : null,
       'meta/updatedAt': now,
       'meta/updatedBy': currentUser.email || currentUser.uid
     });

@@ -196,7 +196,8 @@ test('My Team groups records it already had access to, and adds none', () => {
 
 test('the team page credits work by the same rules as My Activity', () => {
   assert.match(teamScript, /G\.Attribution\.forVisit\(visit\)/);
-  assert.match(teamScript, /G\.Attribution\.forTask\(task\)/);
+  assert.match(teamScript, /G\.Attribution\.forTask\(task, sourceVisit\)/);
+  assert.match(teamScript, /G\.Attribution\.actorsForTask\(task, sourceVisit\)/);
   assert.match(teamScript, /G\.Attribution\.matches\(list, identity\)/);
   // A one-word name is too weak to attribute a visit on, here as there.
   assert.match(teamScript, /if \(name && name\.indexOf\(' '\) !== -1\) names\.add\(name\)/);

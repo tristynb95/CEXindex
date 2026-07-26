@@ -68,6 +68,21 @@ test('My Team provides data-backed manager charts and an actionable insight', ()
   assert.match(teamStyles, /\.my-team-trend-chart/);
 });
 
+test('shared visits count once in team contribution totals', () => {
+  assert.match(teamHtml, /Shared visits split one contribution across everyone credited/);
+  assert.match(teamScript, /G\.Team\.contributionShares\(visits/);
+  assert.match(teamScript, /contributionTotal\.textContent = visits\.length/);
+  assert.match(teamScript, /chartRowsHtml\(rows, 'contribution'/);
+  assert.doesNotMatch(teamScript, /sum \+ row\.visits/);
+});
+
+test('team actions recover legacy source-visit attribution and completers', () => {
+  assert.match(teamScript, /task\.sourceVisitId \? visitsObj\[task\.sourceVisitId\] : null/);
+  assert.match(teamScript, /G\.Attribution\.forTask\(task, sourceVisit\)/);
+  assert.match(teamScript, /G\.Attribution\.actorsForTask\(task, sourceVisit\)/);
+  assert.match(activityScript, /G\.Attribution\.actorsForTask\(task, sourceVisit\)/);
+});
+
 test('My Team provides manager-grade search and ordering controls', () => {
   [
     'myTeamRosterSearch', 'myTeamRosterSort',
@@ -81,6 +96,18 @@ test('My Team provides manager-grade search and ordering controls', () => {
   assert.match(teamScript, /function taskIsDueSoon/);
   assert.match(teamScript, /function filteredRosterRows/);
   assert.match(teamScript, /function teamActionSorter/);
+});
+
+test('My Team opens visit reports in-place without losing manager context', () => {
+  assert.match(teamHtml, /id="visitReportModal"/);
+  assert.match(teamHtml, /id="visitReportBody"/);
+  assert.match(teamHtml, /src="js\/visit-report\.js"/);
+  assert.match(teamScript, /data-open-visit-report=/);
+  assert.match(teamScript, /function openReportModal\(visitId\)/);
+  assert.match(teamScript, /var link = event\.target\.closest\('\[data-open-visit-report\]'\)/);
+  assert.match(teamScript, /if \(openReportModal\(link\.getAttribute\('data-open-visit-report'\)\)\) event\.preventDefault\(\)/);
+  assert.match(teamScript, /forSelected\(teamVisits\(\)\)\.forEach/);
+  assert.doesNotMatch(teamScript, /data-visit-report=/);
 });
 
 test('filter reset buttons show a crossed funnel only when filters are active', () => {

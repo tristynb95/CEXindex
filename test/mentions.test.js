@@ -41,6 +41,128 @@ const TEAM = [
   { uid: 'uid-joanne', name: 'Joanne Fielding', email: 'joanne@gailsbread.co.uk' }
 ];
 
+function loadMentionField(people) {
+  let document;
+
+  class FakeClassList {
+    constructor(owner) { this.owner = owner; }
+    tokens() { return new Set(String(this.owner.className || '').split(/\s+/).filter(Boolean)); }
+    write(tokens) { this.owner.className = Array.from(tokens).join(' '); }
+    add(name) {
+      const tokens = this.tokens();
+      tokens.add(name);
+      this.write(tokens);
+    }
+    contains(name) { return this.tokens().has(name); }
+    toggle(name, force) {
+      const tokens = this.tokens();
+      const enabled = force == null ? !tokens.has(name) : !!force;
+      if (enabled) tokens.add(name);
+      else tokens.delete(name);
+      this.write(tokens);
+      return enabled;
+    }
+  }
+
+  class FakeElement {
+    constructor(tagName) {
+      this.tagName = String(tagName || '').toUpperCase();
+      this.dataset = {};
+      this.attributes = {};
+      this.listeners = {};
+      this.children = [];
+      this.parentNode = null;
+      this.className = '';
+      this.classList = new FakeClassList(this);
+      this.hidden = false;
+      this.innerHTML = '';
+      this.value = '';
+      this.placeholder = '';
+      this.id = '';
+      this.selectionStart = 0;
+      this.selectionEnd = 0;
+      this.tabIndex = 0;
+    }
+    setAttribute(name, value) { this.attributes[name] = String(value); }
+    getAttribute(name) { return this.attributes[name] || null; }
+    removeAttribute(name) { delete this.attributes[name]; }
+    addEventListener(type, listener) {
+      (this.listeners[type] = this.listeners[type] || []).push(listener);
+    }
+    dispatchEvent(event) {
+      if (!event.target) event.target = this;
+      (this.listeners[event.type] || []).forEach((listener) => listener(event));
+      return !event.defaultPrevented;
+    }
+    appendChild(child) {
+      child.parentNode = this;
+      this.children.push(child);
+      return child;
+    }
+    insertBefore(child, reference) {
+      child.parentNode = this;
+      const index = this.children.indexOf(reference);
+      if (index < 0) this.children.push(child);
+      else this.children.splice(index, 0, child);
+      return child;
+    }
+    contains(node) {
+      return node === this || this.children.some((child) => child.contains && child.contains(node));
+    }
+    focus() {
+      document.activeElement = this;
+      this.dispatchEvent(new FakeEvent('focus'));
+    }
+    blur() {
+      document.activeElement = null;
+      this.dispatchEvent(new FakeEvent('blur'));
+    }
+    setSelectionRange(start, end) {
+      this.selectionStart = start;
+      this.selectionEnd = end;
+    }
+  }
+
+  class FakeEvent {
+    constructor(type, options) {
+      this.type = type;
+      this.bubbles = !!(options && options.bubbles);
+      this.defaultPrevented = false;
+      this.propagationStopped = false;
+      this.target = null;
+      this.key = options && options.key;
+    }
+    preventDefault() { this.defaultPrevented = true; }
+    stopPropagation() { this.propagationStopped = true; }
+  }
+
+  document = {
+    activeElement: null,
+    createElement(tagName) { return new FakeElement(tagName); },
+    querySelector() { return null; },
+    querySelectorAll() { return []; }
+  };
+
+  const sandbox = {
+    window: {},
+    document,
+    Event: FakeEvent,
+    setTimeout,
+    console: { warn() {} }
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(mentionsSource, sandbox);
+  vm.runInContext(fieldSource, sandbox);
+  sandbox.window.GAILS.Mentions.setPeople(people);
+
+  const parent = new FakeElement('div');
+  const input = new FakeElement('input');
+  input.id = 'partner';
+  parent.appendChild(input);
+  const api = sandbox.window.GAILS.MentionField.enhance(input);
+  return { api, input, menu: api.wrapper.children[2], FakeEvent, document };
+}
+
 test('the stored @ never reaches the reading form', () => {
   const mentions = load(TEAM);
 
@@ -50,7 +172,7 @@ test('the stored @ never reaches the reading form', () => {
   assert.equal(mentions.toText('Covered by @Jo Bloggs today'), 'Covered by Jo Bloggs today');
 });
 
-test('a mentioned name renders blue and underlined, the rest as plain text', () => {
+test('mentions are plain black when read and highlighted only in editable fields', () => {
   const mentions = load(TEAM);
 
   assert.equal(
@@ -60,9 +182,22 @@ test('a mentioned name renders blue and underlined, the rest as plain text', () 
   // A name typed without the "@" is just a label, and stays unstyled.
   assert.equal(mentions.toHtml('Sam Partner'), 'Sam Partner');
   assert.match(mentions.toHtml('Covered by @Jo Bloggs'), /^Covered by <span class="mention"/);
-  assert.equal(styles.includes('.mention {'), true);
-  assert.match(styles.slice(styles.indexOf('.mention {')), /text-decoration: underline;/);
-  assert.match(styles.slice(styles.indexOf('.mention {')), /color: var\(--blue\);/);
+
+  const readOnlyRule = styles.slice(
+    styles.indexOf('.mention {'),
+    styles.indexOf('.mention-field__display .mention {')
+  );
+  assert.match(readOnlyRule, /color: var\(--text\);/);
+  assert.match(readOnlyRule, /font-weight: inherit;/);
+  assert.match(readOnlyRule, /text-decoration: none;/);
+  assert.doesNotMatch(readOnlyRule, /var\(--blue\)|underline/);
+
+  const editableRule = styles.slice(
+    styles.indexOf('.mention-field__display .mention {'),
+    styles.indexOf('/* The two faces of an editable mention field')
+  );
+  assert.match(editableRule, /color: var\(--blue\);/);
+  assert.match(editableRule, /text-decoration: underline;/);
 });
 
 test('rendered mention text is escaped', () => {
@@ -264,7 +399,8 @@ test('the Coffee Partner field is the assignment control on both editors', () =>
   // Dashboard check-in modal.
   const partnerField = indexHtml.slice(indexHtml.indexOf('id="addVisitPartner"'));
   assert.match(partnerField.slice(0, 300), /data-mention-field/);
-  assert.match(partnerField.slice(0, 400), /Type <strong>@<\/strong> to assign this visit to someone/);
+  assert.match(partnerField.slice(0, 300), /Defaults to you/);
+  assert.match(partnerField.slice(0, 400), /Type <strong>@<\/strong> to credit another Coffee Partner instead/);
 
   // Admin visit detail form.
   assert.match(adminScript, /field\.key === 'coffeePartner'/);
@@ -286,7 +422,8 @@ test('the editor swaps faces rather than restyling one input', () => {
 
 test('the assignment is resolved at save, so deleting the mention un-assigns', () => {
   assert.match(visitReport, /assignedTo: assignees\.length \? assignees : null/);
-  assert.match(adminScript, /resolveEditedAssignees\(collected\.general\.coffeePartner, existing\.type\)/);
+  assert.match(adminScript, /var attributionText = isAudited[\s\S]{0,180}collected\.general\.coffeePartner;/);
+  assert.match(adminScript, /resolveEditedAssignees\(attributionText, existing\.type\)/);
   assert.match(adminScript, /payload\.assignedTo = editedAssignees\.length \? editedAssignees : null/);
   // The admin editor also honours a name typed without "@", but only when it
   // resolves to a real colleague — and never on a check-in, where the field
@@ -298,6 +435,79 @@ test('the assignment is resolved at save, so deleting the mention un-assigns', (
 test('picking a name leaves room to pick another', () => {
   // A trailing space so a second "@" can follow straight away.
   assert.match(fieldSource, /applied\.value \+= ' ';/);
+  assert.match(fieldSource, /state\.committedMention = \{/);
+  assert.match(fieldSource, /input\.value\.slice\(committed\.end, caret\)\.indexOf\('@'\) === -1/);
+});
+
+test('Enter, Tab and clicking an option commit in place and close the picker', () => {
+  const keyboard = fieldSource.slice(
+    fieldSource.indexOf("event.key === 'Enter' || event.key === 'Tab'"),
+    fieldSource.indexOf("event.key === 'Escape'", fieldSource.indexOf("event.key === 'Enter' || event.key === 'Tab'"))
+  );
+  assert.match(keyboard, /event\.preventDefault\(\)/);
+  assert.match(keyboard, /event\.stopPropagation\(\)/);
+  assert.match(keyboard, /choose\(state\.activeIndex\)/);
+
+  assert.match(fieldSource, /menu\.addEventListener\('mousedown'[\s\S]{0,240}event\.preventDefault\(\)[\s\S]{0,120}choose\(Number/);
+  assert.match(fieldSource, /input\.value = applied\.value;[\s\S]{0,260}closeMenu\(\);[\s\S]{0,120}input\.focus\(\)/);
+  // The synthetic input event still reaches dirty flags, but does not reopen
+  // the picker around the mention that was just selected.
+  assert.match(fieldSource, /state\.ignoreNextInput = true;[\s\S]{0,100}dispatchEvent/);
+  assert.match(fieldSource, /if \(state\.ignoreNextInput\) \{\s*state\.ignoreNextInput = false;\s*return;/);
+});
+
+test('the real picker handlers keep focus and stay closed after each selection method', () => {
+  const { input, menu, FakeEvent, document } = loadMentionField(TEAM);
+  let inputEvents = 0;
+  input.addEventListener('input', () => { inputEvents += 1; });
+  input.focus();
+
+  input.value = '@Sa';
+  input.setSelectionRange(input.value.length, input.value.length);
+  input.dispatchEvent(new FakeEvent('input'));
+  assert.equal(menu.hidden, false);
+
+  const enter = new FakeEvent('keydown', { key: 'Enter' });
+  input.dispatchEvent(enter);
+  assert.equal(input.value, '@Sam Partner ');
+  assert.equal(menu.hidden, true);
+  assert.equal(inputEvents, 2, 'typing and the committed selection both emit input');
+  assert.equal(enter.defaultPrevented, true);
+  assert.equal(enter.propagationStopped, true);
+
+  input.value += 'notes';
+  input.setSelectionRange(input.value.length, input.value.length);
+  input.dispatchEvent(new FakeEvent('input'));
+  assert.equal(menu.hidden, true, 'normal typing after a selection must not reopen its menu');
+
+  input.value += ' @Jo B';
+  input.setSelectionRange(input.value.length, input.value.length);
+  input.dispatchEvent(new FakeEvent('input'));
+  assert.equal(menu.hidden, false);
+
+  const tab = new FakeEvent('keydown', { key: 'Tab' });
+  input.dispatchEvent(tab);
+  assert.match(input.value, /@Jo Bloggs $/);
+  assert.equal(menu.hidden, true);
+  assert.equal(tab.defaultPrevented, true);
+  assert.equal(tab.propagationStopped, true);
+
+  input.value += '@Joan';
+  input.setSelectionRange(input.value.length, input.value.length);
+  input.dispatchEvent(new FakeEvent('input'));
+  assert.equal(menu.hidden, false);
+
+  const mouse = new FakeEvent('mousedown');
+  mouse.target = {
+    closest() {
+      return { getAttribute() { return '0'; } };
+    }
+  };
+  menu.dispatchEvent(mouse);
+  assert.match(input.value, /@Joanne Fielding $/);
+  assert.equal(menu.hidden, true);
+  assert.equal(mouse.defaultPrevented, true);
+  assert.equal(document.activeElement, input);
 });
 
 test('every surface that shows a Coffee Partner renders it without the @', () => {
@@ -327,6 +537,18 @@ test('an assigned visit reaches the assignee, and the export names them', () => 
     assert.match(source, /\{ label: 'Attributed To', type: 'text', width: 24 \}/);
     assert.match(source, /Attribution\.namesText\(/);
   });
+});
+
+test('a check-in report presents attribution once as Coffee Partner', () => {
+  const start = visitReport.indexOf("if (record.type === 'siteVisit')");
+  const end = visitReport.indexOf('bodyEl.innerHTML = buildReportHtml(record);', start);
+  const siteVisitReport = visitReport.slice(start, end);
+
+  assert.match(visitReport, /function siteVisitCoffeePartnerHtml\(record\)/);
+  assert.match(visitReport, /Attribution\.forVisit\(record\)/);
+  assert.match(siteVisitReport, /\{ label: 'Coffee Partner', html: siteVisitCoffeePartnerHtml\(record\) \}/);
+  assert.doesNotMatch(siteVisitReport, /Assigned To/);
+  assert.match(siteVisitReport, /meta\.createdBy \|\| record\.createdBy \|\| meta\.updatedBy/);
 });
 
 test('the shared people directory is readable but never carries a role', () => {

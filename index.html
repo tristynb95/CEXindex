@@ -1811,7 +1811,9 @@
               <div class="form-field-row">
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitPartner">Coffee Partner</label>
-                  <input type="text" id="addVisitPartner" placeholder="Enter name..." class="visit-log-input">
+                  <input type="text" id="addVisitPartner" placeholder="Defaults to you" class="visit-log-input"
+                    autocomplete="off" data-mention-field>
+                  <small class="mention-field-hint">Type <strong>@</strong> to credit another Coffee Partner instead.</small>
                 </div>
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitMod">Barista</label>
@@ -2022,6 +2024,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/state.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/mentions.js"></script>
+  <script src="js/mention-field.js"></script>
   <script src="js/visit-schema.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/cei.js"></script>

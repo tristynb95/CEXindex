@@ -2306,10 +2306,19 @@ async function saveVisitDetail(id) {
       payload[section.key] = collected[section.key];
     });
   }
-  // Editing the Coffee Partner text re-resolves the assignment, so removing a
-  // mention here really does un-assign the visit, and naming two people assigns
-  // it to both.
-  var editedAssignees = resolveEditedAssignees(collected.general.coffeePartner, existing.type);
+  // Routine visits are credited from Coffee Partner; imported CQV and NBO
+  // reports are credited from their printed auditor. In particular, editing an
+  // audited report's bakery/date must not clear its stable auditor assignment.
+  var isAudited = existing.type === 'cqv' || existing.type === 'nbo';
+  var attributionText = isAudited
+    ? (collected.general.auditorName || existing.auditorName || '')
+    : collected.general.coffeePartner;
+  var editedAssignees = resolveEditedAssignees(attributionText, existing.type);
+  if (isAudited && !editedAssignees.length &&
+      String(attributionText || '').trim() === String(existing.auditorName || '').trim() &&
+      window.GAILS.Mentions) {
+    editedAssignees = window.GAILS.Mentions.toAssigneeList(existing.assignedTo);
+  }
   payload.assignedTo = editedAssignees.length ? editedAssignees : null;
   payload.meta = Object.assign({}, existing.meta, {
     updatedAt: nowIso(),

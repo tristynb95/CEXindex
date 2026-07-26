@@ -284,8 +284,10 @@ function visitIsMine(visit) {
   // Credited to me — assigned by @mention, or attributed automatically.
   if (attributedToMe(visitAttribution(visit))) return true;
   var meta = visit.meta || {};
-  if (matchesMyUid(meta.createdByUid)) return true;
-  if (matchesMyEmail(meta.createdBy) || matchesMyEmail(visit.email) || matchesMyEmail(visit.createdBy)) return true;
+  var imported = wasImported(meta);
+  if (!imported && matchesMyUid(meta.createdByUid || visit.createdByUid)) return true;
+  if (!imported && (matchesMyEmail(meta.createdBy) || matchesMyEmail(visit.createdBy))) return true;
+  if (matchesMyEmail(visit.email)) return true;
 
   // Legacy fallback: on a record saved before authorship was stamped, and never
   // edited since, updatedBy is the closest thing to an author it has.
@@ -295,7 +297,7 @@ function visitIsMine(visit) {
   // identical — satisfying every condition here and pulling every CQV an admin
   // imported into that admin's own hub, over the top of the auditor the
   // resolver had already credited correctly.
-  if (!wasImported(meta) && !meta.createdBy && meta.updatedBy &&
+  if (!imported && !meta.createdBy && meta.updatedBy &&
     (!meta.updatedAt || meta.updatedAt === meta.createdAt) &&
     matchesMyEmail(meta.updatedBy)) return true;
 
@@ -303,8 +305,9 @@ function visitIsMine(visit) {
   // than a record of who did the visit, so being named there is not a claim to
   // it. js/attribution.js excludes it for the same reason, and re-adding it
   // here for every type would quietly contradict that.
-  if (visit.type !== 'siteVisit' && matchesMyName(visit.coffeePartner)) return true;
-  return matchesMyName(visit.auditorName);
+  if (visit.type === 'cqv' || visit.type === 'nbo') return matchesMyName(visit.auditorName);
+  if (visit.type !== 'siteVisit') return matchesMyName(visit.coffeePartner);
+  return false;
 }
 
 // Everyone a record is credited to, derived by js/attribution.js. This is what
@@ -316,7 +319,9 @@ function visitAttribution(visit) {
 }
 
 function taskAttribution(task) {
-  return G.Attribution ? G.Attribution.forTask(task) : [];
+  if (!G.Attribution) return [];
+  var sourceVisit = task && task.sourceVisitId ? visitsObj[task.sourceVisitId] : null;
+  return G.Attribution.actorsForTask(task, sourceVisit);
 }
 
 function attributedToMe(list) {
@@ -345,22 +350,25 @@ function visitAssigneeLabel(visit) {
 function visitLoggedByMe(visit) {
   if (!visit) return false;
   var meta = visit.meta || {};
-  if (matchesMyUid(meta.createdByUid)) return true;
-  if (matchesMyEmail(meta.createdBy) || matchesMyEmail(visit.email)) return true;
+  if (wasImported(meta)) return false;
+  if (matchesMyUid(meta.createdByUid || visit.createdByUid)) return true;
+  if (matchesMyEmail(meta.createdBy) || matchesMyEmail(visit.createdBy) || matchesMyEmail(visit.email)) return true;
   return !meta.createdBy && !!meta.updatedBy && (!meta.updatedAt || meta.updatedAt === meta.createdAt) &&
     matchesMyEmail(meta.updatedBy);
 }
 
 function taskRaisedByMe(task) {
-  return !!task && (matchesMyEmail(task.createdBy) || matchesMyName(task.createdByName));
+  return !!task && !!G.Attribution &&
+    attributedToMe(G.Attribution.taskRaiser(task));
 }
 
 function taskCompletedByMe(task) {
-  return !!task && matchesMyEmail(task.completedBy);
+  return !!task && !!G.Attribution &&
+    attributedToMe(G.Attribution.taskCompleter(task));
 }
 
 function taskIsMine(task) {
-  return taskRaisedByMe(task) || taskCompletedByMe(task) || attributedToMe(taskAttribution(task));
+  return attributedToMe(taskAttribution(task));
 }
 
 // A follow-up handed over with the visit it was raised on.
@@ -1743,6 +1751,8 @@ if (actionsList) {
         status: done ? 'done' : 'open',
         completedAt: done ? now : null,
         completedBy: done ? who : null,
+        completedByUid: done && currentUser ? currentUser.uid : null,
+        completedByName: done && currentUser ? (currentUser.displayName || identityDisplayName()) : null,
         'meta/updatedAt': now,
         'meta/updatedBy': who
       });

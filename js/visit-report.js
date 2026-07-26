@@ -151,8 +151,8 @@ window.GAILS = window.GAILS || {};
   }
 
   // A Coffee Partner may name an assignee as "@Name". The stored "@" is a
-  // typing affordance only — every read-only surface shows the bare name,
-  // styled by .mention (see js/mentions.js).
+  // typing affordance only — every read-only surface shows the bare name as
+  // ordinary text (see js/mentions.js).
   function partnerHtml(value, fallback) {
     var text = String(value == null ? '' : value);
     if (!text) return escapeHtml(fallback || '—');
@@ -163,6 +163,36 @@ window.GAILS = window.GAILS || {};
     var text = String(value == null ? '' : value);
     if (!text) return '';
     return window.GAILS.Mentions ? window.GAILS.Mentions.toText(text) : text;
+  }
+
+  // A check-in has one user-facing ownership concept: Coffee Partner. Selected
+  // mentions replace the default (the person who posted it). `assignedTo`
+  // remains a storage detail for stable ids and inherited follow-ups, but it
+  // must not surface as a second, duplicate card in the report.
+  function siteVisitCoffeePartnerHtml(record) {
+    var attributed = window.GAILS.Attribution &&
+      typeof window.GAILS.Attribution.forVisit === 'function'
+      ? window.GAILS.Attribution.forVisit(record)
+      : [];
+
+    if (!attributed.length && window.GAILS.Mentions) {
+      attributed = window.GAILS.Mentions.toAssigneeList(record.assignedTo);
+      if (!attributed.length) {
+        attributed = window.GAILS.Mentions.resolveAssignees(record.coffeePartner);
+      }
+    }
+
+    if (!attributed.length) {
+      var meta = record.meta || {};
+      var poster = meta.createdBy || record.createdBy || meta.updatedBy || '';
+      if (poster) attributed = [{ name: '', email: poster }];
+    }
+
+    if (!attributed.length) return '—';
+    return attributed.map(function (entry) {
+      var label = entry.name || entry.email || entry.uid;
+      return '<span class="mention">' + escapeHtml(label) + '</span>';
+    }).join(' + ');
   }
 
   function buildHeaderStatsHtml(record) {
@@ -1613,21 +1643,12 @@ window.GAILS = window.GAILS || {};
       titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
       subtitleEl.textContent = siteVisitKindLabel(record) + ' on ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
 
+      var meta = record.meta || {};
       var stats = [
-        { label: 'Logged By', value: (record.meta && (record.meta.createdBy || record.meta.updatedBy)) || '—' },
-        { label: 'Coffee Partner', html: partnerHtml(record.coffeePartner) },
+        { label: 'Logged By', value: meta.createdBy || record.createdBy || meta.updatedBy || '—' },
+        { label: 'Coffee Partner', html: siteVisitCoffeePartnerHtml(record) },
         { label: 'Barista', value: record.mod || '—' }
       ];
-      var assignedList = window.GAILS.Mentions
-        ? window.GAILS.Mentions.toAssigneeList(record.assignedTo) : [];
-      if (assignedList.length) {
-        stats.splice(1, 0, {
-          label: assignedList.length > 1 ? 'Assigned To (' + assignedList.length + ')' : 'Assigned To',
-          html: assignedList.map(function (entry) {
-            return '<span class="mention">' + escapeHtml(entry.name) + '</span>';
-          }).join(', ')
-        });
-      }
 
       var statsHtml = '<div class="drill-summary">' + stats.map(function (c) {
         return '<div class="drill-card">' +

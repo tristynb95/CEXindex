@@ -193,6 +193,7 @@ test('importing a CQV does not put it in the importer\'s hub', () => {
       source: 'pdf-import',
       createdAt: '2026-07-24T10:00:00.000Z',
       importedBy: 'admin@gailsbread.co.uk',
+      createdBy: 'admin@gailsbread.co.uk',
       updatedAt: '2026-07-24T10:00:00.000Z',
       updatedBy: 'admin@gailsbread.co.uk'
     }
@@ -248,6 +249,12 @@ test('visits are attributed by form respondent and by printed auditor name', () 
   // CQV/NBO PDFs only ever carry a printed name; punctuation and case vary.
   assert.equal(context.visitIsMine({ bakery: 'Balham', type: 'cqv', auditorName: "Sam O'Partner" }), false);
   assert.equal(context.visitIsMine({ bakery: 'Balham', type: 'cqv', auditorName: 'SAM PARTNER' }), true);
+  assert.equal(context.visitIsMine({
+    bakery: 'Balham',
+    type: 'nbo',
+    auditorName: 'Someone Else',
+    coffeePartner: 'Sam Partner'
+  }), false);
   assert.equal(context.visitIsMine({ bakery: 'Balham', coffeePartner: 'Sam Partner' }), true);
   assert.equal(context.visitIsMine({ bakery: 'Balham', coffeePartner: 'Someone Else' }), false);
 });
@@ -273,11 +280,30 @@ test('a task completed by this user counts even when a colleague raised it', () 
     }
   );
 
-  const task = { createdBy: 'other@gailsbread.co.uk', completedBy: 'sam@gailsbread.co.uk' };
+  const task = { createdBy: 'other@gailsbread.co.uk', completedByUid: 'uid-1' };
   assert.equal(context.taskRaisedByMe(task), false);
   assert.equal(context.taskCompletedByMe(task), true);
   assert.equal(context.taskIsMine(task), true);
   assert.equal(context.taskIsMine({ createdBy: 'other@gailsbread.co.uk' }), false);
+});
+
+test('a legacy task linked to my visit is restored to My Activity', () => {
+  const context = extract(
+    ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName',
+      'taskAttribution', 'attributedToMe', 'taskIsMine'],
+    {
+      G: gails([{ uid: 'uid-1', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' }]),
+      identity: { uid: 'uid-1', emails: new Set(['sam@gailsbread.co.uk']), names: new Set(['sam partner']) },
+      visitsObj: {
+        source: { type: 'cqv', auditorName: 'Sam Partner' }
+      }
+    }
+  );
+
+  assert.equal(context.taskIsMine({
+    sourceVisitId: 'source',
+    createdBy: 'other@gailsbread.co.uk'
+  }), true);
 });
 
 test('the custom date range bounds the visit list inclusively', () => {

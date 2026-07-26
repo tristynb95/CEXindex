@@ -307,8 +307,16 @@ function visitOwners(visit) {
 }
 
 function taskOwners(task) {
-  var list = G.Attribution ? G.Attribution.forTask(task) : [];
-  return roster.filter(function (person) { return creditedTo(list, person.uid); });
+  if (!G.Attribution) return [];
+  var sourceVisit = task && task.sourceVisitId ? visitsObj[task.sourceVisitId] : null;
+  var responsible = G.Attribution.forTask(task, sourceVisit);
+  var owners = roster.filter(function (person) { return creditedTo(responsible, person.uid); });
+  if (owners.length) return owners;
+
+  // If the responsible owner sits outside the viewer's roster, keep a
+  // completed task visible under the team member who actually completed it.
+  var actors = G.Attribution.actorsForTask(task, sourceVisit);
+  return roster.filter(function (person) { return creditedTo(actors, person.uid); });
 }
 
 // ---------- data selection ----------
@@ -482,13 +490,18 @@ function chartPersonName(person) {
   return parts.length > 1 ? parts[0] + ' ' + parts[parts.length - 1].charAt(0) + '.' : name;
 }
 
+function chartValue(value) {
+  var number = Number(value) || 0;
+  return Number.isInteger(number) ? String(number) : number.toFixed(1);
+}
+
 function chartRowHtml(person, value, max, risk, workload) {
   var width = max ? Math.round((value / max) * 100) : 0;
   var riskWidth = value && risk ? Math.round((risk / value) * width) : 0;
   var label = chartPersonName(person);
   var description = workload
     ? label + ': ' + plural(value, 'open action') + (risk ? ', ' + plural(risk, 'overdue action') : '')
-    : label + ': ' + plural(value, 'visit');
+    : label + ': ' + chartValue(value) + ' visit contribution';
 
   return '<button type="button" class="my-team-chart-row" data-chart-person="' +
     escapeHtml(person.uid) + '" aria-label="' + escapeHtml(description) + '">' +
@@ -499,7 +512,7 @@ function chartRowHtml(person, value, max, risk, workload) {
     (width ? '' : ' is-zero') + '" style="width:' + width + '%"></i>' +
     (risk ? '<i class="my-team-chart-row__risk" style="width:' + riskWidth + '%"></i>' : '') +
     '</span>' +
-    '<strong class="my-team-chart-row__value">' + value + '</strong>' +
+    '<strong class="my-team-chart-row__value">' + chartValue(value) + '</strong>' +
     '</button>';
 }
 
@@ -627,18 +640,22 @@ function renderAnalytics() {
   var people = analyticsPeople();
   var visits = forSelected(teamVisits());
   var tasks = forSelected(teamTasks());
+  var shares = G.Team && typeof G.Team.contributionShares === 'function'
+    ? G.Team.contributionShares(visits, people.map(function(person) { return person.uid; }))
+    : {};
   var rows = people.map(function (person) {
     var stats = statsFor([person.uid], visits, tasks);
     return {
       person: person,
       visits: stats.visits,
+      contribution: shares[person.uid] || 0,
       open: stats.open,
       overdue: stats.overdue
     };
   });
 
   if (contributionTotal) contributionTotal.textContent = visits.length;
-  if (contributionChart) contributionChart.innerHTML = chartRowsHtml(rows, 'visits', '', false);
+  if (contributionChart) contributionChart.innerHTML = chartRowsHtml(rows, 'contribution', '', false);
   if (workloadChart) workloadChart.innerHTML = chartRowsHtml(rows, 'open', 'overdue', true);
   if (insightsBadge) {
     var selected = selectedUid && roster.find(function (person) { return person.uid === selectedUid; });
@@ -652,8 +669,10 @@ function renderAnalytics() {
     return b.overdue - a.overdue || b.open - a.open;
   })[0];
   var inactive = rows.filter(function (row) { return row.visits === 0; });
-  var topContributor = rows.slice().sort(function (a, b) { return b.visits - a.visits; })[0];
-  var creditedVisits = rows.reduce(function (sum, row) { return sum + row.visits; }, 0);
+  var topContributor = rows.slice().sort(function (a, b) {
+    return b.contribution - a.contribution;
+  })[0];
+  var creditedVisits = visits.length;
   var message = '';
   var tone = 'positive';
 
@@ -666,11 +685,11 @@ function renderAnalytics() {
     message = 'Coverage opportunity: ' + plural(inactive.length, 'person', 'people') +
       ' have no credited visits ' + periodLabel() + '.';
   } else if (topContributor && creditedVisits && people.length > 2 &&
-      topContributor.visits / creditedVisits >= 0.5) {
+      topContributor.contribution / creditedVisits >= 0.5) {
     tone = '';
     message = (topContributor.person.name || 'One person') + ' accounts for ' +
-      Math.round((topContributor.visits / creditedVisits) * 100) +
-      '% of credited visit activity. Check that coverage is distributed as intended.';
+      Math.round((topContributor.contribution / creditedVisits) * 100) +
+      '% of visit contribution. Shared visits are split across their credited people.';
   } else if (people.length) {
     message = 'The team has no overdue actions and everyone has credited visit activity ' + periodLabel() + '.';
   } else {
@@ -830,13 +849,18 @@ function actionRowHtml(task) {
   var done = taskIsDone(task);
   var meta = dueMeta(task.dueDate);
   var priority = normalizePriority(task.priority);
+  var ownerText = ownerLabel(task.owners);
+  var raiserText = G.Attribution ? G.Attribution.label(G.Attribution.taskRaiser(task)) : '';
+  var completerText = G.Attribution ? G.Attribution.label(G.Attribution.taskCompleter(task)) : '';
 
   var pill = done
     ? '<span class="follow-up-pill follow-up-pill--done">Done</span>'
     : (task.dueDate ? '<span class="follow-up-pill follow-up-pill--' + meta.state + '">' + escapeHtml(meta.label) + '</span>' : '');
 
-  var footnotes = ['Raised by ' + ownerLabel(task.owners)];
+  var footnotes = ['Owner: ' + ownerText];
+  if (raiserText && raiserText !== ownerText) footnotes.push('Raised by ' + raiserText);
   if (task.createdAt) footnotes.push('Added ' + formatDay(task.createdAt));
+  if (done && completerText) footnotes.push('Completed by ' + completerText);
   if (done && task.completedAt) footnotes.push('Completed ' + formatDay(task.completedAt));
 
   // Read-only by design: a manager reviewing their team's workload should not
@@ -942,7 +966,10 @@ function visitRowHtml(visit) {
     '</div>' +
     '</div>' +
     '<div class="my-activity-visit__action">' +
-    '<a class="my-activity-visit__link" href="index.html?visit=' + encodeURIComponent(visit.id) + '#visit-log">View report</a>' +
+    // Keep a real dashboard href as a fallback and for modified clicks, while
+    // ordinary clicks are enhanced into the in-page report modal below.
+    '<a class="my-activity-visit__link" data-open-visit-report="' + escapeHtml(visit.id) + '"' +
+    ' href="index.html?visit=' + encodeURIComponent(visit.id) + '#visit-log">View report</a>' +
     '</div>' +
     '</article>';
 }
@@ -1013,6 +1040,25 @@ function renderAll() {
   renderRoster();
   renderActions();
   renderVisits();
+}
+
+// ---------- visit report modal ----------
+// Feed the shared report renderer only visits the manager can currently reach.
+// This keeps its previous/next history controls inside the active reporting
+// line, selected branch and period instead of exposing the estate-wide cache.
+function syncReportSource() {
+  var visible = {};
+  forSelected(teamVisits()).forEach(function (visit) {
+    visible[visit.id] = visitsObj[visit.id];
+  });
+  G._allVisitsObj = visible;
+}
+
+function openReportModal(visitId) {
+  if (typeof G.openVisitReportById !== 'function') return false;
+  syncReportSource();
+  G.openVisitReportById(visitId);
+  return true;
 }
 
 // ---------- filters ----------
@@ -1289,6 +1335,19 @@ if (jumpNav && 'IntersectionObserver' in window) {
     if (section) sectionObserver.observe(section);
   });
 }
+
+// Use a separate attribute from the dashboard renderer's [data-visit-report]
+// delegation. The latter represents a bakery name; this link carries a visit
+// id. Modified clicks retain the real href and open the dashboard in a new tab.
+document.addEventListener('click', function (event) {
+  if (event.defaultPrevented || event.button !== 0) return;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+  var link = event.target.closest('[data-open-visit-report]');
+  if (!link) return;
+
+  if (openReportModal(link.getAttribute('data-open-visit-report'))) event.preventDefault();
+});
 
 // ---------- live data ----------
 

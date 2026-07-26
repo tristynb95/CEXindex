@@ -144,6 +144,13 @@
   font-weight: 700;
 }
 
+.my-team-chart-card__note {
+  margin: 3px 0 0;
+  color: var(--muted-l);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
 .my-team-chart-card__value {
   font-family: var(--font-display);
   font-size: 1.35rem;

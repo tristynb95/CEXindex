@@ -86,6 +86,20 @@ test('an imported CQV is credited to its printed auditor, not the importer', () 
   assert.equal(G.Attribution.isExplicit(credited), false);
 });
 
+test('an NBO visit is credited to its auditor and ignores stray partner text', () => {
+  const G = load(TEAM);
+
+  const credited = G.Attribution.forVisit({
+    type: 'nbo',
+    auditorName: 'Ada Auditor',
+    coffeePartner: '@Jamie Smith',
+    meta: { source: 'pdf-import', importedBy: 'tristen@gailsbread.co.uk' }
+  });
+
+  assert.deepEqual(names(credited), ['Ada Auditor']);
+  assert.equal(credited[0].source, 'auditor');
+});
+
 test('an auditor who is not in the directory is still credited by name', () => {
   const G = load(TEAM);
 
@@ -152,11 +166,48 @@ test('a form visit with no Coffee Partner falls back to the respondent', () => {
   assert.equal(credited[0].source, 'respondent');
 });
 
-test('a check-in Coffee Partner is free text, not an attribution', () => {
+test('an ambiguous routine-visit partner does not block the respondent', () => {
   const G = load(TEAM);
 
-  // On a check-in this field records who was on the bar, so it must not credit
-  // the visit away from whoever logged it.
+  const credited = G.Attribution.forVisit({
+    coffeePartner: 'Unknown',
+    email: 'tristen@gailsbread.co.uk',
+    meta: { source: 'form' }
+  });
+
+  assert.deepEqual(names(credited), ['Tristen Bayley']);
+  assert.equal(credited[0].source, 'respondent');
+});
+
+test('a check-in Coffee Partner defaults to the poster', () => {
+  const G = load(TEAM);
+
+  const credited = G.Attribution.forVisit({
+    type: 'siteVisit',
+    coffeePartner: '',
+    meta: { createdBy: 'tristen@gailsbread.co.uk', createdByUid: 'uid-tristen' }
+  });
+
+  assert.deepEqual(names(credited), ['Tristen Bayley']);
+  assert.equal(credited[0].source, 'logger');
+});
+
+test('selected Coffee Partners replace the poster on a check-in', () => {
+  const G = load(TEAM);
+
+  const credited = G.Attribution.forVisit({
+    type: 'siteVisit',
+    coffeePartner: '@Jamie Smith + @Ada Auditor',
+    meta: { createdBy: 'tristen@gailsbread.co.uk', createdByUid: 'uid-tristen' }
+  });
+
+  assert.deepEqual(names(credited), ['Jamie Smith', 'Ada Auditor']);
+  assert.equal(credited.every((entry) => entry.source === 'assigned'), true);
+});
+
+test('legacy check-in partner text does not steal attribution from the poster', () => {
+  const G = load(TEAM);
+
   const credited = G.Attribution.forVisit({
     type: 'siteVisit',
     coffeePartner: 'Jamie Smith',
@@ -164,7 +215,6 @@ test('a check-in Coffee Partner is free text, not an attribution', () => {
   });
 
   assert.deepEqual(names(credited), ['Tristen Bayley']);
-  assert.equal(credited[0].source, 'logger');
 });
 
 test('an explicit assignment outranks every derived signal', () => {
@@ -224,6 +274,35 @@ test('a follow-up raised on a handed-over visit belongs to the assignee', () => 
   assert.equal(raised[0].source, 'raiser');
 });
 
+test('a legacy follow-up inherits attribution from its source visit', () => {
+  const G = load(TEAM);
+  const sourceVisit = {
+    type: 'cqv',
+    auditorName: 'Ada Auditor'
+  };
+  const credited = G.Attribution.forTask({
+    sourceVisitId: 'visit-1',
+    createdBy: 'tristen@gailsbread.co.uk'
+  }, sourceVisit);
+
+  assert.deepEqual(names(credited), ['Ada Auditor']);
+  assert.equal(credited[0].source, 'auditor');
+});
+
+test('task activity includes its owner, raiser and completer without duplicates', () => {
+  const G = load(TEAM);
+  const task = {
+    assignedTo: [{ uid: 'uid-jamie', name: 'Jamie Smith', email: 'jamie@gailsbread.co.uk' }],
+    createdByUid: 'uid-tristen',
+    completedBy: 'jamie@gailsbread.co.uk'
+  };
+
+  const actors = G.Attribution.actorsForTask(task);
+  assert.deepEqual(names(actors), ['Jamie Smith', 'Tristen Bayley']);
+  assert.deepEqual(names(G.Attribution.taskRaiser(task)), ['Tristen Bayley']);
+  assert.deepEqual(names(G.Attribution.taskCompleter(task)), ['Jamie Smith']);
+});
+
 test('attribution matches a person by uid, email, or name', () => {
   const G = load(TEAM);
   const credited = G.Attribution.forVisit({ type: 'cqv', auditorName: 'Ada Auditor' });
@@ -263,11 +342,17 @@ test('the PDF import stamps the auditor and records the importer separately', ()
   assert.match(adminScript, /importedBy: currentUserEmail\(\)/);
   // Recovering a missing auditor name is also the moment to credit the report.
   assert.match(adminScript, /if \(backfilledAuditor && !visit\.assignedTo\) backfillPatch\.assignedTo = \[backfilledAuditor\]/);
+  // Editing an audited report keeps resolving from auditorName, rather than
+  // clearing attribution because CQV/NBO records have no Coffee Partner field.
+  assert.match(adminScript, /existing\.type === 'cqv' \|\| existing\.type === 'nbo'/);
+  assert.match(adminScript, /collected\.general\.auditorName \|\| existing\.auditorName/);
 });
 
 test('follow-ups raised during a check-in inherit that visit\'s assignees', () => {
   assert.match(visitReport, /sourceVisitId: newVisitId \|\| null,[\s\S]{0,220}assignedTo: assignees\.length \? assignees : null/);
   assert.match(authScript, /assignedTo: null,\s*\n\s*completedAt: null/);
+  assert.match(authScript, /createdByUid: whoUid/);
+  assert.match(authScript, /completedByUid: done \? whoUid : null/);
 });
 
 test('a check-in saves every mentioned assignee', () => {

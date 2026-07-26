@@ -48,6 +48,9 @@ window.GAILS = window.GAILS || {};
     var value = String(reference == null ? '' : reference).trim();
     if (!value) return null;
 
+    var resolvedUid = mentions() ? mentions().findPersonByUid(value) : null;
+    if (resolvedUid) return person(resolvedUid, source);
+
     var resolved = mentions() ? mentions().resolvePerson(value) : null;
     if (resolved) return person(resolved, source);
 
@@ -59,14 +62,40 @@ window.GAILS = window.GAILS || {};
   }
 
   function dedupe(list) {
-    var seen = {};
+    var seenUids = {};
+    var seenEmails = {};
+    var seenNames = {};
     return list.filter(function (entry) {
       if (!entry || (!entry.name && !entry.email && !entry.uid)) return false;
-      var key = entry.uid || normalizeName(entry.name) || entry.email;
-      if (!key || seen[key]) return false;
-      seen[key] = true;
+      var uid = String(entry.uid || '').trim();
+      var email = String(entry.email || '').trim().toLowerCase();
+      var name = normalizeName(entry.name);
+      if ((uid && seenUids[uid]) || (email && seenEmails[email]) || (name && seenNames[name])) return false;
+      if (uid) seenUids[uid] = true;
+      if (email) seenEmails[email] = true;
+      if (name) seenNames[name] = true;
       return true;
     });
+  }
+
+  function fromActor(uid, reference, name, source) {
+    var cleanUid = String(uid == null ? '' : uid).trim();
+    var known = cleanUid && mentions() ? mentions().findPersonByUid(cleanUid) : null;
+    if (known) return person(known, source);
+
+    var resolved = fromReference(reference || name || cleanUid, source);
+    if (resolved && cleanUid && !resolved.uid) resolved.uid = cleanUid;
+    return resolved;
+  }
+
+  function explicitAssignees(value) {
+    var explicit = mentions() ? mentions().toAssigneeList(value) : [];
+    return explicit.map(function (entry) { return person(entry, 'assigned'); });
+  }
+
+  function mentionedAssignees(value) {
+    var mentioned = mentions() ? mentions().resolveAssignees(value) : [];
+    return mentioned.map(function (entry) { return person(entry, 'assigned'); });
   }
 
   // The strongest available signal wins outright rather than blending: a visit
@@ -92,15 +121,13 @@ window.GAILS = window.GAILS || {};
     var isAudited = visit.type === 'cqv' || visit.type === 'nbo';
 
     return firstNonEmpty([
-      function () {
-        var explicit = mentions() ? mentions().toAssigneeList(visit.assignedTo) : [];
-        return explicit.map(function (entry) { return person(entry, 'assigned'); });
-      },
+      function () { return explicitAssignees(visit.assignedTo); },
       function () {
         // Belt and braces for a visit whose Coffee Partner names people but
         // whose assignedTo was never stamped (edited outside this app, say).
-        var mentioned = mentions() ? mentions().resolveAssignees(visit.coffeePartner) : [];
-        return mentioned.map(function (entry) { return person(entry, 'assigned'); });
+        // Audited PDFs use their printed auditor instead; a stray Coffee
+        // Partner value must never override a CQV or NBO auditor.
+        return isAudited ? [] : mentionedAssignees(visit.coffeePartner);
       },
       function () { return isAudited ? [fromReference(visit.auditorName, 'auditor')] : []; },
       function () {
@@ -109,34 +136,74 @@ window.GAILS = window.GAILS || {};
         if (isAudited || visit.type === 'siteVisit') return [];
         var text = mentions() ? mentions().toText(visit.coffeePartner) : visit.coffeePartner;
         var parts = mentions() ? mentions().splitPeople(text) : [text];
-        if (parts.length < 2) return [fromReference(text, 'partner')];
+        function resolvePartner(reference) {
+          // When the people directory is available, an ambiguous or mistyped
+          // partner must not block the reliable form respondent email below.
+          var resolved = mentions() ? mentions().resolvePerson(reference) : null;
+          if (resolved) return person(resolved, 'partner');
+          return mentions() ? null : fromReference(reference, 'partner');
+        }
+        if (parts.length < 2) return [resolvePartner(text)];
         // A field naming two people is a pair who covered the visit together —
         // written longhand before "@" could assign it — so both are credited,
         // and neither dilutes the other into a single made-up person.
-        return parts.map(function (part) { return fromReference(part, 'partner'); });
+        return parts.map(resolvePartner);
       },
       function () { return [fromReference(visit.email, 'respondent')]; },
       function () {
-        var uid = meta.createdByUid;
+        var uid = meta.createdByUid || visit.createdByUid;
         var known = uid && mentions() ? mentions().findPersonByUid(uid) : null;
         if (known) return [person(known, 'logger')];
-        return [fromReference(meta.createdBy, 'logger')];
+        return [fromReference(meta.createdBy || visit.createdBy, 'logger')];
       }
     ]);
   }
 
   // A follow-up belongs to whoever it was assigned to, and otherwise to whoever
-  // raised it. Tasks raised during a check-in inherit that visit's assignees, so
-  // handing a visit over hands over its actions too.
-  function forTask(task) {
+  // raised it. Legacy tasks linked to a visit but missing their own assignedTo
+  // inherit the source visit at read time, so older actions are not lost.
+  function taskRaiser(task) {
+    if (!task) return [];
+    var meta = task.meta || {};
+    return dedupe([fromActor(
+      task.createdByUid || meta.createdByUid,
+      task.createdBy || meta.createdBy,
+      task.createdByName || meta.createdByName,
+      'raiser'
+    )]);
+  }
+
+  function taskCompleter(task) {
+    if (!task) return [];
+    var meta = task.meta || {};
+    return dedupe([fromActor(
+      task.completedByUid || meta.completedByUid,
+      task.completedBy || meta.completedBy,
+      task.completedByName || meta.completedByName,
+      'completer'
+    )]);
+  }
+
+  function forTask(task, sourceVisit) {
     if (!task) return [];
     return firstNonEmpty([
-      function () {
-        var explicit = mentions() ? mentions().toAssigneeList(task.assignedTo) : [];
-        return explicit.map(function (entry) { return person(entry, 'assigned'); });
-      },
-      function () { return [fromReference(task.createdBy, 'raiser')]; }
+      function () { return explicitAssignees(task.assignedTo); },
+      function () { return sourceVisit ? forVisit(sourceVisit) : []; },
+      function () { return taskRaiser(task); },
+      function () { return taskCompleter(task); }
     ]);
+  }
+
+  // My Activity is an activity history rather than a workload queue. It should
+  // therefore include everyone who owned, raised, or completed the action,
+  // while the manager workload view can continue to use forTask's responsible
+  // owner only.
+  function actorsForTask(task, sourceVisit) {
+    return dedupe(
+      forTask(task, sourceVisit)
+        .concat(taskRaiser(task))
+        .concat(taskCompleter(task))
+    );
   }
 
   function isExplicit(list) {
@@ -171,6 +238,9 @@ window.GAILS = window.GAILS || {};
   G.Attribution = {
     forVisit: forVisit,
     forTask: forTask,
+    actorsForTask: actorsForTask,
+    taskRaiser: taskRaiser,
+    taskCompleter: taskCompleter,
     fromReference: fromReference,
     isExplicit: isExplicit,
     matches: matches,
