@@ -249,12 +249,15 @@ test('profile back control uses and preserves the named originating page', () =>
   assert.match(script, /backLink\.textContent = text/);
   assert.match(script, /'← Back To ' \+ profileReturnContext\.label/);
   assert.match(script, /escapeHtml\(profileUrlFor\(name\)\)/);
-  assert.match(script, /pageName !== 'index\.html' && pageName !== 'admin\.html'/);
+  assert.match(script, /RETURN_PAGES\.indexOf\(pageName\) === -1/);
+  // The allowlist is what stops ?from bouncing someone off the site.
+  assert.match(script, /const RETURN_PAGES = \['index\.html', 'admin\.html', 'my-activity\.html'\]/);
 });
 
 test('profile resolves a safe named return destination from its link parameters', () => {
   const source = [
     script.match(/const RETURN_LABELS = \{[\s\S]*?\n\};/)[0],
+    script.match(/const RETURN_PAGES = \[[^\]]*\];/)[0],
     ...['safeReturnUrl', 'labelFromReturnUrl', 'getProfileReturnContext'].map((name) => {
       const match = script.match(new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\}'));
       assert.ok(match, name + ' helper should exist');
@@ -281,6 +284,16 @@ test('profile resolves a safe named return destination from its link parameters'
     JSON.parse(JSON.stringify(context.result)),
     { url: 'index.html#table', label: 'League Table' }
   );
+
+  // A bakery opened from the My Activity hub goes back to the hub, and to the
+  // section it was opened from.
+  assert.deepEqual(JSON.parse(JSON.stringify(context.safeReturnUrl('my-activity.html#section-visits'))),
+    'my-activity.html#section-visits');
+  assert.equal(context.labelFromReturnUrl('my-activity.html#section-visits'), 'My Activity');
+  assert.equal(context.labelFromReturnUrl('my-activity.html'), 'My Activity');
+  // Somewhere else entirely is still discarded.
+  assert.equal(context.safeReturnUrl('https://evil.test/index.html'), '');
+  assert.equal(context.safeReturnUrl('login.html'), '');
 });
 
 test('profile uses the shared data nodes and author-attributed server-timestamped notes', () => {

@@ -1,7 +1,7 @@
 import { auth, db } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { ref, get, set, update, remove, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess } from './permissions.js';
+import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess, canSeeTeam } from './permissions.js';
 import { createProfileMenu } from './profile-menu.js';
 
 function nowIso() {
@@ -125,6 +125,12 @@ window.GAILS_Firebase = {
       meta: {
         source: 'siteVisit',
         createdAt: nowIsoStr,
+        // Authorship is recorded separately from updatedBy because an admin
+        // correcting a visit later overwrites updatedBy — which would
+        // otherwise move the visit into the admin's My Activity hub
+        // (my-activity.html) and out of the person's who actually logged it.
+        createdBy: auth.currentUser.email || auth.currentUser.uid,
+        createdByUid: auth.currentUser.uid,
         updatedAt: nowIsoStr,
         updatedBy: auth.currentUser.email || auth.currentUser.uid
       }
@@ -151,6 +157,8 @@ window.GAILS_Firebase = {
       throw new Error('Your role does not allow adding follow-ups.');
     }
     var who = auth.currentUser.email || auth.currentUser.uid;
+    var whoUid = auth.currentUser.uid;
+    var whoName = auth.currentUser.displayName || '';
     var nowIsoStr = nowIso();
     var newRef = push(ref(db, 'followUpActions'));
     var payload = Object.assign({
@@ -163,11 +171,17 @@ window.GAILS_Firebase = {
       priority: 'none',
       status: 'open',
       sourceVisitId: null,
+      // Who the action belongs to. Raised during a check-in it inherits that
+      // visit's assignees; raised standalone it stays null and falls back to
+      // the person who created it (see js/attribution.js).
+      assignedTo: null,
       completedAt: null,
       completedBy: null
     }, task, {
       createdAt: nowIsoStr,
       createdBy: who,
+      createdByUid: whoUid,
+      createdByName: whoName,
       meta: { updatedAt: nowIsoStr, updatedBy: who }
     });
     await set(newRef, payload);
@@ -180,11 +194,15 @@ window.GAILS_Firebase = {
       throw new Error('Your role does not allow updating follow-ups.');
     }
     var who = auth.currentUser.email || auth.currentUser.uid;
+    var whoUid = auth.currentUser.uid;
+    var whoName = auth.currentUser.displayName || '';
     var nowIsoStr = nowIso();
     await update(ref(db, 'followUpActions/' + taskId), {
       status: done ? 'done' : 'open',
       completedAt: done ? nowIsoStr : null,
       completedBy: done ? who : null,
+      completedByUid: done ? whoUid : null,
+      completedByName: done ? whoName : null,
       'meta/updatedAt': nowIsoStr,
       'meta/updatedBy': who
     });
@@ -241,6 +259,7 @@ let dashboardDataUnsubscribe = null;
 let routineVisitsUnsubscribe = null;
 let followUpActionsUnsubscribe = null;
 let appSettingsUnsubscribe = null;
+let userDirectoryUnsubscribe = null;
 let _freshLogin = false;
 let pendingInvitationUserRef = null;
 
@@ -337,6 +356,13 @@ function applySiteMeta(payload) {
   if (window.GAILS && typeof window.GAILS.setBakeryMeta === 'function') {
     window.GAILS.setBakeryMeta(meta);
   }
+  // The regional coffee team is the curated list of who actually runs these
+  // visits, so it feeds the @mention picker (js/mentions.js).
+  if (window.GAILS && window.GAILS.Mentions) {
+    window.GAILS.Mentions.addHarvested({
+      regionAssignments: (payload && payload.regionAssignments) || []
+    });
+  }
   window.dispatchEvent(new CustomEvent('gails:site-meta-sync', {
     detail: {
       payload: payload || null,
@@ -389,6 +415,9 @@ function computeLastVisitRecords(visitsObj) {
 
 function applyLastVisitDates(visitsObj) {
   if (window.GAILS) {
+    if (window.GAILS.Mentions) {
+      window.GAILS.Mentions.addHarvested({ visits: visitsObj || {} });
+    }
     if (typeof window.GAILS.setLastVisitRecords === 'function') {
       window.GAILS.setLastVisitRecords(computeLastVisitRecords(visitsObj));
     }
@@ -398,6 +427,11 @@ function applyLastVisitDates(visitsObj) {
     }
     if (typeof window.GAILS.refreshMapVisitFilters === 'function') {
       window.GAILS.refreshMapVisitFilters();
+    }
+    // A ?visit=<id> link from the My Activity hub can only be honoured once
+    // the record it names has arrived.
+    if (typeof window.GAILS.openVisitFromDeepLink === 'function') {
+      window.GAILS.openVisitFromDeepLink();
     }
   }
 }
@@ -434,6 +468,58 @@ function startRoutineVisitsSync() {
     applyFollowUpActions(snapshot.exists() ? snapshot.val() : {});
   }, function(error) {
     console.error('Failed to sync follow-up actions:', error);
+  });
+}
+
+// ---- Shared people directory ----
+// Who can be @mentioned in a visit's Coffee Partner field. It exists because
+// /users is deliberately unreadable to ordinary users (see database.rules.json)
+// — a name-and-email-only node can be world-readable to signed-in staff when the
+// full user record, carrying roles and ops areas, must not be.
+//
+// Self-maintaining: every user republishes their own entry at sign-in, so the
+// directory converges without anyone curating it. Both the read and the write
+// are best-effort — before the matching rules are deployed they simply fail, and
+// the picker falls back to names harvested from readable data.
+function publishDirectoryEntry(user, profile) {
+  var email = user.email || (profile && profile.email) || '';
+  var name = [profile && profile.firstName, profile && profile.lastName]
+    .filter(Boolean).join(' ').trim() || user.displayName || '';
+  // Until they set a name, their work address stands in for one — otherwise
+  // they cannot be @mentioned and their visits cannot be credited to them.
+  if (!name && window.GAILS && window.GAILS.Mentions) {
+    name = window.GAILS.Mentions.nameFromEmail(email);
+  }
+  if (!name) return Promise.resolve();
+  return set(ref(db, 'userDirectory/' + user.uid), {
+    name: name,
+    email: email
+  }).catch(function(error) {
+    console.warn('Could not publish your directory entry:', error);
+  });
+}
+
+function stopUserDirectorySync() {
+  if (userDirectoryUnsubscribe) {
+    userDirectoryUnsubscribe();
+    userDirectoryUnsubscribe = null;
+  }
+}
+
+function startUserDirectorySync() {
+  stopUserDirectorySync();
+  userDirectoryUnsubscribe = onValue(ref(db, 'userDirectory'), function(snapshot) {
+    var entries = snapshot.exists() ? snapshot.val() : {};
+    if (!window.GAILS || !window.GAILS.Mentions) return;
+    window.GAILS.Mentions.addPeople(Object.keys(entries).map(function(uid) {
+      return {
+        uid: uid,
+        name: entries[uid] && entries[uid].name,
+        email: entries[uid] && entries[uid].email
+      };
+    }));
+  }, function(error) {
+    console.warn('Shared people directory unavailable, falling back to names already in the data:', error);
   });
 }
 
@@ -634,11 +720,15 @@ onAuthStateChanged(auth, async (user) => {
         // Scopes Bakery Reports client-side: the user's assigned ops area, and
         // the master switch (live-synced), are read by js/visit-report.js.
         window.GAILS.userOpsArea = (userProfile && userProfile.opsArea) || '';
+        applyMyActivityAccess(userProfile);
+        applyMyTeamAccess(permissions);
         showApp(isAdmin, permissions);
         applyDashboardTabPermissions(permissions);
         startSiteMetaSync();
         startRoutineVisitsSync();
         startReportVisibilitySync();
+        startUserDirectorySync();
+        publishDirectoryEntry(user, userProfile);
         await loadSharedDashboardData(isAdmin || permissions.admin.dataset === 'edit');
       } else {
         loginError.textContent = "You don't have access to this dashboard. Contact your administrator.";
@@ -646,6 +736,7 @@ onAuthStateChanged(auth, async (user) => {
         stopSiteMetaSync();
         stopRoutineVisitsSync();
         stopReportVisibilitySync();
+        stopUserDirectorySync();
         await signOut(auth);
         showApp(undefined);
       }
@@ -656,6 +747,7 @@ onAuthStateChanged(auth, async (user) => {
       stopSiteMetaSync();
       stopRoutineVisitsSync();
       stopReportVisibilitySync();
+      stopUserDirectorySync();
       await signOut(auth);
       showApp(undefined);
     }
@@ -664,7 +756,10 @@ onAuthStateChanged(auth, async (user) => {
     stopDashboardDataSync();
     stopRoutineVisitsSync();
     stopReportVisibilitySync();
+    stopUserDirectorySync();
     window.GAILS.userOpsArea = '';
+    applyMyActivityAccess(null);
+    applyMyTeamAccess(null);
     applySiteMeta(null);
     clearLoginForm();
     updateProfileMenu(null);
@@ -673,6 +768,23 @@ onAuthStateChanged(auth, async (user) => {
     showApp(undefined);
   }
 });
+
+// My Activity is opt-in per user (users/{uid}.myActivity, granted in the admin
+// portal), so the profile-menu entry is hidden unless it has been turned on.
+// Absent means off — the hub is invisible until someone grants it.
+function applyMyActivityAccess(userProfile) {
+  var link = document.querySelector('.header [data-my-activity-link]');
+  if (link) link.hidden = !(userProfile && userProfile.myActivity === true);
+}
+
+// My Team comes from the *role* rather than a per-user switch: a manager needs
+// it because of the job they do, not because someone remembered to tick a box.
+// The page checks the same thing on load, and the database rules refuse the
+// roster read — this only decides whether the menu entry appears.
+function applyMyTeamAccess(permissions) {
+  var link = document.querySelector('.header [data-my-team-link]');
+  if (link) link.hidden = !canSeeTeam(permissions);
+}
 
 // Hides dashboard tab buttons (desktop nav + mobile bottom nav) that the
 // signed-in user's role can't see, and moves off a hidden active tab.

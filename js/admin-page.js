@@ -3,7 +3,12 @@ import { ref, set, update, push, remove, onValue, get, query, limitToLast, order
 import { ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, updateProfile, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { DASHBOARD_TABS, DASHBOARD_ACTIONS, ADMIN_AREAS, BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess, canViewArea, canEditArea } from './permissions.js';
+import {
+  ACCESS_GROUPS, accessRowsForGroup, readAccessGrid, permissionsFromAccessGrid,
+  TEAM_SCOPES, normalizeTeamScope, teamScopeLabel, describeVisibility, describeEditing,
+  DASHBOARD_TABS, ADMIN_AREAS, BUILTIN_ROLES, normalizePermissions, resolveRolePermissions,
+  hasAdminPanelAccess, canViewArea, canEditArea, canSeeTeam
+} from './permissions.js';
 import { createProfileMenu } from './profile-menu.js';
 
 const secondaryApp = initializeApp(firebaseConfig, 'AdminPage');
@@ -24,12 +29,43 @@ const heroSummary     = document.getElementById('adminHeroSummary');
 const heroMeta        = document.getElementById('adminHeroMeta');
 const userList        = document.getElementById('adminUserList');
 const createUserForm  = document.getElementById('createUserForm');
+const inviteUserBtn   = document.getElementById('inviteUserBtn');
+const inviteUserModal = document.getElementById('inviteUserModal');
+const inviteUserClose = document.getElementById('inviteUserClose');
+const inviteUserCancel = document.getElementById('inviteUserCancel');
+const inviteSubmitBtn = document.getElementById('inviteSubmitBtn');
+const inviteSummary   = document.getElementById('inviteSummary');
+const inviteMsg       = document.getElementById('inviteMsg');
 const newFirstNameInput = document.getElementById('newFirstNameInput');
 const newLastNameInput = document.getElementById('newLastNameInput');
 const newEmailInput   = document.getElementById('newEmailInput');
 const roleSelect      = document.getElementById('newRoleSelect');
+const newManagerSelect = document.getElementById('newManagerSelect');
+const newOpsSelect    = document.getElementById('newOpsSelect');
 const createMsg       = document.getElementById('createMsg');
 const usersMsg        = document.getElementById('usersMsg');
+
+// Person access modal — one person's whole access picture in one dialog.
+const userAccessModal   = document.getElementById('userAccessModal');
+const userAccessClose   = document.getElementById('userAccessClose');
+const userAccessCancel  = document.getElementById('userAccessCancel');
+const userAccessSave    = document.getElementById('userAccessSave');
+const userAccessRemove  = document.getElementById('userAccessRemove');
+const userAccessResetPw = document.getElementById('userAccessResetPassword');
+const userAccessTitle   = document.getElementById('userAccessTitle');
+const userAccessEmail   = document.getElementById('userAccessEmail');
+const userAccessFirstName = document.getElementById('userAccessFirstName');
+const userAccessLastName = document.getElementById('userAccessLastName');
+const userAccessRole    = document.getElementById('userAccessRole');
+const userAccessManager = document.getElementById('userAccessManager');
+const userAccessOps     = document.getElementById('userAccessOps');
+const userAccessMyActivity = document.getElementById('userAccessMyActivity');
+const userAccessSee     = document.getElementById('userAccessSee');
+const userAccessEdit    = document.getElementById('userAccessEdit');
+const userAccessTeam    = document.getElementById('userAccessTeam');
+const userAccessSelfNote = document.getElementById('userAccessSelfNote');
+const userAccessStatusNote = document.getElementById('userAccessStatusNote');
+const userAccessMsg     = document.getElementById('userAccessMsg');
 const reportVisibilityToggle = document.getElementById('reportVisibilityToggle');
 const reportVisibilityState  = document.getElementById('reportVisibilityState');
 const reportVisibilityMsg    = document.getElementById('reportVisibilityMsg');
@@ -61,6 +97,7 @@ const regionList      = document.getElementById('adminRegionList');
 const managerList     = document.getElementById('adminManagerList');
 const regionAssignmentList = document.getElementById('regionAssignmentList');
 const regionAssignmentMeta = document.getElementById('regionAssignmentMeta');
+const regionAssignmentPeople = document.getElementById('regionAssignmentPeople');
 const dataGrid        = document.getElementById('adminDataGrid');
 const dataMsg         = document.getElementById('dataMsg');
 const datasetImportZone = document.getElementById('datasetImportZone');
@@ -91,16 +128,20 @@ const deleteConfirmInput      = document.getElementById('deleteConfirmInput');
 const deleteConfirmSubmitBtn  = document.getElementById('deleteConfirmSubmitBtn');
 const deleteConfirmPromptText = document.getElementById('deleteConfirmPromptText');
 
-const roleFormSection     = document.getElementById('roleFormSection');
 const roleForm            = document.getElementById('roleForm');
-const roleFormTitle       = document.getElementById('roleFormTitle');
-const roleFormHint        = document.getElementById('roleFormHint');
+const roleEditorModal     = document.getElementById('roleEditorModal');
+const roleEditorClose     = document.getElementById('roleEditorClose');
+const roleEditorCancel    = document.getElementById('roleEditorCancel');
+const roleEditorDelete    = document.getElementById('roleEditorDelete');
+const roleEditorTitle     = document.getElementById('roleEditorTitle');
+const roleEditorHint      = document.getElementById('roleEditorHint');
+const roleEditorMsg       = document.getElementById('roleEditorMsg');
 const roleNameInput       = document.getElementById('roleNameInput');
 const roleDescInput       = document.getElementById('roleDescInput');
-const roleTabMatrix       = document.getElementById('roleTabMatrix');
-const roleAreaMatrix      = document.getElementById('roleAreaMatrix');
+const roleAccessGrid      = document.getElementById('roleAccessGrid');
+const roleTeamScope       = document.getElementById('roleTeamScope');
 const roleSubmitBtn       = document.getElementById('roleSubmitBtn');
-const roleCancelBtn       = document.getElementById('roleCancelBtn');
+const newRoleBtn          = document.getElementById('newRoleBtn');
 const roleMsg             = document.getElementById('roleMsg');
 const roleList            = document.getElementById('adminRoleList');
 
@@ -131,7 +172,11 @@ const VISIT_SECTIONS = window.GAILS_VISIT_SCHEMA.sections;
 const state = {
   activePanel: 'overview',
   users: [],
-  editingUserUid: null,
+  // The person whose access modal is open, and the unsaved edits inside it.
+  // Held separately from state.users so a live sync landing mid-edit repaints
+  // the table underneath without stealing what is being typed.
+  accessUserUid: null,
+  accessDraft: null,
   siteMetaSource: {},
   siteMetaSourceInfo: null,
   siteMetaDraft: {},
@@ -227,8 +272,46 @@ function opsAreaOptionsHtml(selected) {
     }).join('');
 }
 
-function opsAreaLabel(opsArea) {
-  return opsArea ? opsArea : 'All sites';
+// ── Reporting lines ──
+// The manager field is one uid on each user record (users/{uid}.managerUid).
+// Everything about the hierarchy is derived from it — see js/team.js.
+function teamApi() {
+  return window.GAILS && window.GAILS.Team;
+}
+
+function userLabel(user) {
+  if (!user) return '';
+  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Unnamed user';
+}
+
+function findUser(uid) {
+  return state.users.find(function(user) { return user.uid === uid; }) || null;
+}
+
+function managerLabel(uid) {
+  var manager = findUser(uid);
+  return manager ? userLabel(manager) : '';
+}
+
+// Anyone can be anyone's manager except themselves and their own reports —
+// offering those would just be offering a loop the save would refuse.
+function managerOptionsHtml(subjectUid, selected) {
+  var api = teamApi();
+  var current = selected || '';
+  var candidates = state.users.filter(function(user) {
+    if (user.uid === subjectUid) return false;
+    if (!api || !subjectUid) return true;
+    return !api.assignmentWouldCycle(subjectUid, user.uid, state.users);
+  });
+  // A manager who has since been removed must still be shown, so re-saving
+  // someone does not silently reassign them.
+  var hasCurrent = !current || candidates.some(function(user) { return user.uid === current; });
+  return '<option value=""' + (current === '' ? ' selected' : '') + '>Nobody — top of the line</option>'
+    + candidates.map(function(user) {
+      return '<option value="' + escapeHtml(user.uid) + '"' + (user.uid === current ? ' selected' : '') + '>'
+        + escapeHtml(userLabel(user)) + '</option>';
+    }).join('')
+    + (hasCurrent ? '' : '<option value="' + escapeHtml(current) + '" selected>Former manager (no longer has access)</option>');
 }
 
 function populateRoleSelects() {
@@ -237,6 +320,20 @@ function populateRoleSelects() {
     roleSelect.innerHTML = roleOptionsHtml(current);
     if (!roleSelect.value) roleSelect.value = 'viewer';
   }
+  if (newManagerSelect) {
+    var currentManager = newManagerSelect.value || '';
+    newManagerSelect.innerHTML = managerOptionsHtml('', currentManager);
+  }
+  if (newOpsSelect) {
+    var currentOps = newOpsSelect.value || '';
+    newOpsSelect.innerHTML = opsAreaOptionsHtml(currentOps);
+  }
+}
+
+// The permissions a role id resolves to, for showing what someone can reach
+// without having to open the role itself.
+function permissionsForRole(roleId) {
+  return resolveRolePermissions(roleId, state.roles[roleId] || null);
 }
 
 function nowIso() {
@@ -279,6 +376,14 @@ function setProfileMenuOpen(open) {
 
 function updateProfileMenu(user, profile) {
   profileMenuUi.update(user, profile);
+  // My Activity is opt-in per user (users/{uid}.myActivity), so the menu entry
+  // stays hidden until an admin grants it — including for admins themselves.
+  var myActivityLink = document.querySelector('[data-my-activity-link]');
+  if (myActivityLink) myActivityLink.hidden = !(profile && profile.myActivity === true);
+  // My Team comes from the role's teamScope instead, so it follows whatever
+  // access this account already resolved to.
+  var myTeamLink = document.querySelector('[data-my-team-link]');
+  if (myTeamLink) myTeamLink.hidden = !canSeeTeam(state.permissions);
 }
 
 // ── Helpers ──
@@ -866,189 +971,308 @@ async function renderActivityLog() {
   }
 }
 
+// A person's account state, in the words the table and the modal both use.
+function userStatus(user) {
+  var invitation = user.invitation || {};
+  if (currentUserId() === user.uid) {
+    return { label: 'You', note: 'This is the account you are signed in with.', tone: 'self' };
+  }
+  if (invitation.status === 'pending') {
+    return { label: 'Invited', note: 'Waiting for them to choose a password and confirm their details.', tone: 'pending' };
+  }
+  if (invitation.status === 'delivery_failed') {
+    return { label: 'Email failed', note: 'Their invitation email bounced — resend it from their access settings.', tone: 'warn' };
+  }
+  if (invitation.status === 'accepted') {
+    return { label: 'Active', note: 'Dashboard details confirmed.', tone: 'active' };
+  }
+  return { label: 'Active', note: 'Managed through Firebase dashboard access rules.', tone: 'active' };
+}
+
 function renderUsers() {
+  if (!userList) return;
   if (!state.users.length) {
-    userList.innerHTML = '<tr><td colspan="5" class="admin-empty">No users found yet.</td></tr>';
+    userList.innerHTML = '<tr><td colspan="6" class="admin-empty">Nobody has dashboard access yet.</td></tr>';
     return;
   }
   var canManageUsers = canEdit('users');
   userList.innerHTML = state.users.map(function(user) {
-    var isCurrent    = currentUserId() === user.uid;
-    var isEditing    = canManageUsers && state.editingUserUid === user.uid;
-    var roleClass    = user.role === 'admin' ? 'admin-pill admin-pill--admin' : 'admin-pill';
-    var dis          = isCurrent ? 'disabled' : '';
-    var invitation = user.invitation || {};
-    var isPending = invitation.status === 'pending';
-    var hasDeliveryError = invitation.status === 'delivery_failed';
-    var resetLabel = isPending || hasDeliveryError ? 'Resend Invitation' : 'Reset Password';
+    var isCurrent = currentUserId() === user.uid;
+    var perms = permissionsForRole(user.role);
+    var status = userStatus(user);
+    var roleClass = user.role === 'admin' ? 'admin-pill admin-pill--admin' : 'admin-pill';
+    var manager = findUser(user.managerUid);
 
-    var roleHtml, statusHtml, actionsHtml;
-
-    if (isEditing) {
-      roleHtml = '<div class="admin-user-access">'
-        + '<label class="admin-user-access__field"><span class="admin-user-access__label">Role</span>'
-        + '<select data-user-role="' + escapeHtml(user.uid) + '" ' + dis + '>'
-          + roleOptionsHtml(user.role)
-        + '</select></label>'
-        + '<label class="admin-user-access__field"><span class="admin-user-access__label">Bakery Reports scope</span>'
-        + '<select data-user-ops="' + escapeHtml(user.uid) + '" ' + dis + '>'
-          + opsAreaOptionsHtml(user.opsArea)
-        + '</select></label>'
-        + '</div>';
-      statusHtml = '<div class="admin-status-note" style="color:var(--accent);">Editing access settings</div>';
-      actionsHtml = '<div class="admin-table__actions">'
-        + '<button type="button" class="admin-inline-btn" data-action="save-user-role" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Save Access</button>'
-        + '<button type="button" class="admin-inline-btn" data-action="cancel-edit-user">Cancel</button>'
-        + '<button type="button" class="admin-inline-btn" data-action="send-password-reset" data-uid="' + escapeHtml(user.uid) + '" data-email="' + escapeHtml(user.email) + '" ' + dis + '>' + resetLabel + '</button>'
-        + '<button type="button" class="admin-inline-danger" data-action="revoke-user" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Remove</button>'
-      + '</div>';
-    } else {
-      roleHtml = '<div class="' + roleClass + '">' + escapeHtml(roleDisplayName(user.role)) + '</div>'
-        + '<div class="admin-status-note admin-user-scope' + (user.opsArea ? ' admin-user-scope--restricted' : '') + '">Reports: '
-        + escapeHtml(opsAreaLabel(user.opsArea)) + '</div>';
-      var status = isCurrent
-        ? 'Current session'
-        : (isPending ? 'Invitation sent' : (hasDeliveryError ? 'Email not delivered' : 'Active access'));
-      var statusNote = isCurrent
-        ? 'You cannot edit or remove the logged-in admin.'
-        : (isPending
-          ? 'Waiting for the user to confirm their details.'
-          : (hasDeliveryError
-            ? 'Open Edit to resend their password email.'
-            : (invitation.status === 'accepted'
-              ? 'Dashboard details confirmed.'
-              : 'Managed through Firebase dashboard access rules.')));
-      statusHtml = '<div class="admin-status-note">' + escapeHtml(status) + '</div><div class="admin-status-note">' + escapeHtml(statusNote) + '</div>';
-      actionsHtml = canManageUsers
-        ? '<div class="admin-table__actions">'
-          + '<button type="button" class="admin-inline-btn" data-action="edit-user" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Edit</button>'
-        + '</div>'
-        : '<div class="admin-status-note">View only</div>';
-    }
+    // Scope and feature switches sharpen the plain "can see" summary the role
+    // gives, because those are per-person and the role summary cannot know them.
+    var seeExtras = [];
+    if (user.opsArea) seeExtras.push('Bakery Reports limited to ' + user.opsArea);
+    if (user.myActivity) seeExtras.push('My Activity hub');
 
     return '<tr>'
-      + '<td><div class="admin-table__title">' + escapeHtml([user.firstName, user.lastName].filter(Boolean).join(' ') || 'Name not set') + '</div></td>'
-      + '<td><div class="admin-table__title">' + escapeHtml(user.email || 'Unknown') + '</div></td>'
-      + '<td>' + roleHtml + '</td>'
-      + '<td>' + statusHtml + '</td>'
-      + '<td>' + actionsHtml + '</td>'
+      + '<td>'
+        + '<div class="admin-table__title">' + escapeHtml(userLabel(user)) + '</div>'
+        + '<div class="admin-status-note">' + escapeHtml(user.email || 'Unknown') + '</div>'
+        + '<div class="admin-status-note admin-status-note--' + escapeHtml(status.tone) + '">' + escapeHtml(status.label) + '</div>'
+      + '</td>'
+      + '<td><div class="' + roleClass + '">' + escapeHtml(roleDisplayName(user.role)) + '</div></td>'
+      + '<td>'
+        + (manager
+          ? '<div class="admin-table__title admin-table__title--sm">' + escapeHtml(userLabel(manager)) + '</div>'
+          : '<div class="admin-status-note">' + (user.managerUid ? 'Former manager' : 'Nobody') + '</div>')
+        + (perms.teamScope !== 'none'
+          ? '<div class="admin-status-note admin-status-note--team">Sees ' + escapeHtml(teamScopeLabel(perms.teamScope).toLowerCase()) + '</div>'
+          : '')
+      + '</td>'
+      + '<td><div class="admin-status-note">' + escapeHtml(describeVisibility(perms)) + '</div>'
+        + seeExtras.map(function(extra) {
+          return '<div class="admin-status-note admin-user-scope admin-user-scope--restricted">' + escapeHtml(extra) + '</div>';
+        }).join('')
+      + '</td>'
+      + '<td><div class="admin-status-note">' + escapeHtml(describeEditing(perms)) + '</div></td>'
+      + '<td>'
+        + (canManageUsers
+          ? '<div class="admin-table__actions">'
+            + '<button type="button" class="admin-inline-btn" data-action="manage-access" data-uid="' + escapeHtml(user.uid) + '">'
+            + (isCurrent ? 'View' : 'Manage') + '</button>'
+          + '</div>'
+          : '<div class="admin-status-note">View only</div>')
+      + '</td>'
       + '</tr>';
   }).join('');
 }
 
-// ── Role creator ──
-function buildRoleMatrix() {
-  if (roleTabMatrix) {
-    roleTabMatrix.innerHTML = DASHBOARD_TABS.map(function(tab) {
-      return '<label class="admin-role-tab">'
-        + '<input type="checkbox" data-role-tab="' + escapeHtml(tab.key) + '" checked>'
-        + '<span>' + escapeHtml(tab.label) + '</span>'
-        + '</label>';
-    }).join('')
-    + '<div class="admin-role-actions">'
-    + '<div class="admin-role-actions__title">Dashboard actions</div>'
-    + DASHBOARD_ACTIONS.map(function(action) {
-        return '<label class="admin-role-action">'
-          + '<input type="checkbox" data-role-action="' + escapeHtml(action.key) + '">'
-          + '<span><strong>' + escapeHtml(action.label) + '</strong> &mdash; ' + escapeHtml(action.description) + '</span>'
-          + '</label>';
-      }).join('')
-    + '</div>';
+// ── Person access modal ──
+// Every access decision about one person, in one dialog: their role (what they
+// can see and edit), their reporting line (whose My Team they appear on), their
+// Bakery Reports scope, and their feature switches.
+function accessDraftFor(user) {
+  return {
+    firstName: user.firstName || '',
+    lastName: user.lastName || '',
+    role: user.role || 'viewer',
+    managerUid: user.managerUid || '',
+    opsArea: user.opsArea || '',
+    myActivity: user.myActivity === true
+  };
+}
+
+function renderAccessReadout() {
+  if (!state.accessDraft) return;
+  var perms = permissionsForRole(state.accessDraft.role);
+  var seeParts = [describeVisibility(perms)];
+  if (state.accessDraft.opsArea) seeParts.push('Bakery Reports limited to ' + state.accessDraft.opsArea);
+  if (state.accessDraft.myActivity) seeParts.push('their My Activity hub');
+
+  if (userAccessSee) userAccessSee.textContent = seeParts.join(' · ');
+  if (userAccessEdit) userAccessEdit.textContent = describeEditing(perms);
+  if (userAccessTeam) {
+    var scope = perms.teamScope;
+    userAccessTeam.textContent = scope === 'none'
+      ? 'No team view'
+      : teamScopeLabel(scope) + (scope === 'direct'
+        ? ' (' + formatCount(directReportCount(state.accessUserUid), 'person', 'people') + ' reporting in)'
+        : '');
   }
-  if (roleAreaMatrix) {
-    roleAreaMatrix.innerHTML = ADMIN_AREAS.map(function(area) {
-      var levels = ['none', 'view', 'edit'].map(function(level) {
-        return '<label class="admin-role-level">'
-          + '<input type="radio" name="roleArea-' + escapeHtml(area.key) + '" value="' + level + '" ' + (level === 'none' ? 'checked' : '') + '>'
-          + '<span>' + level.charAt(0).toUpperCase() + level.slice(1) + '</span>'
-          + '</label>';
-      }).join('');
-      return '<div class="admin-role-area">'
-        + '<div class="admin-role-area__info">'
-        + '  <strong>' + escapeHtml(area.label) + '</strong>'
-        + '  <span>' + escapeHtml(area.description) + '</span>'
+}
+
+function directReportCount(uid) {
+  var api = teamApi();
+  if (!api || !uid) return 0;
+  return api.teamUnder(uid, state.users).length;
+}
+
+function openAccessModal(uid) {
+  var user = findUser(uid);
+  if (!user || !userAccessModal) return;
+  var isCurrent = currentUserId() === uid;
+  var editable = canEdit('users') && !isCurrent;
+
+  state.accessUserUid = uid;
+  state.accessDraft = accessDraftFor(user);
+  clearMessage(userAccessMsg);
+
+  if (userAccessTitle) userAccessTitle.textContent = userLabel(user);
+  if (userAccessEmail) userAccessEmail.textContent = user.email || 'No email on record';
+  if (userAccessSelfNote) userAccessSelfNote.hidden = !isCurrent;
+  if (userAccessFirstName) {
+    userAccessFirstName.value = state.accessDraft.firstName;
+    userAccessFirstName.disabled = !canEdit('users');
+  }
+  if (userAccessLastName) {
+    userAccessLastName.value = state.accessDraft.lastName;
+    userAccessLastName.disabled = !canEdit('users');
+  }
+
+  if (userAccessRole) {
+    userAccessRole.innerHTML = roleOptionsHtml(state.accessDraft.role);
+    userAccessRole.disabled = !editable;
+  }
+  if (userAccessManager) {
+    userAccessManager.innerHTML = managerOptionsHtml(uid, state.accessDraft.managerUid);
+    userAccessManager.disabled = !editable;
+  }
+  if (userAccessOps) {
+    userAccessOps.innerHTML = opsAreaOptionsHtml(state.accessDraft.opsArea);
+    userAccessOps.disabled = !editable;
+  }
+  // The feature switch stays live even on your own account: role and reporting
+  // line lock themselves so an admin cannot demote or orphan themselves, but a
+  // switch that only reveals your own work is safe to flip on yourself — and
+  // with a single admin account, nobody else could ever turn it on.
+  if (userAccessMyActivity) {
+    userAccessMyActivity.checked = state.accessDraft.myActivity;
+    userAccessMyActivity.disabled = !canEdit('users');
+  }
+
+  var status = userStatus(user);
+  if (userAccessStatusNote) userAccessStatusNote.textContent = status.note;
+  if (userAccessResetPw) {
+    var invitation = user.invitation || {};
+    var isInvite = invitation.status === 'pending' || invitation.status === 'delivery_failed';
+    userAccessResetPw.textContent = isInvite ? 'Resend invitation' : 'Reset password';
+    userAccessResetPw.hidden = !canEdit('users') || isCurrent;
+  }
+  if (userAccessRemove) userAccessRemove.hidden = !editable;
+  if (userAccessSave) userAccessSave.hidden = !canEdit('users');
+
+  renderAccessReadout();
+  userAccessModal.style.display = 'flex';
+}
+
+function closeAccessModal() {
+  state.accessUserUid = null;
+  state.accessDraft = null;
+  if (userAccessModal) userAccessModal.style.display = 'none';
+}
+
+// ── Role editor ──
+// One grid, two columns. Every capability in the app is a row that knows how to
+// read and write itself (ACCESS_ROWS in js/permissions.js), so this builds the
+// whole thing without knowing which of the stored sub-objects a row lives in.
+function buildRoleAccessGrid() {
+  if (!roleAccessGrid) return;
+  roleAccessGrid.innerHTML = ACCESS_GROUPS.map(function(group) {
+    var rows = accessRowsForGroup(group.key).map(function(row) {
+      var editCell = row.editable
+        ? '<label class="access-grid__cell">'
+          + '<input type="checkbox" data-access-edit="' + escapeHtml(row.key) + '">'
+          + '<span class="sr-only">' + escapeHtml(row.editLabel || 'Make changes') + '</span>'
+          + '</label>'
+        : '<span class="access-grid__cell access-grid__cell--empty" aria-hidden="true">&mdash;</span>';
+      return '<div class="access-grid__row">'
+        + '<div class="access-grid__label">'
+        + '<strong>' + escapeHtml(row.label) + '</strong>'
+        + (row.description ? '<span>' + escapeHtml(row.description) + '</span>' : '')
+        + (row.editable && row.editLabel ? '<span class="access-grid__edit-hint">Edit: ' + escapeHtml(row.editLabel) + '</span>' : '')
         + '</div>'
-        + '<div class="admin-role-area__levels">' + levels + '</div>'
+        + '<label class="access-grid__cell">'
+        + '<input type="checkbox" data-access-see="' + escapeHtml(row.key) + '">'
+        + '<span class="sr-only">Can see ' + escapeHtml(row.label) + '</span>'
+        + '</label>'
+        + editCell
         + '</div>';
+    }).join('');
+
+    return '<div class="access-grid__group">'
+      + '<div class="access-grid__group-head">'
+      + '<h4>' + escapeHtml(group.label) + '</h4>'
+      + '<p>' + escapeHtml(group.description) + '</p>'
+      + '</div>'
+      + '<div class="access-grid__head">'
+      + '<span></span><span>Can see</span><span>Can edit</span>'
+      + '</div>'
+      + rows
+      + '</div>';
+  }).join('');
+
+  if (roleTeamScope) {
+    roleTeamScope.innerHTML = TEAM_SCOPES.map(function(scope) {
+      return '<label class="access-team__option">'
+        + '<input type="radio" name="roleTeamScope" value="' + escapeHtml(scope.key) + '"'
+        + (scope.key === 'none' ? ' checked' : '') + '>'
+        + '<span class="access-team__option-body">'
+        + '<strong>' + escapeHtml(scope.label) + '</strong>'
+        + '<span>' + escapeHtml(scope.description) + '</span>'
+        + '</span>'
+        + '</label>';
     }).join('');
   }
 }
 
-function setRoleMatrixValues(permissions) {
-  var perms = normalizePermissions(permissions);
-  DASHBOARD_TABS.forEach(function(tab) {
-    var box = roleTabMatrix.querySelector('[data-role-tab="' + tab.key + '"]');
-    if (box) box.checked = !!perms.tabs[tab.key];
+function setRoleGridValues(permissions) {
+  if (!roleAccessGrid) return;
+  var grid = readAccessGrid(permissions);
+  Object.keys(grid).forEach(function(key) {
+    var seeBox = roleAccessGrid.querySelector('[data-access-see="' + key + '"]');
+    var editBox = roleAccessGrid.querySelector('[data-access-edit="' + key + '"]');
+    if (seeBox) seeBox.checked = grid[key].see;
+    if (editBox) editBox.checked = grid[key].edit;
   });
-  DASHBOARD_ACTIONS.forEach(function(action) {
-    var box = roleTabMatrix.querySelector('[data-role-action="' + action.key + '"]');
-    if (box) box.checked = !!perms.actions[action.key];
-  });
-  ADMIN_AREAS.forEach(function(area) {
-    var radio = roleAreaMatrix.querySelector('[name="roleArea-' + area.key + '"][value="' + perms.admin[area.key] + '"]');
-    if (radio) radio.checked = true;
-  });
+  var scope = normalizeTeamScope(normalizePermissions(permissions).teamScope);
+  var radio = roleTeamScope && roleTeamScope.querySelector('[value="' + scope + '"]');
+  if (radio) radio.checked = true;
 }
 
-function collectRoleMatrixValues() {
-  var tabs = {};
-  DASHBOARD_TABS.forEach(function(tab) {
-    var box = roleTabMatrix.querySelector('[data-role-tab="' + tab.key + '"]');
-    tabs[tab.key] = !!(box && box.checked);
+function collectRoleGridValues() {
+  var grid = {};
+  ACCESS_ROWS_ALL().forEach(function(row) {
+    var seeBox = roleAccessGrid && roleAccessGrid.querySelector('[data-access-see="' + row.key + '"]');
+    var editBox = roleAccessGrid && roleAccessGrid.querySelector('[data-access-edit="' + row.key + '"]');
+    grid[row.key] = { see: !!(seeBox && seeBox.checked), edit: !!(editBox && editBox.checked) };
   });
-  var actions = {};
-  DASHBOARD_ACTIONS.forEach(function(action) {
-    var box = roleTabMatrix.querySelector('[data-role-action="' + action.key + '"]');
-    actions[action.key] = !!(box && box.checked);
-  });
-  var admin = {};
-  ADMIN_AREAS.forEach(function(area) {
-    var checked = roleAreaMatrix.querySelector('[name="roleArea-' + area.key + '"]:checked');
-    admin[area.key] = checked ? checked.value : 'none';
-  });
-  return { tabs: tabs, actions: actions, admin: admin };
+  var checkedScope = roleTeamScope && roleTeamScope.querySelector('[name="roleTeamScope"]:checked');
+  return permissionsFromAccessGrid(grid, checkedScope ? checkedScope.value : 'none');
 }
 
-function resetRoleForm() {
-  state.editingRoleId = null;
+function ACCESS_ROWS_ALL() {
+  return ACCESS_GROUPS.reduce(function(all, group) {
+    return all.concat(accessRowsForGroup(group.key));
+  }, []);
+}
+
+// Edit implies see, and unticking see takes edit with it — the stored levels
+// cannot express "can change it but cannot look at it", and it would be a lie
+// if they could.
+function syncAccessGridPair(changed) {
+  var key = changed.dataset.accessSee || changed.dataset.accessEdit;
+  if (!key) return;
+  var seeBox = roleAccessGrid.querySelector('[data-access-see="' + key + '"]');
+  var editBox = roleAccessGrid.querySelector('[data-access-edit="' + key + '"]');
+  if (!seeBox || !editBox) return;
+  if (changed === editBox && editBox.checked) seeBox.checked = true;
+  if (changed === seeBox && !seeBox.checked) editBox.checked = false;
+}
+
+function openRoleEditor(roleId) {
+  if (!roleEditorModal) return;
+  var role = roleId ? state.roles[roleId] : null;
+  state.editingRoleId = role ? roleId : null;
+  clearMessage(roleEditorMsg);
+
   if (roleForm) roleForm.reset();
-  setRoleMatrixValues(BUILTIN_ROLES.viewer.permissions);
-  if (roleFormTitle) roleFormTitle.textContent = 'Create Role';
-  if (roleFormHint) roleFormHint.textContent = 'Name the role, tick the dashboard tabs it can see, then set what it can do in each admin panel. Assign it to users from the Users panel.';
-  if (roleSubmitBtn) roleSubmitBtn.textContent = 'Create Role';
-  if (roleCancelBtn) roleCancelBtn.style.display = 'none';
+  roleNameInput.value = role ? (role.name || '') : '';
+  roleDescInput.value = role ? (role.description || '') : '';
+  setRoleGridValues(role ? role.permissions : BUILTIN_ROLES.viewer.permissions);
+
+  var assigned = role ? roleUserCount(roleId) : 0;
+  if (roleEditorTitle) roleEditorTitle.textContent = role ? 'Edit ' + (role.name || roleId) : 'New role';
+  if (roleEditorHint) {
+    roleEditorHint.textContent = role
+      ? 'Changes apply to everyone holding this role — ' + formatCount(assigned, 'person', 'people') + ' right now — the next time they load a page.'
+      : 'Tick what this role can see, then what it can change. Edit always includes seeing.';
+  }
+  if (roleSubmitBtn) roleSubmitBtn.textContent = role ? 'Save role' : 'Create role';
+  if (roleEditorDelete) roleEditorDelete.hidden = !role;
+
+  roleEditorModal.style.display = 'flex';
+  if (roleNameInput) roleNameInput.focus();
 }
 
-function startEditRole(roleId) {
-  var role = state.roles[roleId];
-  if (!role) return;
-  state.editingRoleId = roleId;
-  roleNameInput.value = role.name || '';
-  roleDescInput.value = role.description || '';
-  setRoleMatrixValues(role.permissions);
-  if (roleFormTitle) roleFormTitle.textContent = 'Edit Role';
-  if (roleFormHint) roleFormHint.textContent = 'Changes apply to every user assigned to this role as soon as you save.';
-  if (roleSubmitBtn) roleSubmitBtn.textContent = 'Save Role';
-  if (roleCancelBtn) roleCancelBtn.style.display = '';
-  clearMessage(roleMsg);
-  if (roleFormSection) roleFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function summarizeRoleTabs(perms) {
-  var visible = DASHBOARD_TABS.filter(function(tab) { return perms.tabs[tab.key]; });
-  var tabsPart;
-  if (visible.length === DASHBOARD_TABS.length) tabsPart = 'All tabs';
-  else if (!visible.length) tabsPart = 'No tabs';
-  else tabsPart = visible.length + ' of ' + DASHBOARD_TABS.length + ' tabs';
-  return tabsPart + (perms.actions.logVisits ? ' · can log visits' : ' · read-only');
-}
-
-function summarizeRoleAdmin(perms) {
-  var parts = ADMIN_AREAS.filter(function(area) { return perms.admin[area.key] !== 'none'; })
-    .map(function(area) {
-      return escapeHtml(area.label) + ': <strong>' + (perms.admin[area.key] === 'edit' ? 'Edit' : 'View') + '</strong>';
-    });
-  return parts.length ? parts.join('<br>') : 'No admin access';
+function closeRoleEditor() {
+  state.editingRoleId = null;
+  if (roleEditorModal) roleEditorModal.style.display = 'none';
+  clearMessage(roleEditorMsg);
 }
 
 function renderRoles() {
@@ -1060,24 +1284,22 @@ function renderRoles() {
     var pillClass = role.id === 'admin' ? 'admin-pill admin-pill--admin' : 'admin-pill';
     var actionsHtml;
     if (role.builtIn) {
-      actionsHtml = '<div class="admin-status-note">Built-in role &mdash; locked</div>';
+      actionsHtml = '<div class="admin-status-note">Built in &mdash; locked</div>';
     } else if (!editable) {
       actionsHtml = '<div class="admin-status-note">View only</div>';
     } else {
       actionsHtml = '<div class="admin-table__actions">'
         + '<button type="button" class="admin-inline-btn" data-action="edit-role" data-role="' + escapeHtml(role.id) + '">Edit</button>'
-        + '<button type="button" class="admin-inline-danger" data-action="delete-role" data-role="' + escapeHtml(role.id) + '"'
-        + (assigned ? ' title="Deleting this role will default ' + assigned + ' user' + (assigned === 1 ? '' : 's') + ' back to Viewer"' : '')
-        + '>Delete</button>'
         + '</div>';
     }
     return '<tr>'
       + '<td><div class="admin-table__title"><span class="' + pillClass + '">' + escapeHtml(role.def.name || role.id) + '</span></div>'
       + (role.def.description ? '<div class="admin-status-note">' + escapeHtml(role.def.description) + '</div>' : '')
       + '</td>'
-      + '<td><div class="admin-status-note">' + escapeHtml(summarizeRoleTabs(perms)) + '</div></td>'
-      + '<td><div class="admin-status-note">' + summarizeRoleAdmin(perms) + '</div></td>'
-      + '<td>' + formatCount(assigned, 'user', 'users') + '</td>'
+      + '<td><div class="admin-status-note">' + escapeHtml(describeVisibility(perms)) + '</div></td>'
+      + '<td><div class="admin-status-note">' + escapeHtml(describeEditing(perms)) + '</div></td>'
+      + '<td><div class="admin-status-note">' + escapeHtml(teamScopeLabel(perms.teamScope)) + '</div></td>'
+      + '<td>' + formatCount(assigned, 'person', 'people') + '</td>'
       + '<td>' + actionsHtml + '</td>'
       + '</tr>';
   }).join('');
@@ -1086,15 +1308,15 @@ function renderRoles() {
 async function saveRoleFromForm() {
   var name = roleNameInput.value.trim();
   if (!name) {
-    setMessage(roleMsg, 'error', 'Give the role a name.');
+    setMessage(roleEditorMsg, 'error', 'Give the role a name.');
     return;
   }
 
-  var permissions = collectRoleMatrixValues();
+  var permissions = collectRoleGridValues();
   var hasTab = DASHBOARD_TABS.some(function(tab) { return permissions.tabs[tab.key]; });
   var hasArea = ADMIN_AREAS.some(function(area) { return permissions.admin[area.key] !== 'none'; });
-  if (!hasTab && !hasArea) {
-    setMessage(roleMsg, 'error', 'This role cannot see or do anything yet — tick at least one dashboard tab or admin permission.');
+  if (!hasTab && !hasArea && permissions.teamScope === 'none') {
+    setMessage(roleEditorMsg, 'error', 'This role cannot see or do anything yet — tick at least one thing it can reach.');
     return;
   }
 
@@ -1107,7 +1329,7 @@ async function saveRoleFromForm() {
       return;
     }
     if (state.roles[roleId]) {
-      setMessage(roleMsg, 'error', 'A role called "' + (state.roles[roleId].name || roleId) + '" already exists. Edit it from the table below instead.');
+      setMessage(roleEditorMsg, 'error', 'A role called "' + (state.roles[roleId].name || roleId) + '" already exists. Edit that one instead.');
       return;
     }
   } else {
@@ -1116,7 +1338,7 @@ async function saveRoleFromForm() {
       return role.id !== editingId && String(role.def.name || '').trim().toLowerCase() === name.toLowerCase();
     });
     if (clash) {
-      setMessage(roleMsg, 'error', 'Another role is already called "' + name + '".');
+      setMessage(roleEditorMsg, 'error', 'Another role is already called "' + name + '".');
       return;
     }
   }
@@ -1132,12 +1354,12 @@ async function saveRoleFromForm() {
       updatedAt: nowIso(),
       updatedBy: currentUserEmail()
     });
+    closeRoleEditor();
     setMessage(roleMsg, 'success', (editingId ? 'Updated' : 'Created') + ' the "' + name + '" role.'
-      + (editingId ? ' Users with this role get the new permissions on their next page load.' : ' Assign it from the Users panel.'));
-    resetRoleForm();
+      + (editingId ? ' Everyone holding it gets the new access on their next page load.' : ' Assign it to someone from the People table.'));
   } catch (err) {
     console.error('Failed to save role:', err);
-    setMessage(roleMsg, 'error', 'Could not save this role: ' + err.message);
+    setMessage(roleEditorMsg, 'error', 'Could not save this role: ' + err.message);
   } finally {
     roleSubmitBtn.disabled = false;
   }
@@ -1150,7 +1372,7 @@ async function deleteRole(roleId) {
   var confirmMsg = 'Delete the "' + (role.name || roleId) + '" role? This cannot be undone.';
   if (assigned) {
     confirmMsg = 'Delete the "' + (role.name || roleId) + '" role? '
-      + formatCount(assigned, 'user', 'users') + ' currently assigned to this role will default back to Viewer. This cannot be undone.';
+      + formatCount(assigned, 'person', 'people') + ' currently holding it will drop back to Viewer. This cannot be undone.';
   }
   if (!confirm(confirmMsg)) return;
   try {
@@ -1161,9 +1383,10 @@ async function deleteRole(roleId) {
       });
       await Promise.all(userUpdates);
     }
-    if (state.editingRoleId === roleId) resetRoleForm();
+    if (state.editingRoleId === roleId) closeRoleEditor();
     if (assigned) {
-      setMessage(roleMsg, 'success', 'Deleted the "' + (role.name || roleId) + '" role and defaulted ' + assigned + ' ' + (assigned === 1 ? 'user' : 'users') + ' to Viewer.');
+      setMessage(roleMsg, 'success', 'Deleted the "' + (role.name || roleId) + '" role and dropped '
+        + formatCount(assigned, 'person', 'people') + ' back to Viewer.');
     } else {
       setMessage(roleMsg, 'success', 'Deleted the "' + (role.name || roleId) + '" role.');
     }
@@ -1181,11 +1404,46 @@ function renderDatalists() {
   managerList.innerHTML = managers.map(function(m) { return '<option value="' + escapeHtml(m) + '">'; }).join('');
 }
 
+function regionAssignmentOptionValue(user) {
+  var name = userLabel(user);
+  var email = user && user.email !== 'Unknown' ? String(user.email || '').trim() : '';
+  return email ? name + ' — ' + email : name;
+}
+
+function renderRegionAssignmentPeople() {
+  if (!regionAssignmentPeople) return;
+  regionAssignmentPeople.innerHTML = state.users.map(function(user) {
+    var detail = roleDisplayName(user.role);
+    return '<option value="' + escapeHtml(regionAssignmentOptionValue(user)) + '">' +
+      escapeHtml(detail) + '</option>';
+  }).join('');
+}
+
+function resolveRegionAssignmentUser(value) {
+  var wanted = String(value || '').trim().toLowerCase();
+  if (!wanted) return null;
+  var exact = state.users.filter(function(user) {
+    var name = userLabel(user).toLowerCase();
+    var email = String(user.email || '').trim().toLowerCase();
+    var option = regionAssignmentOptionValue(user).toLowerCase();
+    return wanted === option || wanted === email || wanted === name;
+  });
+  return exact.length === 1 ? exact[0] : null;
+}
+
+function regionAssignmentDisplayName(row, field) {
+  var uid = row[field + 'Uid'];
+  var user = uid && findUser(uid);
+  return user ? userLabel(user) : (row[field] || '');
+}
+
 function renderRegionAssignments() {
   if (!regionAssignmentList) return;
+  renderRegionAssignmentPeople();
   var rows = visibleRegionAssignments();
   var assignmentsComplete = rows.filter(function(row) {
-    return !!(row.coffeePartner || row.coffeeTrainer);
+    return !!(row.coffeePartner || row.coffeePartnerUid ||
+      row.coffeeTrainer || row.coffeeTrainerUid);
   }).length;
 
   if (regionAssignmentMeta) {
@@ -1205,8 +1463,12 @@ function renderRegionAssignments() {
   regionAssignmentList.innerHTML = rows.map(function(row) {
     return '<tr>'
       + '<td><div class="admin-table__title">' + escapeHtml(row.region) + '</div></td>'
-      + '<td><input type="text" value="' + escapeHtml(row.coffeePartner || '') + '" data-region="' + escapeHtml(row.region) + '" data-field="coffeePartner" placeholder="Coffee Partner"' + inputDisabled + '></td>'
-      + '<td><input type="text" value="' + escapeHtml(row.coffeeTrainer || '') + '" data-region="' + escapeHtml(row.region) + '" data-field="coffeeTrainer" placeholder="Coffee Trainer"' + inputDisabled + '></td>'
+      + '<td><input type="text" value="' + escapeHtml(regionAssignmentDisplayName(row, 'coffeePartner')) + '"'
+        + ' data-region="' + escapeHtml(row.region) + '" data-field="coffeePartner"'
+        + ' list="regionAssignmentPeople" autocomplete="off" placeholder="Type a person’s name"' + inputDisabled + '></td>'
+      + '<td><input type="text" value="' + escapeHtml(regionAssignmentDisplayName(row, 'coffeeTrainer')) + '"'
+        + ' data-region="' + escapeHtml(row.region) + '" data-field="coffeeTrainer"'
+        + ' list="regionAssignmentPeople" autocomplete="off" placeholder="Type a person’s name"' + inputDisabled + '></td>'
       + '</tr>';
   }).join('');
 }
@@ -1287,7 +1549,9 @@ function getVisibleVisits() {
   if (!search) return rows;
   return rows.filter(function(v) {
     return String(v.bakery || '').toLowerCase().includes(search)
-      || String(v.coffeePartner || '').toLowerCase().includes(search)
+      || (window.GAILS.Mentions
+        ? window.GAILS.Mentions.toText(v.coffeePartner).toLowerCase().includes(search)
+        : String(v.coffeePartner || '').toLowerCase().includes(search))
       || String(v.auditorName || '').toLowerCase().includes(search)
       || String(v.mod || '').toLowerCase().includes(search);
   });
@@ -1341,7 +1605,11 @@ function renderVisits() {
         : escapeHtml('Unknown')) + '</div>'
       + '  ' + typeBadge
       + '</div></td>'
-      + '<td>' + escapeHtml((isCqv || isNbo) ? (v.auditorName || '—') : (v.coffeePartner || '—')) + '</td>'
+      + '<td>' + ((isCqv || isNbo)
+        ? escapeHtml(v.auditorName || '—')
+        : (v.coffeePartner && window.GAILS.Mentions
+          ? window.GAILS.Mentions.toHtml(v.coffeePartner)
+          : escapeHtml(v.coffeePartner || '—'))) + '</td>'
       + '<td>' + escapeHtml(scoreText) + '</td>'
       + '<td>' + escapeHtml(v.mod || '—') + '</td>'
       + '<td><div class="admin-table__actions admin-table__actions--icons">'
@@ -1551,11 +1819,17 @@ async function backfillCqvAuditors() {
         notFound++;
         continue;
       }
-      await update(ref(db, 'routineVisits/' + visit.id), {
+      var backfillPatch = {
         auditorName: auditorName,
         'meta/auditorBackfilledAt': nowIso(),
         'meta/auditorBackfilledBy': currentUserEmail()
-      });
+      };
+      // Recovering the name is also the moment the report can be credited.
+      var backfilledAuditor = window.GAILS.Mentions
+        ? window.GAILS.Mentions.resolvePerson(auditorName)
+        : null;
+      if (backfilledAuditor && !visit.assignedTo) backfillPatch.assignedTo = [backfilledAuditor];
+      await update(ref(db, 'routineVisits/' + visit.id), backfillPatch);
       updated++;
     } catch (err) {
       failed++;
@@ -1615,15 +1889,26 @@ async function saveCqvRecord() {
     var pdfUrl = await getDownloadURL(fileRef);
 
     var nowIsoStr = nowIso();
+    // The auditor printed on the PDF is the person this report belongs to, not
+    // the admin importing it. Resolving it here stamps the attribution once, so
+    // the report reaches their My Activity hub without anyone assigning it.
+    var auditor = window.GAILS.Mentions
+      ? window.GAILS.Mentions.resolvePerson(pending.record.auditorName)
+      : null;
+
     var record = Object.assign({}, pending.record, {
       bakery: bakery,
       date: date,
       pdfUrl: pdfUrl,
       pdfPath: storagePath,
       pdfFileName: pending.file.name,
+      assignedTo: auditor ? [auditor] : null,
       meta: {
         source: 'pdf-import',
         createdAt: nowIsoStr,
+        // The importer is recorded separately from the auditor so a report is
+        // never credited to whoever happened to upload the file.
+        importedBy: currentUserEmail(),
         updatedAt: nowIsoStr,
         updatedBy: currentUserEmail()
       }
@@ -1701,6 +1986,11 @@ function fieldInputHtml(sectionKey, field, value) {
     input = '<input type="date" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
   } else if (field.type === 'time') {
     input = '<input type="time" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
+  } else if (field.key === 'coffeePartner') {
+    // Assignable: typing "@" hands the visit to a colleague. Enhanced into its
+    // two-face editor by openVisitDetail once the markup is in the DOM.
+    input = '<input type="text" value="' + escapeHtml(value || '') + '" autocomplete="off" data-mention-field ' + dataAttrs + '>'
+      + '<small class="mention-field-hint">Type <strong>@</strong> to assign this visit to someone.</small>';
   } else {
     input = '<input type="text" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
   }
@@ -1927,6 +2217,7 @@ function openVisitDetail(id) {
   if (!visit) return;
   state.visitDetailId = id;
   visitDetailBody.innerHTML = buildVisitDetailHtml(visit);
+  if (window.GAILS.MentionField) window.GAILS.MentionField.enhanceAll(visitDetailBody);
   visitDetailModal.style.display = 'flex';
 }
 
@@ -1967,6 +2258,38 @@ function collectVisitFormValues() {
   return result;
 }
 
+// Who the Coffee Partner box hands this visit to. An "@" mention is the plain
+// case, and the only one on a check-in — there the field records who was on the
+// bar, so a name in it is not a claim about whose visit this is.
+//
+// On every other type the box is taken at its word even without the "@", because
+// editing a visit here is a deliberate act of attribution and every visit
+// predating mentions names its people longhand ("Jamie + Tristen"). Only names
+// resolving to a real account count, so an unfamiliar name leaves the visit
+// unassigned rather than inventing a colleague — and a visit whose box never
+// names you stops being credited to you just for having logged it.
+function resolveEditedAssignees(partnerText, visitType) {
+  var M = window.GAILS.Mentions;
+  if (!M) return [];
+
+  var mentioned = M.resolveAssignees(partnerText);
+  if (mentioned.length || visitType === 'siteVisit') return mentioned;
+
+  var seen = {};
+  return M.splitPeople(M.toText(partnerText))
+    .map(function(part) { return M.resolvePerson(part); })
+    .filter(function(person) {
+      if (!person) return false;
+      var key = person.uid || M.normalizeName(person.name);
+      if (!key || seen[key]) return false;
+      seen[key] = true;
+      return true;
+    })
+    .map(function(person) {
+      return { uid: person.uid || '', name: person.name, email: person.email || '' };
+    });
+}
+
 async function saveVisitDetail(id) {
   var existing = state.visits.find(function(v) { return v.id === id; });
   if (!existing) return;
@@ -1983,6 +2306,20 @@ async function saveVisitDetail(id) {
       payload[section.key] = collected[section.key];
     });
   }
+  // Routine visits are credited from Coffee Partner; imported CQV and NBO
+  // reports are credited from their printed auditor. In particular, editing an
+  // audited report's bakery/date must not clear its stable auditor assignment.
+  var isAudited = existing.type === 'cqv' || existing.type === 'nbo';
+  var attributionText = isAudited
+    ? (collected.general.auditorName || existing.auditorName || '')
+    : collected.general.coffeePartner;
+  var editedAssignees = resolveEditedAssignees(attributionText, existing.type);
+  if (isAudited && !editedAssignees.length &&
+      String(attributionText || '').trim() === String(existing.auditorName || '').trim() &&
+      window.GAILS.Mentions) {
+    editedAssignees = window.GAILS.Mentions.toAssigneeList(existing.assignedTo);
+  }
+  payload.assignedTo = editedAssignees.length ? editedAssignees : null;
   payload.meta = Object.assign({}, existing.meta, {
     updatedAt: nowIso(),
     updatedBy: currentUserEmail()
@@ -2095,8 +2432,13 @@ function switchPanel(panelName) {
   if (panelName === 'overview') renderActivityLog();
 }
 
+// Users and Roles used to be two panels; they are now one. A bookmark or an
+// old link to either should land on it rather than bouncing to Overview.
+var RENAMED_PANELS = { users: 'access', roles: 'access' };
+
 function requestedAdminPanel() {
   var panelName = String(window.location.hash || '').replace(/^#/, '');
+  if (RENAMED_PANELS[panelName]) panelName = RENAMED_PANELS[panelName];
   var panel = panels.find(function(item) {
     return item.dataset.adminPanelContent === panelName;
   });
@@ -2164,34 +2506,143 @@ function syncSiteMetaFromSource(payload) {
   renderImportZones();
 }
 
-async function saveUserRole(uid) {
-  var user = state.users.find(function(u) { return u.uid === uid; });
-  if (!user || uid === currentUserId()) return;
-  var select = userList.querySelector('[data-user-role="' + uid + '"]');
-  var nextRole = select ? select.value : user.role;
-  var opsSelect = userList.querySelector('[data-user-ops="' + uid + '"]');
-  var nextOpsArea = opsSelect ? opsSelect.value : (user.opsArea || '');
-  await update(ref(db, 'users/' + uid), { role: nextRole, opsArea: nextOpsArea });
+// Saves everything the access modal holds in one write, so a person's role,
+// reporting line, and scope can never end up half-applied.
+async function saveAccessModal() {
+  var uid = state.accessUserUid;
+  var user = findUser(uid);
+  if (!user || !state.accessDraft) return;
+
+  var draft = state.accessDraft;
+  var firstName = String(draft.firstName || '').trim();
+  var lastName = String(draft.lastName || '').trim();
+  if ((firstName && !lastName) || (!firstName && lastName)) {
+    throw new Error('Enter both a first name and a last name, or leave both blank.');
+  }
+  if (firstName.length > 50 || lastName.length > 50) {
+    throw new Error('First and last names must be 50 characters or fewer.');
+  }
+
+  // The signed-in admin may safely update their own name, but their role and
+  // reporting line remain locked to prevent an accidental lockout.
+  if (uid === currentUserId()) {
+    await update(ref(db, 'users/' + uid), {
+      firstName: firstName,
+      lastName: lastName
+    });
+    if (primaryAuth.currentUser) {
+      await updateProfile(primaryAuth.currentUser, {
+        displayName: [firstName, lastName].filter(Boolean).join(' ')
+      }).catch(function(error) {
+        console.warn('The profile name was saved, but the auth display name could not be refreshed:', error);
+      });
+    }
+    return;
+  }
+
+  var api = teamApi();
+  if (draft.managerUid && api && api.assignmentWouldCycle(uid, draft.managerUid, state.users)) {
+    throw new Error(managerLabel(draft.managerUid) + ' already reports to ' + userLabel(user)
+      + ', so they cannot also be their manager.');
+  }
+
+  await update(ref(db, 'users/' + uid), {
+    firstName: firstName,
+    lastName: lastName,
+    role: draft.role,
+    opsArea: draft.opsArea,
+    managerUid: draft.managerUid,
+    myActivity: draft.myActivity === true
+  });
   // Only full admins may write the admins/ mirror (rules enforce this too).
   if (state.isAdmin) {
-    if (nextRole === 'admin') {
+    if (draft.role === 'admin') {
       await set(ref(db, 'admins/' + uid), true);
     } else {
       await remove(ref(db, 'admins/' + uid));
     }
   }
-  setMessage(createMsg, 'success', 'Updated access level for ' + (user.email || 'user') + '.');
+}
+
+// Mirrors the readable name/email of every user into the shared directory that
+// powers @mention assignment, and feeds this page's own picker. Best-effort and
+// idempotent: a write that the rules reject (because userDirectory has not been
+// deployed yet) must not break the user list this runs off.
+//
+// teamDirectory is the same idea for reporting lines. /users carries roles and
+// ops areas and is deliberately unreadable to ordinary users, but a manager has
+// to be able to see who reports to them — so the org chart is mirrored into its
+// own node, readable only by roles that have a team view, and writable only
+// here. Publishing both together keeps them from drifting apart.
+function publishDirectoryEntries(users) {
+  var people = (users || []).map(function(user) {
+    var email = user.email === 'Unknown' ? '' : user.email;
+    var name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+    // Someone who has not filled in their profile is still a colleague visits
+    // get assigned to, so their work address stands in for the name they have
+    // not set yet. Their own entry replaces it the moment they do.
+    if (!name && window.GAILS.Mentions) name = window.GAILS.Mentions.nameFromEmail(email);
+    return {
+      uid: user.uid,
+      name: name,
+      email: email,
+      managerUid: user.managerUid || '',
+      roleId: user.role || 'viewer',
+      opsArea: user.opsArea || ''
+    };
+  }).filter(function(person) { return !!person.name; });
+
+  if (window.GAILS.Mentions) window.GAILS.Mentions.addPeople(people);
+  if (!canEdit('users')) return;
+
+  people.forEach(function(person) {
+    set(ref(db, 'userDirectory/' + person.uid), {
+      name: person.name,
+      email: person.email || ''
+    }).catch(function(error) {
+      console.warn('Could not publish ' + person.name + ' to the shared people directory:', error);
+    });
+    set(ref(db, 'teamDirectory/' + person.uid), {
+      name: person.name,
+      email: person.email || '',
+      managerUid: person.managerUid,
+      roleId: person.roleId,
+      roleName: roleDisplayName(person.roleId),
+      opsArea: person.opsArea
+    }).catch(function(error) {
+      console.warn('Could not publish ' + person.name + ' to the team directory:', error);
+    });
+  });
 }
 
 async function revokeUser(uid) {
-  var user = state.users.find(function(u) { return u.uid === uid; });
+  var user = findUser(uid);
   if (!user || uid === currentUserId()) return;
-  if (!confirm('Remove dashboard access for ' + (user.email || 'this user') + '?')) return;
+  var reports = teamApi() ? teamApi().directReports(uid, state.users) : [];
+  var warning = reports.length
+    ? '\n\n' + formatCount(reports.length, 'person', 'people')
+      + ' currently reports to them and will be left without a manager.'
+    : '';
+  if (!confirm('Remove dashboard access for ' + (user.email || 'this person') + '?' + warning)) return;
   await remove(ref(db, 'users/' + uid));
   if (state.isAdmin) {
     await remove(ref(db, 'admins/' + uid));
   }
-  setMessage(createMsg, 'success', 'Removed access for ' + (user.email || 'user') + '.');
+  // Someone without dashboard access should not stay in the @mention picker,
+  // or hold a place in anyone's reporting line.
+  try {
+    await remove(ref(db, 'userDirectory/' + uid));
+    await remove(ref(db, 'teamDirectory/' + uid));
+  } catch (directoryErr) {
+    console.warn('Could not remove the user from the shared directories:', directoryErr);
+  }
+  // Their reports are not deleted, only detached — the next admin to open them
+  // can point them at a new manager.
+  await Promise.all(reports.map(function(report) {
+    return update(ref(db, 'users/' + report.uid), { managerUid: '' }).catch(function(error) {
+      console.warn('Could not detach ' + report.name + ' from their removed manager:', error);
+    });
+  }));
 }
 
 function updateSiteDraft(name, field, value) {
@@ -2205,20 +2656,29 @@ function updateSiteDraft(name, field, value) {
   renderDataControls();
 }
 
-function updateRegionAssignmentDraft(region, field, value) {
-  state.regionAssignmentsDraft = regionAssignmentApi().updateAssignment(
+function updateRegionAssignmentDraft(region, field, value, userUid) {
+  var next = regionAssignmentApi().updateAssignment(
     detectedSiteRegions(state.siteMetaDraft),
     state.regionAssignmentsDraft,
     region,
     field,
     value
   );
+  next = regionAssignmentApi().updateAssignment(
+    detectedSiteRegions(state.siteMetaDraft),
+    next,
+    region,
+    field + 'Uid',
+    userUid || ''
+  );
+  state.regionAssignmentsDraft = next;
   setDirty(true);
   updateSiteTableMeta(getVisibleSiteMeta().length);
   if (regionAssignmentMeta) {
     var rows = visibleRegionAssignments();
     var assignmentsComplete = rows.filter(function(row) {
-      return !!(row.coffeePartner || row.coffeeTrainer);
+      return !!(row.coffeePartner || row.coffeePartnerUid ||
+        row.coffeeTrainer || row.coffeeTrainerUid);
     }).length;
     regionAssignmentMeta.textContent = rows.length + ' detected region'
       + (rows.length === 1 ? '' : 's')
@@ -2278,9 +2738,20 @@ function ensurePortalSync() {
             email: users[uid].email || 'Unknown',
             role: users[uid].role || 'viewer',
             opsArea: users[uid].opsArea || '',
+            // The whole reporting hierarchy is derived from this one field.
+            managerUid: users[uid].managerUid || '',
+            // Absent means off: My Activity is opt-in, so a user who has never
+            // been granted it does not have it.
+            myActivity: users[uid].myActivity === true,
             invitation: users[uid].invitation || null
           };
-        }).sort(function(a, b) {
+        });
+        // Admins can read the full user list, so the @mention picker on this
+        // page is built from it directly. It also republishes the shared
+        // directory (see database.rules.json), which is how a colleague becomes
+        // mentionable before they have ever signed in.
+        publishDirectoryEntries(state.users);
+        state.users = state.users.sort(function(a, b) {
           var aLabel = [a.firstName, a.lastName].filter(Boolean).join(' ') || a.email;
           var bLabel = [b.firstName, b.lastName].filter(Boolean).join(' ') || b.email;
           return aLabel.localeCompare(bLabel);
@@ -2290,6 +2761,7 @@ function ensurePortalSync() {
       renderOverview();
       renderUsers();
       renderRoles();
+      renderRegionAssignments();
     }, function(err) {
       console.error('Failed to sync users:', err);
       setMessage(createMsg, 'error', 'Could not load active users from Firebase.');
@@ -2322,6 +2794,7 @@ function ensurePortalSync() {
       state.visits = Object.keys(visits).map(function(id) {
         return Object.assign({ id: id }, visits[id]);
       });
+      if (window.GAILS.Mentions) window.GAILS.Mentions.addHarvested({ visits: visits });
     }
     renderVisits();
     updateCqvBackfillButton();
@@ -2337,7 +2810,7 @@ function ensurePortalSync() {
 // (view = read-only, edit = full controls). Roles with no admin access at
 // all are bounced back to the dashboard. Client-side gating is backed up
 // by the database rules (see database.rules.reference.json).
-var PANEL_AREAS = { users: 'users', roles: 'users', sites: 'sites', data: 'dataset', visits: 'visits' };
+var PANEL_AREAS = { access: 'users', sites: 'sites', data: 'dataset', visits: 'visits' };
 
 function applyAdminAccessUI() {
   Object.keys(PANEL_AREAS).forEach(function(panelName) {
@@ -2352,9 +2825,12 @@ function applyAdminAccessUI() {
     });
   });
 
-  // Hide edit-only controls in panels where the role is view-only.
+  // Hide edit-only controls in panels where the role is view-only. Everything
+  // that only *reports* access stays visible — the People and Roles tables and
+  // the estate-wide rules, which renderReportVisibility renders disabled — and
+  // only the buttons that change something come out.
   var editOnly = {
-    users: [createUserForm && createUserForm.closest('.admin-section')],
+    users: [inviteUserBtn, newRoleBtn],
     sites: [
       document.querySelector('.admin-site-import'),
       siteForm,
@@ -2368,9 +2844,6 @@ function applyAdminAccessUI() {
     ],
     visits: [document.querySelector('[data-admin-panel-content="visits"] .admin-dataset-upload')]
   };
-  if (roleForm) {
-    editOnly.users.push(roleFormSection);
-  }
   Object.keys(editOnly).forEach(function(area) {
     var hide = !canEdit(area);
     editOnly[area].forEach(function(el) {
@@ -2422,8 +2895,7 @@ onAuthStateChanged(primaryAuth, async function(user) {
 
   setDirty(false);
   syncSidebarForViewport();
-  buildRoleMatrix();
-  resetRoleForm();
+  buildRoleAccessGrid();
   applyAdminAccessUI();
   ensurePortalSync();
   switchPanel(requestedAdminPanel());
@@ -2542,19 +3014,49 @@ if (compactSidebarMedia && typeof compactSidebarMedia.addEventListener === 'func
   compactSidebarMedia.addListener(syncSidebarForViewport);
 }
 
+// ── Invite modal ──
+function openInviteModal() {
+  if (!inviteUserModal || !canEdit('users')) return;
+  clearMessage(inviteMsg);
+  createUserForm.reset();
+  populateRoleSelects();
+  renderInviteSummary();
+  inviteUserModal.style.display = 'flex';
+  if (newFirstNameInput) newFirstNameInput.focus();
+}
+
+function closeInviteModal() {
+  if (inviteUserModal) inviteUserModal.style.display = 'none';
+}
+
+// The same read-out the access modal shows, so what an invitation grants is
+// visible before it is sent rather than after.
+function renderInviteSummary() {
+  if (!inviteSummary) return;
+  var perms = permissionsForRole(roleSelect ? roleSelect.value : 'viewer');
+  var manager = newManagerSelect && newManagerSelect.value ? managerLabel(newManagerSelect.value) : '';
+  var parts = ['They will see ' + describeVisibility(perms).toLowerCase() + '.'];
+  parts.push('They can edit: ' + describeEditing(perms).toLowerCase() + '.');
+  if (manager) parts.push('Their work will appear on ' + manager + '’s My Team.');
+  inviteSummary.textContent = parts.join(' ');
+}
+
 createUserForm.addEventListener('submit', async function(e) {
   e.preventDefault();
+  clearMessage(inviteMsg);
   clearMessage(createMsg);
   clearMessage(usersMsg);
-  setMessage(createMsg, 'info', 'Creating invitation…');
-  var btn = createUserForm.querySelector('button');
+  setMessage(inviteMsg, 'info', 'Creating invitation…');
+  var btn = inviteSubmitBtn;
   btn.disabled = true;
   try {
     var firstName = newFirstNameInput.value.trim();
     var lastName = newLastNameInput.value.trim();
     var email = newEmailInput.value.trim();
     var role  = roleSelect.value;
-    if (!firstName || !lastName) throw new Error('Enter the user\'s first and last name.');
+    var managerUid = newManagerSelect ? newManagerSelect.value : '';
+    var opsArea = newOpsSelect ? newOpsSelect.value : '';
+    if (!firstName || !lastName) throw new Error('Enter their first and last name.');
     var pass = createInvitationPassword();
     var cred  = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
     var uid   = cred.user.uid;
@@ -2564,6 +3066,8 @@ createUserForm.addEventListener('submit', async function(e) {
       lastName: lastName,
       email: email,
       role: role,
+      managerUid: managerUid,
+      opsArea: opsArea,
       invitation: {
         status: 'pending',
         invitedAt: invitedAt,
@@ -2599,18 +3103,17 @@ createUserForm.addEventListener('submit', async function(e) {
       }
     }
 
-    newFirstNameInput.value = '';
-    newLastNameInput.value = '';
-    newEmailInput.value = '';
-    roleSelect.value    = 'viewer';
+    createUserForm.reset();
+    populateRoleSelects();
 
     if (emailSent) {
+      closeInviteModal();
       setMessage(createMsg, 'success', 'Invitation sent to ' + email + '. They can choose a password, sign in, and confirm their dashboard details.');
     } else {
-      setMessage(createMsg, 'error', 'Access was created for ' + email + ', but the invitation email could not be sent. Open the user and resend their password email.');
+      setMessage(inviteMsg, 'error', 'Access was created for ' + email + ', but the invitation email could not be sent. Open their access settings to resend it.');
     }
   } catch (err) {
-    setMessage(createMsg, 'error', 'Error: ' + err.message);
+    setMessage(inviteMsg, 'error', 'Error: ' + err.message);
   } finally {
     if (secondaryAuth.currentUser) {
       try {
@@ -2623,49 +3126,138 @@ createUserForm.addEventListener('submit', async function(e) {
   }
 });
 
-userList.addEventListener('click', async function(e) {
-  var btn = e.target.closest('[data-action]');
+userList.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-action="manage-access"]');
   if (!btn) return;
-  var uid = btn.dataset.uid;
-  var action = btn.dataset.action;
-
   clearMessage(createMsg);
   clearMessage(usersMsg);
+  openAccessModal(btn.dataset.uid);
+});
 
-  if (action === 'edit-user') {
-    state.editingUserUid = uid;
-    renderUsers();
-    return;
-  }
-  if (action === 'cancel-edit-user') {
-    state.editingUserUid = null;
-    renderUsers();
-    return;
-  }
-  if (action === 'send-password-reset') {
-    var email = btn.dataset.email;
-    var invitee = state.users.find(function(user) { return user.uid === uid; });
-    var isInvitation = invitee && invitee.invitation && invitee.invitation.status !== 'accepted';
-    var prompt = isInvitation ? 'Resend the invitation to ' : 'Send a password reset email to ';
-    if (!confirm(prompt + email + '?')) return;
-    btn.disabled = true;
+// ── Person access modal ──
+if (userAccessFirstName) {
+  userAccessFirstName.addEventListener('input', function() {
+    if (!state.accessDraft) return;
+    state.accessDraft.firstName = userAccessFirstName.value;
+  });
+}
+
+if (userAccessLastName) {
+  userAccessLastName.addEventListener('input', function() {
+    if (!state.accessDraft) return;
+    state.accessDraft.lastName = userAccessLastName.value;
+  });
+}
+
+if (userAccessRole) {
+  userAccessRole.addEventListener('change', function() {
+    if (!state.accessDraft) return;
+    state.accessDraft.role = userAccessRole.value;
+    renderAccessReadout();
+  });
+}
+if (userAccessManager) {
+  userAccessManager.addEventListener('change', function() {
+    if (!state.accessDraft) return;
+    state.accessDraft.managerUid = userAccessManager.value;
+    renderAccessReadout();
+  });
+}
+if (userAccessOps) {
+  userAccessOps.addEventListener('change', function() {
+    if (!state.accessDraft) return;
+    state.accessDraft.opsArea = userAccessOps.value;
+    renderAccessReadout();
+  });
+}
+if (userAccessMyActivity) {
+  userAccessMyActivity.addEventListener('change', async function() {
+    if (!state.accessDraft) return;
+    var next = userAccessMyActivity.checked;
+    state.accessDraft.myActivity = next;
+    renderAccessReadout();
+
+    // For anyone else, Save writes it with the rest of their access. On your
+    // own account the Save button is hidden — role and reporting line lock
+    // themselves so an admin cannot demote or orphan themselves — so this one
+    // switch writes on its own. It only ever reveals your own work, and with a
+    // lone admin account nobody else could turn it on for you.
+    var uid = state.accessUserUid;
+    if (!uid || uid !== currentUserId() || !canEdit('users')) return;
+    userAccessMyActivity.disabled = true;
     try {
-      if (typeof sendPasswordResetEmail === 'function' && primaryAuth) {
-        if (isInvitation) {
-          await sendPasswordResetEmail(primaryAuth, email, invitationEmailSettings());
-        } else {
-          await sendPasswordResetEmail(primaryAuth, email);
-        }
-        if (isInvitation) {
-          await update(ref(db, 'users/' + uid + '/invitation'), {
-            status: 'pending',
-            emailSentAt: nowIso()
-          });
-        }
-        setMessage(usersMsg, 'success', (isInvitation ? 'Invitation resent to ' : 'Password reset email sent to ') + email + '.');
-      } else {
-         setMessage(usersMsg, 'error', 'Password reset not available.');
+      await update(ref(db, 'users/' + uid), { myActivity: next });
+      setMessage(userAccessMsg, 'success', 'My Activity ' + (next ? 'turned on' : 'turned off') + ' for your account.');
+    } catch (err) {
+      userAccessMyActivity.checked = !next;
+      state.accessDraft.myActivity = !next;
+      renderAccessReadout();
+      setMessage(userAccessMsg, 'error', 'Could not update My Activity: ' + err.message);
+    } finally {
+      userAccessMyActivity.disabled = false;
+    }
+  });
+}
+
+if (userAccessSave) {
+  userAccessSave.addEventListener('click', async function() {
+    var user = findUser(state.accessUserUid);
+    if (!user) return;
+    userAccessSave.disabled = true;
+    clearMessage(userAccessMsg);
+    try {
+      await saveAccessModal();
+      closeAccessModal();
+      setMessage(usersMsg, 'success', 'Updated access for ' + userLabel(user) + '.');
+    } catch (err) {
+      setMessage(userAccessMsg, 'error', err.message);
+    } finally {
+      userAccessSave.disabled = false;
+    }
+  });
+}
+
+if (userAccessRemove) {
+  userAccessRemove.addEventListener('click', async function() {
+    var uid = state.accessUserUid;
+    var user = findUser(uid);
+    if (!user) return;
+    userAccessRemove.disabled = true;
+    try {
+      await revokeUser(uid);
+      closeAccessModal();
+      setMessage(usersMsg, 'success', 'Removed access for ' + userLabel(user) + '.');
+    } catch (err) {
+      setMessage(userAccessMsg, 'error', 'Could not remove access: ' + err.message);
+    } finally {
+      userAccessRemove.disabled = false;
+    }
+  });
+}
+
+if (userAccessResetPw) {
+  userAccessResetPw.addEventListener('click', async function() {
+    var uid = state.accessUserUid;
+    var user = findUser(uid);
+    if (!user) return;
+    var email = user.email;
+    var invitation = user.invitation || {};
+    var isInvitation = invitation.status && invitation.status !== 'accepted';
+    if (!confirm((isInvitation ? 'Resend the invitation to ' : 'Send a password reset email to ') + email + '?')) return;
+
+    userAccessResetPw.disabled = true;
+    clearMessage(userAccessMsg);
+    try {
+      if (typeof sendPasswordResetEmail !== 'function' || !primaryAuth) {
+        throw new Error('Password reset is not available.');
       }
+      if (isInvitation) {
+        await sendPasswordResetEmail(primaryAuth, email, invitationEmailSettings());
+        await update(ref(db, 'users/' + uid + '/invitation'), { status: 'pending', emailSentAt: nowIso() });
+      } else {
+        await sendPasswordResetEmail(primaryAuth, email);
+      }
+      setMessage(userAccessMsg, 'success', (isInvitation ? 'Invitation resent to ' : 'Password reset email sent to ') + email + '.');
     } catch (err) {
       if (isInvitation) {
         try {
@@ -2674,31 +3266,34 @@ userList.addEventListener('click', async function(e) {
           console.warn('Could not record the invitation delivery failure:', statusErr);
         }
       }
-      setMessage(usersMsg, 'error', 'Error sending password reset: ' + err.message);
+      setMessage(userAccessMsg, 'error', 'Could not send that email: ' + err.message);
     } finally {
-      if (btn) btn.disabled = false;
+      userAccessResetPw.disabled = false;
     }
-    return;
-  }
+  });
+}
 
-  btn.disabled = true;
-  try {
-    if (action === 'save-user-role') {
-      await saveUserRole(uid);
-      state.editingUserUid = null;
-      renderUsers();
-      setMessage(usersMsg, 'success', 'User access updated successfully.');
-    }
-    if (action === 'revoke-user') {
-      await revokeUser(uid);
-      if (state.editingUserUid === uid) state.editingUserUid = null;
-      setMessage(usersMsg, 'success', 'User access revoked successfully.');
-    }
-  } catch (err) {
-    setMessage(usersMsg, 'error', 'Error: ' + err.message);
-  } finally {
-    if (btn) btn.disabled = false;
-  }
+[userAccessClose, userAccessCancel].forEach(function(control) {
+  if (control) control.addEventListener('click', closeAccessModal);
+});
+if (userAccessModal) {
+  userAccessModal.addEventListener('click', function(event) {
+    if (event.target === userAccessModal) closeAccessModal();
+  });
+}
+
+// ── Invite modal ──
+if (inviteUserBtn) inviteUserBtn.addEventListener('click', openInviteModal);
+[inviteUserClose, inviteUserCancel].forEach(function(control) {
+  if (control) control.addEventListener('click', closeInviteModal);
+});
+if (inviteUserModal) {
+  inviteUserModal.addEventListener('click', function(event) {
+    if (event.target === inviteUserModal) closeInviteModal();
+  });
+}
+[roleSelect, newManagerSelect, newOpsSelect].forEach(function(select) {
+  if (select) select.addEventListener('change', renderInviteSummary);
 });
 
 if (reportVisibilityToggle) {
@@ -2723,40 +3318,59 @@ if (reportVisibilityToggle) {
   });
 }
 
+// ── Role editor modal ──
 if (roleForm) {
   roleForm.addEventListener('submit', function(e) {
     e.preventDefault();
-    clearMessage(roleMsg);
+    clearMessage(roleEditorMsg);
     saveRoleFromForm();
   });
 }
 
-if (roleCancelBtn) {
-  roleCancelBtn.addEventListener('click', function() {
-    resetRoleForm();
-    clearMessage(roleMsg);
+if (roleAccessGrid) {
+  roleAccessGrid.addEventListener('change', function(e) {
+    var box = e.target.closest('[data-access-see], [data-access-edit]');
+    if (box) syncAccessGridPair(box);
+  });
+}
+
+if (newRoleBtn) newRoleBtn.addEventListener('click', function() { openRoleEditor(null); });
+[roleEditorClose, roleEditorCancel].forEach(function(control) {
+  if (control) control.addEventListener('click', closeRoleEditor);
+});
+if (roleEditorModal) {
+  roleEditorModal.addEventListener('click', function(event) {
+    if (event.target === roleEditorModal) closeRoleEditor();
+  });
+}
+
+if (roleEditorDelete) {
+  roleEditorDelete.addEventListener('click', async function() {
+    var roleId = state.editingRoleId;
+    if (!roleId) return;
+    roleEditorDelete.disabled = true;
+    try {
+      await deleteRole(roleId);
+    } finally {
+      roleEditorDelete.disabled = false;
+    }
   });
 }
 
 if (roleList) {
-  roleList.addEventListener('click', async function(e) {
-    var btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    var roleId = btn.dataset.role;
-    if (btn.dataset.action === 'edit-role') {
-      startEditRole(roleId);
-      return;
-    }
-    if (btn.dataset.action === 'delete-role') {
-      btn.disabled = true;
-      try {
-        await deleteRole(roleId);
-      } finally {
-        btn.disabled = false;
-      }
-    }
+  roleList.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action="edit-role"]');
+    if (btn) openRoleEditor(btn.dataset.role);
   });
 }
+
+// One Escape handler for all three access dialogs, closing only the open one.
+document.addEventListener('keydown', function(event) {
+  if (event.key !== 'Escape') return;
+  if (userAccessModal && userAccessModal.style.display === 'flex') closeAccessModal();
+  else if (roleEditorModal && roleEditorModal.style.display === 'flex') closeRoleEditor();
+  else if (inviteUserModal && inviteUserModal.style.display === 'flex') closeInviteModal();
+});
 
 siteSearchInput.addEventListener('input', function(e) {
   state.siteSearch = e.target.value;
@@ -2796,10 +3410,26 @@ if (regionAssignmentList) {
   regionAssignmentList.addEventListener('input', function(e) {
     var input = e.target;
     if (!input.dataset.region || !input.dataset.field) return;
+    var user = resolveRegionAssignmentUser(input.value);
     updateRegionAssignmentDraft(
       input.dataset.region,
       input.dataset.field,
-      input.value
+      user ? userLabel(user) : input.value,
+      user ? user.uid : ''
+    );
+  });
+
+  regionAssignmentList.addEventListener('change', function(e) {
+    var input = e.target;
+    if (!input.dataset.region || !input.dataset.field) return;
+    var user = resolveRegionAssignmentUser(input.value);
+    if (!user) return;
+    input.value = userLabel(user);
+    updateRegionAssignmentDraft(
+      input.dataset.region,
+      input.dataset.field,
+      userLabel(user),
+      user.uid
     );
   });
 }

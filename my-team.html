@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Team — GAIL's Coffee Experience Dashboard</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" href="favicon.ico">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#B5312A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Powers the section-score charts inside CQV and routine visit reports. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- The page shell, guard, stat tiles, and card chrome are shared with
+       My Activity; only the roster and person panels are new. -->
+  <link rel="stylesheet" href="css/my-activity.css">
+  <link rel="stylesheet" href="css/my-team.css">
+</head>
+
+<body class="my-activity-body">
+  <div class="glass-bg">
+    <div class="glass-bg-blob blob1"></div>
+    <div class="glass-bg-blob blob2"></div>
+    <div class="glass-bg-blob blob3"></div>
+    <div class="glass-noise"></div>
+  </div>
+
+  <div id="myTeamGuard" class="admin-page-guard">
+    <div class="auth-loading-content">
+      <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+      <p id="myTeamGuardText" class="auth-loading__text">Loading your team <span
+          class="auth-small-spinner"></span></p>
+    </div>
+  </div>
+
+  <div id="myTeamPage" class="my-activity-page" hidden>
+    <header class="my-activity-header">
+      <a class="my-activity-header__brand" href="index.html" aria-label="Return to dashboard">
+        <img src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+        <span>
+          <small>Coffee Experience Dashboard</small>
+          <strong>My Team</strong>
+        </span>
+      </a>
+      <div class="my-activity-header__actions">
+        <a id="myTeamBackLink" href="index.html"
+          class="my-activity-header__link standalone-header-button">&#8592; Dashboard</a>
+        <div data-standalone-account-menu></div>
+      </div>
+    </header>
+
+    <main class="my-activity-main">
+      <section class="my-activity-overview my-team-overview" aria-labelledby="myTeamTitle">
+        <div class="my-activity-overview__top">
+          <div class="my-activity-intro">
+            <p class="my-activity-eyebrow">Team performance</p>
+            <h1 id="myTeamTitle">My Team</h1>
+            <p id="myTeamGreeting" class="my-activity-intro__copy">See workload, contribution and where attention is
+              needed.</p>
+          </div>
+
+          <div class="my-team-period">
+            <label for="myTeamPeriod">Period</label>
+            <select id="myTeamPeriod" class="visit-log-select">
+              <option value="currentMonth">This month</option>
+              <option value="1">Last month</option>
+              <option value="3" selected>Last 3 months</option>
+              <option value="6">Last 6 months</option>
+              <option value="12">Last 12 months</option>
+              <option value="0">All time</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="my-team-overview__context">
+          <span id="myTeamScopeNote" class="my-team-scope-note"></span>
+          <nav id="myTeamJump" class="my-activity-jump" aria-label="Jump to a section">
+            <a href="#section-team-insights" class="my-activity-jump__link"
+              data-section-link="section-team-insights">Insights</a>
+            <a href="#section-roster" class="my-activity-jump__link" data-section-link="section-roster">People</a>
+            <a href="#section-team-actions" class="my-activity-jump__link"
+              data-section-link="section-team-actions">Actions</a>
+            <a href="#section-team-visits" class="my-activity-jump__link"
+              data-section-link="section-team-visits">Visits</a>
+          </nav>
+        </div>
+
+        <div id="myTeamStats" class="my-activity-stats" aria-label="Your team at a glance"></div>
+      </section>
+
+      <div id="myTeamSelection" class="my-team-selection" hidden aria-live="polite">
+        <span id="myTeamSelectionText"></span>
+        <button type="button" id="myTeamSelectionClear">Show whole team</button>
+      </div>
+
+      <!-- ========== 1. TEAM INSIGHTS ========== -->
+      <section id="section-team-insights" class="my-activity-card my-team-insights"
+        aria-labelledby="myTeamInsightsTitle">
+        <div class="my-activity-card__head">
+          <div>
+            <p class="my-activity-card__eyebrow">Manager view</p>
+            <h2 id="myTeamInsightsTitle">Team insights</h2>
+            <p class="my-activity-card__copy">Compare contribution, workload and activity across the selected team.</p>
+          </div>
+          <span id="myTeamInsightsBadge" class="my-activity-pill">Live team data</span>
+        </div>
+
+        <div id="myTeamInsightCallout" class="my-team-insight-callout" role="status" aria-live="polite"></div>
+        <div class="my-team-chart-grid">
+          <article class="my-team-chart-card" aria-labelledby="myTeamContributionTitle">
+            <div class="my-team-chart-card__head">
+              <div>
+                <p class="my-team-chart-card__kicker">Contribution</p>
+                <h3 id="myTeamContributionTitle">Share of team visits</h3>
+                <p class="my-team-chart-card__note">Shared visits split one contribution across everyone credited.</p>
+              </div>
+              <span id="myTeamContributionTotal" class="my-team-chart-card__value">0</span>
+            </div>
+            <div id="myTeamContributionChart" class="my-team-bar-chart"></div>
+          </article>
+
+          <article class="my-team-chart-card" aria-labelledby="myTeamWorkloadTitle">
+            <div class="my-team-chart-card__head">
+              <div>
+                <p class="my-team-chart-card__kicker">Workload &amp; risk</p>
+                <h3 id="myTeamWorkloadTitle">Open actions</h3>
+              </div>
+              <span class="my-team-chart-legend"><i></i> Overdue</span>
+            </div>
+            <div id="myTeamWorkloadChart" class="my-team-bar-chart"></div>
+          </article>
+
+          <article class="my-team-chart-card my-team-chart-card--trend" aria-labelledby="myTeamTrendTitle">
+            <div class="my-team-chart-card__head">
+              <div>
+                <p class="my-team-chart-card__kicker">Activity</p>
+                <h3 id="myTeamTrendTitle">Visit trend</h3>
+              </div>
+              <span id="myTeamTrendDirection" class="my-team-trend-direction">No trend yet</span>
+            </div>
+            <div id="myTeamTrendChart" class="my-team-trend-chart"></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ========== 2. THE TEAM ========== -->
+      <section id="section-roster" class="my-activity-card" aria-labelledby="myTeamRosterTitle">
+        <div class="my-activity-card__head">
+          <div>
+            <p class="my-activity-card__eyebrow">Who reports to you</p>
+            <h2 id="myTeamRosterTitle">The team</h2>
+            <p class="my-activity-card__copy">Visits and actions use the same attribution as My Activity. Bakery totals
+              come from each person’s saved Region Coffee Team assignments.</p>
+          </div>
+          <div class="my-activity-card__actions">
+            <span id="myTeamRosterCount" class="my-activity-pill">0 people</span>
+          </div>
+        </div>
+
+        <div class="my-team-roster-tools">
+          <label class="visit-log-filter-control" for="myTeamRosterSearch">
+            <span>Find a person</span>
+            <input type="search" id="myTeamRosterSearch" class="visit-log-input"
+              placeholder="Name, role or email&hellip;" autocomplete="off">
+          </label>
+          <label class="visit-log-filter-control visit-log-filter-control--compact" for="myTeamRosterSort">
+            <span>Order by</span>
+            <select id="myTeamRosterSort" class="visit-log-select">
+              <option value="hierarchy">Reporting line</option>
+              <option value="overdue">Overdue actions</option>
+              <option value="visits">Most visits</option>
+              <option value="name">Name A&ndash;Z</option>
+            </select>
+          </label>
+          <button type="button" id="myTeamRosterReset" class="visit-log-reset-btn"
+            title="No team filters to clear" aria-label="No team filters to clear">
+            <svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
+            </svg>
+            <svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
+              <path d="m22 3-5 5" />
+              <path d="m17 3 5 5" />
+            </svg>
+            <span class="visit-log-reset-btn__label">Reset</span>
+          </button>
+        </div>
+        <div class="my-activity-summary" role="status" aria-live="polite" id="myTeamRosterSummary"></div>
+        <div id="myTeamRoster" class="my-team-roster"></div>
+      </section>
+
+      <!-- ========== 3. OPEN ACTIONS ========== -->
+      <section id="section-team-actions" class="my-activity-card" aria-labelledby="myTeamActionsTitle">
+        <div class="my-activity-card__head">
+          <div>
+            <p class="my-activity-card__eyebrow">Follow-up tasks</p>
+            <h2 id="myTeamActionsTitle">Open actions</h2>
+            <p class="my-activity-card__copy">Actions assigned to the team, inherited from their visits, or completed
+              by them. Open work is shown by responsible owner.</p>
+          </div>
+          <div class="my-activity-card__actions">
+            <span id="myTeamActionsCount" class="my-activity-pill">0 open</span>
+          </div>
+        </div>
+
+        <div id="myTeamActionsFilter" class="visit-log-toggle my-activity-toggle" role="group"
+          aria-label="Filter team actions by status">
+          <button type="button" class="visit-log-toggle-btn active" data-status="open">Open</button>
+          <button type="button" class="visit-log-toggle-btn" data-status="overdue">Overdue</button>
+          <button type="button" class="visit-log-toggle-btn" data-status="soon">Due soon</button>
+          <button type="button" class="visit-log-toggle-btn" data-status="done">Completed</button>
+          <button type="button" class="visit-log-toggle-btn" data-status="all">All</button>
+        </div>
+
+        <div class="my-team-list-tools">
+          <label class="visit-log-filter-control" for="myTeamActionsSearch">
+            <span>Search actions</span>
+            <input type="search" id="myTeamActionsSearch" class="visit-log-input"
+              placeholder="Action, bakery or owner&hellip;" autocomplete="off">
+          </label>
+          <label class="visit-log-filter-control visit-log-filter-control--compact" for="myTeamActionsSort">
+            <span>Order by</span>
+            <select id="myTeamActionsSort" class="visit-log-select">
+              <option value="due">Due date</option>
+              <option value="priority">Priority</option>
+              <option value="owner">Owner</option>
+              <option value="bakery">Bakery</option>
+            </select>
+          </label>
+          <button type="button" id="myTeamActionsReset" class="visit-log-reset-btn"
+            title="No action filters to clear" aria-label="No action filters to clear">
+            <svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
+            </svg>
+            <svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
+              <path d="m22 3-5 5" />
+              <path d="m17 3 5 5" />
+            </svg>
+            <span class="visit-log-reset-btn__label">Reset</span>
+          </button>
+        </div>
+        <div id="myTeamActionsSummary" class="my-activity-summary" role="status" aria-live="polite"></div>
+        <div id="myTeamActionsList" class="my-activity-actions-list"></div>
+      </section>
+
+      <!-- ========== 4. RECENT VISITS ========== -->
+      <section id="section-team-visits" class="my-activity-card" aria-labelledby="myTeamVisitsTitle">
+        <div class="my-activity-card__head">
+          <div>
+            <p class="my-activity-card__eyebrow">Where they have been</p>
+            <h2 id="myTeamVisitsTitle">Recent visits</h2>
+            <p class="my-activity-card__copy">Every check-in, routine coffee visit, CQV, and NBO credited to someone
+              on the team in this period.</p>
+          </div>
+          <div class="my-activity-card__actions">
+            <span id="myTeamVisitsCount" class="my-activity-pill">0 visits</span>
+          </div>
+        </div>
+
+        <div class="my-team-list-tools">
+          <label class="visit-log-filter-control" for="myTeamVisitsSearch">
+            <span>Search visits</span>
+            <input type="search" id="myTeamVisitsSearch" class="visit-log-input"
+              placeholder="Bakery, person or visit type&hellip;" autocomplete="off">
+          </label>
+          <label class="visit-log-filter-control visit-log-filter-control--compact" for="myTeamVisitsSort">
+            <span>Order by</span>
+            <select id="myTeamVisitsSort" class="visit-log-select">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="owner">Person</option>
+              <option value="bakery">Bakery</option>
+            </select>
+          </label>
+          <button type="button" id="myTeamVisitsReset" class="visit-log-reset-btn"
+            title="No visit filters to clear" aria-label="No visit filters to clear">
+            <svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
+            </svg>
+            <svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
+              <path d="m22 3-5 5" />
+              <path d="m17 3 5 5" />
+            </svg>
+            <span class="visit-log-reset-btn__label">Reset</span>
+          </button>
+        </div>
+        <div id="myTeamVisitsSummary" class="my-activity-summary" role="status" aria-live="polite"></div>
+        <div id="myTeamVisitsList" class="my-activity-visit-list"></div>
+        <button type="button" id="myTeamVisitsMore" class="visit-log-show-more" hidden>Show more</button>
+      </section>
+    </main>
+  </div>
+
+  <!-- Reuse the dashboard report renderer in-place so managers keep their
+       selected person, period and filters while reviewing a visit. -->
+  <div id="visitReportModal" class="drill-modal" style="display:none;"
+    onclick="if(event.target===this)GAILS.closeVisitReport()">
+    <div class="drillInner">
+      <div class="drill-modal-header">
+        <div>
+          <h3 class="drill-modal-title" id="visitReportTitle"></h3>
+          <p class="drill-modal-subtitle" id="visitReportSubtitle"></p>
+        </div>
+        <div class="visit-report-header-actions">
+          <div class="visit-report-history-nav" role="group" aria-label="Team visit history">
+            <button type="button" class="visit-report-nav-btn" aria-label="Previous visit" disabled>&#8249;</button>
+            <span class="visit-report-history-pos" aria-label="Visit 1 of 1">1 of 1</span>
+            <button type="button" class="visit-report-nav-btn" aria-label="Next visit" disabled>&#8250;</button>
+          </div>
+          <button type="button" class="drill-close-btn visit-report-print-btn" onclick="window.print()">&#128438;
+            Print</button>
+          <button type="button" class="modal-close-btn" onclick="GAILS.closeVisitReport()"
+            aria-label="Close visit report" title="Close">&#10005;</button>
+        </div>
+      </div>
+      <div id="visitReportBody" class="drill-modal-body visit-report-body"></div>
+    </div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/visit-schema.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/cqv-criticals.js"></script>
+  <script src="js/cqv-shared.js"></script>
+  <script src="js/nbo-shared.js"></script>
+  <script src="js/mentions.js"></script>
+  <script src="js/attribution.js"></script>
+  <script src="js/team.js"></script>
+  <script src="js/visit-report.js"></script>
+  <script src="js/custom-selects.js"></script>
+  <script type="module" src="js/my-team.js"></script>
+</body>
+
+</html>

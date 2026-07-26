@@ -10,12 +10,12 @@ import {
   set,
   update
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-import { BUILTIN_ROLES, resolveRolePermissions } from './permissions.js';
+import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
+import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
 
 const G = window.GAILS || {};
 const guard = document.getElementById('bakeryProfileGuard');
 const page = document.getElementById('bakeryProfilePage');
-const signOutBtn = document.getElementById('bakeryProfileSignOut');
 const backLink = document.getElementById('bakeryProfileBackLink');
 const brandLink = document.querySelector('.bakery-profile-header__brand');
 const taskAddToggle = document.getElementById('bakeryTaskAddToggle');
@@ -97,8 +97,17 @@ const RETURN_LABELS = {
   feedback: 'Customer Feedback',
   'visit-log': 'Bakery Directory',
   sites: 'Site Data',
-  visits: 'Bakery Visits'
+  visits: 'Bakery Visits',
+  // my-activity.html sections, which arrive as the same #hash on the return URL.
+  'section-actions': 'My Activity',
+  'section-visits': 'My Activity',
+  'section-timeline': 'My Activity'
 };
+
+// The pages a bakery profile may return to. Anything else — including another
+// origin — is discarded rather than followed, so the ?from parameter can't be
+// used to bounce someone off the site.
+const RETURN_PAGES = ['index.html', 'admin.html', 'my-activity.html'];
 
 function escapeHtml(value) {
   return String(value == null ? '' : value)
@@ -114,8 +123,7 @@ function safeReturnUrl(value) {
   try {
     var parsed = new URL(value, window.location.href);
     var pageName = parsed.pathname.split('/').pop().toLowerCase();
-    if (parsed.origin !== window.location.origin ||
-        (pageName !== 'index.html' && pageName !== 'admin.html')) return '';
+    if (parsed.origin !== window.location.origin || RETURN_PAGES.indexOf(pageName) === -1) return '';
     return pageName + parsed.search + parsed.hash;
   } catch {
     return '';
@@ -124,7 +132,10 @@ function safeReturnUrl(value) {
 
 function labelFromReturnUrl(returnUrl) {
   var hash = String(returnUrl || '').split('#')[1] || '';
-  return RETURN_LABELS[hash.replace(/^tab-/, '')] || '';
+  var byHash = RETURN_LABELS[hash.replace(/^tab-/, '')];
+  if (byHash) return byHash;
+  // My Activity has no required hash, so the page itself names the way back.
+  return String(returnUrl || '').split(/[?#]/)[0] === 'my-activity.html' ? 'My Activity' : '';
 }
 
 function getProfileReturnContext() {
@@ -1017,14 +1028,18 @@ function renderVisits() {
     var score = visit.score !== null && visit.score !== undefined
       ? String(visit.score) + (visit.scoreMax ? '/' + visit.scoreMax : '')
       : '';
-    var visitor = visit.coffeePartner || visit.meta && visit.meta.updatedBy || '';
+    // An assigned visit names its assignee as "@Name"; the stored "@" is never
+    // rendered, just the plain-text name (see js/mentions.js).
+    var visitorHtml = visit.coffeePartner && G.Mentions
+      ? G.Mentions.toHtml(visit.coffeePartner)
+      : escapeHtml(visit.coffeePartner || (visit.meta && (visit.meta.createdBy || visit.meta.updatedBy)) || '');
     return '<article class="bakery-activity-row">' +
       '<div class="bakery-activity-row__marker" aria-hidden="true"></div>' +
       '<div class="bakery-activity-row__body">' +
       '<div class="bakery-activity-row__top"><strong>' + escapeHtml(formatVisitType(visit.type)) + '</strong>' +
       (score ? '<span class="bakery-profile-tag">' + escapeHtml(score) + '</span>' : '') + '</div>' +
       '<p>' + escapeHtml(formatDate(visit.date, false)) + (visit.time ? ' · ' + escapeHtml(visit.time) : '') + '</p>' +
-      (visitor ? '<small>' + escapeHtml(visitor) + '</small>' : '') +
+      (visitorHtml ? '<small>' + visitorHtml + '</small>' : '') +
       '</div></article>';
   }).join('');
   renderStats();
@@ -1246,6 +1261,7 @@ function startLiveData() {
   visitsUnsubscribe = onValue(ref(db, 'routineVisits'), function(snapshot) {
     var value = snapshot.exists() ? snapshot.val() : {};
     visits = Object.keys(value).map(function(id) { return Object.assign({ id: id }, value[id]); });
+    if (G.Mentions) G.Mentions.addHarvested({ visits: value });
     renderVisits();
   }, function(error) {
     console.error('Could not load visits:', error);
@@ -1272,6 +1288,21 @@ function startLiveData() {
       '<div class="bakery-profile-empty bakery-profile-empty--notes"><strong>Bakery notes unavailable.</strong>' +
       '<span>Try refreshing the page.</span></div>';
   });
+}
+
+// Best-effort: the directory only sharpens how mentions render, so a page that
+// cannot read it still shows the names, just without the resolved email.
+async function loadPeopleDirectory() {
+  if (!G.Mentions) return;
+  try {
+    var snapshot = await get(ref(db, 'userDirectory'));
+    var entries = snapshot.exists() ? snapshot.val() : {};
+    G.Mentions.addPeople(Object.keys(entries).map(function(uid) {
+      return { uid: uid, name: entries[uid] && entries[uid].name, email: entries[uid] && entries[uid].email };
+    }));
+  } catch (error) {
+    console.warn('Shared people directory unavailable:', error);
+  }
 }
 
 async function loadBakeryProfile(user) {
@@ -1342,6 +1373,16 @@ async function loadBakeryProfile(user) {
 
   currentUser = user;
   canEdit = permissions.actions.logVisits === true;
+  mountStandaloneProfileMenu({
+    user: user,
+    profile: currentUserProfile,
+    showActivity: !!(currentUserProfile && currentUserProfile.myActivity === true),
+    showTeam: canSeeTeam(permissions),
+    onSignOut: async function() {
+      await signOut(auth);
+      window.location.replace('index.html');
+    }
+  });
   var displayName = profileDisplayName(user, currentUserProfile);
   notePostingAsDefault = 'Posting as ' + displayName;
   document.getElementById('bakeryNoteAvatar').textContent = initials(displayName);
@@ -1350,6 +1391,7 @@ async function loadBakeryProfile(user) {
   // Admins keep the composer so they can revise any note, even without logVisits.
   noteForm.hidden = !canEdit && !isAdmin;
 
+  loadPeopleDirectory();
   renderIdentity(sitePayload);
   renderBakerySelector(reportScopeActive);
   renderStats();
@@ -1438,6 +1480,8 @@ taskForm.addEventListener('submit', async function(event) {
       completedBy: null,
       createdAt: new Date().toISOString(),
       createdBy: who,
+      createdByUid: currentUser.uid,
+      createdByName: currentUser.displayName || '',
       meta: {
         updatedAt: new Date().toISOString(),
         updatedBy: who
@@ -1470,6 +1514,8 @@ document.getElementById('bakeryTaskList').addEventListener('click', async functi
       status: done ? 'done' : 'open',
       completedAt: done ? now : null,
       completedBy: done ? (currentUser.email || currentUser.uid) : null,
+      completedByUid: done ? currentUser.uid : null,
+      completedByName: done ? (currentUser.displayName || '') : null,
       'meta/updatedAt': now,
       'meta/updatedBy': currentUser.email || currentUser.uid
     });
@@ -1569,11 +1615,6 @@ noteDeleteConfirm.addEventListener('click', async function() {
 });
 
 noteCancelEdit.addEventListener('click', resetNoteEditor);
-
-signOutBtn.addEventListener('click', async function() {
-  await signOut(auth);
-  window.location.replace('index.html');
-});
 
 window.addEventListener('beforeunload', function() {
   if (notesUnsubscribe) notesUnsubscribe();

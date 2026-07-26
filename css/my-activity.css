@@ -1,0 +1,1191 @@
+/* ========== MY ACTIVITY HUB ==========
+   Page-specific styles for my-activity.html. The shared shell (glass
+   background, buttons, filter controls, follow-up pills, empty states) comes
+   from css/styles.css — everything here is layout and presentation that only
+   this page needs, mirroring how css/bakery-profile.css sits alongside it.
+
+   The header deliberately matches .profile-page__header so the three
+   standalone pages (profile, bakery profile, my activity) read as one family. */
+
+.my-activity-body {
+  min-height: 100vh;
+}
+
+.my-activity-page {
+  min-height: 100vh;
+}
+
+.my-activity-page[hidden] {
+  display: none;
+}
+
+/* ---------- header ---------- */
+
+.my-activity-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 8px clamp(16px, 3vw, 40px);
+  background: linear-gradient(180deg, #B5312A 0%, #A32520 100%);
+  border-bottom: 1px solid rgba(70, 14, 11, 0.35);
+  box-shadow: 0 4px 20px rgba(120, 28, 22, 0.18);
+}
+
+.my-activity-header__brand {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.my-activity-header__brand img {
+  width: clamp(78px, 8vw, 104px);
+  height: auto;
+  display: block;
+}
+
+.my-activity-header__brand span {
+  min-width: 0;
+  display: grid;
+}
+
+.my-activity-header__brand small {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 246, 240, 0.72);
+}
+
+.my-activity-header__brand strong {
+  font-size: 0.94rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.my-activity-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.my-activity-header__link {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 248, 242, 0.96);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.my-activity-header__link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* ---------- page frame ---------- */
+
+.my-activity-main {
+  width: min(1360px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: clamp(20px, 3vw, 32px) 0 48px;
+  display: grid;
+  gap: 14px;
+}
+
+.my-activity-overview {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-xl);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(181, 49, 42, 0.09), transparent 30%),
+    rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow-md);
+}
+
+.my-activity-overview__top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.my-activity-intro {
+  max-width: 760px;
+}
+
+.my-activity-eyebrow {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.my-activity-intro h1 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: clamp(1.65rem, 3.4vw, 2.3rem);
+  line-height: 1.06;
+}
+
+.my-activity-intro__copy {
+  margin: 0;
+  color: var(--muted-l);
+  font-size: 0.9rem;
+}
+
+.my-activity-focus {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(24, 120, 100, 0.18);
+  border-radius: 10px;
+  background: rgba(24, 120, 100, 0.07);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.my-activity-focus::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 0 4px rgba(24, 120, 100, 0.1);
+  content: "";
+}
+
+.my-activity-focus--alert {
+  border-color: rgba(178, 42, 36, 0.22);
+  background: rgba(178, 42, 36, 0.07);
+}
+
+.my-activity-focus--alert::before {
+  background: var(--red);
+  box-shadow: 0 0 0 4px rgba(178, 42, 36, 0.1);
+}
+
+.my-activity-focus--warning {
+  border-color: rgba(201, 132, 42, 0.25);
+  background: rgba(201, 132, 42, 0.08);
+}
+
+.my-activity-focus--warning::before {
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(201, 132, 42, 0.11);
+}
+
+.my-activity-focus a {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.my-activity-focus > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- at-a-glance stats ---------- */
+
+.my-activity-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.my-activity-overview .my-activity-stat {
+  padding: 9px 12px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.my-activity-overview .my-activity-stat__value {
+  font-size: 1.35rem;
+}
+
+.my-activity-stat {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-xl);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-sm);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+a.my-activity-stat:hover {
+  border-color: var(--card-border-h);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+a.my-activity-stat:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.my-activity-stat--alert {
+  border-color: rgba(178, 42, 36, 0.3);
+  background: linear-gradient(180deg, rgba(178, 42, 36, 0.08), rgba(255, 255, 255, 0.94));
+}
+
+.my-activity-stat__label {
+  color: var(--muted-l);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.my-activity-stat__value {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.my-activity-stat__meta {
+  color: var(--muted-l);
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- section jump nav ---------- */
+
+.my-activity-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  position: static;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-pill);
+  background: rgba(249, 247, 243, 0.93);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(12px);
+}
+
+.my-activity-overview .my-activity-jump {
+  flex: 0 0 auto;
+  border-color: rgba(181, 49, 42, 0.14);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: none;
+}
+
+@media (min-width: 1040px) {
+  .my-activity-overview {
+    grid-template-columns: minmax(270px, 0.72fr) minmax(620px, 1.7fr);
+    align-items: stretch;
+  }
+
+  .my-activity-overview__top {
+    grid-column: 1 / -1;
+  }
+
+  .my-activity-overview .my-activity-focus {
+    grid-column: 1;
+  }
+
+  .my-activity-overview .my-activity-stats {
+    grid-column: 2;
+  }
+}
+
+.my-activity-jump__link {
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.my-activity-jump__link:hover {
+  border-color: var(--card-border-h);
+  background: #fff;
+  color: var(--accent);
+}
+
+.my-activity-jump__link.is-active {
+  border-color: rgba(181, 49, 42, 0.18);
+  background: var(--accent-d);
+  color: var(--accent);
+}
+
+/* ---------- section cards ---------- */
+
+.my-activity-card {
+  padding: clamp(16px, 2vw, 22px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-xl);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-md);
+  scroll-margin-top: 82px;
+}
+
+.my-activity-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.my-activity-card__eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.my-activity-card__head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.4vw, 1.75rem);
+  letter-spacing: -0.02em;
+}
+
+.my-activity-card__copy {
+  max-width: 62ch;
+  margin: 5px 0 0;
+  color: var(--muted-l);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+@media (min-width: 960px) {
+  .my-activity-card__copy {
+    margin-top: 3px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+}
+
+.my-activity-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.my-activity-pill {
+  padding: 5px 11px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-pill);
+  background: var(--card-2);
+  color: var(--text-2);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.my-activity-pill--alert {
+  border-color: rgba(178, 42, 36, 0.28);
+  background: var(--red-d);
+  color: var(--red);
+}
+
+.my-activity-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.my-activity-export-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+}
+
+.my-activity-export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.my-activity-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 11px;
+}
+
+.my-activity-filters {
+  margin-bottom: 10px;
+  padding: 10px;
+  gap: 8px 10px;
+}
+
+/* These pages have fewer filters than the dashboard visit log. Use the full
+   card width so Reset never consumes an otherwise empty row. */
+@media (min-width: 960px) {
+  #section-actions .my-activity-filters {
+    grid-template-columns: minmax(190px, 1.3fr) repeat(3, minmax(145px, 1fr)) var(--control-h);
+  }
+}
+
+@media (min-width: 1200px) {
+  #section-visits .my-activity-filters {
+    grid-template-columns: minmax(210px, 1.3fr) repeat(4, minmax(155px, 1fr)) var(--control-h);
+  }
+}
+
+/* .visit-log-filter-control and .visit-log-show-more both set `display`, which
+   beats the plain `hidden` attribute — these two put it back, so the custom
+   date range and the feed's pager really do disappear when hidden. */
+.my-activity-filters .visit-log-filter-control[hidden],
+#myTimelineMore[hidden] {
+  display: none;
+}
+
+.my-activity-summary {
+  margin-bottom: 8px;
+  color: var(--muted-l);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.my-activity-summary:empty {
+  display: none;
+}
+
+/* ---------- shared tag ---------- */
+
+.my-activity-tag {
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.my-activity-tag--teal {
+  color: var(--teal);
+  background: var(--teal-d);
+}
+
+.my-activity-tag--gold {
+  color: var(--gold);
+  background: var(--gold-d);
+}
+
+.my-activity-tag--purple {
+  color: var(--purple);
+  background: var(--purple-d);
+}
+
+.my-activity-tag--red {
+  color: var(--red);
+  background: var(--red-d);
+}
+
+.my-activity-tag--blue {
+  color: var(--blue);
+  background: var(--blue-d);
+}
+
+.my-activity-tag--green {
+  color: var(--green);
+  background: var(--green-d);
+}
+
+/* ---------- 1. open actions ---------- */
+
+.my-activity-actions-list {
+  display: grid;
+  gap: 7px;
+}
+
+.my-activity-action {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: start;
+  padding: 11px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-lg);
+  background: var(--card-2);
+}
+
+.my-activity-action:hover {
+  border-color: var(--card-border-h);
+  background: #fff;
+}
+
+.my-activity-action--done {
+  opacity: 0.68;
+}
+
+.my-activity-action--done .my-activity-action__title {
+  text-decoration: line-through;
+}
+
+.my-activity-action__body {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+@media (min-width: 760px) {
+  .my-activity-action__body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 18px;
+    row-gap: 2px;
+  }
+
+  .my-activity-action__bakery,
+  .my-activity-action__title,
+  .my-activity-action__detail {
+    grid-column: 1 / -1;
+  }
+
+  .my-activity-action__context {
+    grid-column: 1;
+  }
+
+  .my-activity-action__meta {
+    grid-column: 2;
+    align-self: end;
+    text-align: right;
+    white-space: nowrap;
+  }
+}
+
+.my-activity-action__bakery {
+  color: var(--muted-l);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.my-activity-action__bakery:hover {
+  color: var(--accent);
+}
+
+.my-activity-action__title {
+  color: var(--text);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.my-activity-action__detail {
+  color: var(--text-2);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.my-activity-action__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 2px;
+  color: var(--muted-l);
+  font-size: 0.76rem;
+}
+
+.my-activity-action__context strong {
+  font-weight: 700;
+}
+
+.my-activity-action__meta {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.my-activity-action__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+/* ---------- 2. my visits ---------- */
+
+.my-activity-visit-list {
+  display: grid;
+  gap: 6px;
+}
+
+.my-activity-visit-head,
+.my-activity-visit {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr) 92px 112px;
+  gap: 16px;
+  align-items: center;
+}
+
+.my-activity-visit-head {
+  padding: 0 18px 6px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.my-activity-visit {
+  padding: 10px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-lg);
+  background: var(--card-2);
+}
+
+.my-activity-visit:hover {
+  border-color: var(--card-border-h);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.my-activity-visit__date {
+  display: grid;
+  gap: 2px;
+}
+
+.my-activity-visit__date strong {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.my-activity-visit__date span {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.my-activity-visit__main {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.my-activity-visit__bakery {
+  color: var(--text);
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.my-activity-visit__bakery:hover {
+  color: var(--accent);
+}
+
+.my-activity-visit__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.my-activity-visit__ops {
+  color: var(--muted-l);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.my-activity-visit__notes {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.my-activity-visit__score {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-align: center;
+}
+
+.my-activity-visit__action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.my-activity-visit__link {
+  padding: 7px 13px;
+  border: 1px solid var(--card-border-h);
+  border-radius: var(--r-sm);
+  background: #fff;
+  color: var(--text-2);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.my-activity-visit__link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- 3. activity feed ---------- */
+
+.my-activity-timeline__day {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 16px 0 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.my-activity-timeline__day:first-child {
+  margin-top: 0;
+}
+
+.my-activity-timeline__day span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.my-activity-timeline__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.my-activity-event {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 11px;
+  padding: 10px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-lg);
+  background: var(--card-2);
+}
+
+.my-activity-event:hover {
+  border-color: var(--card-border-h);
+  background: #fff;
+}
+
+.my-activity-event__icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--card-hover);
+}
+
+.my-activity-event__icon svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.my-activity-event__icon--teal {
+  color: var(--teal);
+  background: var(--teal-d);
+}
+
+.my-activity-event__icon--gold {
+  color: var(--gold);
+  background: var(--gold-d);
+}
+
+.my-activity-event__icon--purple {
+  color: var(--purple);
+  background: var(--purple-d);
+}
+
+.my-activity-event__icon--red {
+  color: var(--red);
+  background: var(--red-d);
+}
+
+.my-activity-event__icon--blue {
+  color: var(--blue);
+  background: var(--blue-d);
+}
+
+.my-activity-event__icon--green {
+  color: var(--green);
+  background: var(--green-d);
+}
+
+.my-activity-event__body {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.my-activity-event__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.my-activity-event__title {
+  color: var(--text);
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.my-activity-event__bakery {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  color: var(--text-2);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.my-activity-event__bakery:hover {
+  color: var(--accent);
+}
+
+.my-activity-event__link-hint {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.my-activity-event__detail {
+  margin: 2px 0 0;
+  color: var(--text-2);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.my-activity-event__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+/* ---------- export confirmation ---------- */
+
+.my-activity-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.my-activity-modal[hidden] {
+  display: none;
+}
+
+.my-activity-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(34, 31, 26, 0.45);
+  backdrop-filter: blur(3px);
+  cursor: pointer;
+}
+
+.my-activity-modal__dialog {
+  position: relative;
+  width: min(460px, 100%);
+  display: grid;
+  gap: 18px;
+  padding: 24px 26px 26px;
+  border: 1px solid var(--card-border-h);
+  border-radius: var(--r-xl);
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+}
+
+.my-activity-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.my-activity-modal__head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.my-activity-modal__copy {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.my-activity-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.my-activity-secondary-btn {
+  padding: 10px 18px;
+  border: 1px solid var(--card-border-h);
+  border-radius: var(--r-sm);
+  background: var(--card-2);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.my-activity-secondary-btn:hover {
+  background: var(--card-hover);
+  color: var(--text);
+}
+
+body.my-activity-modal-open {
+  overflow: hidden;
+}
+
+/* One compact row for secondary list controls. It keeps the feed search near
+   the kind filter without turning either into another full-width filter tray. */
+.my-activity-inline-tools {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.my-activity-inline-tools .my-activity-toggle {
+  margin-bottom: 0;
+}
+
+.my-activity-compact-search {
+  flex: 0 1 260px;
+}
+
+.my-activity-compact-search .visit-log-input {
+  min-height: 34px;
+}
+
+#myVisitsMore,
+#myTimelineMore {
+  margin-top: 12px;
+}
+
+/* Dense work-queue rows: keep the information, remove card-like air. */
+#section-actions .my-activity-action {
+  padding: 9px 12px;
+}
+
+#section-visits .my-activity-visit {
+  padding: 8px 12px;
+}
+
+#section-timeline .my-activity-event {
+  padding: 8px 12px;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 900px) {
+
+  .my-activity-visit-head {
+    display: none;
+  }
+
+  .my-activity-visit {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "date score"
+      "main main"
+      "action action";
+    gap: 10px;
+  }
+
+  .my-activity-visit__date {
+    grid-area: date;
+    grid-auto-flow: column;
+    justify-content: start;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .my-activity-visit__main {
+    grid-area: main;
+  }
+
+  .my-activity-visit__score {
+    grid-area: score;
+    text-align: right;
+  }
+
+  .my-activity-visit__action {
+    grid-area: action;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+
+  .my-activity-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .my-activity-main {
+    width: min(calc(100% - 20px), 1360px);
+    padding-top: 14px;
+  }
+
+  .my-activity-overview {
+    padding: 13px;
+  }
+
+  .my-activity-overview__top {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .my-activity-intro__copy {
+    max-width: 52ch;
+  }
+
+  .my-activity-jump {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .my-activity-overview .my-activity-jump {
+    width: 100%;
+  }
+
+  .my-activity-focus {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .my-activity-focus > span {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .my-activity-focus a {
+    margin-left: 17px;
+  }
+
+  .my-activity-jump__link {
+    flex: 0 0 auto;
+  }
+
+  .my-activity-header__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .my-activity-card__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .my-activity-card__actions {
+    justify-content: flex-start;
+  }
+
+  .my-activity-inline-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .my-activity-compact-search {
+    flex-basis: auto;
+  }
+
+  .my-activity-action {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .my-activity-action__side {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

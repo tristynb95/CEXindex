@@ -150,18 +150,63 @@ window.GAILS = window.GAILS || {};
       '</div>';
   }
 
+  // A Coffee Partner may name an assignee as "@Name". The stored "@" is a
+  // typing affordance only — every read-only surface shows the bare name as
+  // ordinary text (see js/mentions.js).
+  function partnerHtml(value, fallback) {
+    var text = String(value == null ? '' : value);
+    if (!text) return escapeHtml(fallback || '—');
+    return window.GAILS.Mentions ? window.GAILS.Mentions.toHtml(text) : escapeHtml(text);
+  }
+
+  function partnerText(value) {
+    var text = String(value == null ? '' : value);
+    if (!text) return '';
+    return window.GAILS.Mentions ? window.GAILS.Mentions.toText(text) : text;
+  }
+
+  // A check-in has one user-facing ownership concept: Coffee Partner. Selected
+  // mentions replace the default (the person who posted it). `assignedTo`
+  // remains a storage detail for stable ids and inherited follow-ups, but it
+  // must not surface as a second, duplicate card in the report.
+  function siteVisitCoffeePartnerHtml(record) {
+    var attributed = window.GAILS.Attribution &&
+      typeof window.GAILS.Attribution.forVisit === 'function'
+      ? window.GAILS.Attribution.forVisit(record)
+      : [];
+
+    if (!attributed.length && window.GAILS.Mentions) {
+      attributed = window.GAILS.Mentions.toAssigneeList(record.assignedTo);
+      if (!attributed.length) {
+        attributed = window.GAILS.Mentions.resolveAssignees(record.coffeePartner);
+      }
+    }
+
+    if (!attributed.length) {
+      var meta = record.meta || {};
+      var poster = meta.createdBy || record.createdBy || meta.updatedBy || '';
+      if (poster) attributed = [{ name: '', email: poster }];
+    }
+
+    if (!attributed.length) return '—';
+    return attributed.map(function (entry) {
+      var label = entry.name || entry.email || entry.uid;
+      return '<span class="mention">' + escapeHtml(label) + '</span>';
+    }).join(' + ');
+  }
+
   function buildHeaderStatsHtml(record) {
     var scoreText = (record.score != null) ? record.score + ' / ' + (record.scoreMax != null ? record.scoreMax : '—') : '—';
     var cards = [
       { label: 'Score', value: scoreText },
-      { label: 'Coffee Partner', value: record.coffeePartner || '—' },
+      { label: 'Coffee Partner', html: partnerHtml(record.coffeePartner) },
       { label: 'Barista', value: record.mod || '—' },
       { label: 'Head Barista Present', value: record.headBaristaPresent || '—' },
       { label: 'Staff on Shift', value: record.numberOfStaff != null ? record.numberOfStaff : '—' }
     ];
     return '<div class="drill-summary">' + cards.map(function (c) {
       return '<div class="drill-card"><div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
-        '<div class="drill-card__value">' + escapeHtml(c.value) + '</div></div>';
+        '<div class="drill-card__value">' + (c.html || escapeHtml(c.value)) + '</div></div>';
     }).join('') + '</div>';
   }
 
@@ -1434,6 +1479,16 @@ window.GAILS = window.GAILS || {};
     var form = document.getElementById('addSiteVisitForm');
     if (form) form.reset();
 
+    // The Coffee Partner field doubles as the assignment control: type "@" to
+    // hand the visit to a colleague. Enhanced on first open (the modal markup
+    // is static, so once is enough) and re-rendered after every reset, because
+    // form.reset() clears the input without telling its display face.
+    var partnerInput = document.getElementById('addVisitPartner');
+    if (partnerInput && window.GAILS.MentionField) {
+      window.GAILS.MentionField.enhance(partnerInput);
+      window.GAILS.MentionField.refresh(partnerInput);
+    }
+
     // Pre-select the bakery when launched from an unvisited-site card
     if (presetBakery) {
       var hasOption = Array.prototype.some.call(select.options, function (o) { return o.value === presetBakery; });
@@ -1588,16 +1643,17 @@ window.GAILS = window.GAILS || {};
       titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
       subtitleEl.textContent = siteVisitKindLabel(record) + ' on ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
 
+      var meta = record.meta || {};
       var stats = [
-        { label: 'Logged By', value: record.meta && record.meta.updatedBy || '—' },
-        { label: 'Coffee Partner', value: record.coffeePartner || '—' },
+        { label: 'Logged By', value: meta.createdBy || record.createdBy || meta.updatedBy || '—' },
+        { label: 'Coffee Partner', html: siteVisitCoffeePartnerHtml(record) },
         { label: 'Barista', value: record.mod || '—' }
       ];
 
       var statsHtml = '<div class="drill-summary">' + stats.map(function (c) {
         return '<div class="drill-card">' +
           '<div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
-          '<div class="drill-card__value">' + escapeHtml(c.value) + '</div></div>';
+          '<div class="drill-card__value">' + (c.html || escapeHtml(c.value)) + '</div></div>';
       }).join('') + '</div>';
 
       bodyEl.innerHTML = statsHtml +
@@ -1622,6 +1678,30 @@ window.GAILS = window.GAILS || {};
     bodyEl.scrollTop = 0;
     if (!modalWasOpen) lockBackgroundScroll();
     requestAnimationFrame(function () { drawScoreChart(record); });
+  };
+
+  // Deep link support for my-activity.html, which links each visit straight to
+  // its report as index.html?visit=<id>#visit-log. The hash activates the tab
+  // (js/app.js); this opens the report itself. The visits node arrives
+  // asynchronously, so the id is held until the record it names exists and the
+  // report is opened exactly once — a later re-render must not reopen it after
+  // the user has closed it.
+  var pendingVisitDeepLinkId = (function () {
+    try {
+      return new URLSearchParams(window.location.search).get('visit') || '';
+    } catch (e) {
+      console.warn('Could not read the visit deep link:', e);
+      return '';
+    }
+  })();
+
+  window.GAILS.openVisitFromDeepLink = function () {
+    if (!pendingVisitDeepLinkId) return;
+    var visits = window.GAILS._allVisitsObj || {};
+    if (!visits[pendingVisitDeepLinkId]) return;
+    var visitId = pendingVisitDeepLinkId;
+    pendingVisitDeepLinkId = '';
+    window.GAILS.openVisitReportById(visitId);
   };
 
   window.GAILS.deleteVisit = function (visitId) {
@@ -2767,14 +2847,24 @@ window.GAILS = window.GAILS || {};
           submitBtn.textContent = 'Saving...';
           if (errorEl) errorEl.style.display = 'none';
 
+          var partnerField = document.getElementById('addVisitPartner');
+          // Resolved at submit rather than at pick time, so deleting a mention
+          // afterwards really does un-assign. A field naming two people
+          // ("@Jamie @Tristen") assigns the visit to both.
+          var assignees = window.GAILS.MentionField
+            ? window.GAILS.MentionField.assigneesFor(partnerField)
+            : [];
           var record = {
             bakery: document.getElementById('addVisitBakery').value,
             visitKind: document.getElementById('addVisitType').value || 'checkin',
             date: document.getElementById('addVisitDate').value,
             time: document.getElementById('addVisitTime').value,
-            coffeePartner: document.getElementById('addVisitPartner').value || '',
+            coffeePartner: (partnerField.value || '').trim(),
             mod: document.getElementById('addVisitMod').value || '',
-            comments: document.getElementById('addVisitComments').value || ''
+            comments: document.getElementById('addVisitComments').value || '',
+            // Absent rather than empty when nobody was mentioned, which is what
+            // keeps every visit logged before assignment existed unassigned.
+            assignedTo: assignees.length ? assignees : null
           };
 
           // Follow-ups raised/ticked on this visit, collected before the async
@@ -2803,7 +2893,10 @@ window.GAILS = window.GAILS || {};
                 title: t.title,
                 dueDate: t.dueDate,
                 priority: t.priority,
-                sourceVisitId: newVisitId || null
+                sourceVisitId: newVisitId || null,
+                // Actions raised during a visit belong to whoever the visit was
+                // handed to — assigning a visit assigns its follow-ups with it.
+                assignedTo: assignees.length ? assignees : null
               }));
             });
             if (followUpOps.length) {
@@ -3116,7 +3209,7 @@ window.GAILS = window.GAILS || {};
 
         if (searchVal) {
           var bakeryMatch = v.bakery.toLowerCase().indexOf(searchVal) !== -1;
-          var partnerMatch = v.coffeePartner && v.coffeePartner.toLowerCase().indexOf(searchVal) !== -1;
+          var partnerMatch = partnerText(v.coffeePartner).toLowerCase().indexOf(searchVal) !== -1 && !!v.coffeePartner;
           var auditorMatch = v.auditorName && v.auditorName.toLowerCase().indexOf(searchVal) !== -1;
           if (!bakeryMatch && !partnerMatch && !auditorMatch) return false;
         }
@@ -3188,6 +3281,7 @@ window.GAILS = window.GAILS || {};
           { label: 'Ops Area', type: 'text', width: 18 },
           { label: 'Visit Type', type: 'text', width: 20 },
           { label: 'Coffee Partner / Auditor', type: 'text', width: 24 },
+          { label: 'Attributed To', type: 'text', width: 24 },
           // Scores land as a real percentage across every visit type so the
           // column sorts; routine visits keep their raw points alongside.
           { label: 'Score %', type: 'percent', width: 9 },
@@ -3210,7 +3304,8 @@ window.GAILS = window.GAILS || {};
             G.getBakeryRegion ? G.getBakeryRegion(v.bakery) : '',
             G.getBakeryOps ? G.getBakeryOps(v.bakery) : '',
             visitTypeLabel(v),
-            (v.type === 'cqv' || v.type === 'nbo') ? (v.auditorName || '') : (v.coffeePartner || ''),
+            (v.type === 'cqv' || v.type === 'nbo') ? (v.auditorName || '') : partnerText(v.coffeePartner),
+            window.GAILS.Attribution ? window.GAILS.Attribution.namesText(window.GAILS.Attribution.forVisit(v)) : '',
             pct != null ? pct / 100 : '',
             isRoutine ? v.score : '',
             isRoutine ? v.scoreMax : '',
@@ -3275,7 +3370,8 @@ window.GAILS = window.GAILS || {};
           var shortDate = dateLabel.split(', ')[1] || dateLabel;
           var bakeryLabel = G.getBakeryMapLabel ? G.getBakeryMapLabel(v.bakery) : v.bakery;
           var isAuditedType = v.type === 'cqv' || v.type === 'nbo';
-          var partnerColText = isAuditedType ? (v.auditorName || '—') : (v.coffeePartner || '—');
+          var partnerColText = isAuditedType ? (v.auditorName || '—') : (partnerText(v.coffeePartner) || '—');
+          var partnerColHtml = isAuditedType ? escapeHtml(partnerColText) : partnerHtml(v.coffeePartner);
           // The row always shows the actual Ops Area regardless of the
           // active grouping — grouping by Region/Visit Type would otherwise
           // lose that context entirely.
@@ -3290,7 +3386,7 @@ window.GAILS = window.GAILS || {};
             '<h3 class="visit-log-row__bakery">' + escapeHtml(bakeryLabel) + '</h3>' +
             '<span class="visit-log-row__manager">Ops Area: ' + escapeHtml(rowOpsLabel) + '</span>' +
             '</div>' +
-            '<div class="visit-log-row__partner" title="' + escapeHtml(isAuditedType ? 'Auditor: ' + partnerColText : partnerColText) + '">' + escapeHtml(partnerColText) + '</div>' +
+            '<div class="visit-log-row__partner" title="' + escapeHtml(isAuditedType ? 'Auditor: ' + partnerColText : partnerColText) + '">' + partnerColHtml + '</div>' +
             '<div class="visit-log-row__score-col" style="color:' + scoreColor + ';">' + escapeHtml(scoreText) + '</div>' +
             '<div class="visit-log-row__notes-col">' +
             '<div class="visit-log-row__tags">' + tagsHtml + '</div>' +

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Activity — GAIL's Coffee Experience Dashboard</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" href="favicon.ico">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#B5312A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/my-activity.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Powers the section-score chart inside a CQV report. js/charts.js degrades
+       without it, so the report still opens if the CDN is unreachable. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+
+<body class="my-activity-body">
+  <div class="glass-bg">
+    <div class="glass-bg-blob blob1"></div>
+    <div class="glass-bg-blob blob2"></div>
+    <div class="glass-bg-blob blob3"></div>
+    <div class="glass-noise"></div>
+  </div>
+
+  <div id="myActivityGuard" class="admin-page-guard">
+    <div class="auth-loading-content">
+      <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+      <p id="myActivityGuardText" class="auth-loading__text">Loading your activity <span
+          class="auth-small-spinner"></span></p>
+    </div>
+  </div>
+
+  <div id="myActivityPage" class="my-activity-page" hidden>
+    <header class="my-activity-header">
+      <a class="my-activity-header__brand" href="index.html" aria-label="Return to dashboard">
+        <img src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
+        <span>
+          <small>Coffee Experience Dashboard</small>
+          <strong>My Activity</strong>
+        </span>
+      </a>
+      <div class="my-activity-header__actions">
+        <a id="myActivityBackLink" href="index.html"
+          class="my-activity-header__link standalone-header-button">&#8592; Dashboard</a>
+        <div data-standalone-account-menu></div>
+      </div>
+    </header>
+
+    <main class="my-activity-main">
+      <section class="my-activity-overview" aria-labelledby="myActivityTitle">
+        <div class="my-activity-overview__top">
+          <div class="my-activity-intro">
+            <p class="my-activity-eyebrow">Your workspace</p>
+            <h1 id="myActivityTitle">My Activity</h1>
+            <p id="myActivityGreeting" class="my-activity-intro__copy">Your work, priorities and progress in one
+              place.</p>
+          </div>
+
+          <nav id="myActivityJump" class="my-activity-jump" aria-label="Jump to a section">
+            <a href="#section-actions" class="my-activity-jump__link" data-section-link="section-actions">Actions</a>
+            <a href="#section-visits" class="my-activity-jump__link" data-section-link="section-visits">Visits</a>
+            <a href="#section-timeline" class="my-activity-jump__link"
+              data-section-link="section-timeline">Activity</a>
+          </nav>
+        </div>
+
+        <div id="myActivityFocus" class="my-activity-focus" role="status" aria-live="polite"></div>
+        <div id="myActivityStats" class="my-activity-stats" aria-label="Your activity at a glance"></div>
+      </section>
+
+      <!-- ========== 1. OPEN ACTIONS ========== -->
+      <section id="section-actions" class="my-activity-card" aria-labelledby="myActionsTitle">
+        <div class="my-activity-card__head">
+          <div>
+            <p class="my-activity-card__eyebrow">Follow-up tasks</p>
+            <h2 id="myActionsTitle">Open actions</h2>
+            <p class="my-activity-card__copy">Tasks you raised or closed off. Tick one to complete it — the change
+              syncs everywhere instantly.</p>
+          </div>
+          <div class="my-activity-card__actions">
+            <span id="myActionsCount" class="my-activity-pill">0 open</span>
+            <button type="button" id="myActionsExportBtn" class="btn my-activity-export-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </svg>
+              Export to Excel
+            </button>
+          </div>
+        </div>
+
+        <div id="myActionsStatus" class="visit-log-toggle my-activity-toggle" role="group"
+          aria-label="Filter your actions by status">
+          <button type="button" class="visit-log-toggle-btn active" data-status="open">Open</button>
+          <button type="button" class="visit-log-toggle-btn" data-status="overdue">Overdue</button>
+          <button type="button" class="visit-log-toggle-btn" data-status="soon">Due soon</button>
+          <button type="button" class="visit-log-toggle-btn" data-status="done">Completed</button>
+          <button type="button" class="visit-log-toggle-btn" data-status="all">All</button>
+        </div>
+
+        <div class="visit-log-filters my-activity-filters">
+          <div class="visit-log-filter-control">
+            <label for="myActionsSearch">Search</label>
+            <input type="search" id="myActionsSearch" class="visit-log-input" placeholder="Action or detail&hellip;"
+              autocomplete="off">
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact">
+            <label for="myActionsOps">Ops Area</label>
+            <select id="myActionsOps" class="visit-log-select">
+              <option value="">All Areas</option>
+            </select>
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact">
+            <label for="myActionsBakery">Bakery</label>
+            <select id="myActionsBakery" class="visit-log-select">
+              <option value="">All Bakeries</option>
+            </select>
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact">
+            <label for="myActionsSort">Sort By</label>
+            <select id="myActionsSort" class="visit-log-select">
+              <option value="dueAsc">Due Date (Soonest)</option>
+              <option value="dueDesc">Due Date (Latest)</option>
+              <option value="priority">Priority (High-Low)</option>
+              <option value="createdDesc">Date Added (Newest)</option>
+              <option value="createdAsc">Date Added (Oldest)</option>
+              <option value="bakeryAsc">Bakery Name (A-Z)</option>
+            </select>
+          </div>
+          <button type="button" id="myActionsResetBtn" class="visit-log-reset-btn" title="Reset action filters"
+            aria-label="Reset action filters">
+            <svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
+            </svg>
+            <svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
+              <path d="m22 3-5 5" />
+              <path d="m17 3 5 5" />
+            </svg>
+            <span class="visit-log-reset-btn__label">Reset</span>
+          </button>
+        </div>
+
+        <div id="myActionsSummary" class="my-activity-summary" role="status" aria-live="polite"></div>
+        <div id="myActionsList" class="my-activity-actions-list"></div>
+      </section>
+
+      <!-- ========== 2. MY VISITS ========== -->
+      <section id="section-visits" class="my-activity-card" aria-labelledby="myVisitsTitle">
+        <div class="my-activity-card__head">
+          <div>
+            <p class="my-activity-card__eyebrow">Visit log</p>
+            <h2 id="myVisitsTitle">My visits</h2>
+            <p class="my-activity-card__copy">Every check-in, routine coffee visit, CQV, and NBO logged under your
+              name. Filter it, then export exactly what you see.</p>
+          </div>
+          <div class="my-activity-card__actions">
+            <button type="button" id="myVisitsExportBtn" class="btn my-activity-export-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </svg>
+              Export to Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="visit-log-filters my-activity-filters">
+          <div class="visit-log-filter-control">
+            <label for="myVisitsSearch">Search</label>
+            <input type="search" id="myVisitsSearch" class="visit-log-input"
+              placeholder="Bakery, partner or notes&hellip;" autocomplete="off">
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact">
+            <label for="myVisitsPeriod">Date</label>
+            <select id="myVisitsPeriod" class="visit-log-select">
+              <option value="0">All Time</option>
+              <option value="currentMonth">This Month</option>
+              <option value="1">Last Month</option>
+              <option value="3">Last 3 Months</option>
+              <option value="6">Last 6 Months</option>
+              <option value="12" selected>Last 12 Months</option>
+              <option value="thisQuarter">This Quarter</option>
+              <option value="lastQuarter">Last Quarter</option>
+              <option value="thisYear">This Year</option>
+              <option value="lastYear">Last Year</option>
+              <option value="custom">Custom range&hellip;</option>
+            </select>
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact my-activity-custom-range" hidden>
+            <label for="myVisitsFrom">From</label>
+            <input type="date" id="myVisitsFrom" class="visit-log-input">
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact my-activity-custom-range" hidden>
+            <label for="myVisitsTo">To</label>
+            <input type="date" id="myVisitsTo" class="visit-log-input">
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact">
+            <label for="myVisitsOps">Ops Area</label>
+            <select id="myVisitsOps" class="visit-log-select">
+              <option value="">All Areas</option>
+            </select>
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact">
+            <label for="myVisitsBakery">Bakery</label>
+            <select id="myVisitsBakery" class="visit-log-select">
+              <option value="">All Bakeries</option>
+            </select>
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact">
+            <label for="myVisitsSort">Sort By</label>
+            <select id="myVisitsSort" class="visit-log-select">
+              <option value="dateDesc">Date (Newest)</option>
+              <option value="dateAsc">Date (Oldest)</option>
+              <option value="nameAsc">Bakery Name (A-Z)</option>
+              <option value="nameDesc">Bakery Name (Z-A)</option>
+              <option value="type">Visit Type</option>
+              <option value="scoreDesc">Score (Highest)</option>
+            </select>
+          </div>
+          <button type="button" id="myVisitsResetBtn" class="visit-log-reset-btn" title="Reset visit filters"
+            aria-label="Reset visit filters">
+            <svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
+            </svg>
+            <svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
+              <path d="m22 3-5 5" />
+              <path d="m17 3 5 5" />
+            </svg>
+            <span class="visit-log-reset-btn__label">Reset</span>
+          </button>
+        </div>
+
+        <div id="myVisitsSummary" class="my-activity-summary" role="status" aria-live="polite"></div>
+        <div id="myVisitsList" class="my-activity-visit-list"></div>
+        <button type="button" id="myVisitsMore" class="visit-log-show-more" hidden>Show more</button>
+      </section>
+
+      <!-- ========== 3. ACTIVITY FEED ========== -->
+      <section id="section-timeline" class="my-activity-card" aria-labelledby="myTimelineTitle">
+        <div class="my-activity-card__head">
+          <div>
+            <p class="my-activity-card__eyebrow">Chronological</p>
+            <h2 id="myTimelineTitle">Activity feed</h2>
+            <p class="my-activity-card__copy">Visits, bakery notes, and follow-up tasks added, edited, or completed —
+              newest first.</p>
+          </div>
+          <div class="my-activity-card__actions">
+            <span id="myTimelineCount" class="my-activity-pill">0 events</span>
+          </div>
+        </div>
+
+        <div class="my-activity-inline-tools">
+          <div id="myTimelineFilter" class="visit-log-toggle my-activity-toggle" role="group"
+            aria-label="Filter your activity feed">
+            <button type="button" class="visit-log-toggle-btn active" data-kind="all">Everything</button>
+            <button type="button" class="visit-log-toggle-btn" data-kind="visit">Visits</button>
+            <button type="button" class="visit-log-toggle-btn" data-kind="note">Bakery notes</button>
+            <button type="button" class="visit-log-toggle-btn" data-kind="task">Follow-up tasks</button>
+          </div>
+          <label class="my-activity-compact-search" for="myTimelineSearch">
+            <span class="sr-only">Search activity feed</span>
+            <input type="search" id="myTimelineSearch" class="visit-log-input"
+              placeholder="Search activity&hellip;" autocomplete="off">
+          </label>
+        </div>
+
+        <div id="myTimelineSummary" class="my-activity-summary" role="status" aria-live="polite"></div>
+        <div id="myTimelineList" class="my-activity-timeline"></div>
+        <button type="button" id="myTimelineMore" class="visit-log-show-more" hidden>Show more</button>
+      </section>
+    </main>
+  </div>
+
+  <!-- EXPORT CONFIRMATION — no file is written until this is confirmed. -->
+  <div id="myActivityConfirmModal" class="my-activity-modal" role="dialog" aria-modal="true"
+    aria-labelledby="myActivityConfirmTitle" hidden>
+    <button type="button" id="myActivityConfirmBackdrop" class="my-activity-modal__backdrop"
+      aria-label="Cancel download"></button>
+    <section class="my-activity-modal__dialog">
+      <div class="my-activity-modal__head">
+        <div>
+          <p class="my-activity-card__eyebrow">Confirm download</p>
+          <h2 id="myActivityConfirmTitle">Download Excel File</h2>
+        </div>
+        <button type="button" id="myActivityConfirmClose" class="modal-close-btn" aria-label="Close confirmation"
+          title="Close">&#10005;</button>
+      </div>
+      <p id="myActivityConfirmMessage" class="my-activity-modal__copy"></p>
+      <div class="my-activity-modal__actions">
+        <button type="button" id="myActivityConfirmCancel" class="my-activity-secondary-btn">Cancel</button>
+        <button type="button" id="myActivityConfirmBtn" class="btn">Download</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- VISIT REPORT — the dashboard's modal, markup and all, so js/visit-report.js
+       can render into it unchanged. -->
+  <div id="visitReportModal" class="drill-modal" style="display:none;"
+    onclick="if(event.target===this)GAILS.closeVisitReport()">
+    <div class="drillInner">
+      <div class="drill-modal-header">
+        <div>
+          <h3 class="drill-modal-title" id="visitReportTitle"></h3>
+          <p class="drill-modal-subtitle" id="visitReportSubtitle"></p>
+        </div>
+        <div class="visit-report-header-actions">
+          <div class="visit-report-history-nav" role="group" aria-label="Bakery visit history">
+            <button type="button" class="visit-report-nav-btn" aria-label="Previous visit" disabled>&#8249;</button>
+            <span class="visit-report-history-pos" aria-label="Visit 1 of 1">1 of 1</span>
+            <button type="button" class="visit-report-nav-btn" aria-label="Next visit" disabled>&#8250;</button>
+          </div>
+          <button type="button" class="drill-close-btn visit-report-print-btn" onclick="window.print()">&#128438;
+            Print</button>
+          <button type="button" class="modal-close-btn" onclick="GAILS.closeVisitReport()"
+            aria-label="Close visit report" title="Close">&#10005;</button>
+        </div>
+      </div>
+      <div id="visitReportBody" class="drill-modal-body visit-report-body"></div>
+    </div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/config.js"></script>
+  <!-- The routine visit schema names each section, which is what turns a
+       routine visit's per-section comments into readable notes. -->
+  <script src="js/visit-schema.js"></script>
+  <script src="js/charts.js"></script>
+  <!-- js/visit-report.js reads GAILS.CQVShared at load time, and CQVShared
+       calls CQVCriticals, so this order is load-bearing. -->
+  <script src="js/cqv-criticals.js"></script>
+  <script src="js/cqv-shared.js"></script>
+  <script src="js/nbo-shared.js"></script>
+  <script src="js/mentions.js"></script>
+  <script src="js/attribution.js"></script>
+  <!-- Renders the report itself. It is the dashboard's own renderer, reused
+       verbatim so a report reads identically on both pages — see the comment
+       above openReportModal in js/my-activity.js for what this page feeds it. -->
+  <script src="js/visit-report.js"></script>
+  <script src="js/custom-selects.js"></script>
+  <script type="module" src="js/my-activity.js"></script>
+</body>
+
+</html>

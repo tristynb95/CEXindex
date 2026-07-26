@@ -1,0 +1,642 @@
+/* ========== MY TEAM ==========
+   Layered on top of css/my-activity.css, which supplies the page shell, guard,
+   stat tiles, action rows, and visit rows. Only the period control and the
+   roster are new here. */
+
+.my-team-period {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.my-team-period label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-l);
+}
+
+.my-team-period .visit-log-select {
+  width: auto;
+  min-width: 160px;
+  min-height: 36px;
+}
+
+.my-team-scope-note {
+  font-size: 0.82rem;
+  color: var(--muted-l);
+}
+
+.my-team-overview__context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.my-team-overview .my-team-scope-note {
+  min-width: 0;
+}
+
+@media (min-width: 1040px) {
+  .my-team-overview__context {
+    grid-column: 1;
+    align-items: flex-start;
+    justify-content: center;
+    flex-direction: column;
+  }
+}
+
+/* ---------- manager insights ---------- */
+
+.my-team-insights {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(250, 247, 242, 0.96));
+}
+
+.my-team-insight-callout {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  margin: -2px 0 12px;
+  padding: 8px 11px;
+  border: 1px solid rgba(201, 132, 42, 0.22);
+  border-radius: 10px;
+  background: rgba(201, 132, 42, 0.08);
+  color: var(--text-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.my-team-insight-callout::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(201, 132, 42, 0.12);
+  content: "";
+}
+
+.my-team-insight-callout--alert {
+  border-color: rgba(178, 42, 36, 0.22);
+  background: rgba(178, 42, 36, 0.07);
+}
+
+.my-team-insight-callout--alert::before {
+  background: var(--red);
+  box-shadow: 0 0 0 4px rgba(178, 42, 36, 0.1);
+}
+
+.my-team-insight-callout--positive {
+  border-color: rgba(24, 120, 100, 0.2);
+  background: rgba(24, 120, 100, 0.07);
+}
+
+.my-team-insight-callout--positive::before {
+  background: var(--teal);
+  box-shadow: 0 0 0 4px rgba(24, 120, 100, 0.1);
+}
+
+.my-team-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.my-team-chart-card {
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.my-team-chart-card--trend {
+  grid-column: 1 / -1;
+}
+
+.my-team-chart-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.my-team-chart-card__kicker {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 0.63rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.my-team-chart-card h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.my-team-chart-card__note {
+  margin: 3px 0 0;
+  color: var(--muted-l);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.my-team-chart-card__value {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.my-team-chart-legend,
+.my-team-trend-direction {
+  color: var(--muted-l);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.my-team-chart-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.my-team-chart-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.my-team-trend-direction--up {
+  color: var(--teal);
+}
+
+.my-team-trend-direction--down {
+  color: var(--red);
+}
+
+.my-team-bar-chart {
+  display: grid;
+  gap: 8px;
+}
+
+.my-team-chart-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 112px) minmax(80px, 1fr) 30px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.my-team-chart-row:hover .my-team-chart-row__label,
+.my-team-chart-row:focus-visible .my-team-chart-row__label {
+  color: var(--accent);
+}
+
+.my-team-chart-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 5px;
+}
+
+.my-team-chart-row__label {
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-team-chart-row__track {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  background: rgba(34, 31, 26, 0.07);
+}
+
+.my-team-chart-row__bar,
+.my-team-chart-row__risk {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 3px;
+  border-radius: inherit;
+}
+
+.my-team-chart-row__bar {
+  background: linear-gradient(90deg, #A32520, #D26A58);
+}
+
+.my-team-chart-row__bar--workload {
+  background: linear-gradient(90deg, rgba(41, 99, 140, 0.75), rgba(66, 133, 176, 0.7));
+}
+
+.my-team-chart-row__risk {
+  background: var(--red);
+}
+
+.my-team-chart-row__value {
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.my-team-chart-row__bar.is-zero {
+  min-width: 0;
+}
+
+.my-team-chart-more {
+  margin: 1px 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+.my-team-chart-empty {
+  display: grid;
+  min-height: 84px;
+  place-items: center;
+  border: 1px dashed var(--card-border);
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.my-team-trend-chart {
+  display: grid;
+  grid-template-columns: repeat(var(--trend-count, 6), minmax(26px, 1fr));
+  align-items: end;
+  gap: 8px;
+  min-height: 118px;
+  padding: 10px 6px 0;
+  border-bottom: 1px solid var(--card-border);
+  background-image: linear-gradient(to bottom, rgba(34, 31, 26, 0.045) 1px, transparent 1px);
+  background-size: 100% 33.333%;
+}
+
+.my-team-trend-column {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: end;
+  gap: 6px;
+  height: 108px;
+  min-width: 0;
+}
+
+.my-team-trend-column__plot {
+  height: 84px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.my-team-trend-column__bar {
+  position: relative;
+  width: min(38px, 72%);
+  min-height: 3px;
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, #D26A58, #A32520);
+}
+
+.my-team-trend-column__bar span {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 3px);
+  transform: translateX(-50%);
+  color: var(--text-2);
+  font-size: 0.67rem;
+  font-weight: 800;
+}
+
+.my-team-trend-column__label {
+  overflow: hidden;
+  color: var(--muted-l);
+  font-size: 0.64rem;
+  font-weight: 600;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 1180px) {
+  .my-team-chart-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(300px, 1.15fr);
+  }
+
+  .my-team-chart-card--trend {
+    grid-column: auto;
+  }
+
+  .my-team-chart-card--trend .my-team-trend-chart {
+    grid-template-columns: repeat(var(--trend-count, 6), minmax(16px, 1fr));
+    gap: 4px;
+  }
+}
+
+/* ---------- the roster ---------- */
+
+.my-team-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* Each person is a button because selecting them filters the two sections
+   below — it is a control, not a card that happens to be clickable. */
+.my-team-person {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.4fr) minmax(240px, 2fr) minmax(140px, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 13px;
+  text-align: left;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.my-team-person:hover {
+  background: var(--card-hover, var(--card));
+  border-color: var(--accent-soft, var(--card-border));
+  box-shadow: 0 6px 18px rgba(34, 31, 26, 0.08);
+  transform: translateY(-1px);
+}
+
+.my-team-person:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.my-team-person.is-selected {
+  background: rgba(181, 49, 42, 0.05);
+  border-color: rgba(181, 49, 42, 0.35);
+  box-shadow: 0 8px 22px rgba(181, 49, 42, 0.12);
+}
+
+.my-team-person__id {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.my-team-person__id strong {
+  font-size: 0.97rem;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-team-person__id span {
+  font-size: 0.76rem;
+  color: var(--muted-l);
+}
+
+.my-team-person__figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.my-team-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 56px;
+  padding: 4px 8px;
+  border-radius: 9px;
+  background: rgba(34, 31, 26, 0.03);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-l);
+}
+
+.my-team-figure strong {
+  font-size: 0.94rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.my-team-figure--alert {
+  background: rgba(181, 49, 42, 0.08);
+  color: var(--accent);
+}
+
+.my-team-figure--alert strong {
+  color: var(--accent);
+}
+
+.my-team-person__last {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: var(--muted-l);
+  text-align: right;
+}
+
+.my-team-person__branch {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+/* Reporting depth, so an area head barista sits visibly under the coffee
+   partner they report to. The indent and a lighter, flatter surface carry the
+   hierarchy — deliberately not a coloured left-edge bar, which reads as
+   decoration rather than structure and stacks up badly three levels deep. */
+.my-team-person--nested {
+  margin-left: calc(var(--team-depth, 0) * 20px);
+  width: auto;
+  background: rgba(34, 31, 26, 0.015);
+  border-color: rgba(34, 31, 26, 0.08);
+  box-shadow: none;
+}
+
+.my-team-person--nested:hover {
+  box-shadow: 0 4px 12px rgba(34, 31, 26, 0.06);
+}
+
+.my-team-person--nested .my-team-person__id strong {
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+
+.my-team-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid rgba(181, 49, 42, 0.22);
+  border-radius: 10px;
+  background: var(--accent-d);
+  color: var(--text-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.my-team-selection[hidden] {
+  display: none;
+}
+
+.my-team-selection button {
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.my-team-roster-tools,
+.my-team-list-tools {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(170px, 220px) auto;
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--toolbar-bg);
+}
+
+.my-team-roster-tools .visit-log-filter-control,
+.my-team-list-tools .visit-log-filter-control {
+  min-width: 0;
+}
+
+.my-team-roster-tools .visit-log-filter-control > span,
+.my-team-list-tools .visit-log-filter-control > span {
+  color: var(--muted-l);
+  font-size: var(--micro-label-size);
+  font-weight: var(--micro-label-weight);
+  letter-spacing: var(--micro-label-track);
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.my-team-roster-tools .visit-log-input,
+.my-team-roster-tools .visit-log-select,
+.my-team-list-tools .visit-log-input,
+.my-team-list-tools .visit-log-select {
+  min-height: 36px;
+}
+
+.my-team-roster-tools .visit-log-reset-btn,
+.my-team-list-tools .visit-log-reset-btn {
+  align-self: end;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.my-team-roster-tools .visit-log-reset-btn__label,
+.my-team-list-tools .visit-log-reset-btn__label {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .my-team-overview__context {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .my-team-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .my-team-chart-card--trend {
+    grid-column: auto;
+  }
+
+  .my-team-person {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Indenting three levels deep leaves no room for the figures on a phone, so
+     depth collapses to a single step and the tint carries the rest. */
+  .my-team-person--nested {
+    margin-left: 12px;
+  }
+
+  .my-team-person__last {
+    text-align: left;
+  }
+
+  .my-team-roster-tools,
+  .my-team-list-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .my-team-roster-tools .visit-log-reset-btn,
+  .my-team-list-tools .visit-log-reset-btn {
+    width: 100%;
+    padding: 0 16px;
+  }
+
+  .my-team-roster-tools .visit-log-reset-btn__label,
+  .my-team-list-tools .visit-log-reset-btn__label {
+    display: inline;
+  }
+}
+
+@media (max-width: 560px) {
+  .my-team-period {
+    width: 100%;
+  }
+
+  .my-team-period .visit-log-select {
+    flex: 1 1 auto;
+  }
+
+  .my-team-chart-card {
+    padding: 12px;
+  }
+
+  .my-team-chart-row {
+    grid-template-columns: minmax(72px, 96px) minmax(70px, 1fr) 28px;
+    gap: 6px;
+  }
+
+  .my-team-trend-chart {
+    gap: 4px;
+    overflow-x: auto;
+  }
+}

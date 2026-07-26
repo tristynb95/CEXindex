@@ -29,7 +29,9 @@ test('uses one accessible close-button component across every modal surface', ()
   ];
 
   assert.equal(modalCloseButtons(index).length, 8);
-  assert.equal(modalCloseButtons(admin).length, 3);
+  // Visit detail, delete confirm, PDF import confirm, plus the three People &
+  // Access dialogs: person access, role editor, and invitation.
+  assert.equal(modalCloseButtons(admin).length, 6);
   assert.equal(modalCloseButtons(profile).length, 1);
   assert.equal(modalCloseButtons(bakeryProfile).length, 2);
 
