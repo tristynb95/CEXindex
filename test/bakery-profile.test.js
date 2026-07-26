@@ -392,3 +392,39 @@ test('bakery note path keys are safe for Firebase paths', () => {
   const key = context.result("GAIL's Test./#[$]");
   assert.doesNotMatch(key, /[.#$/[\]]/);
 });
+
+test('company rank counts each bakery once, not each stored row', () => {
+  const source = ['isScoredRecord', 'companyRecordsForMonth', 'companyRankForRecord']
+    .map((name) => script.match(new RegExp('function ' + name + '\\(.*?\\) \\{[\\s\\S]*?\\n\\}'))[0])
+    .join('\n');
+  const record = (b, ac, extra) => Object.assign({ b, m: 'Jun 26', ac, v: 20 }, extra);
+  const context = {
+    bakeryName: 'Union Street, Bath',
+    // The dataset carries this site twice under punctuation variants — the
+    // shared alias lookup collapses both onto one canonical name.
+    dashboardRecords: [
+      record('Union Street, Bath', 80),
+      record('Union Street - Bath', 80, { v: 4 }),
+      record('Alpha', 90),
+      record('Bravo', 70),
+      record('Charlie', 60, { noData: true }),
+      record('Delta', 95, { m: 'May 26' })
+    ],
+    canonicalName(value) {
+      const name = String(value || '').trim();
+      return name === 'Union Street - Bath' ? 'Union Street, Bath' : name;
+    },
+    sameBakery(value) { return context.canonicalName(value) === context.bakeryName; },
+    Number, Object, isNaN, Math
+  };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+
+  const rank = context.companyRankForRecord(record('Union Street, Bath', 80));
+  // Alpha, Union Street, Bravo — the duplicate row and the unscored bakery are
+  // both out, and other months never join the cohort.
+  assert.equal(rank.total, 3);
+  assert.equal(rank.rank, 2);
+  assert.equal(rank.topPercent, 67);
+  assert.equal(context.companyRecordsForMonth('Jun 26').length, 3);
+});

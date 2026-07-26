@@ -272,12 +272,34 @@ function latestDashboardRecord() {
     .sort(function(a, b) { return monthSortKey(b.m) - monthSortKey(a.m); })[0] || null;
 }
 
+function isScoredRecord(record) {
+  return !!record && !record.noData && !record.incompletePeriod &&
+    record.ac !== null && record.ac !== undefined && !isNaN(Number(record.ac));
+}
+
+// One scored record per bakery for a month, keyed on the canonical name.
+// The dataset can carry the same site under alias/punctuation variants (e.g.
+// "Union Street - Bath" and "Union Street, Bath"), and the dashboard collapses
+// those into a single row — counting the raw records here instead would rank
+// against more entries than the company has bakeries.
+function companyRecordsForMonth(month) {
+  var byBakery = {};
+  dashboardRecords.forEach(function(candidate) {
+    if (!candidate || candidate.m !== month || !isScoredRecord(candidate)) return;
+    var name = canonicalName(candidate.b);
+    if (!name) return;
+    var existing = byBakery[name];
+    // Prefer the row the rest of the profile is reporting on for this bakery,
+    // and otherwise the one with the most responses behind its score.
+    if (!existing || Number(candidate.v || 0) > Number(existing.v || 0)) byBakery[name] = candidate;
+  });
+  return Object.keys(byBakery).map(function(name) { return byBakery[name]; });
+}
+
 function companyRankForRecord(record) {
-  if (!record || !record.m || record.noData || record.incompletePeriod ||
-      record.ac === null || record.ac === undefined || isNaN(Number(record.ac))) return null;
-  var ranked = dashboardRecords.filter(function(candidate) {
-    return candidate && candidate.m === record.m && !candidate.noData && !candidate.incompletePeriod &&
-      candidate.ac !== null && candidate.ac !== undefined && !isNaN(Number(candidate.ac));
+  if (!record || !record.m || !isScoredRecord(record)) return null;
+  var ranked = companyRecordsForMonth(record.m).map(function(candidate) {
+    return sameBakery(candidate.b) ? record : candidate;
   }).sort(function(first, second) {
     var benchmarkDifference = Number(second.ac) - Number(first.ac);
     if (benchmarkDifference) return benchmarkDifference;
@@ -477,6 +499,10 @@ function renderPerformanceChart() {
   var bakeryRecordsByMonth = {};
   dashboardRecords.forEach(function(record) {
     if (!record || !sameBakery(record.b) || !record.m) return;
+    // Alias variants of this bakery can appear as separate rows for the same
+    // month; keep the scored one so the trend doesn't drop to a gap.
+    var existing = bakeryRecordsByMonth[record.m];
+    if (existing && isScoredRecord(existing) && !isScoredRecord(record)) return;
     bakeryRecordsByMonth[record.m] = record;
   });
 
@@ -485,9 +511,7 @@ function renderPerformanceChart() {
   });
   var bakeryScores = months.map(function(month) {
     var record = bakeryRecordsByMonth[month];
-    if (!record || record.noData || record.incompletePeriod ||
-        record.ac === null || record.ac === undefined || isNaN(Number(record.ac))) return null;
-    return Number(record.ac);
+    return isScoredRecord(record) ? Number(record.ac) : null;
   });
   var scoredPeriods = bakeryScores.filter(function(score) { return score !== null; }).length;
 
@@ -507,15 +531,10 @@ function renderPerformanceChart() {
   }
 
   var companyAverage = months.map(function(month) {
-    var total = 0;
-    var count = 0;
-    dashboardRecords.forEach(function(record) {
-      if (!record || record.m !== month || record.noData || record.incompletePeriod ||
-          record.ac === null || record.ac === undefined || isNaN(Number(record.ac))) return;
-      total += Number(record.ac);
-      count++;
-    });
-    return count ? total / count : null;
+    var scored = companyRecordsForMonth(month);
+    if (!scored.length) return null;
+    var total = scored.reduce(function(sum, record) { return sum + Number(record.ac); }, 0);
+    return total / scored.length;
   });
 
   canvas.hidden = false;
