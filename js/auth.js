@@ -706,6 +706,7 @@ onAuthStateChanged(auth, async (user) => {
         // Scopes Bakery Reports client-side: the user's assigned ops area, and
         // the master switch (live-synced), are read by js/visit-report.js.
         window.GAILS.userOpsArea = (userProfile && userProfile.opsArea) || '';
+        applyMyActivityAccess(userProfile);
         showApp(isAdmin, permissions);
         applyDashboardTabPermissions(permissions);
         startSiteMetaSync();
@@ -742,6 +743,7 @@ onAuthStateChanged(auth, async (user) => {
     stopReportVisibilitySync();
     stopUserDirectorySync();
     window.GAILS.userOpsArea = '';
+    applyMyActivityAccess(null);
     applySiteMeta(null);
     clearLoginForm();
     updateProfileMenu(null);
@@ -750,6 +752,14 @@ onAuthStateChanged(auth, async (user) => {
     showApp(undefined);
   }
 });
+
+// My Activity is opt-in per user (users/{uid}.myActivity, granted in the admin
+// portal), so the profile-menu entry is hidden unless it has been turned on.
+// Absent means off — the hub is invisible until someone grants it.
+function applyMyActivityAccess(userProfile) {
+  var link = document.querySelector('.header [data-my-activity-link]');
+  if (link) link.hidden = !(userProfile && userProfile.myActivity === true);
+}
 
 // Hides dashboard tab buttons (desktop nav + mobile bottom nav) that the
 // signed-in user's role can't see, and moves off a hidden active tab.

@@ -17977,3 +17977,50 @@ html {
   color: var(--blue);
   font-weight: 700;
 }
+
+/* Per-user My Activity switch in the admin users table. Kept out of the row's
+   Edit flow — role and scope lock themselves against self-editing to prevent
+   self-demotion, but a feature switch is safe to flip on yourself, and with a
+   single admin account nobody else could. */
+.admin-user-toggle {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px 4px 7px;
+  border: 1px solid var(--card-border-h);
+  border-radius: var(--r-pill);
+  background: var(--card-2);
+  color: var(--muted-l);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-user-toggle:hover {
+  border-color: var(--card-border-h);
+  background: var(--card-hover);
+}
+
+.admin-user-toggle.is-on {
+  border-color: rgba(30, 112, 196, 0.35);
+  background: var(--blue-d);
+  color: var(--blue);
+}
+
+.admin-user-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+.admin-user-toggle input:disabled {
+  cursor: not-allowed;
+}
+
+.admin-user-toggle:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

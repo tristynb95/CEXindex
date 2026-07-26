@@ -106,9 +106,15 @@
               autocomplete="off">
           </div>
           <div class="visit-log-filter-control visit-log-filter-control--compact">
-            <label for="myActionsBakery">Site</label>
+            <label for="myActionsOps">Ops Area</label>
+            <select id="myActionsOps" class="visit-log-select">
+              <option value="">All Areas</option>
+            </select>
+          </div>
+          <div class="visit-log-filter-control visit-log-filter-control--compact">
+            <label for="myActionsBakery">Bakery</label>
             <select id="myActionsBakery" class="visit-log-select">
-              <option value="">All Sites</option>
+              <option value="">All Bakeries</option>
             </select>
           </div>
           <div class="visit-log-filter-control visit-log-filter-control--compact">
@@ -119,7 +125,7 @@
               <option value="priority">Priority (High-Low)</option>
               <option value="createdDesc">Date Added (Newest)</option>
               <option value="createdAsc">Date Added (Oldest)</option>
-              <option value="bakeryAsc">Site Name (A-Z)</option>
+              <option value="bakeryAsc">Bakery Name (A-Z)</option>
             </select>
           </div>
           <button type="button" id="myActionsResetBtn" class="visit-log-reset-btn" title="Reset action filters"

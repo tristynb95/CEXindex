@@ -279,6 +279,10 @@ function setProfileMenuOpen(open) {
 
 function updateProfileMenu(user, profile) {
   profileMenuUi.update(user, profile);
+  // My Activity is opt-in per user (users/{uid}.myActivity), so the menu entry
+  // stays hidden until an admin grants it — including for admins themselves.
+  var myActivityLink = document.querySelector('[data-my-activity-link]');
+  if (myActivityLink) myActivityLink.hidden = !(profile && profile.myActivity === true);
 }
 
 // ── Helpers ──
@@ -882,6 +886,16 @@ function renderUsers() {
     var hasDeliveryError = invitation.status === 'delivery_failed';
     var resetLabel = isPending || hasDeliveryError ? 'Resend Invitation' : 'Reset Password';
 
+    // Deliberately outside the Edit flow, and enabled even for the logged-in
+    // admin: the row's role and scope controls lock themselves against
+    // self-editing to prevent self-demotion, but a feature switch is harmless
+    // to flip on yourself — and with a single admin nobody else could.
+    var myActivityHtml = '<label class="admin-user-toggle' + (user.myActivity ? ' is-on' : '') + '">'
+      + '<input type="checkbox" data-action="toggle-my-activity" data-uid="' + escapeHtml(user.uid) + '"'
+      + (user.myActivity ? ' checked' : '') + (canManageUsers ? '' : ' disabled') + '>'
+      + '<span>My Activity</span>'
+      + '</label>';
+
     var roleHtml, statusHtml, actionsHtml;
 
     if (isEditing) {
@@ -896,6 +910,7 @@ function renderUsers() {
         + '</select></label>'
         + '</div>';
       statusHtml = '<div class="admin-status-note" style="color:var(--accent);">Editing access settings</div>';
+      roleHtml += myActivityHtml;
       actionsHtml = '<div class="admin-table__actions">'
         + '<button type="button" class="admin-inline-btn" data-action="save-user-role" data-uid="' + escapeHtml(user.uid) + '" ' + dis + '>Save Access</button>'
         + '<button type="button" class="admin-inline-btn" data-action="cancel-edit-user">Cancel</button>'
@@ -905,7 +920,8 @@ function renderUsers() {
     } else {
       roleHtml = '<div class="' + roleClass + '">' + escapeHtml(roleDisplayName(user.role)) + '</div>'
         + '<div class="admin-status-note admin-user-scope' + (user.opsArea ? ' admin-user-scope--restricted' : '') + '">Reports: '
-        + escapeHtml(opsAreaLabel(user.opsArea)) + '</div>';
+        + escapeHtml(opsAreaLabel(user.opsArea)) + '</div>'
+        + myActivityHtml;
       var status = isCurrent
         ? 'Current session'
         : (isPending ? 'Invitation sent' : (hasDeliveryError ? 'Email not delivered' : 'Active access'));
@@ -2346,6 +2362,9 @@ function ensurePortalSync() {
             email: users[uid].email || 'Unknown',
             role: users[uid].role || 'viewer',
             opsArea: users[uid].opsArea || '',
+            // Absent means off: My Activity is opt-in, so a user who has never
+            // been granted it does not have it.
+            myActivity: users[uid].myActivity === true,
             invitation: users[uid].invitation || null
           };
         });
@@ -2695,6 +2714,38 @@ createUserForm.addEventListener('submit', async function(e) {
       }
     }
     btn.disabled = false;
+  }
+});
+
+// Writes only the one field, so it can be flipped for any user — including the
+// signed-in admin — without going through the role/scope editor those rows lock.
+userList.addEventListener('change', async function(e) {
+  var toggle = e.target.closest('[data-action="toggle-my-activity"]');
+  if (!toggle) return;
+  var uid = toggle.dataset.uid;
+  var user = state.users.find(function(u) { return u.uid === uid; });
+  if (!user) return;
+
+  if (!canEdit('users')) {
+    toggle.checked = user.myActivity;
+    return;
+  }
+
+  var next = toggle.checked;
+  toggle.disabled = true;
+  clearMessage(usersMsg);
+  try {
+    await update(ref(db, 'users/' + uid), { myActivity: next });
+    user.myActivity = next;
+    var label = toggle.closest('.admin-user-toggle');
+    if (label) label.classList.toggle('is-on', next);
+    setMessage(usersMsg, 'success', 'My Activity ' + (next ? 'enabled' : 'disabled') + ' for '
+      + (user.email || 'this user') + '.');
+  } catch (err) {
+    toggle.checked = user.myActivity;
+    setMessage(usersMsg, 'error', 'Could not update My Activity access: ' + err.message);
+  } finally {
+    toggle.disabled = false;
   }
 });
 

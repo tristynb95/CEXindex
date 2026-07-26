@@ -298,15 +298,16 @@ test('the page styles cover both the desktop grid and small screens', () => {
   assert.match(styles, /\.my-activity-modal__dialog/);
 });
 
-test('open actions can be filtered by site and searched', () => {
-  ['myActionsSearch', 'myActionsBakery', 'myActionsSort'].forEach((id) => {
+test('open actions can be filtered by bakery, ops area, and searched', () => {
+  ['myActionsSearch', 'myActionsOps', 'myActionsBakery', 'myActionsSort'].forEach((id) => {
     assert.match(html, new RegExp('id="' + id + '"'), id + ' control is missing');
     assert.match(script, new RegExp("getElementById\\('" + id + "'\\)"), id + ' is never read');
   });
   // The Site list is built from the user's own actions, not the whole estate.
   assert.match(script, /function syncActionFilterOptions\(\)/);
-  assert.match(script, /myTasks\(\)\.forEach\(function \(task\) \{\s*if \(task\.bakery\) bakerySet\.add\(task\.bakery\);/);
+  assert.match(script, /myTasks\(\)\.forEach\(function \(task\) \{\s*if \(!task\.bakery\) return;\s*opsSet\.add\(bakeryOps\(task\.bakery\)\);\s*bakerySet\.add\(task\.bakery\);/);
   assert.match(script, /if \(filters\.bakery && task\.bakery !== filters\.bakery\) return false;/);
+  assert.match(script, /if \(filters\.ops && bakeryOps\(task\.bakery\) !== filters\.ops\) return false;/);
 });
 
 test('open actions offer the same orderings as the dashboard follow-up list', () => {
@@ -349,14 +350,14 @@ test('open actions export the filtered list, not the whole hub', () => {
 
   const start = script.indexOf('function buildActionsExportData(');
   const builder = script.slice(start, script.indexOf('\n}', start));
-  ['Site', 'Region', 'Ops Area', 'Action', 'Detail', 'Priority', 'Due Date',
+  ['Bakery', 'Region', 'Ops Area', 'Action', 'Detail', 'Priority', 'Due Date',
     'Days Overdue', 'Status', 'Added', 'Completed', 'Attributed To'].forEach((label) => {
     assert.ok(builder.includes("label: '" + label + "'"), 'export is missing the ' + label + ' column');
   });
   assert.match(builder, /sheetName: 'My Actions'/);
 });
 
-test('the visit cards and site filter drop the GAIL\'s prefix', () => {
+test('the bakery names drop the GAIL\'s prefix everywhere on the page', () => {
   const context = extract(['bakeryLabel', 'bakerySiteName'], {
     G: { getBakeryMapLabel: (name) => "GAIL's " + name }
   });
@@ -384,11 +385,14 @@ test('the visit cards and site filter drop the GAIL\'s prefix', () => {
   assert.match(script, /escapeHtml\(bakerySiteName\(visit\.bakery\)\) \+ '<\/a>'/);
   assert.match(script, /escapeHtml\(bakerySiteName\(task\.bakery\)\) \+ '<\/a>'/);
   assert.match(script, /escapeHtml\(bakerySiteName\(event\.bakery\)\)/);
-  assert.match(script, /\}\), 'All Sites', bakerySiteName\);/);
+  assert.match(script, /\}\), 'All Bakeries', bakerySiteName\);/);
   assert.match(script, /sortVal === 'nameAsc'\) return bakerySiteName/);
   // Both exports name the column after the filter beside it.
-  assert.match(script, /\{ label: 'Site', type: 'text', width: 26 \}/);
-  assert.match(script, /\{ label: 'Site', type: 'text', width: 24 \}/);
+  assert.match(script, /\{ label: 'Bakery', type: 'text', width: 26 \}/);
+  assert.match(script, /\{ label: 'Bakery', type: 'text', width: 24 \}/);
+  // "Site" was never the word this estate uses for a bakery.
+  assert.doesNotMatch(script, /'All Sites'|label: 'Site'/);
+  assert.doesNotMatch(html, />All Sites</);
   // Only the search haystacks keep the full label, so a bakery is still found
   // whether or not someone types the prefix.
   assert.match(script, /bakeryLabel\(v\.bakery\), bakerySiteName\(v\.bakery\)/);
@@ -405,4 +409,81 @@ test('a bakery opened from the hub comes back to the hub', () => {
   assert.match(script, /bakeryProfileHref\(task\.bakery, 'section-actions'\)/);
   assert.match(script, /bakeryProfileHref\(visit\.bakery, 'section-visits'\)/);
   assert.match(script, /bakeryProfileHref\(task\.bakery, 'section-timeline'\)/);
+});
+
+test('My Activity is opt-in per user and off by default', () => {
+  const adminScript = fs.readFileSync(path.join(root, 'js', 'admin-page.js'), 'utf8');
+  const profilePage = fs.readFileSync(path.join(root, 'js', 'profile-page.js'), 'utf8');
+  const profileHtml = fs.readFileSync(path.join(root, 'profile.html'), 'utf8');
+  const rules = JSON.parse(fs.readFileSync(path.join(root, 'database.rules.json'), 'utf8'));
+
+  // Absent means off, everywhere it is read.
+  assert.match(adminScript, /myActivity: users\[uid\]\.myActivity === true/);
+  [authScript, adminScript, profilePage, script].forEach((source) => {
+    assert.match(source, /myActivity === true/);
+  });
+
+  // Every entry point starts hidden in the markup, so it can never flash before
+  // the profile has loaded.
+  [indexHtml, adminHtml, profileHtml].forEach((page) => {
+    assert.match(page, /data-my-activity-link hidden/);
+  });
+
+  // The page refuses a typed URL, which the hidden menu entry alone cannot do.
+  assert.match(script, /showGuardError\('My Activity is not switched on for your account/);
+
+  // ...and a non-admin cannot grant it to themselves by writing their own record.
+  const selfWrite = rules.rules.users.$uid['.write'];
+  assert.match(selfWrite, /auth\.uid === \$uid[\s\S]*?newData\.child\('myActivity'\)\.val\(\) === data\.child\('myActivity'\)\.val\(\)/);
+});
+
+test('the admin users table can switch My Activity on and off', () => {
+  const adminScript = fs.readFileSync(path.join(root, 'js', 'admin-page.js'), 'utf8');
+
+  assert.match(adminScript, /data-action="toggle-my-activity"/);
+  // Writes the one field, so it never disturbs role or reports scope.
+  assert.match(adminScript, /update\(ref\(db, 'users\/' \+ uid\), \{ myActivity: next \}\)/);
+  // Available on every row including the signed-in admin's, which the role
+  // editor deliberately locks — otherwise a lone admin could never enable it.
+  const start = adminScript.indexOf('var myActivityHtml =');
+  const markup = adminScript.slice(start, adminScript.indexOf('\n\n', start));
+  assert.doesNotMatch(markup, /\bdis\b/);
+  assert.match(markup, /canManageUsers \? '' : ' disabled'/);
+  // View-only admins cannot flip it.
+  assert.match(adminScript, /if \(!canEdit\('users'\)\) \{\s*toggle\.checked = user\.myActivity;/);
+});
+
+test('the My Activity switch renders checked, unchecked, and read-only', () => {
+  const adminScript = fs.readFileSync(path.join(root, 'js', 'admin-page.js'), 'utf8');
+  const start = adminScript.indexOf('var myActivityHtml =');
+  const end = adminScript.indexOf(";\n", adminScript.indexOf("'</label>'", start));
+  const sandbox = {
+    escapeHtml: (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c])),
+    user: null,
+    canManageUsers: true,
+    myActivityHtml: ''
+  };
+  vm.createContext(sandbox);
+  const render = (user, canManageUsers) => {
+    sandbox.user = user;
+    sandbox.canManageUsers = canManageUsers;
+    vm.runInContext(adminScript.slice(start, end + 1), sandbox);
+    return sandbox.myActivityHtml;
+  };
+
+  const on = render({ uid: 'u1', myActivity: true }, true);
+  assert.match(on, /class="admin-user-toggle is-on"/);
+  assert.match(on, / checked/);
+  assert.doesNotMatch(on, / disabled/);
+
+  const off = render({ uid: 'u2', myActivity: false }, true);
+  assert.match(off, /class="admin-user-toggle"/);
+  assert.doesNotMatch(off, / checked/);
+
+  // A user record with no flag at all is off, not broken.
+  assert.doesNotMatch(render({ uid: 'u3' }, true), / checked/);
+
+  // Users & Roles at 'view' renders the state without letting anyone change it.
+  assert.match(render({ uid: 'u4', myActivity: true }, false), / disabled/);
 });

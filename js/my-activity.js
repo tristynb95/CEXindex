@@ -33,6 +33,7 @@ const actionsStatusToggle = document.getElementById('myActionsStatus');
 const actionsList = document.getElementById('myActionsList');
 const actionsCount = document.getElementById('myActionsCount');
 const actionsSearch = document.getElementById('myActionsSearch');
+const actionsOps = document.getElementById('myActionsOps');
 const actionsBakery = document.getElementById('myActionsBakery');
 const actionsSort = document.getElementById('myActionsSort');
 const actionsReset = document.getElementById('myActionsResetBtn');
@@ -561,6 +562,7 @@ function restoreFilters() {
   var a = stored.actions || {};
   if (actionsSearch && a.search) actionsSearch.value = a.search;
   if (actionsSort && a.sort) actionsSort.value = a.sort;
+  if (actionsOps) actionsOps.dataset.pendingValue = a.ops || '';
   if (actionsBakery) actionsBakery.dataset.pendingValue = a.bakery || '';
 
   if (stored.actionsStatus) {
@@ -614,7 +616,7 @@ function syncVisitFilterOptions() {
   fillSelect(visitsOps, Array.from(opsSet).sort(), 'All Areas', function (value) { return value; });
   fillSelect(visitsBakery, Array.from(bakerySet).sort(function (a, b) {
     return bakerySiteName(a).localeCompare(bakerySiteName(b));
-  }), 'All Sites', bakerySiteName);
+  }), 'All Bakeries', bakerySiteName);
 }
 
 function fillSelect(select, values, allLabel, labelFor) {
@@ -634,29 +636,34 @@ function fillSelect(select, values, allLabel, labelFor) {
 function readActionFilters() {
   return {
     search: actionsSearch ? actionsSearch.value.trim() : '',
+    ops: actionsOps ? actionsOps.value : '',
     bakery: actionsBakery ? actionsBakery.value : '',
     sort: actionsSort ? actionsSort.value : 'dueAsc'
   };
 }
 
-// The Site list only offers bakeries this user actually has actions at, for the
-// same reason the visit filters do: an estate-wide list would be mostly dead
-// options.
+// The Ops Area and Bakery lists only offer values this user actually has actions
+// at, for the same reason the visit filters do: an estate-wide list would be
+// mostly dead options.
 function syncActionFilterOptions() {
   if (!dataReady.tasks) return;
 
+  var opsSet = new Set();
   var bakerySet = new Set();
   myTasks().forEach(function (task) {
-    if (task.bakery) bakerySet.add(task.bakery);
+    if (!task.bakery) return;
+    opsSet.add(bakeryOps(task.bakery));
+    bakerySet.add(task.bakery);
   });
 
-  var signature = Array.from(bakerySet).sort().join('|');
+  var signature = Array.from(opsSet).sort().join('|') + '::' + Array.from(bakerySet).sort().join('|');
   if (signature === actionOptionsSignature) return;
   actionOptionsSignature = signature;
 
+  fillSelect(actionsOps, Array.from(opsSet).sort(), 'All Areas', function (value) { return value; });
   fillSelect(actionsBakery, Array.from(bakerySet).sort(function (a, b) {
     return bakerySiteName(a).localeCompare(bakerySiteName(b));
-  }), 'All Sites', bakerySiteName);
+  }), 'All Bakeries', bakerySiteName);
 }
 
 function filterActions(tasks) {
@@ -664,6 +671,7 @@ function filterActions(tasks) {
   var search = filters.search.toLowerCase();
 
   return tasks.filter(function (task) {
+    if (filters.ops && bakeryOps(task.bakery) !== filters.ops) return false;
     if (filters.bakery && task.bakery !== filters.bakery) return false;
     if (search) {
       var haystack = [
@@ -770,9 +778,9 @@ function renderActions() {
   if (actionsSummary) {
     if (shown.length) {
       var overdue = shown.filter(taskIsOverdue).length;
-      var sites = new Set(shown.map(function (t) { return t.bakery; })).size;
+      var bakeries = new Set(shown.map(function (t) { return t.bakery; })).size;
       actionsSummary.textContent = plural(shown.length, 'action') + ' across ' +
-        plural(sites, 'site') + (overdue ? ' · ' + overdue + ' overdue' : '');
+        plural(bakeries, 'bakery', 'bakeries') + (overdue ? ' · ' + overdue + ' overdue' : '');
     } else {
       actionsSummary.textContent = '';
     }
@@ -792,8 +800,8 @@ function renderActions() {
 }
 
 function actionsEmptyMessage(filters) {
-  if (filters && (filters.search || filters.bakery)) {
-    return 'No actions match these filters. Clear the search or choose another site.';
+  if (filters && (filters.search || filters.bakery || filters.ops)) {
+    return 'No actions match these filters. Clear the search or choose another bakery.';
   }
   if (actionsStatus === 'done') return 'You have not completed any follow-ups yet.';
   if (actionsStatus === 'overdue') return 'Nothing overdue — you are on top of your actions.';
@@ -971,7 +979,8 @@ function buildActionsExportData(tasks, filters) {
       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
     })],
     ['Status', ACTION_STATUS_LABELS[actionsStatus] || 'All'],
-    ['Site', selectLabel(actionsBakery, 'All sites')],
+    ['Ops Area', selectLabel(actionsOps, 'All areas')],
+    ['Bakery', selectLabel(actionsBakery, 'All bakeries')],
     ['Sorted by', selectLabel(actionsSort, 'Due Date (Soonest)')],
     ['Actions exported', tasks.length],
     ['Overdue', tasks.filter(taskIsOverdue).length]
@@ -984,7 +993,7 @@ function buildActionsExportData(tasks, filters) {
     filename: 'GAILs My Actions ' + new Date().toISOString().slice(0, 10) + '.xlsx',
     meta: meta,
     columns: [
-      { label: 'Site', type: 'text', width: 24 },
+      { label: 'Bakery', type: 'text', width: 24 },
       { label: 'Region', type: 'text', width: 16 },
       { label: 'Ops Area', type: 'text', width: 18 },
       { label: 'Action', type: 'text', width: 34 },
@@ -1025,7 +1034,7 @@ function buildExportData(visits, filters) {
     })],
     ['Period', periodLabel()],
     ['Ops Area', selectLabel(visitsOps, 'All areas')],
-    ['Site', selectLabel(visitsBakery, 'All sites')],
+    ['Bakery', selectLabel(visitsBakery, 'All bakeries')],
     ['Sorted by', selectLabel(visitsSort, 'Date (Newest)')],
     ['Visits exported', visits.length]
   ];
@@ -1039,7 +1048,7 @@ function buildExportData(visits, filters) {
     columns: [
       { label: 'Date', type: 'date', width: 13 },
       { label: 'Time', type: 'text', width: 7 },
-      { label: 'Site', type: 'text', width: 26 },
+      { label: 'Bakery', type: 'text', width: 26 },
       { label: 'Region', type: 'text', width: 16 },
       { label: 'Ops Area', type: 'text', width: 18 },
       { label: 'Visit Type', type: 'text', width: 20 },
@@ -1590,7 +1599,7 @@ if (actionsSearch) {
   });
 }
 
-[actionsBakery, actionsSort].forEach(function (control) {
+[actionsOps, actionsBakery, actionsSort].forEach(function (control) {
   if (!control) return;
   control.addEventListener('change', function () {
     saveFilters();
@@ -1601,12 +1610,13 @@ if (actionsSearch) {
 if (actionsReset) {
   actionsReset.addEventListener('click', function () {
     if (actionsSearch) actionsSearch.value = '';
+    if (actionsOps) actionsOps.value = '';
     if (actionsBakery) actionsBakery.value = '';
     if (actionsSort) actionsSort.value = 'dueAsc';
     actionsStatus = 'open';
     setToggleActive(actionsStatusToggle, 'status', actionsStatus);
     if (typeof G.syncCustomSelect === 'function') {
-      [actionsBakery, actionsSort].forEach(function (select) {
+      [actionsOps, actionsBakery, actionsSort].forEach(function (select) {
         if (select) G.syncCustomSelect(select);
       });
     }
@@ -1758,6 +1768,14 @@ async function loadActivityHub(user) {
       return { uid: uid, name: directory[uid] && directory[uid].name, email: directory[uid] && directory[uid].email };
     }));
     G.Mentions.addHarvested({ regionAssignments: (sitePayload && sitePayload.regionAssignments) || [] });
+  }
+
+  // My Activity is opt-in per user, granted in the admin portal. The menu entry
+  // is hidden without it, but the page has to refuse a typed URL too — this is
+  // the only check that a bookmark cannot walk around.
+  if (!(userProfile && userProfile.myActivity === true)) {
+    showGuardError('My Activity is not switched on for your account. Ask an administrator to enable it.');
+    return;
   }
 
   var roleId = isAdmin ? 'admin' : (userProfile && userProfile.role) || 'viewer';

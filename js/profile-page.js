@@ -72,6 +72,13 @@ function setButtonBusy(button, busy, busyText, readyText) {
   button.textContent = busy ? busyText : readyText;
 }
 
+// My Activity is opt-in per user (users/{uid}.myActivity, granted in the admin
+// portal), so the header link is hidden until it has been turned on.
+function applyMyActivityAccess(record) {
+  var link = document.querySelector('[data-my-activity-link]');
+  if (link) link.hidden = !(record && record.myActivity === true);
+}
+
 function renderProfile(user, record) {
   var fallbackName = splitDisplayName(user.displayName);
   var firstName = String(record.firstName || fallbackName.firstName || '').trim();
@@ -86,6 +93,7 @@ function renderProfile(user, record) {
   identityEmail.textContent = email;
   picturePlaceholder.textContent = initials(firstName, lastName, fullName || email);
   roleEl.textContent = currentRoleName;
+  applyMyActivityAccess(record);
 }
 
 async function resolveRoleName(roleId) {

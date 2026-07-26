@@ -14,7 +14,7 @@ exists only for tooling (ESLint); nothing is bundled, compiled, or minified.
 | `admin.html` | `js/admin-page.js` | Admin portal, CQV PDF import |
 | `profile.html` | `js/profile-page.js` | User profile |
 | `bakery-profile.html` | `js/bakery-profile.js` | Per-bakery performance, visits, tasks, map, and team notes |
-| `my-activity.html` | `js/my-activity.js` | The signed-in user's own open actions and visits (both filterable and exportable to Excel), plus their activity feed |
+| `my-activity.html` | `js/my-activity.js` | The signed-in user's own open actions and visits (both filterable and exportable to Excel), plus their activity feed. Opt-in per user — see below |
 
 ## The two JavaScript worlds
 
@@ -75,13 +75,35 @@ to carry a `role` or `opsArea`. It is self-maintaining — everyone republishes
 their own entry at sign-in, the profile page keeps it in step with a rename, and
 the admin portal publishes the full user list and prunes revoked accounts.
 
-> **This needs a rules deploy.** `userDirectory` is new in
-> `database.rules.json`, and CI never pushes rules — run
-> `firebase deploy --only database`. Until then every read and write of the node
-> fails harmlessly and the picker falls back to names harvested from data
-> everyone can already read: the regional coffee team, and names already on past
-> visits and notes. Harvested names carry no uid, so a real directory entry
-> always wins once it arrives.
+> **This needs a rules deploy**, as does the `myActivity` clause above. CI never
+> pushes rules — run `firebase deploy --only database`. Until then every read and
+> write of `userDirectory` fails harmlessly and the picker falls back to names
+> harvested from data everyone can already read: the regional coffee team, and
+> names already on past visits and notes. Harvested names carry no uid, so a real
+> directory entry always wins once it arrives.
+
+## Turning My Activity on
+
+My Activity is **off by default**, for everyone including admins. Access is a
+single per-user flag, `users/{uid}.myActivity`, switched from the Users panel in
+the admin portal — a toggle on each row, alongside the role and Bakery Reports
+scope. Absent means off, so nobody gains the hub by upgrade.
+
+That toggle sits deliberately *outside* the row's Edit flow. Role and reports
+scope lock themselves against self-editing so an admin cannot demote themselves,
+but a feature switch is safe to flip on yourself — and with a single admin
+account, nobody else could ever turn it on.
+
+The flag gates three things, and all three matter:
+
+- the profile-menu entry on the dashboard and the admin portal, and the header
+  link on the profile page — each starts `hidden` in the markup, so it cannot
+  flash before the profile loads;
+- `my-activity.html` itself, which refuses a typed URL with an explanation. The
+  hidden menu entry is a convenience; this is the check that a bookmark cannot
+  walk around;
+- the database rules, which stop a non-admin granting it to themselves by
+  writing their own user record — the same clause that already pins `role`.
 
 ## Who a record belongs to
 
