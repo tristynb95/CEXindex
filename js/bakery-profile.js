@@ -17,6 +17,9 @@ const G = window.GAILS || {};
 const guard = document.getElementById('bakeryProfileGuard');
 const page = document.getElementById('bakeryProfilePage');
 const backLink = document.getElementById('bakeryProfileBackLink');
+const backLabel = backLink
+  ? backLink.querySelector('.bakery-profile-header__back-label')
+  : null;
 const brandLink = document.querySelector('.bakery-profile-header__brand');
 const taskAddToggle = document.getElementById('bakeryTaskAddToggle');
 const bakerySwitcher = document.querySelector('.bakery-profile-switcher');
@@ -164,11 +167,12 @@ function profileUrlFor(name) {
 }
 
 function configureBackNavigation() {
-  var text = '← Back To ' + profileReturnContext.label;
+  var text = 'Back To ' + profileReturnContext.label;
   if (backLink) {
     backLink.href = profileReturnContext.url;
-    backLink.textContent = text;
-    backLink.setAttribute('aria-label', 'Back To ' + profileReturnContext.label);
+    if (backLabel) backLabel.textContent = text;
+    backLink.setAttribute('aria-label', text);
+    backLink.title = text;
   }
   if (brandLink) {
     brandLink.href = profileReturnContext.url;

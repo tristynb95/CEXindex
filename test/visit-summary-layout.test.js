@@ -32,6 +32,15 @@ test('follow-up tasks expose dedicated grouping and sorting controls', () => {
   assert.match(source, /followUpSort:\s*followUpSortVal/);
 });
 
+test('follow-up task grouping starts the second desktop filter row', () => {
+  const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+
+  assert.match(
+    styles,
+    /#tab-visit-log\[data-visit-view="followups"\] \.visit-log-filters\s*\{\s*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);\s*\}/
+  );
+});
+
 test('follow-up task cards promote bakery context and do not repeat their group heading', () => {
   const source = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
   const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');

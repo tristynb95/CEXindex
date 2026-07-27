@@ -545,7 +545,7 @@
                       <div class="icon">&#9749;</div>
                       <h3>Add a Visit Report (CQV or NBO)</h3>
                       <p>Drag in a CQV or NBO Coffee Visit PDF exported from GoAudits. The report type is detected automatically, and the original file is kept alongside it so anyone can preview or download it.</p>
-                      <p id="cqvImportHelp" class="admin-dataset-upload__hint">Accepts the standard GoAudits CQV and NBO Coffee Visit PDF exports. You'll get a chance to confirm the bakery and date before it's saved.</p>
+                      <p id="cqvImportHelp" class="admin-dataset-upload__hint">Accepts the standard GoAudits CQV and NBO Coffee Visit PDF exports. You'll get a chance to confirm the bakery, date, and attributed Coffee Partner before it's saved.</p>
                     </div>
                     <div class="admin-import-card__actions">
                       <button type="button" id="cqvImportBrowseBtn" class="btn">Choose PDF File</button>
@@ -652,6 +652,12 @@
                       <label class="admin-form-field">
                         <span>Visit date</span>
                         <input type="date" id="cqvConfirmDate">
+                      </label>
+                      <label class="admin-form-field">
+                        <span>Coffee Partner attribution</span>
+                        <input type="text" id="cqvConfirmCoffeePartner" autocomplete="off"
+                          data-mention-field placeholder="Start typing a name">
+                        <small class="mention-field-hint">Prefilled from the PDF. Type and select a Coffee Partner from the directory to override it.</small>
                       </label>
                       <div id="cqvConfirmSummary" style="font-size:0.85rem; line-height:1.5; color:var(--text-2); background:rgba(34, 31, 26,0.02); border:1px solid var(--card-border); border-radius:10px; padding:12px 14px;"></div>
                       <div style="display:flex; gap:12px; margin-top: 6px; justify-content: flex-end;">

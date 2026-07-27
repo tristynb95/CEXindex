@@ -338,14 +338,16 @@ test('attribution is derived at read time, so nothing needs migrating', () => {
 
 test('the PDF import stamps the auditor and records the importer separately', () => {
   assert.match(adminScript, /var auditor = window\.GAILS\.Mentions\s*\n?\s*\? window\.GAILS\.Mentions\.resolvePerson\(pending\.record\.auditorName\)/);
-  assert.match(adminScript, /assignedTo: auditor \? \[auditor\] : null/);
+  assert.match(adminScript, /var attributedPartners = selectedPartners\.length/);
+  assert.match(adminScript, /assignedTo: attributedPartners\.length \? attributedPartners : null/);
   assert.match(adminScript, /importedBy: currentUserEmail\(\)/);
   // Recovering a missing auditor name is also the moment to credit the report.
   assert.match(adminScript, /if \(backfilledAuditor && !visit\.assignedTo\) backfillPatch\.assignedTo = \[backfilledAuditor\]/);
-  // Editing an audited report keeps resolving from auditorName, rather than
-  // clearing attribution because CQV/NBO records have no Coffee Partner field.
+  // Editing an audited report uses the explicit Coffee Partner picker, while
+  // retaining the PDF auditor as the automatic fallback.
   assert.match(adminScript, /existing\.type === 'cqv' \|\| existing\.type === 'nbo'/);
-  assert.match(adminScript, /collected\.general\.auditorName \|\| existing\.auditorName/);
+  assert.match(adminScript, /collected\.general\.coffeePartnerAttribution/);
+  assert.match(adminScript, /editable\.coffeePartnerAttribution = auditedAssignees\.length/);
 });
 
 test('follow-ups raised during a check-in inherit that visit\'s assignees', () => {

@@ -479,6 +479,13 @@ test('the Coffee Partner field is the assignment control on both editors', () =>
   assert.match(adminScript, /press <strong>Space<\/strong> to add another/);
   assert.match(adminScript, /window\.GAILS\.MentionField\.enhanceAll\(visitDetailBody\)/);
 
+  // CQV, CQV follow-up, and NBO imports share this confirmation picker.
+  const uploadPartnerField = adminHtml.slice(adminHtml.indexOf('id="cqvConfirmCoffeePartner"'));
+  assert.match(uploadPartnerField.slice(0, 500), /data-mention-field/);
+  assert.match(uploadPartnerField.slice(0, 500), /placeholder="Start typing a name"/);
+  assert.match(adminScript, /MentionField\.enhance\(cqvConfirmCoffeePartner\)/);
+  assert.match(adminScript, /var attributedPartners = selectedPartners\.length/);
+
   [indexHtml, adminHtml].forEach((page) => {
     assert.match(page, /<script src="js\/mentions\.js"><\/script>/);
     assert.match(page, /<script src="js\/mention-field\.js"><\/script>/);

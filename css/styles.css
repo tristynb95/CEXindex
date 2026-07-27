@@ -4435,6 +4435,12 @@ body.table-fullscreen-lock {
   border-color: rgba(178, 42, 36, 0.25);
 }
 
+.admin-badge--nbo {
+  background: rgba(107, 79, 168, 0.15);
+  color: #6B4FA8;
+  border-color: rgba(107, 79, 168, 0.25);
+}
+
 .admin-table__title-cell {
   display: flex;
   align-items: center;
@@ -11887,11 +11893,12 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 }
 
-/* Follow-up Tasks adds an assignee alongside Search, Region, and Ops Area.
-   Keep the compact Reset button on that same row on wide screens. */
+/* Follow-up Tasks uses the first row for Search, Region, Ops Area, and
+   Assigned To. Group By then starts the second row beside Sort By and Reset,
+   keeping the primary narrowing controls together above the view controls. */
 @media (min-width: 901px) {
   #tab-visit-log[data-visit-view="followups"] .visit-log-filters {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -12648,7 +12655,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
 
 .table-wrap--directory .bakery-directory {
   width: 100%;
-  min-width: 900px;
+  min-width: 820px;
   table-layout: fixed;
   border-collapse: collapse;
   margin-top: 0;
@@ -12673,47 +12680,68 @@ body.visit-log-filter-open .mobile-bottom-nav {
 .bakery-directory thead th {
   top: 0;
   z-index: 2;
+  padding: 8px 10px;
   background: var(--bg);
   background-clip: border-box;
   box-shadow: none;
+  font-size: 0.63rem;
+  line-height: 1.2;
+  white-space: normal;
   cursor: default;
 }
 
 .bakery-directory thead th:nth-child(1) {
-  width: 28%;
+  width: 22%;
 }
 
 .bakery-directory thead th:nth-child(2) {
-  width: 23%;
+  width: 21%;
 }
 
 .bakery-directory thead th:nth-child(3) {
-  width: 16%;
+  width: 13%;
 }
 
-.bakery-directory thead th:nth-child(4),
+.bakery-directory thead th:nth-child(4) {
+  width: 15%;
+}
+
 .bakery-directory thead th:nth-child(5) {
-  width: 16.5%;
+  width: 14%;
+}
+
+.bakery-directory thead th:nth-child(6) {
+  width: 15%;
 }
 
 .bakery-directory tbody th {
   position: static;
   top: auto;
   z-index: auto;
-  padding: 10px 13px;
+  padding: 8px 10px;
   border: 0;
   border-bottom: 1px solid rgba(34, 31, 26, 0.035);
   background: transparent;
   color: var(--text);
-  font-size: 0.84rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
   font-weight: 600;
   text-align: left;
   text-transform: none;
   letter-spacing: 0;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   cursor: default;
   user-select: text;
   transition: background 0.15s ease;
+}
+
+.bakery-directory tbody td {
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .bakery-profile-link {
@@ -18194,4 +18222,55 @@ html {
 .mention-field-hint strong {
   color: var(--blue);
   font-weight: 700;
+}
+
+/* ========== Shared compact data-table sizing ==========
+   Bakery Directory is the density reference. Apply only its typography,
+   padding, line-height, and wrapping to the other data-heavy tables; each
+   view retains its own widths, sticky columns, colours, borders, and behavior. */
+.league-table th,
+#bakeryTrackerTable table th,
+.trend-detail-table th,
+.drill-table th,
+.support-priority-table th {
+  padding: 8px 10px;
+  font-size: 0.63rem;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.league-table td,
+#bakeryTrackerTable table td,
+.trend-detail-table td,
+.drill-table td,
+.support-priority-table td {
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Priority Overview is an ARIA grid rather than a native table. Its row and
+   heading density follows the same reference values without changing its
+   ranked-card presentation or grid structure. */
+#tab-target [data-target-subtab-panel="summary"] .focus-qhead,
+#tab-target [data-target-subtab-panel="summary"] .focus-qrow {
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+#tab-target [data-target-subtab-panel="summary"] .focus-qhead {
+  font-size: 0.63rem;
+  line-height: 1.2;
+}
+
+#tab-target [data-target-subtab-panel="summary"] .focus-qrow {
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+#tab-target [data-target-subtab-panel="summary"] .focus-qrow__name {
+  font-size: 0.8rem;
 }

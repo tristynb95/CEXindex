@@ -160,6 +160,7 @@ const cqvConfirmSubmitBtn = document.getElementById('cqvConfirmSubmitBtn');
 const cqvConfirmTitle     = document.getElementById('cqvConfirmTitle');
 const cqvConfirmBakery    = document.getElementById('cqvConfirmBakery');
 const cqvConfirmDate      = document.getElementById('cqvConfirmDate');
+const cqvConfirmCoffeePartner = document.getElementById('cqvConfirmCoffeePartner');
 const cqvConfirmWarning   = document.getElementById('cqvConfirmWarning');
 const cqvConfirmSummary   = document.getElementById('cqvConfirmSummary');
 
@@ -1789,6 +1790,9 @@ function getVisibleVisits() {
       || (window.GAILS.Mentions
         ? window.GAILS.Mentions.toText(v.coffeePartner).toLowerCase().includes(search)
         : String(v.coffeePartner || '').toLowerCase().includes(search))
+      || (window.GAILS.Mentions
+        ? window.GAILS.Mentions.formatPeople(window.GAILS.Mentions.toAssigneeList(v.assignedTo)).toLowerCase().includes(search)
+        : false)
       || String(v.auditorName || '').toLowerCase().includes(search)
       || String(v.mod || '').toLowerCase().includes(search);
   });
@@ -1823,6 +1827,12 @@ function renderVisits() {
     var isSiteVisit = v.type === 'siteVisit';
     var isCqv = v.type === 'cqv';
     var isNbo = v.type === 'nbo';
+    var importedAssignees = (isCqv || isNbo) && window.GAILS.Mentions
+      ? window.GAILS.Mentions.toAssigneeList(v.assignedTo)
+      : [];
+    var importedPartnerHtml = importedAssignees.length && window.GAILS.Mentions
+      ? window.GAILS.Mentions.formatSelectionHtml(window.GAILS.Mentions.formatPeople(importedAssignees))
+      : escapeHtml(v.auditorName || '—');
     var typeBadge = isCqv
       ? '<span class="admin-table-badge admin-table-badge--cqv">' + (v.isFollowUp ? 'CQV Follow-Up' : 'CQV') + '</span>'
       : isNbo
@@ -1843,7 +1853,7 @@ function renderVisits() {
       + '  ' + typeBadge
       + '</div></td>'
       + '<td>' + ((isCqv || isNbo)
-        ? escapeHtml(v.auditorName || '—')
+        ? importedPartnerHtml
         : (v.coffeePartner && window.GAILS.Mentions
           ? window.GAILS.Mentions.formatSelectionHtml(v.coffeePartner)
           : escapeHtml(v.coffeePartner || '—'))) + '</td>'
@@ -1957,6 +1967,18 @@ function openCqvConfirmModal(record, warnings, file) {
   state.cqvPending = { record: record, warnings: warnings || [], file: file };
   cqvConfirmBakery.innerHTML = bakeryOptionsHtml(guessBakeryMatch(record.bakery));
   cqvConfirmDate.value = record.date || '';
+  if (cqvConfirmCoffeePartner) {
+    var parsedPartner = window.GAILS.Mentions
+      ? window.GAILS.Mentions.resolvePerson(record.auditorName)
+      : null;
+    cqvConfirmCoffeePartner.value = parsedPartner && window.GAILS.Mentions
+      ? window.GAILS.Mentions.formatPeople([parsedPartner])
+      : (record.auditorName || '');
+    if (window.GAILS.MentionField) {
+      window.GAILS.MentionField.enhance(cqvConfirmCoffeePartner);
+      window.GAILS.MentionField.refresh(cqvConfirmCoffeePartner);
+    }
+  }
   if (cqvConfirmTitle) cqvConfirmTitle.textContent = isNbo ? 'Confirm NBO Visit Details' : 'Confirm CQV Details';
   cqvConfirmSubmitBtn.textContent = isNbo ? 'Save NBO Visit' : 'Save CQV';
   cqvConfirmSummary.innerHTML = isNbo ? nboSummaryHtml(record, warnings) : cqvSummaryHtml(record, warnings);
@@ -2094,6 +2116,17 @@ async function saveCqvRecord() {
     return;
   }
 
+  var attributionText = String(cqvConfirmCoffeePartner && cqvConfirmCoffeePartner.value || '').trim();
+  var selectedPartners = resolveEditedAssignees(attributionText);
+  var parsedAuditorName = String(pending.record.auditorName || '').trim();
+  if (attributionText && !selectedPartners.length &&
+      attributionText.toLowerCase() !== parsedAuditorName.toLowerCase()) {
+    cqvConfirmWarning.style.display = 'block';
+    cqvConfirmWarning.className = 'admin-message is-error';
+    cqvConfirmWarning.textContent = 'Choose the Coffee Partner from the name suggestions before saving.';
+    return;
+  }
+
   // NBO Visit 1 and Visit 2 are distinct reports, so a duplicate is only a
   // duplicate when the visit number matches too — otherwise saving Visit 2
   // after Visit 1 on the same day would be blocked.
@@ -2126,12 +2159,15 @@ async function saveCqvRecord() {
     var pdfUrl = await getDownloadURL(fileRef);
 
     var nowIsoStr = nowIso();
-    // The auditor printed on the PDF is the person this report belongs to, not
-    // the admin importing it. Resolving it here stamps the attribution once, so
-    // the report reaches their My Activity hub without anyone assigning it.
+    // The PDF auditor is the default attribution. A Coffee Partner selected in
+    // the confirmation modal takes precedence without changing the source name
+    // parsed from the PDF.
     var auditor = window.GAILS.Mentions
       ? window.GAILS.Mentions.resolvePerson(pending.record.auditorName)
       : null;
+    var attributedPartners = selectedPartners.length
+      ? selectedPartners
+      : (auditor ? [auditor] : []);
 
     var record = Object.assign({}, pending.record, {
       bakery: bakery,
@@ -2139,7 +2175,7 @@ async function saveCqvRecord() {
       pdfUrl: pdfUrl,
       pdfPath: storagePath,
       pdfFileName: pending.file.name,
-      assignedTo: auditor ? [auditor] : null,
+      assignedTo: attributedPartners.length ? attributedPartners : null,
       meta: {
         source: 'pdf-import',
         createdAt: nowIsoStr,
@@ -2223,7 +2259,7 @@ function fieldInputHtml(sectionKey, field, value) {
     input = '<input type="date" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
   } else if (field.type === 'time') {
     input = '<input type="time" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
-  } else if (field.key === 'coffeePartner') {
+  } else if (field.key === 'coffeePartner' || field.type === 'person') {
     // Assignable: typing searches for a colleague. Enhanced into its two-face
     // editor by openVisitDetail once the markup is in the DOM.
     input = '<input type="text" value="' + escapeHtml(value || '') + '" autocomplete="off" data-mention-field ' + dataAttrs + '>'
@@ -2325,7 +2361,8 @@ function buildCqvDetailHtml(visit) {
   var basicFields = [
     { key: 'bakery', label: 'Bakery', type: 'text' },
     { key: 'date', label: 'Visit date', type: 'date' },
-    { key: 'auditorName', label: 'Auditor', type: 'text' }
+    { key: 'auditorName', label: 'PDF auditor', type: 'text' },
+    { key: 'coffeePartnerAttribution', label: 'Coffee Partner attribution', type: 'person' }
   ];
   var basicHtml = basicFields.map(function(field) {
     return fieldInputHtml(null, field, visit[field.key]);
@@ -2353,7 +2390,78 @@ function buildCqvDetailHtml(visit) {
     + (canEdit('visits')
         ? '<div class="visit-detail-actions">'
         + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
-        + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Bakery / Date</button>'
+        + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Details</button>'
+        + '</div>'
+        : '');
+}
+
+function buildNboDetailHtml(visit) {
+  var basicFields = [
+    { key: 'bakery', label: 'Bakery', type: 'text' },
+    { key: 'date', label: 'Visit date', type: 'date' },
+    { key: 'auditorName', label: 'PDF auditor', type: 'text' },
+    { key: 'coffeePartnerAttribution', label: 'Coffee Partner attribution', type: 'person' }
+  ];
+  var basicHtml = basicFields.map(function(field) {
+    return fieldInputHtml(null, field, visit[field.key]);
+  }).join('');
+
+  var questions = visit.questions || [];
+  var sectionOrder = [];
+  var bySection = {};
+  questions.forEach(function(question) {
+    var section = question.section || 'Questions';
+    if (!bySection[section]) {
+      bySection[section] = [];
+      sectionOrder.push(section);
+    }
+    bySection[section].push(question);
+  });
+
+  var sectionsHtml = sectionOrder.map(function(section) {
+    var rows = bySection[section].map(function(question) {
+      var response = String(question.response || '').toUpperCase();
+      var isNo = response === 'NO';
+      var responseColor = isNo ? '#B22A24' : (response === 'YES' ? '#1D9E5C' : 'var(--muted-l)');
+      return '<div class="visit-report-row-wrap" style="padding:12px 0; border-bottom:1px solid var(--card-border);">'
+        + '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">'
+        + '<div style="min-width:0; flex:1;">'
+        + '<div style="font-weight:' + (isNo ? '700' : '600') + '; color:var(--text); font-size:0.9rem;">'
+        + escapeHtml((question.qNum ? question.qNum + '. ' : '') + (question.label || 'Question')) + '</div>'
+        + (question.note
+          ? '<p style="font-size:0.85rem; color:var(--text-2); margin:8px 0 0; padding:6px 10px; background:var(--accent-light); border-radius:4px; line-height:1.4;">'
+            + escapeHtml(question.note) + '</p>'
+          : '')
+        + '</div>'
+        + '<span style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px; white-space:nowrap; flex-shrink:0;'
+        + ' color:' + responseColor + '; background:' + responseColor + '26;">' + escapeHtml(response || '—') + '</span>'
+        + '</div></div>';
+    }).join('');
+    var noCount = bySection[section].filter(function(question) {
+      return String(question.response || '').toUpperCase() === 'NO';
+    }).length;
+    return '<div class="visit-detail-section"><h4>' + escapeHtml(section)
+      + (noCount ? ' <span style="color:#B22A24; font-weight:700;">(' + noCount + ' to work on)</span>' : '')
+      + '</h4>' + rows + '</div>';
+  }).join('') || '<div class="visit-detail-section"><h4>Visit Responses</h4><p class="visit-report-note">No parsed responses are available. Use the original PDF below.</p></div>';
+
+  var counts = visit.counts || {};
+  var pdfLinkHtml = visit.pdfUrl
+    ? '<a class="btn" href="' + escapeHtml(visit.pdfUrl) + '" target="_blank" rel="noopener" style="text-decoration:none; display:inline-block;">View Original NBO PDF &#8599;</a>'
+    : '<p class="visit-report-note">No PDF is attached to this record.</p>';
+
+  return '<div class="visit-detail-section"><h4>Details</h4><div class="visit-detail-grid">' + basicHtml + '</div></div>'
+    + '<div class="visit-detail-section"><h4>Derived Result</h4>'
+    + '<p style="font-size:1.4rem; font-weight:800; color:var(--text);">' + escapeHtml(window.GAILS.NBOShared.pctText(visit)) + '</p>'
+    + '<p class="visit-report-note">' + escapeHtml((counts.yes || 0) + ' Yes, ' + (counts.no || 0) + ' No'
+      + (counts.na ? ', ' + counts.na + ' N/A' : '')) + '. This percentage is derived from the responses; the NBO PDF has no score of its own.</p>'
+    + '</div>'
+    + sectionsHtml
+    + '<div class="visit-detail-section"><h4>Original Report</h4>' + pdfLinkHtml + '</div>'
+    + (canEdit('visits')
+        ? '<div class="visit-detail-actions">'
+        + '  <button type="button" class="admin-inline-danger" data-action="delete-visit-detail" data-id="' + escapeHtml(visit.id) + '">Delete Visit</button>'
+        + '  <button type="button" class="btn" data-action="save-visit-detail" data-id="' + escapeHtml(visit.id) + '">Save Details</button>'
         + '</div>'
         : '');
 }
@@ -2361,11 +2469,14 @@ function buildCqvDetailHtml(visit) {
 function buildVisitDetailHtml(visit) {
   var isSiteVisit = visit.type === 'siteVisit';
   var isCqv = visit.type === 'cqv';
+  var isNbo = visit.type === 'nbo';
   var badgeHtml = isCqv
     ? '<span class="admin-badge admin-badge--cqv">' + (visit.isFollowUp ? 'CQV Follow-Up' : 'Coffee Quality Visit (CQV)') + '</span>'
-    : isSiteVisit
-      ? '<span class="admin-badge admin-badge--adhoc">' + escapeHtml(siteVisitKindLabel(visit)) + '</span>'
-      : '<span class="admin-badge admin-badge--routine">Routine Coffee Visit</span>';
+    : isNbo
+      ? '<span class="admin-badge admin-badge--nbo">NBO Coffee Visit ' + escapeHtml(visit.visitNumber || 1) + '</span>'
+      : isSiteVisit
+        ? '<span class="admin-badge admin-badge--adhoc">' + escapeHtml(siteVisitKindLabel(visit)) + '</span>'
+        : '<span class="admin-badge admin-badge--routine">Routine Coffee Visit</span>';
 
   var recorderText = '';
   if (visit.meta) {
@@ -2373,7 +2484,7 @@ function buildVisitDetailHtml(visit) {
     var datePart = formatVisitDate(visit.date);
     var userPart = visit.meta.updatedBy ? ' by ' + visit.meta.updatedBy : '';
     var sourcePart = (visit.meta.source === 'form') ? ' via the Routine Coffee Visit form.'
-      : (visit.meta.source === 'pdf-import') ? ' from an imported CQV PDF.'
+      : (visit.meta.source === 'pdf-import') ? (isNbo ? ' from an imported NBO PDF.' : ' from an imported CQV PDF.')
       : ' manually.';
     recorderText = actionWord + ' on ' + datePart + userPart + sourcePart;
   } else {
@@ -2390,6 +2501,10 @@ function buildVisitDetailHtml(visit) {
 
   if (isCqv) {
     return headerHtml + buildCqvDetailHtml(visit);
+  }
+
+  if (isNbo) {
+    return headerHtml + buildNboDetailHtml(visit);
   }
 
   if (isSiteVisit) {
@@ -2453,7 +2568,14 @@ function visitForAttributionEdit(visit) {
   var editable = Object.assign({}, visit);
   var isAudited = visit.type === 'cqv' || visit.type === 'nbo';
   var M = window.GAILS.Mentions;
-  if (isAudited || !M) return editable;
+  if (isAudited) {
+    var auditedAssignees = M ? M.toAssigneeList(visit.assignedTo) : [];
+    editable.coffeePartnerAttribution = auditedAssignees.length && M
+      ? M.formatPeople(auditedAssignees)
+      : (visit.auditorName || '');
+    return editable;
+  }
+  if (!M) return editable;
 
   // assignedTo is authoritative. Older records can have that list while their
   // Coffee Partner display text is blank or still uses legacy @ syntax.
@@ -2528,17 +2650,18 @@ async function saveVisitDetail(id) {
   }
 
   var payload = Object.assign({}, existing, collected.general);
-  if (existing.type !== 'siteVisit' && existing.type !== 'cqv') {
+  delete payload.coffeePartnerAttribution;
+  if (!existing.type || existing.type === 'routine') {
     VISIT_SECTIONS.forEach(function(section) {
       payload[section.key] = collected[section.key];
     });
   }
-  // Routine visits are credited from Coffee Partner; imported CQV and NBO
-  // reports are credited from their printed auditor. In particular, editing an
-  // audited report's bakery/date must not clear its stable auditor assignment.
+  // Routine visits use their Coffee Partner field. Imported CQV and NBO
+  // reports use the explicit attribution picker, with the PDF auditor retained
+  // as the automatic fallback.
   var isAudited = existing.type === 'cqv' || existing.type === 'nbo';
   var attributionText = isAudited
-    ? (collected.general.auditorName || existing.auditorName || '')
+    ? (collected.general.coffeePartnerAttribution || '')
     : collected.general.coffeePartner;
   var editedAssignees = resolveEditedAssignees(attributionText);
   var storedAssignees = window.GAILS.Mentions
@@ -2551,10 +2674,17 @@ async function saveVisitDetail(id) {
     // authoritative assignment merely because this visit was opened and saved.
     editedAssignees = storedAssignees;
   }
-  if (isAudited && !editedAssignees.length &&
-      String(attributionText || '').trim() === String(existing.auditorName || '').trim() &&
-      window.GAILS.Mentions) {
-    editedAssignees = window.GAILS.Mentions.toAssigneeList(existing.assignedTo);
+  if (isAudited && !editedAssignees.length) {
+    var previousAttributionText = visitForAttributionEdit(existing).coffeePartnerAttribution || '';
+    if (String(attributionText || '').trim() === String(previousAttributionText).trim() &&
+        storedAssignees.length) {
+      editedAssignees = storedAssignees;
+    } else if (String(attributionText || '').trim() &&
+               String(attributionText).trim().toLowerCase() !==
+                 String(collected.general.auditorName || existing.auditorName || '').trim().toLowerCase()) {
+      setMessage(visitMsg, 'error', 'Choose the Coffee Partner from the name suggestions before saving.');
+      return;
+    }
   }
   payload.assignedTo = editedAssignees.length ? editedAssignees : null;
   if (!isAudited && editedAssignees.length && window.GAILS.Mentions) {

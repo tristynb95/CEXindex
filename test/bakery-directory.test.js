@@ -184,6 +184,14 @@ test('provides the complete bakery directory filter set and table grouping contr
   assert.match(source, /sheetName: 'Bakery Directory'/);
   assert.match(source, /filename: buildExportFilename\('Bakery Directory'\)/);
   assert.match(source, /Download the filtered bakery directory as a formatted Excel workbook/);
+  assert.match(source, /<th scope="col">Area Head Barista<\/th>/);
+  assert.match(source, /data-label="Area Head Barista">.*row\.areaHeadBarista \|\| '-'/);
+});
+
+test('uses a hyphen for unassigned area head baristas in directory exports', () => {
+  const source = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
+
+  assert.match(source, /row\.areaHeadBarista \|\| '-'/);
 });
 
 test('does not add a full-screen control to the bakery directory table', () => {
@@ -193,6 +201,15 @@ test('does not add a full-screen control to the bakery directory table', () => {
   assert.match(source, /data-table-fullscreen="off"/);
   assert.match(tables, /table\.getAttribute\('data-table-fullscreen'\) === 'off'/);
   assert.match(tables, /root\.matches\(HOST_SELECTOR\) && hostAllowsFullscreen\(root\)/);
+});
+
+test('keeps all six bakery directory columns visible in a compact fixed layout', () => {
+  const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+
+  assert.match(styles, /\.table-wrap--directory \.bakery-directory\s*\{[^}]*min-width:\s*820px;[^}]*table-layout:\s*fixed;/s);
+  assert.match(styles, /\.bakery-directory thead th:nth-child\(6\)\s*\{\s*width:\s*15%;\s*\}/);
+  assert.match(styles, /\.bakery-directory tbody th\s*\{[^}]*padding:\s*8px 10px;[^}]*white-space:\s*normal;/s);
+  assert.match(styles, /\.bakery-directory tbody td\s*\{[^}]*padding:\s*8px 10px;[^}]*white-space:\s*normal;/s);
 });
 
 test('opens Bakery Reports on the Bakery Directory by default', () => {

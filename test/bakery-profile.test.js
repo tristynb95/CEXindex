@@ -102,6 +102,30 @@ test('top-left banner uses the generic bakery profile label', () => {
   assert.doesNotMatch(script, /getElementById\('bakeryProfileHeaderName'\)/);
 });
 
+test('mobile banner keeps every action visible with a compact accessible back button', () => {
+  assert.match(html, /css\/bakery-profile\.css\?v=\d{8}-\d+/);
+  assert.match(html, /id="bakeryProfileResponsiveHeaderFix"/);
+  assert.match(html, /id="bakeryProfileBackLink"[\s\S]{0,260}aria-label="Back to Bakery Directory"/);
+  assert.match(html, /class="bakery-profile-header__back-label">Back To Bakery Directory<\/span>/);
+  const inlineBanner = html.slice(html.indexOf('id="bakeryProfileResponsiveHeaderFix"'), html.indexOf('</style>'));
+  assert.match(inlineBanner, /grid-template-columns:\s*34px minmax\(0, 180px\) 34px;/);
+  assert.match(inlineBanner, /justify-content:\s*end;[\s\S]*?margin-left:\s*auto;/);
+  assert.match(inlineBanner, /\.bakery-profile-header__back-label\s*\{\s*display:\s*none !important;/);
+  assert.match(inlineBanner, /#bakeryProfileSwitcherName\s*\{[\s\S]*?text-overflow:\s*ellipsis;/);
+  assert.match(inlineBanner, /\.bakery-profile-switcher\s*\{[\s\S]*?position:\s*static;/);
+  assert.match(inlineBanner, /\.bakery-profile-switcher__menu\s*\{[\s\S]*?right:\s*10px;[\s\S]*?left:\s*10px;[\s\S]*?width:\s*auto;/);
+  assert.match(inlineBanner, /@media \(max-width: 440px\)[\s\S]*grid-template-columns:\s*34px minmax\(0, 1fr\) 34px;/);
+  assert.match(inlineBanner, /@media \(max-width: 380px\)[\s\S]*?width:\s*72px;[\s\S]*?gap:\s*4px;[\s\S]*?right:\s*8px;[\s\S]*?left:\s*8px;/);
+  const responsiveBanner = profileStyles.slice(profileStyles.lastIndexOf('@media (max-width: 820px)'));
+  assert.match(responsiveBanner, /\.bakery-profile-header__back\s*\{[\s\S]*?flex:\s*0 0 34px;[\s\S]*?width:\s*34px;/);
+  assert.match(responsiveBanner, /\.bakery-profile-header__back-label\s*\{\s*display:\s*none;/);
+  assert.match(responsiveBanner, /\.bakery-profile-header__actions\s*\{[\s\S]*?flex:\s*1 1 auto;[\s\S]*?gap:\s*6px;/);
+  assert.match(responsiveBanner, /\.bakery-profile-switcher\s*\{[\s\S]*?position:\s*static;/);
+  assert.match(responsiveBanner, /\.bakery-profile-switcher__menu\s*\{[\s\S]*?right:\s*10px;[\s\S]*?left:\s*10px;[\s\S]*?width:\s*auto;/);
+  assert.match(script, /backLabel\.textContent = text/);
+  assert.doesNotMatch(script, /backLink\.textContent = text/);
+});
+
 test('profile display name omits the GAILs brand prefix', () => {
   const source = script
     .match(/function profileDisplayBakeryName\(value\) \{[\s\S]*?\n\}/)[0]
@@ -297,8 +321,8 @@ test('profile back control uses and preserves the named originating page', () =>
   assert.match(html, /id="bakeryProfileBackLink"[\s\S]*?Back To Bakery Directory/);
   assert.match(script, /params\.get\('from'\)/);
   assert.match(script, /params\.get\('fromLabel'\)/);
-  assert.match(script, /backLink\.textContent = text/);
-  assert.match(script, /'← Back To ' \+ profileReturnContext\.label/);
+  assert.match(script, /backLabel\.textContent = text/);
+  assert.match(script, /'Back To ' \+ profileReturnContext\.label/);
   assert.match(script, /escapeHtml\(profileUrlFor\(name\)\)/);
   assert.match(script, /RETURN_PAGES\.indexOf\(pageName\) === -1/);
   // The allowlist is what stops ?from bouncing someone off the site.

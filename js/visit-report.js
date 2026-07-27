@@ -2476,7 +2476,7 @@ window.GAILS = window.GAILS || {};
         '<td data-label="Region">' + escapeHtml(row.region) + '</td>' +
         '<td data-label="Coffee Partner">' + escapeHtml(row.coffeePartner || '—') + '</td>' +
         '<td data-label="Coffee Trainer">' + escapeHtml(row.coffeeTrainer || '—') + '</td>' +
-        '<td data-label="Area Head Barista">' + escapeHtml(row.areaHeadBarista || '—') + '</td>' +
+        '<td data-label="Area Head Barista">' + escapeHtml(row.areaHeadBarista || '-') + '</td>' +
         '</tr>';
     }
 
@@ -2547,7 +2547,14 @@ window.GAILS = window.GAILS || {};
         { label: 'Area Head Barista', type: 'text', width: 22 }
       ],
       rows: orderedRows.map(function (row) {
-        return [row.bakery, row.ops, row.region, row.coffeePartner, row.coffeeTrainer, row.areaHeadBarista];
+        return [
+          row.bakery,
+          row.ops,
+          row.region,
+          row.coffeePartner,
+          row.coffeeTrainer,
+          row.areaHeadBarista || '-'
+        ];
       })
     };
     renderBakeryDirectorySummary(orderedRows.length, !!groupField);
