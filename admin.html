@@ -21,8 +21,8 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=20260725-ux-04">
-  <link rel="stylesheet" href="css/admin.css?v=20260727-admin-06">
+  <link rel="stylesheet" href="css/styles.css?v=20260727-region-cover-01">
+  <link rel="stylesheet" href="css/admin.css?v=20260727-admin-07">
 </head>
 
 <body class="admin-body">
@@ -432,7 +432,11 @@
                     <div>
                       <h4>Region Coffee Team</h4>
                       <p>Regions are detected automatically from the site directory. Start typing a colleague’s name,
-                        then choose their account to assign every bakery in that region.</p>
+                        then choose their account to assign every bakery in that region. If a Coffee Partner or
+                        Coffee Trainer leaves and their patch is split, switch <strong>Cover</strong> on for the
+                        region and name whoever is covering each ops area — anywhere you leave blank stays with the
+                        region’s own pair above. Switch Cover off once a permanent replacement is in post and the
+                        whole region goes back to them.</p>
                     </div>
                     <div class="admin-toolbar__meta" id="regionAssignmentMeta">Loading regions&hellip;</div>
                   </div>
@@ -443,6 +447,7 @@
                           <th>Region</th>
                           <th>Coffee Partner</th>
                           <th>Coffee Trainer</th>
+                          <th>Cover</th>
                         </tr>
                       </thead>
                       <tbody id="regionAssignmentList"></tbody>
@@ -943,7 +948,7 @@
   </div>
 
   <script src="js/config.js"></script>
-  <script src="js/utils.js"></script>
+  <script src="js/utils.js?v=20260727-region-cover-01"></script>
   <script src="js/cei.js"></script>
   <script src="js/parser.js"></script>
   <script src="js/tables.js"></script>

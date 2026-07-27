@@ -5,18 +5,16 @@
 // writes to — routineVisits, followUpActions, and bakeryNotes:
 //
 //   1. Open actions   — the follow-up tasks this user raised and hasn't closed.
-//   2. My visits      — every visit logged under their name, filterable and
-//                       exportable to Excel.
+//   2. Visits         — every visit at an assigned bakery plus the user's own
+//                       out-of-area work, with clear visitor attribution.
 //   3. Activity feed  — all three record types merged into one reverse
 //                       chronological stream.
 //
-// Nothing here is bakery-scoped, so it deliberately does NOT apply the ops-area
-// report visibility scope that gates Bakery Reports: these are the signed-in
-// user's own records, and hiding someone's own work from them would be absurd.
+// Personal stats and History remain based on the signed-in user's own records.
 
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+import { ref, get, onValue, update, remove, push, set } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
 import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
 
@@ -28,6 +26,15 @@ const page = document.getElementById('myActivityPage');
 const greetingEl = document.getElementById('myActivityGreeting');
 const statsEl = document.getElementById('myActivityStats');
 const focusEl = document.getElementById('myActivityFocus');
+const performanceInsightEl = document.querySelector('.my-activity-overview > .my-activity-insight');
+const todayEl = document.getElementById('myActivityDate');
+const prioritiesEl = document.getElementById('myActivityPriorities');
+const patchHintEl = document.getElementById('myActivityPatchHint');
+const momentumEl = document.getElementById('myActivityMomentum');
+const monthLabelEl = document.getElementById('myActivityMonthLabel');
+const briefFollowUpsEl = document.getElementById('myActivityFollowUps');
+const latestVisitEl = document.getElementById('myActivityLatestVisit');
+const tabActionCount = document.getElementById('myActivityTabActionCount');
 const backLink = document.getElementById('myActivityBackLink');
 
 const actionsStatusToggle = document.getElementById('myActionsStatus');
@@ -40,6 +47,7 @@ const actionsSort = document.getElementById('myActionsSort');
 const actionsReset = document.getElementById('myActionsResetBtn');
 const actionsSummary = document.getElementById('myActionsSummary');
 const actionsExportBtn = document.getElementById('myActionsExportBtn');
+const actionsNewBtn = document.getElementById('myActionsNewBtn');
 
 const visitsSearch = document.getElementById('myVisitsSearch');
 const visitsPeriod = document.getElementById('myVisitsPeriod');
@@ -51,8 +59,11 @@ const visitsSort = document.getElementById('myVisitsSort');
 const visitsReset = document.getElementById('myVisitsResetBtn');
 const visitsSummary = document.getElementById('myVisitsSummary');
 const visitsListEl = document.getElementById('myVisitsList');
-const visitsMoreBtn = document.getElementById('myVisitsMore');
+const visitsScrollEl = document.querySelector('.my-activity-visits-scroll');
 const visitsExportBtn = document.getElementById('myVisitsExportBtn');
+const patchMapEl = document.getElementById('myActivityPatchMap');
+const patchMapCountEl = document.getElementById('myActivityPatchMapCount');
+const patchMapStatusEl = document.getElementById('myActivityPatchMapStatus');
 const customRangeControls = Array.from(document.querySelectorAll('.my-activity-custom-range'));
 
 const timelineFilter = document.getElementById('myTimelineFilter');
@@ -62,6 +73,7 @@ const timelineSearch = document.getElementById('myTimelineSearch');
 const timelineSummary = document.getElementById('myTimelineSummary');
 const timelineMoreBtn = document.getElementById('myTimelineMore');
 const jumpNav = document.getElementById('myActivityJump');
+const activityPanels = Array.from(document.querySelectorAll('[data-activity-panel]'));
 
 const confirmModal = document.getElementById('myActivityConfirmModal');
 const confirmBackdrop = document.getElementById('myActivityConfirmBackdrop');
@@ -70,10 +82,26 @@ const confirmCancel = document.getElementById('myActivityConfirmCancel');
 const confirmTitle = document.getElementById('myActivityConfirmTitle');
 const confirmMessage = document.getElementById('myActivityConfirmMessage');
 const confirmBtn = document.getElementById('myActivityConfirmBtn');
+const confirmError = document.getElementById('myActivityConfirmError');
+
+const taskModal = document.getElementById('myActivityTaskModal');
+const taskModalTitle = document.getElementById('myActivityTaskModalTitle');
+const taskBackdrop = document.getElementById('myActivityTaskBackdrop');
+const taskClose = document.getElementById('myActivityTaskClose');
+const taskCancel = document.getElementById('myActivityTaskCancel');
+const taskForm = document.getElementById('myActivityTaskForm');
+const taskIdInput = document.getElementById('myActivityTaskId');
+const taskBakeryInput = document.getElementById('myActivityTaskBakery');
+const taskTitleInput = document.getElementById('myActivityTaskTitle');
+const taskDetailInput = document.getElementById('myActivityTaskDetail');
+const taskDueDateInput = document.getElementById('myActivityTaskDueDate');
+const taskPriorityInput = document.getElementById('myActivityTaskPriority');
+const taskSaveBtn = document.getElementById('myActivityTaskSave');
+const taskDeleteBtn = document.getElementById('myActivityTaskDelete');
+const taskErrorEl = document.getElementById('myActivityTaskError');
 
 const FILTER_STORAGE_KEY = 'gails_my_activity_filters';
 const TIMELINE_CHUNK = 25;
-const VISIT_CHUNK = 30;
 
 let currentUser = null;
 let userProfile = null;
@@ -89,18 +117,28 @@ let identity = { uid: '', emails: new Set(), names: new Set() };
 let visitsObj = {};
 let tasksObj = {};
 let notesList = [];
+let performanceRecords = [];
 let dataReady = { visits: false, tasks: false, notes: false };
 
 let actionsStatus = 'open';
 let timelineKind = 'all';
 let timelineLimit = TIMELINE_CHUNK;
-let visitLimit = VISIT_CHUNK;
 let timelineResultCount = 0;
-let visitResultCount = 0;
 let visitOptionsSignature = '';
 let actionOptionsSignature = '';
 let pendingVisitExport = null;
 let pendingActionsExport = null;
+let performanceInsights = [];
+let performanceInsightIndex = 0;
+let performanceInsightTimer = null;
+let patchMap = null;
+let patchMapMarkers = null;
+let patchMapTiles = null;
+let patchMapLegend = null;
+let patchMapResizeObserver = null;
+let patchMapPoints = [];
+let patchMapLayoutFrame = null;
+let taskModalReturnFocus = null;
 
 // ---------- small shared helpers ----------
 
@@ -283,8 +321,10 @@ function wasImported(meta) {
 
 function visitIsMine(visit) {
   if (!visit) return false;
-  // Credited to me — assigned by @mention, or attributed automatically.
-  if (attributedToMe(visitAttribution(visit))) return true;
+  // Profile allocation is authoritative. The person who entered a record does
+  // not also own it when the visit names another profile.
+  var owners = visitAttribution(visit);
+  if (owners.length) return attributedToMe(owners);
   var meta = visit.meta || {};
   var imported = wasImported(meta);
   if (!imported && matchesMyUid(meta.createdByUid || visit.createdByUid)) return true;
@@ -320,35 +360,42 @@ function visitAttribution(visit) {
   return G.Attribution ? G.Attribution.forVisit(visit) : [];
 }
 
-function taskAttribution(task) {
+function taskOwners(task) {
   if (!G.Attribution) return [];
   var sourceVisit = task && task.sourceVisitId ? visitsObj[task.sourceVisitId] : null;
-  return G.Attribution.actorsForTask(task, sourceVisit);
+  return G.Attribution.forTask(task, sourceVisit);
 }
 
 function attributedToMe(list) {
   return !!G.Attribution && G.Attribution.matches(list, identity);
 }
 
-// An explicit @mention hand-over, as opposed to a derived credit. Only these
-// are announced as an assignment — telling someone a routine visit was
-// "assigned to you" when the form simply carried their name would be a lie.
-function visitAssignedToMe(visit) {
-  var list = visitAttribution(visit);
-  return G.Attribution ? G.Attribution.isExplicit(list) && attributedToMe(list) : false;
+// Attribution is only worth calling out on a card when this was a genuinely
+// joint visit. A single-profile visit needs no redundant ownership badge.
+function jointVisitLabel(visit) {
+  if (!G.Attribution) return '';
+  var attribution = visitAttribution(visit);
+  if (!attributedToMe(attribution)) return '';
+  var others = attribution.filter(function (entry) {
+    return !attributedToMe([entry]);
+  });
+  if (!others.length) return '';
+  return others.length === 1
+    ? 'Visited by you and ' + G.Attribution.label(others)
+    : 'Visited by you, ' + G.Attribution.label(others);
 }
 
-function visitAssignedToSomeoneElse(visit) {
-  var list = visitAttribution(visit);
-  if (!G.Attribution || !G.Attribution.isExplicit(list)) return false;
-  return list.length > 0 && !attributedToMe(list);
+// The Visits tab is a patch history, not just a record of the signed-in
+// person's work. Keep solo visits by this user uncluttered, retain the joint
+// wording above, and clearly credit visits completed solely by colleagues.
+function visitListCreditLabel(visit) {
+  if (visitIsMine(visit)) return jointVisitLabel(visit);
+  var people = visitAttribution(visit);
+  var label = G.Attribution ? G.Attribution.label(people) : '';
+  return 'Visited by ' + (label || 'a colleague');
 }
 
-function visitAssigneeLabel(visit) {
-  return G.Attribution ? G.Attribution.label(visitAttribution(visit)) : '';
-}
-
-// Who logged the visit, as opposed to who it was assigned to.
+// Who logged the visit, as opposed to which profile owns it.
 function visitLoggedByMe(visit) {
   if (!visit) return false;
   var meta = visit.meta || {};
@@ -370,12 +417,12 @@ function taskCompletedByMe(task) {
 }
 
 function taskIsMine(task) {
-  return attributedToMe(taskAttribution(task));
+  return attributedToMe(taskOwners(task));
 }
 
-// A follow-up handed over with the visit it was raised on.
+// A selected person allocates the follow-up to their profile.
 function taskAssignedToMe(task) {
-  var list = taskAttribution(task);
+  var list = taskOwners(task);
   return !!G.Attribution && G.Attribution.isExplicit(list) && attributedToMe(list);
 }
 
@@ -428,6 +475,13 @@ function visitScoreText(visit) {
   return pct == null ? '—' : (Math.round(pct * 10) / 10) + '%';
 }
 
+function scoreTone(pct) {
+  if (pct == null) return 'neutral';
+  if (pct < 75) return 'red';
+  if (pct < 85) return 'gold';
+  return 'green';
+}
+
 // The notes a visit carries, flattened for the row preview and the export.
 // Routine visits keep one comment per section; everything else has a single
 // free-text field.
@@ -476,11 +530,10 @@ function visitTimestamp(visit) {
   return toMillis(meta.createdAt) || toMillis(visit.date ? visit.date + 'T' + (visit.time || '00:00') : '');
 }
 
-// Who logged a visit, for an assignee reading their own feed. Falls back to the
-// last editor for records saved before authorship was stamped.
-function visitLoggerLabel(visit) {
-  var meta = (visit && visit.meta) || {};
-  return meta.createdBy || visit.email || meta.updatedBy || 'a colleague';
+function visitOccurredAt(visit) {
+  return toMillis(visit && visit.date
+    ? visit.date + 'T' + (visit.time || '00:00')
+    : '');
 }
 
 // ---------- follow-up presentation ----------
@@ -550,9 +603,201 @@ function myTasks() {
     .filter(taskIsMine);
 }
 
-function myNotes() {
-  return notesList.filter(function (note) {
-    return noteAuthorIsMine(note.createdBy) || noteAuthorIsMine(note.updatedBy);
+function canonicalBakeryName(name) {
+  if (!name) return '';
+  return (typeof G.resolveBakeryMetaKey === 'function' && G.resolveBakeryMetaKey(name)) || name;
+}
+
+function assignmentPersonMatches(uid, name) {
+  return matchesMyUid(uid) || matchesMyName(name) || matchesMyEmail(name);
+}
+
+// The site directory is the source of truth for a field partner's patch.
+// Coffee Partners own regions; Area Head Baristas own region + ops-area pairs.
+// Names remain a deliberate legacy fallback for assignments saved before UIDs
+// were added to the directory.
+//
+// A region on cover is the exception: while one of its two roles is vacant,
+// that role is named per ops area, so the region's own holder of it keeps only
+// the areas nobody else is covering. The two roles are counted separately —
+// covering a colleague's Coffee Partner patch does not take their areas off the
+// region's Coffee Trainer.
+function assignedPatchBakeries() {
+  var meta = typeof G.getBakeryMetaSnapshot === 'function' ? G.getBakeryMetaSnapshot() : {};
+  var regionAssignments = typeof G.getRegionAssignmentsSnapshot === 'function'
+    ? G.getRegionAssignmentsSnapshot()
+    : [];
+  var opsAssignments = typeof G.getOpsAreaAssignmentsSnapshot === 'function'
+    ? G.getOpsAreaAssignmentsSnapshot()
+    : [];
+  var regions = new Map();
+  var coveredAway = new Map();
+  var opsPairs = new Set();
+  var opsOnly = new Set();
+  var normal = function (value) {
+    return String(value == null ? '' : value).trim().replace(/\s+/g, ' ').toLowerCase();
+  };
+
+  regionAssignments.forEach(function (assignment) {
+    if (!assignment) return;
+    var region = normal(assignment.region);
+    var mine = {
+      partner: assignmentPersonMatches(assignment.coffeePartnerUid, assignment.coffeePartner),
+      trainer: assignmentPersonMatches(assignment.coffeeTrainerUid, assignment.coffeeTrainer)
+    };
+    if (mine.partner || mine.trainer) regions.set(region, mine);
+
+    var cover = assignment.cover;
+    if (!cover || !cover.enabled) return;
+    (cover.areas || []).forEach(function (area) {
+      if (!area) return;
+      var pair = region + '|' + normal(area.opsArea);
+      var hasPartner = !!(area.coffeePartner || area.coffeePartnerUid);
+      var hasTrainer = !!(area.coffeeTrainer || area.coffeeTrainerUid);
+      // Whichever roles somebody covers here are no longer the region holder's,
+      // whoever that person turns out to be.
+      coveredAway.set(pair, { partner: hasPartner, trainer: hasTrainer });
+      if (assignmentPersonMatches(area.coffeePartnerUid, area.coffeePartner) ||
+          assignmentPersonMatches(area.coffeeTrainerUid, area.coffeeTrainer)) {
+        opsPairs.add(pair);
+      }
+    });
+  });
+
+  opsAssignments.forEach(function (assignment) {
+    if (!assignment) return;
+    var baristas = Array.isArray(assignment.baristas) ? assignment.baristas : [];
+    var assigned = baristas.some(function (barista) {
+      return assignmentPersonMatches(barista && barista.uid, barista && barista.name);
+    });
+    if (!assigned) {
+      assigned = assignmentPersonMatches(assignment.areaHeadBaristaUid, assignment.areaHeadBarista);
+    }
+    if (assigned) {
+      if (normal(assignment.region)) {
+        opsPairs.add(normal(assignment.region) + '|' + normal(assignment.opsArea));
+      } else {
+        opsOnly.add(normal(assignment.opsArea));
+      }
+    }
+  });
+
+  return Object.keys(meta).filter(function (bakery) {
+    var record = meta[bakery] || {};
+    var region = normal(record.r);
+    var pair = region + '|' + normal(record.o);
+    if (opsPairs.has(pair) || opsOnly.has(normal(record.o))) return true;
+
+    var mine = regions.get(region);
+    if (!mine) return false;
+    // Still this bakery's Coffee Partner or Coffee Trainer unless somebody is
+    // covering the role here.
+    var covered = coveredAway.get(pair) || { partner: false, trainer: false };
+    return (mine.partner && !covered.partner) || (mine.trainer && !covered.trainer);
+  }).sort(function (a, b) {
+    return bakerySiteName(a).localeCompare(bakerySiteName(b));
+  });
+}
+
+function allVisits() {
+  return Object.keys(visitsObj).map(function (id) {
+    return Object.assign({ id: id }, visitsObj[id]);
+  }).filter(function (visit) {
+    return visit && visit.bakery && visit.date;
+  });
+}
+
+// Every visit at a bakery in this user's assigned patch, regardless of which
+// field partner completed it. Personal stats and History continue to use
+// myVisits(); this collection owns the Visits list and report navigation.
+function patchVisits() {
+  var patch = new Set(assignedPatchBakeries().map(canonicalBakeryName));
+  return allVisits().filter(function (visit) {
+    return patch.has(canonicalBakeryName(visit.bakery));
+  });
+}
+
+// The Visits tab is wider than patch coverage: it also acts as the user's
+// personal record when they support a bakery outside their normal area.
+// Colleague visits remain patch-only; only the signed-in user's own work can
+// extend the list beyond the assigned patch.
+function activityVisits() {
+  var visits = patchVisits();
+  var included = new Set(visits.map(function (visit) { return visit.id; }));
+  allVisits().forEach(function (visit) {
+    if (!visitIsMine(visit) || included.has(visit.id)) return;
+    visits.push(visit);
+    included.add(visit.id);
+  });
+  return visits;
+}
+
+function visitIsOutOfArea(visit) {
+  if (!visit || !visitIsMine(visit)) return false;
+  var patch = new Set(assignedPatchBakeries().map(canonicalBakeryName));
+  return !patch.has(canonicalBakeryName(visit.bakery));
+}
+
+function taskCanManage(task) {
+  return !!canEdit && !!task && (taskAssignedToMe(task) || taskRaisedByMe(task));
+}
+
+function performanceMonthKey(label) {
+  if (typeof G.monthSortKey === 'function') return G.monthSortKey(label);
+  var parts = String(label || '').trim().split(/\s+/);
+  var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var month = months.indexOf(parts[0]);
+  if (month < 0 || !parts[1]) return -Infinity;
+  var year = parseInt(parts[1], 10);
+  if (year < 100) year += 2000;
+  return year * 12 + month;
+}
+
+function performanceRowsForBakery(bakery) {
+  var canonical = canonicalBakeryName(bakery);
+  var now = new Date();
+  var currentMonthKey = now.getFullYear() * 12 + now.getMonth();
+  return performanceRecords.filter(function (record) {
+    if (!record || record.noData || record.incompletePeriod || typeof record.ac !== 'number') return false;
+    return canonicalBakeryName(record.b) === canonical && performanceMonthKey(record.m) < currentMonthKey;
+  }).sort(function (a, b) {
+    return performanceMonthKey(a.m) - performanceMonthKey(b.m);
+  });
+}
+
+// One comparable performance record per bakery. The weighted Focus Bakery
+// snapshot is preferred because it reflects sustained performance; the latest
+// usable month is the resilient fallback. Month-on-month delta always uses the
+// latest two observed closed months so "improved" and "declined" stay literal.
+function patchPerformance() {
+  var patch = assignedPatchBakeries();
+  var snapshots = {};
+  if (typeof G.buildFocusDataset === 'function' && performanceRecords.length) {
+    var focus = G.buildFocusDataset({
+      records: performanceRecords,
+      referenceDate: new Date(),
+      isAbsolute: true,
+      ignoreBandFilter: true,
+      state: { regionFilter: [], opsFilter: [], searchBakery: [], bandFilter: '' }
+    });
+    (focus.allSnapshots || []).forEach(function (snapshot) {
+      snapshots[canonicalBakeryName(snapshot.b)] = snapshot;
+    });
+  }
+
+  return patch.map(function (bakery) {
+    var rows = performanceRowsForBakery(bakery);
+    var latest = rows[rows.length - 1] || null;
+    var previous = rows[rows.length - 2] || null;
+    var snapshot = snapshots[canonicalBakeryName(bakery)] || latest;
+    return {
+      bakery: bakery,
+      score: snapshot && typeof snapshot.ac === 'number' ? snapshot.ac : null,
+      month: latest ? latest.m : '',
+      latestScore: latest && typeof latest.ac === 'number' ? latest.ac : null,
+      previousScore: previous && typeof previous.ac === 'number' ? previous.ac : null,
+      delta: latest && previous ? Math.round((latest.ac - previous.ac) * 10) / 10 : null
+    };
   });
 }
 
@@ -637,15 +882,16 @@ function syncCustomRangeVisibility() {
   customRangeControls.forEach(function (control) { control.hidden = !custom; });
 }
 
-// The Ops Area and Bakery lists only ever offer values that appear in this
-// user's own visits — an estate-wide list would be mostly dead options.
+// The Ops Area and Bakery lists only offer values represented in the user's
+// patch history or their own out-of-area visits, rather than mostly dead
+// estate-wide options.
 function syncVisitFilterOptions() {
   // Building the lists before the visits node has arrived would produce two
   // empty dropdowns and, worse, discard the stored Ops Area/Bakery selections
   // that are waiting to be applied to real options.
   if (!dataReady.visits) return;
 
-  var visits = myVisits();
+  var visits = activityVisits();
   var opsSet = new Set();
   var bakerySet = new Set();
   visits.forEach(function (v) {
@@ -802,6 +1048,7 @@ function actionRowHtml(task) {
   var done = taskIsDone(task);
   var meta = dueMeta(task.dueDate);
   var priority = normalizePriority(task.priority);
+  var manageable = taskCanManage(task);
 
   var pill = done
     ? '<span class="follow-up-pill follow-up-pill--done">Done</span>'
@@ -811,7 +1058,6 @@ function actionRowHtml(task) {
   if (task.createdAt) footnotes.push('Added ' + formatDay(task.createdAt));
   if (done && task.completedAt) footnotes.push('Completed ' + formatDay(task.completedAt));
   if (!taskRaisedByMe(task) && taskCompletedByMe(task)) footnotes.push('Raised by ' + (task.createdBy || 'a colleague'));
-  if (taskAssignedToMe(task) && !taskRaisedByMe(task)) footnotes.push('Assigned to you with a visit');
 
   return '<div class="my-activity-action' + (done ? ' my-activity-action--done' : '') +
     '" data-task-id="' + escapeHtml(task.id) + '">' +
@@ -833,6 +1079,14 @@ function actionRowHtml(task) {
     '<div class="my-activity-action__side">' +
     (priority === 'none' ? '' : '<span class="follow-up-priority follow-up-priority--' + priority + '">' + PRIORITY_LABELS[priority] + '</span>') +
     pill +
+    (manageable ? '<div class="my-activity-action__controls">' +
+      '<button type="button" class="my-activity-icon-btn" data-task-edit="' + escapeHtml(task.id) +
+      '" aria-label="Edit ' + escapeHtml(task.title || 'task') + '" title="Edit task">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.6-10.6-3.2-3.2L5 15.8 4 20Z"></path><path d="m13.8 7 3.2 3.2"></path></svg></button>' +
+      '<button type="button" class="my-activity-icon-btn my-activity-icon-btn--danger" data-task-delete="' +
+      escapeHtml(task.id) + '" aria-label="Delete ' + escapeHtml(task.title || 'task') + '" title="Delete task">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"></path></svg></button>' +
+      '</div>' : '') +
     '</div>' +
     '</div>';
 }
@@ -850,6 +1104,11 @@ function renderActions() {
     actionsCount.textContent = plural(openTasks.length, 'open action');
     actionsCount.classList.toggle('my-activity-pill--alert',
       openTasks.some(taskIsOverdue));
+  }
+  if (tabActionCount) {
+    tabActionCount.textContent = openTasks.length;
+    tabActionCount.hidden = openTasks.length === 0;
+    tabActionCount.classList.toggle('my-activity-tab-count--alert', openTasks.some(taskIsOverdue));
   }
 
   var shown = filterActions(tasks).sort(actionSorter(filters.sort));
@@ -878,6 +1137,159 @@ function renderActions() {
   pendingActionsExport = buildActionsExportData(shown, filters);
 }
 
+function populateTaskBakeryOptions(selected) {
+  if (!taskBakeryInput) return;
+  var meta = typeof G.getBakeryMetaSnapshot === 'function' ? G.getBakeryMetaSnapshot() : {};
+  var names = Object.keys(meta);
+  myTasks().forEach(function (task) {
+    if (task.bakery && names.indexOf(task.bakery) === -1) names.push(task.bakery);
+  });
+  if (selected && names.indexOf(selected) === -1) names.push(selected);
+  names.sort(function (a, b) { return bakerySiteName(a).localeCompare(bakerySiteName(b)); });
+  taskBakeryInput.innerHTML = names.map(function (name) {
+    return '<option value="' + escapeHtml(name) + '">' + escapeHtml(bakerySiteName(name)) + '</option>';
+  }).join('');
+  taskBakeryInput.value = selected || '';
+}
+
+function showTaskError(message) {
+  if (!taskErrorEl) return;
+  taskErrorEl.textContent = message || '';
+  taskErrorEl.hidden = !message;
+}
+
+function openTaskModal(taskId, returnFocus) {
+  var task = tasksObj[taskId];
+  if (!task || !taskCanManage(task) || !taskModal) return;
+  taskModalReturnFocus = returnFocus || document.activeElement;
+  populateTaskBakeryOptions(task.bakery);
+  if (taskModalTitle) taskModalTitle.textContent = 'Edit action';
+  taskIdInput.value = taskId;
+  taskTitleInput.value = task.title || '';
+  taskDetailInput.value = task.detail || '';
+  taskDueDateInput.value = task.dueDate || '';
+  taskPriorityInput.value = normalizePriority(task.priority);
+  taskSaveBtn.textContent = 'Save changes';
+  taskSaveBtn.disabled = false;
+  taskDeleteBtn.hidden = false;
+  taskDeleteBtn.disabled = false;
+  showTaskError('');
+  taskModal.hidden = false;
+  document.body.classList.add('my-activity-modal-open');
+  taskTitleInput.focus();
+}
+
+function openNewTaskModal(returnFocus) {
+  if (!taskModal || !canEdit || !currentUser) return;
+  taskModalReturnFocus = returnFocus || document.activeElement;
+  var preferredBakery = actionsBakery && actionsBakery.value ? actionsBakery.value : '';
+  populateTaskBakeryOptions(preferredBakery);
+  if (!taskBakeryInput.value && taskBakeryInput.options.length) {
+    taskBakeryInput.selectedIndex = 0;
+  }
+  if (taskModalTitle) taskModalTitle.textContent = 'New action';
+  taskIdInput.value = '';
+  taskTitleInput.value = '';
+  taskDetailInput.value = '';
+  taskDueDateInput.value = '';
+  taskPriorityInput.value = 'none';
+  taskSaveBtn.textContent = 'Create action';
+  taskSaveBtn.disabled = false;
+  taskDeleteBtn.hidden = true;
+  taskDeleteBtn.disabled = false;
+  showTaskError('');
+  taskModal.hidden = false;
+  document.body.classList.add('my-activity-modal-open');
+  taskTitleInput.focus();
+}
+
+function closeTaskModal() {
+  if (!taskModal || taskModal.hidden) return;
+  taskModal.hidden = true;
+  document.body.classList.remove('my-activity-modal-open');
+  if (taskModalReturnFocus && typeof taskModalReturnFocus.focus === 'function') {
+    taskModalReturnFocus.focus();
+  }
+  taskModalReturnFocus = null;
+}
+
+function currentTaskProfile() {
+  if (!currentUser) return null;
+  var profile = userProfile || {};
+  var storedName = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
+  return {
+    uid: currentUser.uid,
+    name: storedName || currentUser.displayName || '',
+    email: currentUser.email || ''
+  };
+}
+
+async function saveTask() {
+  var taskId = taskIdInput ? taskIdInput.value : '';
+  if (!canEdit || !currentUser) throw new Error('Your profile cannot create or update actions.');
+  var title = taskTitleInput.value.trim();
+  if (!title) throw new Error('Add a short action before saving.');
+  var bakery = taskBakeryInput.value;
+  if (!bakery) throw new Error('Choose a bakery before saving.');
+  var who = currentUser ? (currentUser.email || currentUser.uid) : '';
+  var now = new Date().toISOString();
+
+  if (!taskId) {
+    var profile = currentTaskProfile();
+    var taskRef = push(ref(db, 'followUpActions'));
+    var payload = {
+      bakery: bakery,
+      title: title,
+      detail: taskDetailInput.value.trim(),
+      dueDate: taskDueDateInput.value || null,
+      priority: normalizePriority(taskPriorityInput.value),
+      status: 'open',
+      sourceVisitId: null,
+      assignedTo: [profile],
+      completedAt: null,
+      completedBy: null,
+      createdAt: now,
+      createdBy: who,
+      createdByUid: currentUser.uid,
+      createdByName: profile.name,
+      meta: { updatedAt: now, updatedBy: who }
+    };
+    await set(taskRef, payload);
+    if (typeof G.notifySuccess === 'function') G.notifySuccess('Task created');
+    return { created: true, id: taskRef.key };
+  }
+
+  var task = tasksObj[taskId];
+  if (!task || !taskCanManage(task)) throw new Error('This task is no longer available to edit.');
+  await update(ref(db, 'followUpActions/' + taskId), {
+    bakery: bakery,
+    title: title,
+    detail: taskDetailInput.value.trim(),
+    dueDate: taskDueDateInput.value || null,
+    priority: normalizePriority(taskPriorityInput.value),
+    'meta/updatedAt': now,
+    'meta/updatedBy': who
+  });
+  if (typeof G.notifySuccess === 'function') G.notifySuccess('Task updated');
+  return { created: false, id: taskId };
+}
+
+function requestTaskDelete(taskId) {
+  var task = tasksObj[taskId];
+  if (!task || !taskCanManage(task)) return;
+  closeTaskModal();
+  openConfirmModal({
+    title: 'Delete follow-up task?',
+    message: 'Delete “' + (task.title || 'Untitled task') + '” at ' + bakerySiteName(task.bakery) +
+      '? This cannot be undone.',
+    confirmLabel: 'Delete task',
+    tone: 'danger',
+    onConfirm: async function () {
+      await remove(ref(db, 'followUpActions/' + taskId));
+    }
+  });
+}
+
 function actionsEmptyMessage(filters) {
   if (filters && (filters.search || filters.bakery || filters.ops)) {
     return 'No actions match these filters. Clear the search or choose another bakery.';
@@ -886,7 +1298,7 @@ function actionsEmptyMessage(filters) {
   if (actionsStatus === 'overdue') return 'Nothing overdue — you are on top of your actions.';
   if (actionsStatus === 'soon') return 'Nothing due in the next seven days.';
   if (actionsStatus === 'all') return 'No follow-up tasks are linked to you yet.';
-  return 'No open actions. Raise one from a check-in or a bakery profile.';
+  return 'No open actions. Create one here, from a check-in, or from a bakery profile.';
 }
 
 function emptyStateHtml(icon, message) {
@@ -894,13 +1306,13 @@ function emptyStateHtml(icon, message) {
     escapeHtml(message) + '</p></div>';
 }
 
-// ---------- section 2: my visits ----------
+// ---------- section 2: patch and out-of-area visits ----------
 
 function filteredVisits() {
   var filters = readVisitFilters();
   var search = filters.search.toLowerCase();
 
-  var visits = myVisits().filter(function (v) {
+  var visits = activityVisits().filter(function (v) {
     if (!isDateWithinPeriod(v.date, filters.period, filters.from, filters.to)) return false;
     if (filters.ops && bakeryOps(v.bakery) !== filters.ops) return false;
     if (filters.bakery && v.bakery !== filters.bakery) return false;
@@ -945,24 +1357,18 @@ function visitRowHtml(visit) {
   var preview = notes.length > 140 ? notes.slice(0, 140) + '…' : notes;
   var isAudited = visit.type === 'cqv' || visit.type === 'nbo';
   var personHtml = isAudited ? escapeHtml(visit.auditorName || '') : mentionHtml(visit.coffeePartner);
+  var scorePct = visitScorePct(visit);
 
-  // An assigned visit shows in both people's hubs, so each needs to see which
-  // side of the handover they are on at a glance.
-  var assignmentTag = '';
-  if (visitAssignedToMe(visit)) {
-    // Named alongside colleagues, say so — "assigned to you" alone would hide
-    // that someone else is covering it too.
-    var others = visitAttribution(visit).filter(function (entry) {
-      return !attributedToMe([entry]);
-    });
-    assignmentTag = '<span class="my-activity-tag my-activity-tag--blue">' +
-      (others.length
-        ? 'Assigned to you &amp; ' + escapeHtml(G.Attribution.label(others))
-        : 'Assigned to you') + '</span>';
-  } else if (visitAssignedToSomeoneElse(visit)) {
-    assignmentTag = '<span class="my-activity-tag my-activity-tag--blue">Assigned to ' +
-      escapeHtml(visitAssigneeLabel(visit)) + '</span>';
-  }
+  var creditLabel = visitListCreditLabel(visit);
+  var creditTag = creditLabel
+    ? '<span class="my-activity-tag my-activity-tag--blue">' + escapeHtml(creditLabel) + '</span>'
+    : '';
+  var areaTag = visitIsOutOfArea(visit)
+    ? '<span class="my-activity-tag my-activity-tag--slate">Out of area visit</span>'
+    : '';
+  // The credit chip already carries the visitor's name for joint and colleague
+  // visits, so do not repeat the same person as trailing metadata.
+  if (creditLabel) personHtml = '';
 
   return '<article class="my-activity-visit" data-visit-id="' + escapeHtml(visit.id) + '">' +
     '<div class="my-activity-visit__date">' +
@@ -974,13 +1380,16 @@ function visitRowHtml(visit) {
     escapeHtml(bakerySiteName(visit.bakery)) + '</a>' +
     '<div class="my-activity-visit__tags">' +
     '<span class="my-activity-tag my-activity-tag--' + visitTypeTone(visit) + '">' + escapeHtml(visitTypeLabel(visit)) + '</span>' +
-    assignmentTag +
+    areaTag +
+    creditTag +
     '<span class="my-activity-visit__ops">' + escapeHtml(bakeryOps(visit.bakery)) + '</span>' +
     (personHtml ? '<span class="my-activity-visit__ops">' + personHtml + '</span>' : '') +
     '</div>' +
     '<p class="my-activity-visit__notes">' + escapeHtml(preview || 'No notes recorded.') + '</p>' +
     '</div>' +
-    '<div class="my-activity-visit__score">' + escapeHtml(visitScoreText(visit)) + '</div>' +
+    '<div class="my-activity-visit__score my-activity-visit__score--' + scoreTone(scorePct) + '"' +
+    ' aria-label="' + escapeHtml(scorePct == null ? 'Visit not scored' : 'Score ' + visitScoreText(visit)) + '">' +
+    escapeHtml(visitScoreText(visit)) + '</div>' +
     '<div class="my-activity-visit__action">' +
     // Still a real link to the dashboard: the modal is an enhancement, so the
     // report stays reachable if js/visit-report.js never loaded.
@@ -990,24 +1399,232 @@ function visitRowHtml(visit) {
     '</article>';
 }
 
+function patchVisitStatus(bakery) {
+  var canonical = canonicalBakeryName(bakery);
+  var visits = allVisits().filter(function (visit) {
+    return canonicalBakeryName(visit.bakery) === canonical;
+  }).sort(function (a, b) {
+    return visitOccurredAt(b) - visitOccurredAt(a);
+  });
+  var mine = visits.filter(visitIsMine);
+  var colleagues = visits.filter(function (visit) { return !visitIsMine(visit); });
+  if (mine.length) return { state: 'you', latest: visits[0], colleague: colleagues[0] || null };
+  if (colleagues.length) return { state: 'colleague', latest: colleagues[0], colleague: colleagues[0] };
+  return { state: 'unvisited', latest: null, colleague: null };
+}
+
+const PATCH_MAP_STYLES = {
+  you: { label: 'Visited by you', color: '#1D9E5C' },
+  colleague: { label: 'Colleague only', color: '#C97F12' },
+  unvisited: { label: 'Not visited', color: '#8d8d8d' }
+};
+
+function patchVisitCreditLabel(visit) {
+  if (!visit) return '';
+  if (visitIsMine(visit)) return jointVisitLabel(visit) || 'Visited by you';
+  var people = visitAttribution(visit);
+  var label = G.Attribution ? G.Attribution.label(people) : '';
+  return 'Visited by ' + (label || visitPersonLabel(visit) || 'a colleague');
+}
+
+function patchMapPopupHtml(bakery, status) {
+  var style = PATCH_MAP_STYLES[status.state];
+  var visitLine = status.latest
+    ? 'Most recent visit ' + formatIsoDate(status.latest.date)
+    : 'No visit is currently logged';
+  var visitorLine = status.latest ? patchVisitCreditLabel(status.latest) : '';
+  return '<div class="map-popup">' +
+    '<div class="map-popup__name">' + escapeHtml(bakerySiteName(bakery)) + '</div>' +
+    '<span class="map-popup__band" style="background:' + style.color + '">' +
+    escapeHtml(style.label) + '</span>' +
+    '<div class="map-popup__stats">' + escapeHtml(visitLine) + '</div>' +
+    (visitorLine ? '<div class="map-popup__mgr">' + escapeHtml(visitorLine) + '</div>' : '') +
+    '<div class="map-popup__mgr">' + escapeHtml(bakeryOps(bakery)) + '</div>' +
+    '<div class="map-popup__meta">' + escapeHtml(bakeryRegion(bakery)) + '</div>' +
+    '<a class="map-popup__visit map-popup__visit--link" href="' +
+    escapeHtml(bakeryProfileHref(bakery, 'section-visits')) + '">Open bakery &rarr;</a>' +
+    '</div>';
+}
+
+function patchMapGlanceHtml(bakery, status) {
+  var style = PATCH_MAP_STYLES[status.state];
+  return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' +
+    style.color + ';margin-right:6px"></span><strong>' +
+    escapeHtml(bakerySiteName(bakery)) + '</strong>';
+}
+
+function renderPatchMapLegend() {
+  if (!patchMap || !window.L) return;
+  if (patchMapLegend) patchMap.removeControl(patchMapLegend);
+  patchMapLegend = window.L.control({ position: 'bottomright' });
+  patchMapLegend.onAdd = function () {
+    var div = window.L.DomUtil.create('div', 'map-legend');
+    div.innerHTML = ['you', 'colleague', 'unvisited'].map(function (state) {
+      var style = PATCH_MAP_STYLES[state];
+      return '<div><span class="map-legend__dot" style="background:' + style.color + '"></span>' +
+        escapeHtml(style.label) + '</div>';
+    }).join('');
+    return div;
+  };
+  patchMapLegend.addTo(patchMap);
+}
+
+function patchMapIsVisible() {
+  if (!patchMapEl || patchMapEl.closest('[hidden]')) return false;
+  return patchMapEl.clientWidth > 0 && patchMapEl.clientHeight > 0;
+}
+
+function fitPatchMap() {
+  if (!patchMap || !patchMapIsVisible()) return;
+  if (patchMapPoints.length === 1) {
+    patchMap.setView(patchMapPoints[0].latLng, 14);
+  } else if (patchMapPoints.length > 1) {
+    patchMap.fitBounds(patchMapPoints.map(function (point) { return point.latLng; }), {
+      padding: [28, 28],
+      maxZoom: 13
+    });
+  } else {
+    patchMap.setView([51.5074, -0.1278], 10);
+  }
+}
+
+function syncPatchMapMarkers() {
+  if (!patchMap || !patchMapMarkers) return;
+  patchMapMarkers.clearLayers();
+  patchMapPoints.forEach(function (point) {
+    var style = PATCH_MAP_STYLES[point.status.state];
+    var marker = window.L.circleMarker(point.latLng, {
+      radius: 9,
+      fillColor: style.color,
+      color: '#fff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.88
+    });
+    marker.bindPopup(patchMapPopupHtml(point.bakery, point.status));
+    marker.bindTooltip(patchMapGlanceHtml(point.bakery, point.status), {
+      className: 'map-name-tooltip',
+      direction: 'top',
+      offset: [0, -10],
+      interactive: false
+    });
+    marker.addTo(patchMapMarkers);
+  });
+  renderPatchMapLegend();
+}
+
+function mountPatchMap() {
+  if (patchMap || !patchMapIsVisible() || !window.L) return;
+  patchMapEl.innerHTML = '';
+  patchMap = window.L.map(patchMapEl, {
+    zoomControl: true,
+    attributionControl: true
+  }).setView([51.5074, -0.1278], 10);
+  // Use OSM's canonical host rather than rotating across legacy subdomains.
+  // This keeps the same Maps-page tiles while avoiding partial checkerboards
+  // when one of the subdomains is blocked or slow on a field device.
+  patchMapTiles = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    keepBuffer: 3,
+    updateWhenIdle: false,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(patchMap);
+  patchMapMarkers = window.L.layerGroup().addTo(patchMap);
+  syncPatchMapMarkers();
+  if (typeof window.ResizeObserver === 'function') {
+    patchMapResizeObserver = new window.ResizeObserver(schedulePatchMapLayout);
+    patchMapResizeObserver.observe(patchMapEl);
+  }
+}
+
+// Leaflet must be measured after the Visits tab is visible. Initialising it
+// inside a hidden panel produces the clipped, blank tile quadrants seen here.
+function schedulePatchMapLayout() {
+  if (!patchMapIsVisible()) return;
+  if (patchMapLayoutFrame) window.cancelAnimationFrame(patchMapLayoutFrame);
+  patchMapLayoutFrame = window.requestAnimationFrame(function () {
+    patchMapLayoutFrame = window.requestAnimationFrame(function () {
+      patchMapLayoutFrame = null;
+      if (!patchMapIsVisible()) return;
+      // Mount only after the browser has completed the tab and grid layout.
+      // Recovering an instance created against the old hidden width is not
+      // reliable across browsers, even after invalidateSize().
+      mountPatchMap();
+      if (!patchMap) return;
+      patchMap.invalidateSize({ animate: false, pan: false });
+      fitPatchMap();
+      if (patchMapTiles) patchMapTiles.redraw();
+    });
+  });
+}
+
+function renderPatchMap() {
+  if (!patchMapEl) return;
+  var bakeries = assignedPatchBakeries();
+  var coverage = { you: 0, colleague: 0, unvisited: 0 };
+  var points = [];
+
+  if (patchMapCountEl) patchMapCountEl.textContent = plural(bakeries.length, 'assigned bakery', 'assigned bakeries');
+  if (!bakeries.length) {
+    if (patchMapStatusEl) {
+      patchMapStatusEl.textContent = 'No bakery patch is assigned to your profile yet.';
+    }
+    patchMapEl.classList.add('is-empty');
+    patchMapEl.innerHTML = '<div class="my-activity-patch-map__empty"><strong>No patch to map</strong>' +
+      '<span>Ask an administrator to check your region or ops-area assignment.</span></div>';
+    return;
+  }
+
+  bakeries.forEach(function (bakery) {
+    var status = patchVisitStatus(bakery);
+    coverage[status.state]++;
+    var meta = typeof G.getBakeryMeta === 'function' ? G.getBakeryMeta(bakery) : null;
+    var latLng = meta && Array.isArray(meta.ll) ? meta.ll : null;
+    if (latLng && latLng.length >= 2 && isFinite(latLng[0]) && isFinite(latLng[1])) {
+      points.push({ bakery: bakery, status: status, latLng: [Number(latLng[0]), Number(latLng[1])] });
+    }
+  });
+
+  if (patchMapStatusEl) {
+    patchMapStatusEl.textContent = coverage.you + ' visited by you · ' +
+      coverage.colleague + ' colleague only · ' + coverage.unvisited + ' not visited';
+  }
+
+  if (!window.L) {
+    patchMapEl.classList.add('is-empty');
+    patchMapEl.innerHTML = '<div class="my-activity-patch-map__empty"><strong>Map unavailable</strong>' +
+      '<span>Your coverage totals are still shown below.</span></div>';
+    return;
+  }
+
+  patchMapEl.classList.remove('is-empty');
+  patchMapPoints = points;
+
+  // The rest of the Visits view is rendered while its tab is hidden. Defer the
+  // Leaflet instance itself until the panel has real dimensions.
+  if (!patchMapIsVisible()) return;
+  if (patchMap) syncPatchMapMarkers();
+  schedulePatchMapLayout();
+}
+
+function resetVisitsScroll() {
+  if (visitsScrollEl) visitsScrollEl.scrollTop = 0;
+}
+
 function renderVisits() {
   if (!visitsListEl) return;
   syncVisitFilterOptions();
+  renderPatchMap();
 
   var visits = filteredVisits();
-  visitResultCount = visits.length;
   var filters = readVisitFilters();
   syncVisitResetState(filters);
 
   if (visitsSummary) {
     if (visits.length) {
-      var scored = visits.map(visitScorePct).filter(function (pct) { return pct != null; });
-      var averageText = scored.length
-        ? ' · Average score ' + (Math.round((scored.reduce(function (sum, pct) { return sum + pct; }, 0) / scored.length) * 10) / 10) + '%'
-        : '';
       var bakeries = new Set(visits.map(function (v) { return v.bakery; })).size;
       visitsSummary.textContent = plural(visits.length, 'visit') + ' across ' +
-        plural(bakeries, 'bakery', 'bakeries') + averageText;
+        plural(bakeries, 'bakery', 'bakeries');
     } else {
       visitsSummary.textContent = '';
     }
@@ -1019,27 +1636,12 @@ function renderVisits() {
     visitsListEl.innerHTML = emptyStateHtml('&#128196;', dataReady.visits
       ? 'No visits match these filters. Widen the date range or clear the search.'
       : 'Loading your visits…');
-    if (visitsMoreBtn) {
-      visitsMoreBtn.hidden = true;
-      visitsMoreBtn.disabled = true;
-    }
     return;
   }
 
-  var shown = visits.slice(0, visitLimit);
-  if (visitsSummary && shown.length < visits.length) {
-    visitsSummary.textContent += ' · Showing first ' + shown.length;
-  }
   visitsListEl.innerHTML = '<div class="my-activity-visit-head" aria-hidden="true">' +
     '<span>Date</span><span>Bakery &amp; notes</span><span>Score</span><span></span></div>' +
-    shown.map(visitRowHtml).join('');
-
-  if (visitsMoreBtn) {
-    var remaining = Math.max(0, visits.length - shown.length);
-    visitsMoreBtn.hidden = remaining === 0;
-    visitsMoreBtn.disabled = remaining === 0;
-    visitsMoreBtn.textContent = 'Show more (' + remaining + ' left)';
-  }
+    visits.map(visitRowHtml).join('');
 
   // Cached so the export always mirrors exactly what the filters produced,
   // never a stale list from a previous render.
@@ -1103,7 +1705,7 @@ function buildActionsExportData(tasks, filters) {
       { label: 'Status', type: 'text', width: 10 },
       { label: 'Added', type: 'date', width: 12 },
       { label: 'Completed', type: 'date', width: 13 },
-      { label: 'Assigned To', type: 'text', width: 24 }
+      { label: 'Profiles', type: 'text', width: 24 }
     ],
     rows: tasks.map(function (task) {
       var due = dueMeta(task.dueDate);
@@ -1119,7 +1721,7 @@ function buildActionsExportData(tasks, filters) {
         taskIsDone(task) ? 'Done' : (taskIsOverdue(task) ? 'Overdue' : 'Open'),
         task.createdAt ? String(task.createdAt).slice(0, 10) : '',
         task.completedAt ? String(task.completedAt).slice(0, 10) : '',
-        G.Attribution ? G.Attribution.namesText(taskAttribution(task)) : ''
+        G.Attribution ? G.Attribution.namesText(taskOwners(task)) : ''
       ];
     })
   };
@@ -1127,7 +1729,7 @@ function buildActionsExportData(tasks, filters) {
 
 function buildExportData(visits, filters) {
   var meta = [
-    ['Owner', identityDisplayName() + (currentUser && currentUser.email ? ' (' + currentUser.email + ')' : '')],
+    ['Patch profile', identityDisplayName() + (currentUser && currentUser.email ? ' (' + currentUser.email + ')' : '')],
     ['Generated', new Date().toLocaleString('en-GB', {
       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
     })],
@@ -1140,9 +1742,9 @@ function buildExportData(visits, filters) {
   if (filters.search) meta.splice(3, 0, ['Search', filters.search]);
 
   return {
-    title: 'GAIL’s — My Visits',
-    sheetName: 'My Visits',
-    filename: 'GAILs My Visits ' + new Date().toISOString().slice(0, 10) + '.xlsx',
+    title: 'GAIL’s — Patch Visits',
+    sheetName: 'Patch Visits',
+    filename: 'GAILs Patch Visits ' + new Date().toISOString().slice(0, 10) + '.xlsx',
     meta: meta,
     columns: [
       { label: 'Date', type: 'date', width: 13 },
@@ -1152,7 +1754,7 @@ function buildExportData(visits, filters) {
       { label: 'Ops Area', type: 'text', width: 18 },
       { label: 'Visit Type', type: 'text', width: 20 },
       { label: 'Coffee Partner / Auditor', type: 'text', width: 24 },
-      { label: 'Assigned To', type: 'text', width: 24 },
+      { label: 'Visited By', type: 'text', width: 24 },
       { label: 'Score %', type: 'percent', width: 10 },
       { label: 'Points', type: 'number', width: 8 },
       { label: 'Points Available', type: 'number', width: 15 },
@@ -1288,13 +1890,29 @@ function openConfirmModal(options) {
   confirmTitle.textContent = options.title;
   confirmMessage.textContent = options.message;
   confirmBtn.textContent = options.confirmLabel || 'Confirm';
+  confirmBtn.classList.toggle('my-activity-confirm-btn--danger', options.tone === 'danger');
+  if (confirmError) {
+    confirmError.textContent = '';
+    confirmError.hidden = true;
+  }
   confirmBtn.disabled = false;
-  confirmBtn.onclick = function () {
+  confirmBtn.onclick = async function performConfirm() {
     if (confirmBtn.disabled) return;
     confirmBtn.disabled = true;
-    confirmBtn.onclick = null;
-    closeConfirmModal();
-    options.onConfirm();
+    try {
+      await options.onConfirm();
+      closeConfirmModal();
+    } catch (error) {
+      console.error('Could not complete the confirmed action:', error);
+      if (confirmError) {
+        confirmError.textContent = error && error.message
+          ? error.message
+          : 'Something went wrong. Please try again.';
+        confirmError.hidden = false;
+      }
+      confirmBtn.disabled = false;
+      confirmBtn.onclick = performConfirm;
+    }
   };
   confirmModal.hidden = false;
   document.body.classList.add('my-activity-modal-open');
@@ -1305,6 +1923,7 @@ function closeConfirmModal() {
   if (!confirmModal) return;
   confirmModal.hidden = true;
   confirmBtn.onclick = null;
+  confirmBtn.classList.remove('my-activity-confirm-btn--danger');
   document.body.classList.remove('my-activity-modal-open');
 }
 
@@ -1345,10 +1964,8 @@ function buildTimelineEvents() {
     if (!visit.bakery || !visitIsMine(visit)) return;
     var href = 'index.html?visit=' + encodeURIComponent(visit.id) + '#visit-log';
 
-    // A visit assigned to someone else is still theirs to *do* — from this
-    // user's side the event is the handover, not the logging.
-    var assignedAway = visitAssignedToSomeoneElse(visit);
-    var assignedHere = visitAssignedToMe(visit) && !visitLoggedByMe(visit);
+    var loggedHere = visitLoggedByMe(visit);
+    var jointLabel = jointVisitLabel(visit);
 
     events.push({
       kind: 'visit',
@@ -1356,20 +1973,17 @@ function buildTimelineEvents() {
       bakery: visit.bakery,
       // The tag beside the title already names the visit type, and lower-casing
       // it into the sentence would mangle the acronyms ("logged a cqv").
-      title: assignedHere
-        ? 'Was assigned a visit'
-        : (assignedAway ? 'Logged and assigned a visit' : 'Logged a visit'),
+      title: loggedHere ? 'Logged a visit' : 'Completed a visit',
       detail: visitNotesText(visit),
-      tone: assignedHere ? 'blue' : visitTypeTone(visit),
+      tone: visitTypeTone(visit),
+      tagTone: visitTypeTone(visit),
       tag: visitTypeLabel(visit),
       href: href,
       linkLabel: 'View report',
       // Opens the report in place, like the visits list above. Only visit
       // events carry this; the rest of the feed links to a bakery profile.
       visitId: visit.id,
-      footnote: (assignedHere
-        ? 'Assigned by ' + visitLoggerLabel(visit) + ' · '
-        : (assignedAway ? 'Assigned to ' + visitAssigneeLabel(visit) + ' · ' : '')) +
+      footnote: (jointLabel ? jointLabel + ' · ' : '') +
         'Visit date ' + formatIsoDate(visit.date) + (visit.time ? ' at ' + visit.time : '')
     });
   });
@@ -1480,7 +2094,8 @@ function timelineEventHtml(event) {
     '<div class="my-activity-event__body">' +
     '<div class="my-activity-event__head">' +
     '<span class="my-activity-event__title">' + escapeHtml(event.title) + '</span>' +
-    '<span class="my-activity-tag my-activity-tag--' + event.tone + '">' + escapeHtml(event.tag) + '</span>' +
+    '<span class="my-activity-tag my-activity-tag--' + (event.tagTone || event.tone) + '">' +
+    escapeHtml(event.tag) + '</span>' +
     '</div>' +
     '<a class="my-activity-event__bakery"' +
     (event.visitId ? ' data-open-visit-report="' + escapeHtml(event.visitId) + '"' : '') +
@@ -1574,45 +2189,407 @@ function renderStats() {
   if (!statsEl) return;
   var visits = myVisits();
   var tasks = myTasks();
-  // Counts notes this user wrote, not the wider set the feed covers — a note
-  // they only corrected someone else's wording on isn't one they wrote.
-  var notesWritten = myNotes().filter(function (note) {
-    return noteAuthorIsMine(note.createdBy);
+  var now = new Date();
+  var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  var nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  var previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  var thisMonthVisits = visits.filter(function (visit) {
+    var date = new Date(String(visit.date || '') + 'T00:00:00');
+    return date >= monthStart && date < nextMonth;
+  });
+  var previousMonthVisits = visits.filter(function (visit) {
+    var date = new Date(String(visit.date || '') + 'T00:00:00');
+    return date >= previousMonth && date < monthStart;
   });
 
-  var thisMonth = visits.filter(function (v) { return isDateWithinPeriod(v.date, 'currentMonth'); }).length;
   var openTasks = tasks.filter(function (t) { return !taskIsDone(t); });
   var overdue = openTasks.filter(taskIsOverdue).length;
-  var lastVisit = visits.slice().sort(function (a, b) {
-    return (b.date + (b.time || '')).localeCompare(a.date + (a.time || ''));
-  })[0];
+  var visitDelta = thisMonthVisits.length - previousMonthVisits.length;
+  var visitDeltaLabel = visitDelta === 0
+    ? 'Same pace as last month'
+    : (visitDelta > 0 ? '+' + visitDelta : String(visitDelta)) + ' vs last month';
+  var icons = {
+    actions: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>',
+    visits: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>',
+    bakeries: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v10h16V10M3 10l2-6h14l2 6"></path><path d="M8 20v-6h4v6M3 10c0 2 4 2 4 0 0 2 4 2 4 0 0 2 4 2 4 0 0 2 4 2 4 0"></path></svg>'
+  };
 
   var cards = [
     {
-      label: 'Open actions',
+      label: 'Needs attention',
       value: openTasks.length,
       meta: overdue ? overdue + ' overdue' : 'Nothing overdue',
-      tone: overdue ? 'alert' : ''
+      tone: overdue ? 'alert' : '',
+      icon: icons.actions
     },
-    { label: 'Visits logged', value: visits.length, meta: thisMonth + ' this month' },
     {
-      label: 'Bakeries covered',
-      value: new Set(visits.map(function (v) { return v.bakery; })).size,
-      meta: lastVisit ? 'Last visit ' + formatIsoDate(lastVisit.date) : 'No visits yet'
+      label: 'Visits this month',
+      value: thisMonthVisits.length,
+      meta: visitDeltaLabel,
+      icon: icons.visits
     },
-    { label: 'Notes written', value: notesWritten.length, meta: plural(tasks.length, 'task') + ' linked to you' }
+    {
+      label: 'Bakeries reached',
+      value: new Set(thisMonthVisits.map(function (v) { return v.bakery; })).size,
+      meta: 'This month',
+      icon: icons.bakeries
+    }
   ];
 
-  var destinations = ['section-actions', 'section-visits', 'section-visits', 'section-timeline'];
+  var destinations = ['section-actions', 'section-visits', 'section-visits'];
   statsEl.innerHTML = cards.map(function (card, index) {
     return '<a class="my-activity-stat' + (card.tone ? ' my-activity-stat--' + card.tone : '') + '"' +
-      ' href="#' + destinations[index] + '" aria-label="' +
+      ' href="#' + destinations[index] + '" data-open-activity-section="' + destinations[index] + '" aria-label="' +
       escapeHtml(card.label + ': ' + card.value + '. ' + card.meta) + '">' +
+      '<span class="my-activity-stat__icon">' + card.icon + '</span>' +
+      '<span class="my-activity-stat__body">' +
       '<span class="my-activity-stat__label">' + escapeHtml(card.label) + '</span>' +
-      '<strong class="my-activity-stat__value">' + escapeHtml(card.value) + '</strong>' +
-      '<span class="my-activity-stat__meta">' + escapeHtml(card.meta) + '</span>' +
+      '<span><strong class="my-activity-stat__value">' + escapeHtml(card.value) + '</strong>' +
+      '<span class="my-activity-stat__meta">' + escapeHtml(card.meta) + '</span></span>' +
+      '</span>' +
       '</a>';
   }).join('');
+  renderPerformanceInsights();
+}
+
+function buildPerformanceInsights() {
+  var performance = patchPerformance().filter(function (item) { return item.score != null; });
+  var patch = assignedPatchBakeries();
+  if (!performance.length) {
+    var covered = patch.filter(function (bakery) {
+      return patchVisitStatus(bakery).state === 'you';
+    }).length;
+    return [{
+      label: 'Patch coverage',
+      bakery: patch.length ? plural(patch.length, 'assigned bakery', 'assigned bakeries') : 'Assignment needed',
+      value: patch.length ? Math.round((covered / patch.length) * 100) + '%' : '—',
+      detail: patch.length ? covered + ' visited by you' : 'No patch is assigned yet',
+      href: '#section-visits'
+    }];
+  }
+
+  var byScore = performance.slice().sort(function (a, b) { return b.score - a.score; });
+  var withDelta = performance.filter(function (item) { return item.delta != null; });
+  var rising = withDelta.filter(function (item) { return item.delta > 0; })
+    .sort(function (a, b) { return b.delta - a.delta; });
+  var declining = withDelta.filter(function (item) { return item.delta < 0; })
+    .sort(function (a, b) { return a.delta - b.delta; });
+  var watch = performance.slice().sort(function (a, b) {
+    var aPressure = (100 - a.score) + (a.delta != null && a.delta < 0 ? Math.abs(a.delta) * 2 : 0);
+    var bPressure = (100 - b.score) + (b.delta != null && b.delta < 0 ? Math.abs(b.delta) * 2 : 0);
+    return bPressure - aPressure;
+  })[0];
+  var star = rising.filter(function (item) { return item.score < 90; })[0] || rising[0] || byScore[0];
+
+  function slide(label, item, value, detail) {
+    return {
+      label: label,
+      bakery: bakerySiteName(item.bakery),
+      value: value,
+      detail: detail,
+      href: bakeryProfileHref(item.bakery, 'section-brief')
+    };
+  }
+
+  var top = byScore[0];
+  var bottom = byScore[byScore.length - 1];
+  var bestGain = rising[0] || withDelta.slice().sort(function (a, b) { return b.delta - a.delta; })[0];
+  var biggestDrop = declining[0] || withDelta.slice().sort(function (a, b) { return a.delta - b.delta; })[0];
+  var insights = [
+    slide('Top performer', top, Math.round(top.score) + '%',
+      'Strongest weighted Coffee Experience score in your patch'),
+    slide('Bottom performer', bottom, Math.round(bottom.score) + '%',
+      'The bakery with the most headroom right now')
+  ];
+  if (bestGain) {
+    insights.push(slide('Most improved', bestGain, (bestGain.delta >= 0 ? '+' : '') + bestGain.delta + ' pts',
+      'Latest closed month versus the previous observed month'));
+  }
+  if (biggestDrop) {
+    insights.push(slide('Biggest decline', biggestDrop, biggestDrop.delta + ' pts',
+      'Latest closed month versus the previous observed month'));
+  }
+  if (watch) {
+    insights.push(slide('One to watch', watch, Math.round(watch.score) + '%',
+      watch.delta != null && watch.delta < 0 ? watch.delta + ' pts month on month' : 'Lowest current score and worth a closer look'));
+  }
+  if (star) {
+    insights.push(slide('Rising star', star,
+      star.delta != null ? '+' + star.delta + ' pts' : Math.round(star.score) + '%',
+      star.delta != null ? 'Positive month-on-month movement' : 'Leading the patch on current performance'));
+  }
+  return insights;
+}
+
+function renderPerformanceSlide() {
+  var label = document.getElementById('myActivityInsightLabel');
+  var body = document.getElementById('myActivityInsightBody');
+  var dots = document.getElementById('myActivityInsightDots');
+  if (!label || !body || !dots || !performanceInsights.length) return;
+  performanceInsightIndex = (performanceInsightIndex + performanceInsights.length) % performanceInsights.length;
+  var insight = performanceInsights[performanceInsightIndex];
+  label.textContent = insight.label;
+  body.innerHTML = '<a href="' + escapeHtml(insight.href) + '"' +
+    (insight.href.charAt(0) === '#' ? ' data-open-activity-section="' + escapeHtml(insight.href.slice(1)) + '"' : '') + '>' +
+    '<strong>' + escapeHtml(insight.value) + '</strong>' +
+    '<span>' + escapeHtml(insight.bakery) + '</span></a>' +
+    '<small>' + escapeHtml(insight.detail) + '</small>';
+  dots.innerHTML = performanceInsights.map(function (_, index) {
+    return '<i class="' + (index === performanceInsightIndex ? 'is-active' : '') + '"></i>';
+  }).join('');
+}
+
+function renderPerformanceInsights() {
+  performanceInsights = buildPerformanceInsights();
+  if (performanceInsightIndex >= performanceInsights.length) performanceInsightIndex = 0;
+  renderPerformanceSlide();
+  clearInterval(performanceInsightTimer);
+  performanceInsightTimer = null;
+  if (performanceInsights.length > 1 &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    performanceInsightTimer = setInterval(function () {
+      performanceInsightIndex++;
+      renderPerformanceSlide();
+    }, 6500);
+  }
+}
+
+function renderFieldBrief() {
+  if (!prioritiesEl || !momentumEl || !latestVisitEl) return;
+
+  var visits = myVisits().slice().sort(function (a, b) {
+    return visitOccurredAt(b) - visitOccurredAt(a);
+  });
+  var openTasks = myTasks().filter(function (task) {
+    return !taskIsDone(task) && task.bakery;
+  });
+  var patch = assignedPatchBakeries();
+  var patchPerformanceByBakery = {};
+  patchPerformance().forEach(function (item) {
+    patchPerformanceByBakery[canonicalBakeryName(item.bakery)] = item;
+  });
+  var estateVisits = allVisits().slice().sort(function (a, b) {
+    return visitOccurredAt(b) - visitOccurredAt(a);
+  });
+
+  var priorities = patch.map(function (bakery) {
+    var canonical = canonicalBakeryName(bakery);
+    var mine = visits.filter(function (visit) {
+      return canonicalBakeryName(visit.bakery) === canonical;
+    });
+    var colleagues = estateVisits.filter(function (visit) {
+      return canonicalBakeryName(visit.bakery) === canonical && !visitIsMine(visit);
+    });
+    var tasks = openTasks.filter(function (task) {
+      return canonicalBakeryName(task.bakery) === canonical;
+    });
+    var latest = mine[0] || null;
+    var performance = patchPerformanceByBakery[canonical] || null;
+    var daysSinceVisit = latest
+      ? Math.max(0, Math.floor((Date.now() - visitOccurredAt(latest)) / 86400000))
+      : null;
+    var urgency = latest ? (daysSinceVisit >= 90 ? 72 : daysSinceVisit >= 60 ? 52 : daysSinceVisit >= 30 ? 28 : 4) : 120;
+    if (!latest && colleagues.length) urgency += 18;
+    tasks.forEach(function (task) {
+      if (taskIsOverdue(task)) urgency += 35;
+      else if (taskIsDueSoon(task)) urgency += 18;
+      else if (normalizePriority(task.priority) === 'high') urgency += 10;
+    });
+    if (performance && performance.score != null) {
+      if (performance.score < 60) urgency += 42;
+      else if (performance.score < 75) urgency += 24;
+      if (performance.delta != null && performance.delta <= -5) urgency += 22;
+    }
+    return {
+      bakery: bakery,
+      latest: latest,
+      colleagueLatest: colleagues[0] || null,
+      tasks: tasks,
+      performance: performance,
+      daysSinceVisit: daysSinceVisit,
+      urgency: urgency
+    };
+  }).sort(function (a, b) {
+    return b.urgency - a.urgency ||
+      (a.daysSinceVisit == null ? -1 : b.daysSinceVisit == null ? 1 : b.daysSinceVisit - a.daysSinceVisit) ||
+      bakerySiteName(a.bakery).localeCompare(bakerySiteName(b.bakery));
+  }).slice(0, 10);
+
+  if (patchHintEl) {
+    patchHintEl.textContent = patch.length
+      ? priorities.length + ' shown of ' + plural(patch.length, 'assigned bakery', 'assigned bakeries') +
+        ' · highest need first'
+      : 'Waiting for a region or ops-area assignment';
+  }
+
+  if (!priorities.length) {
+    prioritiesEl.innerHTML = '<div class="my-activity-brief-empty">' +
+      '<span aria-hidden="true">⌖</span><div><strong>No assigned patch found</strong>' +
+      '<p>Ask an administrator to check your Coffee Partner or Area Head Barista assignment.</p></div></div>';
+  } else {
+    prioritiesEl.innerHTML = priorities.map(function (brief, index) {
+      var overdue = brief.tasks.filter(taskIsOverdue);
+      var soon = brief.tasks.filter(taskIsDueSoon);
+      var falling = brief.performance && brief.performance.delta != null && brief.performance.delta <= -5;
+      var lowPerformance = brief.performance && brief.performance.score != null && brief.performance.score < 75;
+      var state = !brief.latest || overdue.length || (brief.performance && brief.performance.score < 60)
+        ? 'urgent'
+        : (brief.daysSinceVisit >= 45 || soon.length || falling || lowPerformance ? 'watch' : 'standard');
+      var badge = !brief.latest
+        ? 'Not visited'
+        : (overdue.length
+          ? plural(overdue.length, 'overdue')
+          : (brief.daysSinceVisit >= 45
+            ? brief.daysSinceVisit + ' days ago'
+            : (falling ? 'Declining' : (lowPerformance ? Math.round(brief.performance.score) + '%' : 'Keep warm'))));
+      var reason = '';
+      if (!brief.latest && brief.colleagueLatest) {
+        reason = 'Colleague covered; your field view is still needed';
+      } else if (!brief.latest) {
+        reason = 'No visit by you is logged yet';
+      } else if (brief.daysSinceVisit >= 45) {
+        reason = 'Coverage is getting stale';
+      } else if (falling) {
+        reason = 'Performance moved ' + brief.performance.delta + ' pts last month';
+      } else if (lowPerformance) {
+        reason = 'Below the current performance benchmark';
+      } else if (overdue.length || soon.length) {
+        reason = 'A linked follow-up needs attention';
+      } else {
+        reason = 'Recently covered and currently stable';
+      }
+      var coverageValue = brief.latest
+        ? relativeLabel(visitOccurredAt(brief.latest))
+        : (brief.colleagueLatest ? 'Colleague only' : 'Not visited');
+      var resultValue = brief.performance && brief.performance.latestScore != null
+        ? Math.round(brief.performance.latestScore) + '%'
+        : 'Pending';
+      var resultMonth = brief.performance && brief.performance.month
+        ? ' · ' + brief.performance.month
+        : '';
+      var resultDelta = brief.performance && brief.performance.delta != null
+        ? brief.performance.delta
+        : null;
+      var resultTrend = resultDelta == null
+        ? ''
+        : (resultDelta > 0
+          ? '↑ ' + Math.abs(resultDelta) + ' pts'
+          : (resultDelta < 0 ? '↓ ' + Math.abs(resultDelta) + ' pts' : '→ 0 pts'));
+      var resultTone = resultDelta > 0 ? 'up' : (resultDelta < 0 ? 'down' : 'flat');
+      var actionValue = brief.tasks.length || 'None';
+      var opsArea = bakeryOps(brief.bakery);
+
+      return '<article class="my-activity-priority my-activity-priority--' + state + '">' +
+        '<span class="my-activity-priority__rank">' + String(index + 1).padStart(2, '0') + '</span>' +
+        '<div class="my-activity-priority__body">' +
+        '<div class="my-activity-priority__head"><a href="' +
+        escapeHtml(bakeryProfileHref(brief.bakery, 'section-brief')) + '">' +
+        escapeHtml(bakerySiteName(brief.bakery)) + '</a>' +
+        '<span class="my-activity-priority__badge">' + escapeHtml(badge) + '</span></div>' +
+        '<p class="my-activity-priority__reason">' + escapeHtml(reason) + '</p>' +
+        '<div class="my-activity-priority__meta">' +
+        '<span title="Ops Area: ' + escapeHtml(opsArea) + '"><b>Ops area</b>' + escapeHtml(opsArea) + '</span>' +
+        '<span><b>Coverage</b>' + escapeHtml(coverageValue) + '</span>' +
+        '<span class="my-activity-priority__result"><b>Recent result' + escapeHtml(resultMonth) + '</b>' +
+        escapeHtml(resultValue) +
+        (resultTrend ? '<small class="my-activity-priority__trend my-activity-priority__trend--' + resultTone + '">' +
+          escapeHtml(resultTrend) + '</small>' : '') + '</span>' +
+        '<span><b>Actions</b>' + escapeHtml(actionValue) + '</span>' +
+        '</div></div>' +
+        '<a class="my-activity-priority__open" href="' +
+        escapeHtml(bakeryProfileHref(brief.bakery, 'section-brief')) +
+        '" aria-label="Open ' + escapeHtml(bakerySiteName(brief.bakery)) + ' bakery profile">→</a>' +
+        '</article>';
+    }).join('');
+  }
+
+  var now = new Date();
+  var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  var nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  var previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  var thisMonthVisits = visits.filter(function (visit) {
+    var date = new Date(String(visit.date || '') + 'T00:00:00');
+    return date >= monthStart && date < nextMonth;
+  });
+  var previousMonthVisits = visits.filter(function (visit) {
+    var date = new Date(String(visit.date || '') + 'T00:00:00');
+    return date >= previousMonth && date < monthStart;
+  });
+  var completedThisMonth = myTasks().filter(function (task) {
+    var completed = new Date(task.completedAt || 0);
+    return taskIsDone(task) && taskCompletedByMe(task) && completed >= monthStart && completed < nextMonth;
+  }).length;
+  var paceDelta = thisMonthVisits.length - previousMonthVisits.length;
+  var coveredPatchCount = patch.filter(function (bakery) {
+    return patchVisitStatus(bakery).state === 'you';
+  }).length;
+
+  if (monthLabelEl) {
+    monthLabelEl.textContent = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  }
+  momentumEl.innerHTML =
+    '<div class="my-activity-momentum__lead"><strong>' + thisMonthVisits.length + '</strong>' +
+    '<span>visits logged</span><small class="' + (paceDelta >= 0 ? 'is-positive' : '') + '">' +
+    (paceDelta === 0 ? 'Same pace as last month' : (paceDelta > 0 ? '+' : '') + paceDelta + ' vs last month') +
+    '</small></div>' +
+    '<div class="my-activity-momentum__grid">' +
+    '<div><strong>' + new Set(thisMonthVisits.map(function (visit) { return visit.bakery; })).size +
+    '</strong><span>Bakeries this month</span></div>' +
+    '<div><strong>' + coveredPatchCount + (patch.length ? '/' + patch.length : '') +
+    '</strong><span>Patch covered</span></div>' +
+    '<div><strong>' + completedThisMonth + '</strong><span>Actions closed</span></div>' +
+    '</div>';
+
+  if (briefFollowUpsEl) {
+    var nextFollowUps = openTasks.slice().sort(taskSortByDue).slice(0, 3);
+    if (!nextFollowUps.length) {
+      briefFollowUpsEl.innerHTML = '<div class="my-activity-brief-empty my-activity-brief-empty--compact">' +
+        '<span aria-hidden="true">✓</span><div><strong>Nothing waiting</strong>' +
+        '<p>You have no open follow-ups.</p></div></div>';
+    } else {
+      briefFollowUpsEl.innerHTML = nextFollowUps.map(function (task) {
+        var due = dueMeta(task.dueDate);
+        var priority = normalizePriority(task.priority);
+        return '<a class="my-activity-brief-followup" href="#section-actions" ' +
+          'data-open-activity-section="section-actions">' +
+          '<span class="my-activity-brief-followup__marker my-activity-brief-followup__marker--' +
+          escapeHtml(priority) + '"></span>' +
+          '<span class="my-activity-brief-followup__body"><strong>' +
+          escapeHtml(task.title || 'Untitled task') + '</strong><small>' +
+          escapeHtml(bakerySiteName(task.bakery)) + '</small></span>' +
+          '<span class="my-activity-brief-followup__due my-activity-brief-followup__due--' +
+          escapeHtml(due.state) + '">' + escapeHtml(due.label) + '</span></a>';
+      }).join('');
+    }
+  }
+
+  var latest = visits[0];
+  if (!latest) {
+    latestVisitEl.innerHTML = '<div class="my-activity-brief-empty my-activity-brief-empty--compact">' +
+      '<span aria-hidden="true">⌖</span><div><strong>No visits logged yet</strong>' +
+      '<p>Your latest bakery context will appear here.</p></div></div>';
+    return;
+  }
+
+  var notes = visitNotesText(latest);
+  var preview = notes.length > 120 ? notes.slice(0, 120) + '…' : notes;
+  var latestPct = visitScorePct(latest);
+  var bakeryOpenTasks = openTasks.filter(function (task) { return task.bakery === latest.bakery; }).length;
+  latestVisitEl.innerHTML =
+    '<div class="my-activity-latest__top">' +
+    '<div><a class="my-activity-latest__bakery" href="' +
+    escapeHtml(bakeryProfileHref(latest.bakery, 'section-brief')) + '">' +
+    escapeHtml(bakerySiteName(latest.bakery)) + '</a>' +
+    '<p>' + escapeHtml(formatIsoDate(latest.date)) + (latest.time ? ' at ' + escapeHtml(latest.time) : '') + '</p></div>' +
+    '<span class="my-activity-latest__score my-activity-latest__score--' + scoreTone(latestPct) + '">' +
+    escapeHtml(visitScoreText(latest)) + '</span></div>' +
+    '<div class="my-activity-latest__tags"><span class="my-activity-tag my-activity-tag--' +
+    visitTypeTone(latest) + '">' + escapeHtml(visitTypeLabel(latest)) + '</span>' +
+    (bakeryOpenTasks ? '<span>' + plural(bakeryOpenTasks, 'open action') + '</span>' : '<span>No open actions here</span>') +
+    '</div>' +
+    '<p class="my-activity-latest__notes">' + escapeHtml(preview || 'No visit notes were recorded.') + '</p>' +
+    '<a class="my-activity-latest__link" data-open-visit-report="' + escapeHtml(latest.id) +
+    '" href="index.html?visit=' + encodeURIComponent(latest.id) + '#visit-log">Review visit <span>→</span></a>';
 }
 
 function renderFocus() {
@@ -1627,32 +2604,47 @@ function renderFocus() {
   var overdue = open.filter(taskIsOverdue);
   var dueSoon = open.filter(taskIsDueSoon);
   var message = '';
+  var statusLabel = '';
+  var focusCount = 0;
   var tone = '';
 
   if (overdue.length) {
     tone = 'alert';
-    message = plural(overdue.length, 'overdue action') + ' need' +
-      (overdue.length === 1 ? 's' : '') + ' attention';
-    if (overdue[0].title) message += ': ' + overdue[0].title;
+    statusLabel = 'Overdue';
+    focusCount = overdue.length;
+    message = overdue[0].title || plural(overdue.length, 'action') + ' need attention';
+    if (overdue[0].bakery) message += ' · ' + bakerySiteName(overdue[0].bakery);
   } else if (dueSoon.length) {
     tone = 'warning';
-    message = 'Due soon: ' + (dueSoon[0].title || plural(dueSoon.length, 'action'));
-    if (dueSoon[0].dueDate) message += ' — ' + dueMeta(dueSoon[0].dueDate).label;
-    if (dueSoon.length > 1) message += ' · ' + (dueSoon.length - 1) + ' more';
+    statusLabel = 'Due soon';
+    focusCount = dueSoon.length;
+    message = dueSoon[0].title || plural(dueSoon.length, 'action');
+    if (dueSoon[0].bakery) message += ' · ' + bakerySiteName(dueSoon[0].bakery);
+    if (dueSoon[0].dueDate) message += ' · ' + dueMeta(dueSoon[0].dueDate).label;
   } else if (open.length) {
-    message = 'All clear — nothing overdue or due in the next seven days';
+    statusLabel = 'On track';
+    focusCount = open.length;
+    message = plural(open.length, 'open action') + ' · nothing due this week';
   } else {
-    message = 'You are all caught up — there are no open actions';
+    statusLabel = 'All clear';
+    message = 'No open actions';
   }
 
   focusEl.className = 'my-activity-focus' + (tone ? ' my-activity-focus--' + tone : '');
-  focusEl.innerHTML = '<span>' + escapeHtml(message) + '</span>' +
-    '<a href="#section-actions">' + (open.length ? 'View actions' : 'View activity') + ' →</a>';
+  var focusDestination = open.length ? 'section-actions' : 'section-timeline';
+  focusEl.innerHTML = '<div class="my-activity-focus__top">' +
+    '<span>Today’s focus</span><strong class="my-activity-focus__count" aria-label="' + escapeHtml(statusLabel + ': ' + focusCount) + '">' +
+    escapeHtml(focusCount) + '</strong></div>' +
+    '<div class="my-activity-focus__body"><b>' + escapeHtml(statusLabel) + '</b>' +
+    '<p>' + escapeHtml(message) + '</p></div>' +
+    '<a class="my-activity-focus__action" href="#' + focusDestination + '" data-open-activity-section="' + focusDestination + '">' +
+    (open.length ? 'View actions' : 'View history') + ' <span aria-hidden="true">→</span></a>';
 }
 
 function renderAll() {
   renderFocus();
   renderStats();
+  renderFieldBrief();
   renderActions();
   renderVisits();
   renderTimeline();
@@ -1665,18 +2657,15 @@ function renderAll() {
 // there is one place to change it.
 //
 // It renders whatever is in GAILS._allVisitsObj, which this page deliberately
-// stocks with **only the visits already on screen** rather than every visit in
-// the estate. Two reasons: the report's ‹ › arrows walk that object for other
-// visits to the same bakery, so here they stay inside the user's own history,
-// which is what a page called My Activity should offer; and those arrows apply
-// no ops-area scoping, so handing them the full set would let a scoped user
-// page into bakeries their Bakery Reports tab hides from them.
+// stocks with only the visits represented on this page. The report's
+// previous/next arrows can include colleague visits within the patch and the
+// user's own out-of-area work, without paging into unrelated estate visits.
 function syncReportSource() {
-  var mine = {};
-  myVisits().forEach(function (visit) {
-    mine[visit.id] = visitsObj[visit.id];
+  var patch = {};
+  activityVisits().forEach(function (visit) {
+    patch[visit.id] = visitsObj[visit.id];
   });
-  G._allVisitsObj = mine;
+  G._allVisitsObj = patch;
 }
 
 function openReportModal(visitId) {
@@ -1736,6 +2725,88 @@ function startLiveData() {
 
 // ---------- events ----------
 
+function activateActivitySection(sectionId, options) {
+  var settings = options || {};
+  var validIds = activityPanels.map(function (panel) { return panel.id; });
+  var targetId = validIds.indexOf(sectionId) !== -1 ? sectionId : 'section-brief';
+
+  activityPanels.forEach(function (panel) {
+    var active = panel.id === targetId;
+    panel.hidden = !active;
+    panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+  });
+
+  if (jumpNav) {
+    Array.from(jumpNav.querySelectorAll('[data-section-link]')).forEach(function (link) {
+      var active = link.getAttribute('data-section-link') === targetId;
+      link.classList.toggle('is-active', active);
+      link.setAttribute('aria-selected', active ? 'true' : 'false');
+      link.tabIndex = active ? 0 : -1;
+    });
+  }
+
+  if (settings.updateHistory && window.location.hash !== '#' + targetId) {
+    window.history.pushState(null, '', '#' + targetId);
+  }
+  if (settings.scroll && jumpNav) {
+    jumpNav.parentElement.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start'
+    });
+  }
+  if (targetId === 'section-visits') {
+    renderPatchMap();
+    schedulePatchMapLayout();
+  }
+}
+
+if (jumpNav) {
+  jumpNav.addEventListener('click', function (event) {
+    var link = event.target.closest('[data-section-link]');
+    if (!link) return;
+    event.preventDefault();
+    activateActivitySection(link.getAttribute('data-section-link'), {
+      updateHistory: true,
+      scroll: true
+    });
+  });
+
+  jumpNav.addEventListener('keydown', function (event) {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' &&
+      event.key !== 'Home' && event.key !== 'End') return;
+    var links = Array.from(jumpNav.querySelectorAll('[data-section-link]'));
+    var activeIndex = links.findIndex(function (link) { return link.classList.contains('is-active'); });
+    var nextIndex = activeIndex;
+    if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = links.length - 1;
+    else if (event.key === 'ArrowRight') nextIndex = (activeIndex + 1) % links.length;
+    else nextIndex = (activeIndex - 1 + links.length) % links.length;
+    event.preventDefault();
+    links[nextIndex].focus();
+    links[nextIndex].click();
+  });
+}
+
+window.addEventListener('hashchange', function () {
+  activateActivitySection(window.location.hash.slice(1), { updateHistory: false, scroll: false });
+});
+window.addEventListener('popstate', function () {
+  activateActivitySection(window.location.hash.slice(1), { updateHistory: false, scroll: false });
+});
+window.addEventListener('resize', schedulePatchMapLayout);
+
+document.addEventListener('click', function (event) {
+  if (event.defaultPrevented || event.button !== 0) return;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  var link = event.target.closest('[data-open-activity-section]');
+  if (!link) return;
+  event.preventDefault();
+  activateActivitySection(link.getAttribute('data-open-activity-section'), {
+    updateHistory: true,
+    scroll: true
+  });
+});
+
 if (actionsStatusToggle) {
   actionsStatusToggle.addEventListener('click', function (event) {
     var btn = event.target.closest('.visit-log-toggle-btn');
@@ -1749,6 +2820,17 @@ if (actionsStatusToggle) {
 
 if (actionsList) {
   actionsList.addEventListener('click', async function (event) {
+    var editButton = event.target.closest('[data-task-edit]');
+    if (editButton) {
+      openTaskModal(editButton.getAttribute('data-task-edit'), editButton);
+      return;
+    }
+    var deleteButton = event.target.closest('[data-task-delete]');
+    if (deleteButton) {
+      requestTaskDelete(deleteButton.getAttribute('data-task-delete'));
+      return;
+    }
+
     var toggle = event.target.closest('[data-task-toggle]');
     if (!toggle || !canEdit) return;
     var id = toggle.getAttribute('data-task-toggle');
@@ -1769,11 +2851,20 @@ if (actionsList) {
         'meta/updatedAt': now,
         'meta/updatedBy': who
       });
+      if (typeof G.notifySuccess === 'function') {
+        G.notifySuccess(done ? 'Task signed off' : 'Task reopened');
+      }
       // The live listener re-renders on success.
     } catch (error) {
       console.error('Could not update the follow-up:', error);
       toggle.disabled = false;
     }
+  });
+}
+
+if (actionsNewBtn) {
+  actionsNewBtn.addEventListener('click', function () {
+    openNewTaskModal(actionsNewBtn);
   });
 }
 
@@ -1835,6 +2926,58 @@ if (timelineMoreBtn) {
   });
 }
 
+if (performanceInsightEl) {
+  performanceInsightEl.addEventListener('click', function (event) {
+    var control = event.target.closest('[data-insight-step]');
+    if (!control || !performanceInsights.length) return;
+    performanceInsightIndex += parseInt(control.getAttribute('data-insight-step'), 10) || 0;
+    renderPerformanceSlide();
+    clearInterval(performanceInsightTimer);
+    performanceInsightTimer = null;
+  });
+}
+
+if (taskForm) {
+  taskForm.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    taskSaveBtn.disabled = true;
+    taskDeleteBtn.disabled = true;
+    showTaskError('');
+    try {
+      var result = await saveTask();
+      closeTaskModal();
+      if (result && result.created) {
+        actionsStatus = 'open';
+        setToggleActive(actionsStatusToggle, 'status', actionsStatus);
+        if (actionsSearch) actionsSearch.value = '';
+        if (actionsOps) actionsOps.value = '';
+        if (actionsBakery) actionsBakery.value = '';
+        if (typeof G.syncCustomSelect === 'function') {
+          [actionsOps, actionsBakery].forEach(function (select) {
+            if (select) G.syncCustomSelect(select);
+          });
+        }
+        saveFilters();
+      }
+    } catch (error) {
+      console.error('Could not save the follow-up:', error);
+      showTaskError(error && error.message ? error.message : 'Could not save this task. Please try again.');
+      taskSaveBtn.disabled = false;
+      taskDeleteBtn.disabled = false;
+    }
+  });
+}
+
+[taskBackdrop, taskClose, taskCancel].forEach(function (control) {
+  if (control) control.addEventListener('click', closeTaskModal);
+});
+
+if (taskDeleteBtn) {
+  taskDeleteBtn.addEventListener('click', function () {
+    requestTaskDelete(taskIdInput.value);
+  });
+}
+
 let timelineSearchDebounce = null;
 if (timelineSearch) {
   timelineSearch.addEventListener('input', function () {
@@ -1853,8 +2996,8 @@ if (visitsSearch) {
     syncVisitResetState();
     clearTimeout(searchDebounce);
     searchDebounce = setTimeout(function () {
-      visitLimit = VISIT_CHUNK;
       saveFilters();
+      resetVisitsScroll();
       renderVisits();
     }, 200);
   });
@@ -1863,9 +3006,9 @@ if (visitsSearch) {
 [visitsPeriod, visitsOps, visitsBakery, visitsSort, visitsFrom, visitsTo].forEach(function (control) {
   if (!control) return;
   control.addEventListener('change', function () {
-    visitLimit = VISIT_CHUNK;
     syncCustomRangeVisibility();
     saveFilters();
+    resetVisitsScroll();
     renderVisits();
   });
 });
@@ -1879,7 +3022,6 @@ if (visitsReset) {
     if (visitsOps) visitsOps.value = '';
     if (visitsBakery) visitsBakery.value = '';
     if (visitsSort) visitsSort.value = 'dateDesc';
-    visitLimit = VISIT_CHUNK;
     if (typeof G.syncCustomSelect === 'function') {
       [visitsPeriod, visitsOps, visitsBakery, visitsSort].forEach(function (select) {
         if (select) G.syncCustomSelect(select);
@@ -1887,14 +3029,7 @@ if (visitsReset) {
     }
     syncCustomRangeVisibility();
     saveFilters();
-    renderVisits();
-  });
-}
-
-if (visitsMoreBtn) {
-  visitsMoreBtn.addEventListener('click', function () {
-    if (visitsMoreBtn.disabled || visitLimit >= visitResultCount) return;
-    visitLimit = Math.min(visitResultCount, visitLimit + VISIT_CHUNK);
+    resetVisitsScroll();
     renderVisits();
   });
 }
@@ -1912,6 +3047,7 @@ if (actionsExportBtn) {
 
 document.addEventListener('keydown', function (event) {
   if (event.key === 'Escape' && confirmModal && !confirmModal.hidden) closeConfirmModal();
+  else if (event.key === 'Escape' && taskModal && !taskModal.hidden) closeTaskModal();
 });
 
 // Keep the jump bar's active state in sync with the section currently in view.
@@ -1923,11 +3059,13 @@ if (jumpNav && 'IntersectionObserver' in window) {
       .sort(function (a, b) { return b.intersectionRatio - a.intersectionRatio; })[0];
     if (!visible) return;
     Array.from(jumpNav.querySelectorAll('[data-section-link]')).forEach(function (link) {
-      link.classList.toggle('is-active', link.getAttribute('data-section-link') === visible.target.id);
+      var active = link.getAttribute('data-section-link') === visible.target.id;
+      link.classList.toggle('is-active', active);
+      link.setAttribute('aria-selected', active ? 'true' : 'false');
     });
   }, { rootMargin: '-15% 0px -65% 0px', threshold: [0, 0.1, 0.5] });
 
-  ['section-actions', 'section-visits', 'section-timeline'].forEach(function (id) {
+  ['section-brief', 'section-actions', 'section-visits', 'section-timeline'].forEach(function (id) {
     var section = document.getElementById(id);
     if (section) sectionObserver.observe(section);
   });
@@ -1993,6 +3131,10 @@ async function loadActivityHub(user) {
     get(ref(db, 'admins/' + user.uid)),
     get(ref(db, 'users/' + user.uid)),
     get(ref(db, 'portalData/siteMeta')),
+    get(ref(db, 'dashboardData')).catch(function (error) {
+      console.warn('Bakery performance data unavailable:', error);
+      return null;
+    }),
     // Best-effort: the directory only sharpens how a mention renders and which
     // uid it resolves to, so a read the rules reject must not block the page.
     get(ref(db, 'userDirectory')).catch(function (error) {
@@ -2020,8 +3162,13 @@ async function loadActivityHub(user) {
     G.setOpsAreaAssignments((sitePayload && sitePayload.opsAreaAssignments) || []);
   }
 
+  var dashboardData = initial[3] && initial[3].exists() ? initial[3].val() : {};
+  performanceRecords = Array.isArray(dashboardData.records)
+    ? dashboardData.records
+    : Object.values(dashboardData.records || {});
+
   if (G.Mentions) {
-    var directory = initial[3] && initial[3].exists() ? initial[3].val() : {};
+    var directory = initial[4] && initial[4].exists() ? initial[4].val() : {};
     G.Mentions.addPeople(Object.keys(directory).map(function (uid) {
       return { uid: uid, name: directory[uid] && directory[uid].name, email: directory[uid] && directory[uid].email };
     }));
@@ -2047,6 +3194,7 @@ async function loadActivityHub(user) {
   }
   var permissions = resolveRolePermissions(roleId, customRole);
   canEdit = permissions.actions.logVisits === true;
+  if (actionsNewBtn) actionsNewBtn.hidden = !canEdit;
   // js/visit-report.js renders the report modal on this page and reads its
   // permissions from the namespace, exactly as it does on the dashboard where
   // js/auth.js sets it. Without this it would fall back to "allowed".
@@ -2067,7 +3215,12 @@ async function loadActivityHub(user) {
 
   if (greetingEl) {
     greetingEl.textContent = identityDisplayName().split(' ')[0] +
-      ', here is everything you have logged, raised, and written across the estate.';
+      ', here is what needs your attention and how the month is moving.';
+  }
+  if (todayEl) {
+    todayEl.textContent = new Date().toLocaleDateString('en-GB', {
+      weekday: 'long', day: 'numeric', month: 'long'
+    });
   }
   if (backLink && document.referrer && document.referrer.indexOf('admin.html') !== -1) {
     backLink.setAttribute('href', 'admin.html');
@@ -2083,6 +3236,10 @@ async function loadActivityHub(user) {
 
   guard.style.display = 'none';
   page.hidden = false;
+  activateActivitySection(window.location.hash.slice(1) || 'section-brief', {
+    updateHistory: false,
+    scroll: false
+  });
   renderAll();
   startLiveData();
 }

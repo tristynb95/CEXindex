@@ -14,8 +14,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/my-activity.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/styles.css?v=20260727-region-cover-01">
+  <link rel="stylesheet" href="css/my-activity.css?v=20260727-focus-results-20">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- Powers the section-score chart inside a CQV report. js/charts.js degrades
        without it, so the report still opens if the CDN is unreachable. -->
@@ -58,35 +59,157 @@
       <section class="my-activity-overview" aria-labelledby="myActivityTitle">
         <div class="my-activity-overview__top">
           <div class="my-activity-intro">
-            <p class="my-activity-eyebrow">Your workspace</p>
+            <p class="my-activity-eyebrow">Your field workspace</p>
             <h1 id="myActivityTitle">My Activity</h1>
-            <p id="myActivityGreeting" class="my-activity-intro__copy">Your work, priorities and progress in one
+            <p id="myActivityGreeting" class="my-activity-intro__copy">Your priorities, visits and follow-ups in one
               place.</p>
           </div>
 
-          <nav id="myActivityJump" class="my-activity-jump" aria-label="Jump to a section">
-            <a href="#section-actions" class="my-activity-jump__link" data-section-link="section-actions">Actions</a>
-            <a href="#section-visits" class="my-activity-jump__link" data-section-link="section-visits">Visits</a>
-            <a href="#section-timeline" class="my-activity-jump__link"
-              data-section-link="section-timeline">Activity</a>
-          </nav>
+          <div class="my-activity-today" aria-label="Today's date">
+            <span>Today</span>
+            <strong id="myActivityDate"></strong>
+          </div>
         </div>
 
-        <div id="myActivityFocus" class="my-activity-focus" role="status" aria-live="polite"></div>
-        <div id="myActivityStats" class="my-activity-stats" aria-label="Your activity at a glance"></div>
+        <section class="my-activity-insight" aria-label="Assigned-patch performance insight">
+          <div class="my-activity-insight__head">
+            <span id="myActivityInsightLabel" class="my-activity-stat__label">Patch performance</span>
+            <div class="my-activity-insight__controls">
+              <button type="button" data-insight-step="-1" aria-label="Previous performance insight">&lsaquo;</button>
+              <button type="button" data-insight-step="1" aria-label="Next performance insight">&rsaquo;</button>
+            </div>
+          </div>
+          <div id="myActivityInsightBody" class="my-activity-insight__body"></div>
+          <div id="myActivityInsightDots" class="my-activity-insight__dots" aria-hidden="true"></div>
+        </section>
+
+        <div class="my-activity-overview__compact">
+          <div id="myActivityStats" class="my-activity-stats" aria-label="Your activity at a glance"></div>
+          <div id="myActivityFocus" class="my-activity-focus" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <div class="my-activity-tabs-wrap">
+        <nav id="myActivityJump" class="my-activity-jump" aria-label="My Activity sections" role="tablist">
+          <a href="#section-brief" id="myActivityTabBrief" class="my-activity-jump__link is-active"
+            data-section-link="section-brief" role="tab" aria-controls="section-brief" aria-selected="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z" />
+            </svg>
+            Brief
+          </a>
+          <a href="#section-actions" id="myActivityTabActions" class="my-activity-jump__link"
+            data-section-link="section-actions" role="tab" aria-controls="section-actions" aria-selected="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="m5 12 4 4L19 6" />
+            </svg>
+            Actions
+            <span id="myActivityTabActionCount" class="my-activity-tab-count" hidden></span>
+          </a>
+          <a href="#section-visits" id="myActivityTabVisits" class="my-activity-jump__link"
+            data-section-link="section-visits" role="tab" aria-controls="section-visits" aria-selected="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+              <circle cx="12" cy="10" r="2.5" />
+            </svg>
+            Visits
+          </a>
+          <a href="#section-timeline" id="myActivityTabTimeline" class="my-activity-jump__link"
+            data-section-link="section-timeline" role="tab" aria-controls="section-timeline" aria-selected="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 8v5l3 2" />
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+            History
+          </a>
+        </nav>
+      </div>
+
+      <!-- ========== FIELD BRIEF ========== -->
+      <section id="section-brief" class="my-activity-card my-activity-card--brief" data-activity-panel
+        role="tabpanel" aria-labelledby="myActivityTabBrief">
+        <div class="my-activity-card__head my-activity-card__head--brief">
+          <div>
+            <p class="my-activity-card__eyebrow">Plan the day</p>
+            <h2 id="myBriefTitle">Field brief</h2>
+            <p class="my-activity-card__copy">A focused view of the bakeries and follow-ups that deserve your
+              attention next.</p>
+          </div>
+          <a class="my-activity-text-link" href="#section-actions" data-open-activity-section="section-actions">
+            See all actions
+            <span aria-hidden="true">&rarr;</span>
+          </a>
+        </div>
+
+        <div class="my-activity-brief-grid">
+          <section class="my-activity-brief-panel my-activity-brief-panel--priorities"
+            aria-labelledby="myActivityPrioritiesTitle">
+            <div class="my-activity-brief-panel__head">
+              <div>
+                <p class="my-activity-mini-label">Your assigned patch</p>
+                <h3 id="myActivityPrioritiesTitle">Focus bakeries</h3>
+              </div>
+              <span id="myActivityPatchHint" class="my-activity-brief-hint">Coverage, recency &amp; performance</span>
+            </div>
+            <div id="myActivityPriorities" class="my-activity-priorities" aria-live="polite"></div>
+          </section>
+
+          <div class="my-activity-brief-side">
+            <section class="my-activity-brief-panel" aria-labelledby="myActivityMomentumTitle">
+              <div class="my-activity-brief-panel__head">
+                <div>
+                  <p class="my-activity-mini-label">Your month</p>
+                  <h3 id="myActivityMomentumTitle">Momentum</h3>
+                </div>
+                <span id="myActivityMonthLabel" class="my-activity-brief-hint"></span>
+              </div>
+              <div id="myActivityMomentum" class="my-activity-momentum" aria-live="polite"></div>
+            </section>
+
+            <section class="my-activity-brief-panel" aria-labelledby="myActivityFollowUpsTitle">
+              <div class="my-activity-brief-panel__head">
+                <div>
+                  <p class="my-activity-mini-label">Action queue</p>
+                  <h3 id="myActivityFollowUpsTitle">Follow-ups</h3>
+                </div>
+                <a class="my-activity-brief-hint my-activity-brief-hint--link" href="#section-actions"
+                  data-open-activity-section="section-actions">See all</a>
+              </div>
+              <div id="myActivityFollowUps" class="my-activity-brief-followups" aria-live="polite"></div>
+            </section>
+
+            <section class="my-activity-brief-panel" aria-labelledby="myActivityLatestTitle">
+              <div class="my-activity-brief-panel__head">
+                <div>
+                  <p class="my-activity-mini-label">Pick up where you left off</p>
+                  <h3 id="myActivityLatestTitle">Latest visit</h3>
+                </div>
+              </div>
+              <div id="myActivityLatestVisit" class="my-activity-latest" aria-live="polite"></div>
+            </section>
+          </div>
+        </div>
       </section>
 
       <!-- ========== 1. OPEN ACTIONS ========== -->
-      <section id="section-actions" class="my-activity-card" aria-labelledby="myActionsTitle">
+      <section id="section-actions" class="my-activity-card" data-activity-panel role="tabpanel"
+        aria-labelledby="myActivityTabActions" hidden>
         <div class="my-activity-card__head">
           <div>
-            <p class="my-activity-card__eyebrow">Follow-up tasks</p>
-            <h2 id="myActionsTitle">Open actions</h2>
-            <p class="my-activity-card__copy">Tasks you raised or closed off. Tick one to complete it — the change
-              syncs everywhere instantly.</p>
+            <p class="my-activity-card__eyebrow">Follow-up queue</p>
+            <h2 id="myActionsTitle">Actions</h2>
+            <p class="my-activity-card__copy">Prioritise actions captured on bakery visits, then tick them off as
+              they are completed.</p>
           </div>
           <div class="my-activity-card__actions">
             <span id="myActionsCount" class="my-activity-pill">0 open</span>
+            <button type="button" id="myActionsNewBtn" class="btn my-activity-new-action-btn" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New action
+            </button>
             <button type="button" id="myActionsExportBtn" class="btn my-activity-export-btn">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -158,13 +281,14 @@
       </section>
 
       <!-- ========== 2. MY VISITS ========== -->
-      <section id="section-visits" class="my-activity-card" aria-labelledby="myVisitsTitle">
+      <section id="section-visits" class="my-activity-card" data-activity-panel role="tabpanel"
+        aria-labelledby="myActivityTabVisits" hidden>
         <div class="my-activity-card__head">
           <div>
-            <p class="my-activity-card__eyebrow">Visit log</p>
-            <h2 id="myVisitsTitle">My visits</h2>
-            <p class="my-activity-card__copy">Every check-in, routine coffee visit, CQV, and NBO logged under your
-              name. Filter it, then export exactly what you see.</p>
+            <p class="my-activity-card__eyebrow">Bakery coverage</p>
+            <h2 id="myVisitsTitle">Visits</h2>
+            <p class="my-activity-card__copy">Review every visit in your assigned patch, plus any out-of-area
+              visits completed by you.</p>
           </div>
           <div class="my-activity-card__actions">
             <button type="button" id="myVisitsExportBtn" class="btn my-activity-export-btn">
@@ -249,18 +373,47 @@
         </div>
 
         <div id="myVisitsSummary" class="my-activity-summary" role="status" aria-live="polite"></div>
-        <div id="myVisitsList" class="my-activity-visit-list"></div>
-        <button type="button" id="myVisitsMore" class="visit-log-show-more" hidden>Show more</button>
+        <div class="my-activity-visits-workspace">
+          <div class="my-activity-visits-list-pane">
+            <div class="my-activity-visits-scroll" tabindex="0"
+              aria-label="Visit results. Six visits are visible; scroll for more.">
+              <div id="myVisitsList" class="my-activity-visit-list"></div>
+            </div>
+          </div>
+
+          <aside class="my-activity-patch-card" aria-labelledby="myActivityPatchMapTitle">
+            <div class="my-activity-patch-card__head">
+              <div>
+                <p class="my-activity-mini-label">Bakery coverage</p>
+                <h3 id="myActivityPatchMapTitle">Your patch</h3>
+              </div>
+              <span id="myActivityPatchMapCount" class="my-activity-brief-hint"></span>
+            </div>
+            <p class="map-legend-key my-activity-map-legend" aria-label="Patch map key">
+              <span style="color:#1D9E5C;font-weight:600">&#9679; Visited by you</span>
+              &nbsp;&middot;&nbsp;
+              <span style="color:#C97F12;font-weight:600">&#9679; Colleague only</span>
+              &nbsp;&middot;&nbsp;
+              <span style="color:#8d8d8d;font-weight:600">&#9679; Not visited</span>
+            </p>
+            <div class="map-canvas-wrap my-activity-patch-map-wrap">
+              <div id="myActivityPatchMap" class="my-activity-patch-map"
+                aria-label="Map of bakeries in your assigned patch"></div>
+            </div>
+            <p id="myActivityPatchMapStatus" class="target-map-status my-activity-patch-card__status" role="status"
+              aria-live="polite"></p>
+          </aside>
+        </div>
       </section>
 
       <!-- ========== 3. ACTIVITY FEED ========== -->
-      <section id="section-timeline" class="my-activity-card" aria-labelledby="myTimelineTitle">
+      <section id="section-timeline" class="my-activity-card" data-activity-panel role="tabpanel"
+        aria-labelledby="myActivityTabTimeline" hidden>
         <div class="my-activity-card__head">
           <div>
-            <p class="my-activity-card__eyebrow">Chronological</p>
-            <h2 id="myTimelineTitle">Activity feed</h2>
-            <p class="my-activity-card__copy">Visits, bakery notes, and follow-up tasks added, edited, or completed —
-              newest first.</p>
+            <p class="my-activity-card__eyebrow">Your audit trail</p>
+            <h2 id="myTimelineTitle">History</h2>
+            <p class="my-activity-card__copy">A chronological record of visits, notes and follow-up changes.</p>
           </div>
           <div class="my-activity-card__actions">
             <span id="myTimelineCount" class="my-activity-pill">0 events</span>
@@ -289,6 +442,61 @@
     </main>
   </div>
 
+  <!-- FOLLOW-UP EDITOR -->
+  <div id="myActivityTaskModal" class="my-activity-modal" role="dialog" aria-modal="true"
+    aria-labelledby="myActivityTaskModalTitle" hidden>
+    <button type="button" id="myActivityTaskBackdrop" class="my-activity-modal__backdrop"
+      aria-label="Close task editor"></button>
+    <section class="my-activity-modal__dialog my-activity-task-dialog">
+      <div class="my-activity-modal__head">
+        <div>
+          <p class="my-activity-card__eyebrow">Follow-up details</p>
+          <h2 id="myActivityTaskModalTitle">Edit task</h2>
+        </div>
+        <button type="button" id="myActivityTaskClose" class="modal-close-btn" aria-label="Close task editor"
+          title="Close">&#10005;</button>
+      </div>
+      <form id="myActivityTaskForm" class="my-activity-task-form">
+        <input type="hidden" id="myActivityTaskId">
+        <p class="my-activity-task-owner-note">
+          Actions created here are saved to your profile.
+        </p>
+        <label class="my-activity-task-field">
+          <span>Bakery</span>
+          <select id="myActivityTaskBakery" class="visit-log-select" required></select>
+        </label>
+        <label class="my-activity-task-field my-activity-task-field--wide">
+          <span>Action</span>
+          <input type="text" id="myActivityTaskTitle" class="visit-log-input" maxlength="160" required>
+        </label>
+        <label class="my-activity-task-field my-activity-task-field--wide">
+          <span>Detail</span>
+          <textarea id="myActivityTaskDetail" class="visit-log-input" rows="4" maxlength="1000"></textarea>
+        </label>
+        <label class="my-activity-task-field">
+          <span>Due date</span>
+          <input type="date" id="myActivityTaskDueDate" class="visit-log-input">
+        </label>
+        <label class="my-activity-task-field">
+          <span>Priority</span>
+          <select id="myActivityTaskPriority" class="visit-log-select">
+            <option value="none">No priority</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+        <p id="myActivityTaskError" class="my-activity-task-error" role="alert" hidden></p>
+        <div class="my-activity-modal__actions my-activity-task-actions">
+          <button type="button" id="myActivityTaskDelete" class="my-activity-danger-btn">Delete task</button>
+          <span class="my-activity-task-actions__spacer"></span>
+          <button type="button" id="myActivityTaskCancel" class="my-activity-secondary-btn">Cancel</button>
+          <button type="submit" id="myActivityTaskSave" class="btn">Save changes</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
   <!-- EXPORT CONFIRMATION — no file is written until this is confirmed. -->
   <div id="myActivityConfirmModal" class="my-activity-modal" role="dialog" aria-modal="true"
     aria-labelledby="myActivityConfirmTitle" hidden>
@@ -297,13 +505,14 @@
     <section class="my-activity-modal__dialog">
       <div class="my-activity-modal__head">
         <div>
-          <p class="my-activity-card__eyebrow">Confirm download</p>
+          <p class="my-activity-card__eyebrow">Please confirm</p>
           <h2 id="myActivityConfirmTitle">Download Excel File</h2>
         </div>
         <button type="button" id="myActivityConfirmClose" class="modal-close-btn" aria-label="Close confirmation"
           title="Close">&#10005;</button>
       </div>
       <p id="myActivityConfirmMessage" class="my-activity-modal__copy"></p>
+      <p id="myActivityConfirmError" class="my-activity-task-error" role="alert" hidden></p>
       <div class="my-activity-modal__actions">
         <button type="button" id="myActivityConfirmCancel" class="my-activity-secondary-btn">Cancel</button>
         <button type="button" id="myActivityConfirmBtn" class="btn">Download</button>
@@ -337,8 +546,9 @@
     </div>
   </div>
 
-  <script src="js/utils.js"></script>
+  <script src="js/utils.js?v=20260727-region-cover-01"></script>
   <script src="js/config.js"></script>
+  <script src="js/focus-data.js"></script>
   <!-- The routine visit schema names each section, which is what turns a
        routine visit's per-section comments into readable notes. -->
   <script src="js/visit-schema.js"></script>
@@ -353,9 +563,11 @@
   <!-- Renders the report itself. It is the dashboard's own renderer, reused
        verbatim so a report reads identically on both pages — see the comment
        above openReportModal in js/my-activity.js for what this page feeds it. -->
-  <script src="js/visit-report.js"></script>
+  <script src="js/visit-report.js?v=20260727-task-delete-modal-23"></script>
   <script src="js/custom-selects.js"></script>
-  <script type="module" src="js/my-activity.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script type="module" src="js/my-activity.js?v=20260727-success-toast-22"></script>
 </body>
 
 </html>

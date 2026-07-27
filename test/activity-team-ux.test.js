@@ -16,12 +16,13 @@ const sharedStyles = read('css/styles.css');
 const standaloneMenu = read('js/standalone-profile-menu.js');
 
 test('My Activity has bounded, searchable long-form sections', () => {
-  ['myVisitsMore', 'myTimelineSearch', 'myTimelineSummary'].forEach((id) => {
+  ['myTimelineSearch', 'myTimelineSummary'].forEach((id) => {
     assert.match(activityHtml, new RegExp('id="' + id + '"'));
     assert.match(activityScript, new RegExp("getElementById\\('" + id + "'\\)"));
   });
-  assert.match(activityScript, /const VISIT_CHUNK = 30/);
-  assert.match(activityScript, /visits\.slice\(0, visitLimit\)/);
+  assert.match(activityHtml, /class="my-activity-visits-scroll" tabindex="0"/);
+  assert.match(activityScript, /visits\.map\(visitRowHtml\)\.join/);
+  assert.doesNotMatch(activityScript, /visits\.slice\(0, visitLimit\)/);
   assert.match(activityScript, /timelineSearch\.value\.trim\(\)\.toLowerCase\(\)/);
 });
 
@@ -32,8 +33,6 @@ test('Show more pagers stop at the available results and stay hidden at the end'
   assert.match(teamScript, /visitLimit = Math\.min\(visitResultCount, visitLimit \+ VISIT_CHUNK\)/);
   assert.doesNotMatch(teamScript, /visits\.length - visitLimit/);
 
-  assert.match(activityScript, /Math\.max\(0, visits\.length - shown\.length\)/);
-  assert.match(activityScript, /visitLimit = Math\.min\(visitResultCount, visitLimit \+ VISIT_CHUNK\)/);
   assert.match(activityScript, /Math\.max\(0, events\.length - visible\.length\)/);
   assert.match(activityScript, /timelineLimit = Math\.min\(timelineResultCount, timelineLimit \+ TIMELINE_CHUNK\)/);
 });
@@ -54,7 +53,8 @@ test('the compact page overviews combine context, navigation and live priorities
   assert.match(activityScript, /renderFocus\(\);\s*renderStats\(\)/);
   assert.match(teamHtml, /class="my-activity-overview my-team-overview"/);
   assert.match(activityStyles, /\.my-activity-overview__top/);
-  assert.match(activityScript, /All clear — nothing overdue or due in the next seven days/);
+  assert.match(activityScript, /statusLabel = 'On track'/);
+  assert.match(activityScript, /nothing due this week/);
 });
 
 test('My Activity keeps desktop filter controls on efficient rows', () => {
@@ -89,11 +89,12 @@ test('shared visits count once in team contribution totals', () => {
   assert.doesNotMatch(teamScript, /sum \+ row\.visits/);
 });
 
-test('team actions recover legacy source-visit attribution and completers', () => {
+test('team actions recover legacy actors while My Activity queues profile owners only', () => {
   assert.match(teamScript, /task\.sourceVisitId \? visitsObj\[task\.sourceVisitId\] : null/);
   assert.match(teamScript, /G\.Attribution\.forTask\(task, sourceVisit\)/);
   assert.match(teamScript, /G\.Attribution\.actorsForTask\(task, sourceVisit\)/);
-  assert.match(activityScript, /G\.Attribution\.actorsForTask\(task, sourceVisit\)/);
+  assert.match(activityScript, /G\.Attribution\.forTask\(task, sourceVisit\)/);
+  assert.doesNotMatch(activityScript, /G\.Attribution\.actorsForTask\(task, sourceVisit\)/);
 });
 
 test('My Team provides manager-grade search and ordering controls', () => {
@@ -114,7 +115,7 @@ test('My Team provides manager-grade search and ordering controls', () => {
 test('My Team opens visit reports in-place without losing manager context', () => {
   assert.match(teamHtml, /id="visitReportModal"/);
   assert.match(teamHtml, /id="visitReportBody"/);
-  assert.match(teamHtml, /src="js\/visit-report\.js"/);
+  assert.match(teamHtml, /src="js\/visit-report\.js(?:\?[^"]+)?"/);
   assert.match(teamScript, /data-open-visit-report=/);
   assert.match(teamScript, /function openReportModal\(visitId\)/);
   assert.match(teamScript, /var link = event\.target\.closest\('\[data-open-visit-report\]'\)/);

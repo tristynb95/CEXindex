@@ -658,21 +658,20 @@ test('every surface that shows a Coffee Partner renders it without the @', () =>
   assert.match(myActivity, /return mentionText\(visit\.coffeePartner\);/);
 });
 
-test('an assigned visit reaches the assignee, and the export names them', () => {
-  assert.match(myActivity, /function visitAssignedToMe\(visit\)/);
-  // Ownership is checked before anything else, so a credited visit is theirs
-  // even when someone else logged it.
-  assert.match(myActivity, /if \(attributedToMe\(visitAttribution\(visit\)\)\) return true;/);
-  assert.match(myActivity, /'Was assigned a visit'/);
-  assert.match(myActivity, /'Assigned to you'/);
-  // Being named alongside a colleague is not the same as owning it alone.
-  assert.match(myActivity, /'Assigned to you &amp; ' \+ escapeHtml/);
+test('a visit allocation reaches only its profile and labels joint visits', () => {
+  // An explicit profile allocation wins over who happened to enter the record.
+  assert.match(myActivity, /var owners = visitAttribution\(visit\);\s*if \(owners\.length\) return attributedToMe\(owners\);/);
+  assert.match(myActivity, /'Completed a visit'/);
+  assert.doesNotMatch(myActivity, /Assigned to you/);
+  // A single-profile visit gets no redundant badge; joint visits name the
+  // colleague who attended with the current user.
+  assert.match(myActivity, /function jointVisitLabel\(visit\)/);
+  assert.match(myActivity, /'Visited by you and ' \+ G\.Attribution\.label\(others\)/);
   // The export column carries the derived attribution, so a form visit and an
   // imported CQV name someone too.
-  [visitReport, myActivity].forEach((source) => {
-    assert.match(source, /\{ label: 'Assigned To', type: 'text', width: 24 \}/);
-    assert.match(source, /Attribution\.namesText\(/);
-  });
+  assert.match(visitReport, /\{ label: 'Assigned To', type: 'text', width: 24 \}/);
+  assert.match(myActivity, /\{ label: 'Profiles', type: 'text', width: 24 \}/);
+  [visitReport, myActivity].forEach((source) => assert.match(source, /Attribution\.namesText\(/));
 });
 
 test('a check-in report presents attribution once as Coffee Partner', () => {

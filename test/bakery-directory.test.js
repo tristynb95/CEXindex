@@ -67,8 +67,69 @@ test('normalizes regional coffee-team assignments for directory lookups', () => 
   assert.deepEqual(plain(GAILS.getRegionAssignment('south region')), {
     region: 'South Region',
     coffeePartner: 'Alex',
-    coffeeTrainer: 'Jordan'
+    coffeeTrainer: 'Jordan',
+    coverEnabled: false,
+    partnerFromCover: false,
+    trainerFromCover: false
   });
+});
+
+test('a region on cover resolves each role from the ops area, falling back to the region', () => {
+  const GAILS = loadConfig();
+  GAILS.setRegionAssignments([
+    {
+      region: 'South Region',
+      coffeePartner: 'Alex',
+      coffeeTrainer: 'Jordan',
+      cover: {
+        enabled: true,
+        areas: [
+          { opsArea: 'Safa Aden', coffeePartner: 'Morgan', coffeePartnerUid: 'u-morgan' }
+        ]
+      }
+    }
+  ]);
+
+  // The covered area takes Morgan as its Coffee Partner, but nobody covers the
+  // Coffee Trainer there, so Jordan still has it.
+  assert.deepEqual(plain(GAILS.getRegionAssignment('South Region', 'safa aden')), {
+    region: 'South Region',
+    coffeePartner: 'Morgan',
+    coffeeTrainer: 'Jordan',
+    coverEnabled: true,
+    partnerFromCover: true,
+    trainerFromCover: false
+  });
+
+  // Every other ops area in the region carries on unchanged.
+  assert.deepEqual(plain(GAILS.getRegionAssignment('South Region', 'Other Area')), {
+    region: 'South Region',
+    coffeePartner: 'Alex',
+    coffeeTrainer: 'Jordan',
+    coverEnabled: true,
+    partnerFromCover: false,
+    trainerFromCover: false
+  });
+});
+
+test('cover switched off hands every ops area back to the region', () => {
+  const GAILS = loadConfig();
+  GAILS.setRegionAssignments([
+    {
+      region: 'South Region',
+      coffeePartner: 'Alex',
+      coffeeTrainer: 'Jordan',
+      cover: {
+        enabled: false,
+        areas: [{ opsArea: 'Safa Aden', coffeePartner: 'Morgan' }]
+      }
+    }
+  ]);
+
+  const resolved = plain(GAILS.getRegionAssignment('South Region', 'Safa Aden'));
+  assert.equal(resolved.coffeePartner, 'Alex');
+  assert.equal(resolved.coverEnabled, false);
+  assert.equal(resolved.partnerFromCover, false);
 });
 
 test('builds the bakery directory with exactly the requested fields', () => {

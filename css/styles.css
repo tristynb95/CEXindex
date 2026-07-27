@@ -6674,6 +6674,61 @@ body.table-fullscreen-lock {
   width: 28%;
 }
 
+.admin-table--region-assignments th:last-child,
+.admin-table--region-assignments td:last-child {
+  width: 15%;
+}
+
+/* Cover: on while a region's Coffee Partner or Coffee Trainer has left and
+   their patch is split between colleagues covering individual ops areas. */
+.admin-cover-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-l);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.admin-cover-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.admin-cover-toggle input:disabled,
+.admin-cover-toggle input:disabled + span {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.admin-table--region-assignments tr.admin-table__row--on-cover td {
+  background: rgba(30, 112, 196, 0.05);
+}
+
+.admin-table--region-assignments tr.admin-table__row--on-cover .admin-cover-toggle {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* The ops areas of a region on cover, listed under it. Indented rather than
+   ruled off, so a region and the areas it has handed out read as one block. */
+.admin-table--region-assignments tr.admin-table__row--cover td {
+  background: rgba(30, 112, 196, 0.02);
+  border-top: none;
+}
+
+.admin-table--region-assignments tr.admin-table__row--cover td:first-child {
+  padding-left: 34px;
+}
+
+.admin-table__cover-area {
+  color: var(--muted-l);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 /* Area Head Baristas sit under the Region Coffee Team as a second table, so it
    is separated by a rule rather than by another card. */
 .admin-region-assignments__subsection {
@@ -9205,14 +9260,26 @@ body.table-fullscreen-lock {
     border: none !important;
   }
 
-  /* Hide all app-shell content except the visit report modal */
-  #loginScreen,
-  #loadingScreen,
-  .header,
-  #uploadZone,
-  #dashboardContent,
-  #unmappedSitesModal {
+  /* Hide all app-shell content except the visit report modal. This is
+     structural rather than a list of dashboard element ids, because the report
+     is also hosted by my-activity.html, my-team.html and bakery-profile.html,
+     whose shells have entirely different ids — listing them left the whole page
+     printing alongside the report. The modal is a body child on those pages and
+     a .container child on the dashboard, so hiding every sibling at both levels
+     and re-showing only the modal's own ancestor chain covers all four.
+
+     Scoped to body.visit-report-open (set by openVisitReportById /
+     closeVisitReport in js/visit-report.js) so that Ctrl+P with no report open
+     still prints the page rather than a blank sheet. */
+  body.visit-report-open > *,
+  body.visit-report-open > .container > * {
     display: none !important;
+  }
+
+  body.visit-report-open > .container,
+  body.visit-report-open > #visitReportModal,
+  body.visit-report-open > .container > #visitReportModal {
+    display: block !important;
   }
 
   #visitReportModal {
@@ -18378,4 +18445,98 @@ html {
 
 #tab-target [data-target-subtab-panel="summary"] .focus-qrow__name {
   font-size: 0.8rem;
+}
+/* ========== SITE-WIDE SUCCESS NOTIFICATIONS ========== */
+
+.app-toast-region {
+  position: fixed;
+  right: clamp(14px, 2vw, 28px);
+  bottom: clamp(14px, 2vw, 24px);
+  z-index: 120000;
+  width: min(340px, calc(100vw - 28px));
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.app-toast {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 27px minmax(0, 1fr) 24px;
+  gap: 9px;
+  align-items: center;
+  padding: 9px 9px 9px 11px;
+  border: 1px solid rgba(50, 75, 57, 0.14);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 10px 30px rgba(58, 43, 31, 0.14);
+  color: #3f3a35;
+  opacity: 0;
+  pointer-events: auto;
+  transform: translateY(8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  backdrop-filter: blur(10px);
+}
+
+.app-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.app-toast__icon {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e6f3eb;
+  color: #287b49;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.app-toast__copy {
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.app-toast__close {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #8c847b;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.app-toast__close:hover {
+  background: #f1eee9;
+  color: #4c4640;
+}
+
+.app-toast__close:focus-visible {
+  outline: 2px solid #287b49;
+  outline-offset: 1px;
+}
+
+@media (max-width: 720px) {
+  .app-toast-region {
+    right: 12px;
+    bottom: 72px;
+    width: calc(100vw - 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-toast {
+    transition: none;
+  }
 }

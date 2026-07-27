@@ -135,6 +135,157 @@ test('keeps stable user ids with the readable regional names', () => {
   ]);
 });
 
+// Cover: what happens while a region's Coffee Partner or Coffee Trainer has
+// left and their patch is split between colleagues covering individual areas.
+const southWithAreas = [{
+  region: 'South Region',
+  opsAreas: [
+    { opsArea: 'Safa Aden', bakeries: ['Clapham', 'Balham'] },
+    { opsArea: 'Remi Cole', bakeries: ['Brixton'] }
+  ]
+}];
+
+test('a region off cover offers no ops area rows at all', () => {
+  const rows = plain(assignments.assignmentsForRegions(
+    southWithAreas,
+    [{ region: 'South Region', coffeePartner: 'Alex', coffeeTrainer: 'Jordan' }]
+  ));
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].cover, undefined);
+});
+
+test('switching cover on opens a row for every ops area, covered or not', () => {
+  const updated = assignments.setCover(
+    southWithAreas,
+    [{ region: 'South Region', coffeePartner: 'Alex', coffeeTrainer: 'Jordan' }],
+    'South Region',
+    true
+  );
+
+  const rows = plain(assignments.assignmentsForRegions(southWithAreas, updated));
+  assert.equal(rows[0].cover.enabled, true);
+  assert.deepEqual(rows[0].cover.areas.map((area) => area.opsArea), ['Remi Cole', 'Safa Aden']);
+  assert.equal(rows[0].cover.areas[0].coffeePartner, '');
+});
+
+test('covering one area leaves the rest of the region with its own pair', () => {
+  const onCover = assignments.setCover(
+    southWithAreas,
+    [{ region: 'South Region', coffeePartner: 'Alex', coffeeTrainer: 'Jordan' }],
+    'South Region',
+    true
+  );
+  const updated = assignments.updateCoverAssignment(
+    southWithAreas, onCover, 'South Region', 'Safa Aden', 'coffeePartner', 'Morgan'
+  );
+
+  // Only the area somebody covers is stored, and it keeps the bakeries it holds
+  // so it can be followed if the area is renamed.
+  const stored = plain(assignments.mergeDetectedRegions(southWithAreas, updated));
+  assert.deepEqual(stored[0].cover, {
+    enabled: true,
+    areas: [{
+      opsArea: 'Safa Aden',
+      coffeePartner: 'Morgan',
+      coffeePartnerUid: '',
+      coffeeTrainer: '',
+      coffeeTrainerUid: '',
+      bakeries: ['Balham', 'Clapham']
+    }]
+  });
+
+  assert.equal(
+    assignments.resolveAssignment(stored[0], 'Safa Aden').coffeePartner,
+    'Morgan'
+  );
+  assert.equal(
+    assignments.resolveAssignment(stored[0], 'Remi Cole').coffeePartner,
+    'Alex'
+  );
+  // Nobody covers the Coffee Trainer, so that role is untouched everywhere.
+  assert.equal(
+    assignments.resolveAssignment(stored[0], 'Safa Aden').coffeeTrainer,
+    'Jordan'
+  );
+});
+
+test('ending cover returns the region to its own pair and clears the split', () => {
+  const covered = assignments.updateCoverAssignment(
+    southWithAreas,
+    assignments.setCover(
+      southWithAreas,
+      [{ region: 'South Region', coffeePartner: 'Alex', coffeeTrainer: 'Jordan' }],
+      'South Region',
+      true
+    ),
+    'South Region', 'Safa Aden', 'coffeePartner', 'Morgan'
+  );
+
+  assert.equal(assignments.coveredAreas(covered, 'South Region').length, 1);
+
+  const ended = plain(assignments.setCover(southWithAreas, covered, 'South Region', false));
+  assert.equal(ended[0].cover, undefined);
+  assert.equal(ended[0].coffeePartner, 'Alex');
+  assert.equal(assignments.resolveAssignment(ended[0], 'Safa Aden').coffeePartner, 'Alex');
+});
+
+test('cover follows an ops area renamed after a change of ops manager', () => {
+  const covered = assignments.updateCoverAssignment(
+    southWithAreas,
+    assignments.setCover(southWithAreas, [{ region: 'South Region' }], 'South Region', true),
+    'South Region', 'Safa Aden', 'coffeePartner', 'Morgan'
+  );
+
+  // Same bakeries, new ops manager, so a new name on the same area.
+  const renamed = [{
+    region: 'South Region',
+    opsAreas: [
+      { opsArea: 'Pat Nolan', bakeries: ['Clapham', 'Balham'] },
+      { opsArea: 'Remi Cole', bakeries: ['Brixton'] }
+    ]
+  }];
+
+  const stored = plain(assignments.mergeDetectedRegions(renamed, covered));
+  assert.deepEqual(stored[0].cover.areas.map((area) => area.opsArea), ['Pat Nolan']);
+  assert.equal(stored[0].cover.areas[0].coffeePartner, 'Morgan');
+
+  const shown = plain(assignments.assignmentsForRegions(renamed, covered));
+  const carried = shown[0].cover.areas.find((area) => area.opsArea === 'Pat Nolan');
+  assert.equal(carried.renamedFrom, 'Safa Aden');
+});
+
+test('an ops area missing from an upload keeps whoever was covering it', () => {
+  const covered = assignments.updateCoverAssignment(
+    southWithAreas,
+    assignments.setCover(southWithAreas, [{ region: 'South Region' }], 'South Region', true),
+    'South Region', 'Safa Aden', 'coffeePartner', 'Morgan'
+  );
+
+  const withoutArea = [{
+    region: 'South Region',
+    opsAreas: [{ opsArea: 'Remi Cole', bakeries: ['Brixton'] }]
+  }];
+
+  const stored = plain(assignments.mergeDetectedRegions(withoutArea, covered));
+  const retained = stored[0].cover.areas.find((area) => area.opsArea === 'Safa Aden');
+  assert.equal(retained.coffeePartner, 'Morgan');
+});
+
+test('wires the cover toggle and per-area rows into the admin region table', () => {
+  const adminHtml = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
+  const adminSource = fs.readFileSync(path.join(root, 'js', 'admin-page.js'), 'utf8');
+  const authSource = fs.readFileSync(path.join(root, 'js', 'auth.js'), 'utf8');
+
+  assert.match(adminHtml, /<th>Cover<\/th>/);
+  assert.match(adminSource, /data-action="toggle-region-cover"/);
+  assert.match(adminSource, /toggleRegionCover\(input\.dataset\.region, input\.checked\)/);
+  assert.match(adminSource, /updateCoverAssignment\(/);
+  // Ending cover discards the split, so it is confirmed before anything goes.
+  assert.match(adminSource, /coveredAreas\(state\.regionAssignmentsDraft, region\)[\s\S]*?confirm\(/);
+  assert.match(authSource, /cloneRegionCover/);
+});
+
 test('wires the region table and preserved assignments into admin saves and uploads', () => {
   const adminHtml = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
   const adminSource = fs.readFileSync(path.join(root, 'js', 'admin-page.js'), 'utf8');

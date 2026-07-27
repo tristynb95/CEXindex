@@ -62,8 +62,303 @@ test('the hub carries all three requested sections', () => {
   assert.match(html, /id="myActionsList"/);
   assert.match(html, /id="myVisitsList"/);
   assert.match(html, /id="myTimelineList"/);
-  assert.match(html, /<script type="module" src="js\/my-activity\.js">/);
+  assert.match(html, /<script type="module" src="js\/my-activity\.js(?:\?[^"]+)?">/);
   assert.match(html, /css\/my-activity\.css/);
+});
+
+test('the landing brief separates assigned-patch priorities from follow-up work', () => {
+  [
+    'section-brief',
+    'myActivityPriorities',
+    'myActivityFollowUps',
+    'myActivityMomentum',
+    'myActivityLatestVisit'
+  ].forEach((id) => assert.match(html, new RegExp('id="' + id + '"')));
+
+  assert.match(script, /function renderFieldBrief\(\)/);
+  assert.match(script, /var patch = assignedPatchBakeries\(\)/);
+  assert.match(script, /var priorities = patch\.map\(function \(bakery\)/);
+  assert.match(script, /\}\)\.slice\(0, 10\)/);
+  assert.match(script, /Colleague covered; your field view is still needed/);
+  assert.match(script, /class="my-activity-priority__reason"/);
+  assert.match(script, /<b>Ops area<\/b>/);
+  assert.match(script, /<b>Coverage<\/b>/);
+  assert.match(script, /<b>Recent result/);
+  assert.match(script, /brief\.performance\.latestScore/);
+  assert.match(script, /'↑ ' \+ Math\.abs\(resultDelta\) \+ ' pts'/);
+  assert.match(script, /'↓ ' \+ Math\.abs\(resultDelta\) \+ ' pts'/);
+  assert.match(script, /<b>Actions<\/b>/);
+  assert.match(styles, /\.my-activity-priorities\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,/);
+  assert.match(styles, /\.my-activity-priority\s*\{[\s\S]*?min-height:\s*106px[\s\S]*?padding:\s*13px/);
+  assert.match(styles, /\.my-activity-priority__head > a\s*\{[\s\S]*?font-size:\s*0\.84rem/);
+  assert.doesNotMatch(styles, /\.my-activity-priority::before/);
+  assert.match(script, /briefFollowUpsEl\.innerHTML = nextFollowUps\.map/);
+  assert.match(script, /completedThisMonth/);
+});
+
+test('the four work views behave as accessible, deep-linkable tabs', () => {
+  ['Brief', 'Actions', 'Visits', 'History'].forEach((label) => {
+    assert.match(html, new RegExp('role="tab"[\\s\\S]{0,320}' + label));
+  });
+  assert.match(script, /function activateActivitySection\(sectionId, options\)/);
+  assert.match(script, /panel\.hidden = !active/);
+  assert.match(script, /window\.history\.pushState\(null, '', '#' \+ targetId\)/);
+  assert.match(script, /window\.addEventListener\('popstate'/);
+  assert.match(styles, /\[data-activity-panel\]\[hidden\]/);
+});
+
+test('the section menu stays in the document flow and cannot obscure activity rows', () => {
+  const tabWrap = styles.slice(styles.indexOf('.my-activity-tabs-wrap {'));
+  assert.match(tabWrap, /\.my-activity-tabs-wrap\s*\{\s*position:\s*static;/);
+  assert.doesNotMatch(tabWrap.slice(0, tabWrap.indexOf('}')), /position:\s*sticky|top:\s*\d/);
+});
+
+test('a profile-allocated visit is described as completed rather than delegated', () => {
+  assert.match(script, /loggedHere \? 'Logged a visit' : 'Completed a visit'/);
+  assert.doesNotMatch(script, /Was assigned a visit|Assigned to you|Assigned by/);
+  assert.match(script, /function jointVisitLabel\(visit\)/);
+  assert.match(script, /'Visited by you and ' \+ G\.Attribution\.label\(others\)/);
+});
+
+test('visit type chips keep the Bakery Reports colour key, including assigned History visits', () => {
+  const context = extract(['visitTypeTone'], {});
+  assert.equal(context.visitTypeTone({ type: 'routine' }), 'gold');
+  assert.equal(context.visitTypeTone({ type: 'siteVisit', visitKind: 'checkin' }), 'teal');
+  assert.equal(context.visitTypeTone({ type: 'siteVisit', visitKind: 'nboOpening' }), 'purple');
+  assert.equal(context.visitTypeTone({ type: 'nbo' }), 'purple');
+  assert.equal(context.visitTypeTone({ type: 'cqv' }), 'red');
+
+  // An assigned visit can retain a blue timeline icon, but its type chip must
+  // remain gold/teal/purple/red just like the Bakery Reports list.
+  assert.match(script, /tagTone: visitTypeTone\(visit\)/);
+  assert.match(script, /event\.tagTone \|\| event\.tone/);
+  assert.match(visitReportScript, /color:var\(--gold\);background:var\(--gold-d\)/);
+  assert.match(visitReportScript, /color:var\(--purple\);background:var\(--purple-d\)/);
+  assert.match(visitReportScript, /color:#B22A24;background:rgba\(178, 42, 36,0\.15\)/);
+  assert.match(visitReportScript, /\? \{ color: 'var\(--purple\)', bg: 'var\(--purple-d\)' \}/);
+  assert.match(visitReportScript, /: \{ color: 'var\(--teal\)', bg: 'var\(--teal-d\)' \}/);
+});
+
+test('Coffee Partner and Area Head Barista assignments both build the bakery patch', () => {
+  const context = extract(
+    ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName', 'matchesMyUid',
+      'bakeryLabel', 'bakerySiteName', 'assignmentPersonMatches', 'assignedPatchBakeries'],
+    {
+      identity: {
+        uid: 'u-field',
+        emails: new Set(['alex.partner@gailsbread.co.uk']),
+        names: new Set(['alex partner'])
+      },
+      G: {
+        getBakeryMetaSnapshot: () => ({
+          Balham: { r: 'South', o: 'Ops One' },
+          Dulwich: { r: 'South', o: 'Ops Two' },
+          Soho: { r: 'Central', o: 'Ops Three' }
+        }),
+        getRegionAssignmentsSnapshot: () => ([
+          { region: 'South', coffeePartner: 'Alex Partner', coffeePartnerUid: 'u-field' }
+        ]),
+        getOpsAreaAssignmentsSnapshot: () => ([
+          {
+            region: 'Central',
+            opsArea: 'Ops Three',
+            baristas: [{ name: 'Alex Partner', uid: 'u-field' }]
+          }
+        ])
+      }
+    }
+  );
+
+  assert.deepEqual(Array.from(context.assignedPatchBakeries()), ['Balham', 'Dulwich', 'Soho']);
+});
+
+test('the Visits list includes patch visits and the user’s own out-of-area visits', () => {
+  const context = extract(
+    ['canonicalBakeryName', 'allVisits', 'patchVisits', 'activityVisits', 'visitIsOutOfArea'],
+    {
+      visitsObj: {
+        mine: { bakery: 'Balham', date: '2026-07-24', assignedTo: [{ name: 'Sam Partner' }] },
+        colleague: { bakery: "GAIL's Dulwich", date: '2026-07-23', assignedTo: [{ name: 'Jamie Smith' }] },
+        outsideMine: { bakery: 'Soho', date: '2026-07-22', assignedTo: [{ name: 'Sam Partner' }] },
+        outsideColleague: { bakery: 'Mayfair', date: '2026-07-21', assignedTo: [{ name: 'Ada Auditor' }] }
+      },
+      assignedPatchBakeries: () => ['Balham', 'Dulwich'],
+      visitIsMine: (visit) => (visit.assignedTo || []).some((person) => person.name === 'Sam Partner'),
+      G: {
+        resolveBakeryMetaKey: (name) => String(name).replace(/^GAIL'?s\s+/i, '')
+      }
+    }
+  );
+
+  assert.deepEqual(
+    Array.from(context.patchVisits(), (visit) => visit.id).sort(),
+    ['colleague', 'mine']
+  );
+  assert.deepEqual(
+    Array.from(context.activityVisits(), (visit) => visit.id).sort(),
+    ['colleague', 'mine', 'outsideMine']
+  );
+  assert.equal(context.visitIsOutOfArea(context.activityVisits().find((visit) => visit.id === 'outsideMine')), true);
+  assert.equal(context.visitIsOutOfArea(context.activityVisits().find((visit) => visit.id === 'mine')), false);
+  assert.match(script, /function syncVisitFilterOptions\(\)[\s\S]{0,460}var visits = activityVisits\(\)/);
+  assert.match(script, /function filteredVisits\(\)[\s\S]{0,220}var visits = activityVisits\(\)\.filter/);
+  assert.match(script, /my-activity-tag--slate">Out of area visit/);
+  assert.match(styles, /\.my-activity-tag--slate\s*\{/);
+  assert.match(html, /out-of-area\s+visits completed by you/);
+});
+
+test('assigned tasks can be edited and deleted with an explicit confirmation', () => {
+  [
+    'myActivityTaskModal',
+    'myActivityTaskBakery',
+    'myActivityTaskTitle',
+    'myActivityTaskDueDate',
+    'myActivityTaskPriority',
+    'myActivityTaskDelete'
+  ].forEach((id) => assert.match(html, new RegExp('id="' + id + '"')));
+  assert.match(script, /data-task-edit=/);
+  assert.match(script, /data-task-delete=/);
+  assert.match(script, /function taskCanManage\(task\)/);
+  assert.match(script, /taskAssignedToMe\(task\) \|\| taskRaisedByMe\(task\)/);
+  assert.match(script, /await update\(ref\(db, 'followUpActions\/' \+ taskId\)/);
+  assert.match(script, /await remove\(ref\(db, 'followUpActions\/' \+ taskId\)\)/);
+  assert.match(script, /title: 'Delete follow-up task\?'/);
+  assert.match(script, /tone: 'danger'/);
+});
+
+test('users can create a new action allocated to their own profile', () => {
+  assert.match(html, /id="myActionsNewBtn"[\s\S]*?New action/);
+  assert.match(html, /Actions created here are saved to your profile/);
+  assert.match(script, /import \{ ref, get, onValue, update, remove, push, set \}/);
+  assert.match(script, /function openNewTaskModal\(returnFocus\)/);
+  assert.match(script, /taskDeleteBtn\.hidden = true/);
+  assert.match(script, /taskSaveBtn\.textContent = 'Create action'/);
+  assert.match(script, /actionsNewBtn\.addEventListener\('click'/);
+  assert.match(script, /if \(actionsNewBtn\) actionsNewBtn\.hidden = !canEdit/);
+  assert.match(script, /var taskRef = push\(ref\(db, 'followUpActions'\)\)/);
+  assert.match(script, /assignedTo: \[profile\]/);
+  assert.match(script, /createdByUid: currentUser\.uid/);
+  assert.match(script, /await set\(taskRef, payload\)/);
+  assert.match(script, /actionsStatus = 'open'/);
+});
+
+test('action rows align with the compact visit-card density', () => {
+  assert.match(styles, /VISIT-ALIGNED ACTION ROWS[\s\S]*?#section-actions\s*\{[\s\S]*?padding:\s*18px/);
+  assert.match(styles, /#section-actions \.my-activity-actions-list\s*\{[\s\S]*?gap:\s*6px/);
+  assert.match(styles, /#section-actions \.my-activity-action\s*\{[\s\S]*?height:\s*84px[\s\S]*?grid-template-columns:\s*22px minmax\(0,\s*1fr\) 138px[\s\S]*?border-radius:\s*12px/);
+  assert.match(styles, /#section-visits \.my-activity-visits-scroll \.my-activity-visit\s*\{[\s\S]*?height:\s*84px[\s\S]*?border-radius:\s*12px/);
+  assert.match(styles, /grid-template-areas:\s*"priority due"\s*"controls controls"/);
+});
+
+test('Visits uses the main Maps-page treatment and waits for a visible canvas', () => {
+  assert.match(html, /id="myActivityPatchMap"/);
+  assert.match(html, /leaflet@1\.9\.4/);
+  assert.match(html, /href="https:\/\/unpkg\.com\/leaflet@1\.9\.4\/dist\/leaflet\.css">/);
+  assert.doesNotMatch(html, /Q8X0bK5JrQ4Y0/);
+  assert.match(html, /class="map-canvas-wrap my-activity-patch-map-wrap"/);
+  assert.match(html, /class="target-map-status my-activity-patch-card__status"/);
+  assert.match(styles, /\.my-activity-visits-workspace\s*\{[\s\S]*?grid-template-columns:[\s\S]*?1fr/);
+  assert.match(styles, /\.my-activity-patch-map\s*\{[\s\S]*?height:\s*clamp\(400px,\s*calc\(100vh - 300px\),\s*600px\)/);
+  assert.doesNotMatch(styles, /\.my-activity-patch-map\s*\{[\s\S]*?aspect-ratio:\s*1/);
+  assert.match(script, /function renderPatchMap\(\)/);
+  assert.match(script, /if \(!patchMapIsVisible\(\)\) return;/);
+  assert.match(script, /new window\.ResizeObserver\(schedulePatchMapLayout\)/);
+  assert.match(script, /function mountPatchMap\(\)/);
+  assert.match(script, /mountPatchMap\(\);[\s\S]{0,160}patchMap\.invalidateSize\(\{ animate: false, pan: false \}\)/);
+  assert.match(script, /https:\/\/tile\.openstreetmap\.org\/\{z\}\/\{x\}\/\{y\}\.png/);
+  assert.match(script, /patchMapTiles\.redraw\(\)/);
+  assert.match(script, /window\.L\.DomUtil\.create\('div', 'map-legend'\)/);
+  assert.match(script, /className: 'map-name-tooltip'/);
+  assert.match(script, /marker\.bindPopup\(patchMapPopupHtml/);
+  assert.match(script, /function patchVisitCreditLabel\(visit\)/);
+  assert.match(script, /jointVisitLabel\(visit\) \|\| 'Visited by you'/);
+  assert.match(script, /'<div class="map-popup__mgr">' \+ escapeHtml\(visitorLine\)/);
+  assert.match(script, /state: 'you', latest: visits\[0\]/);
+  assert.match(script, /radius: 9,[\s\S]{0,120}color: '#fff',[\s\S]{0,80}weight: 2/);
+  assert.match(script, /you: \{ label: 'Visited by you'/);
+  assert.match(script, /colleague: \{ label: 'Colleague only'/);
+  assert.match(script, /unvisited: \{ label: 'Not visited'/);
+  ['you', 'colleague', 'unvisited'].forEach((state) => {
+    assert.match(script, new RegExp(state + ':'), state + ' map state is missing');
+  });
+});
+
+test('the patch map names the most recent visitor, including joint visits', () => {
+  const context = extract(
+    ['visitAttribution', 'attributedToMe', 'jointVisitLabel', 'patchVisitCreditLabel'],
+    {
+      G: gails([
+        { uid: 'uid-1', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' },
+        { uid: 'uid-2', name: 'Jamie Smith', email: 'jamie@gailsbread.co.uk' }
+      ]),
+      identity: { uid: 'uid-1', emails: new Set(['sam@gailsbread.co.uk']), names: new Set(['sam partner']) },
+      visitIsMine: (visit) => (visit.assignedTo || []).some((person) => person.uid === 'uid-1'),
+      visitPersonLabel: () => ''
+    }
+  );
+  const sam = { uid: 'uid-1', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' };
+  const jamie = { uid: 'uid-2', name: 'Jamie Smith', email: 'jamie@gailsbread.co.uk' };
+
+  assert.equal(context.patchVisitCreditLabel({ type: 'siteVisit', assignedTo: [sam] }), 'Visited by you');
+  assert.equal(
+    context.patchVisitCreditLabel({ type: 'siteVisit', assignedTo: [sam, jamie] }),
+    'Visited by you and Jamie Smith'
+  );
+  assert.equal(
+    context.patchVisitCreditLabel({ type: 'siteVisit', assignedTo: [jamie] }),
+    'Visited by Jamie Smith'
+  );
+});
+
+test('Visits shows a six-card scroll viewport aligned with a taller map', () => {
+  assert.match(html, /class="my-activity-visits-scroll" tabindex="0"/);
+  assert.match(html, /Six visits are visible; scroll for more/);
+  assert.doesNotMatch(html, /id="myVisitsMore"/);
+  assert.match(script, /visits\.map\(visitRowHtml\)\.join/);
+  // The count line stays a plain "N visits across N bakeries" — the scroll hint
+  // is carried by the viewport's aria-label alone.
+  assert.doesNotMatch(script, /scroll for/);
+  assert.match(styles, /COMPACT VISITS VIEWPORT[\s\S]*?--my-activity-visits-height:\s*clamp\(500px,\s*calc\(100vh - 180px\),\s*580px\)/);
+  assert.match(styles, /#section-visits \.my-activity-visits-scroll \.my-activity-visit\s*\{[\s\S]*?height:\s*84px/);
+  assert.match(styles, /\.my-activity-visits-list-pane,[\s\S]*?\.my-activity-patch-card\s*\{[\s\S]*?height:\s*var\(--my-activity-visits-height\)/);
+  assert.match(styles, /\.my-activity-patch-map\s*\{[\s\S]*?height:\s*100%/);
+  assert.match(script, /padding:\s*\[28,\s*28\]/);
+});
+
+test('the performance slideshow owns the larger overview card and Today’s focus stays compact', () => {
+  ['Top performer', 'Bottom performer', 'Most improved', 'Biggest decline', 'One to watch', 'Rising star']
+    .forEach((label) => assert.ok(script.includes(label), label + ' insight is missing'));
+  assert.match(script, /get\(ref\(db, 'dashboardData'\)\)/);
+  assert.match(script, /G\.buildFocusDataset\(\{/);
+  assert.match(script, /setInterval\(function \(\) \{[\s\S]*?renderPerformanceSlide\(\)/);
+  assert.match(html, /class="my-activity-insight"[\s\S]{0,900}class="my-activity-overview__compact"/);
+  assert.match(html, /class="my-activity-overview__compact"[\s\S]{0,260}id="myActivityFocus"/);
+  assert.match(styles, /\.my-activity-overview__compact\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4,/);
+  assert.match(styles, /COMPACT HEADLINE BAND[\s\S]*?\.my-activity-overview__compact\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*0\.78fr\)\)\s*minmax\(190px,\s*1\.2fr\)/);
+  assert.match(styles, /@media \(min-width:\s*1040px\)\s*\{[\s\S]*?grid-template-columns:\s*minmax\(300px,\s*0\.9fr\)\s*minmax\(0,\s*2\.5fr\)[\s\S]*?repeat\(3,\s*minmax\(0,\s*0\.75fr\)\)\s*minmax\(230px,\s*1\.25fr\)/);
+  assert.match(styles, /COMPACT HEADLINE BAND[\s\S]*?\.my-activity-overview\s*>\s*\.my-activity-insight\s*\{[\s\S]*?height:\s*96px[\s\S]*?min-height:\s*0/);
+  assert.match(styles, /COMPACT HEADLINE BAND[\s\S]*?\.my-activity-overview > \.my-activity-insight\s*\{[\s\S]*?background:\s*rgba\(255,\s*255,\s*255,\s*0\.82\)/);
+  assert.match(styles, /box-shadow:[\s\S]{0,100}0 4px 12px rgba\(72,\s*48,\s*29,\s*0\.045\)/);
+  assert.doesNotMatch(styles, /\.my-activity-overview > \.my-activity-insight::after/);
+  assert.match(styles, /COMPACT HEADLINE BAND[\s\S]*?\.my-activity-overview__compact \.my-activity-stat,[\s\S]*?height:\s*96px[\s\S]*?min-height:\s*0/);
+  assert.match(script, /performanceInsightEl\.addEventListener\('click'/);
+  assert.match(script, /class="my-activity-focus__top"/);
+  assert.match(script, /class="my-activity-focus__count"/);
+  assert.match(script, /class="my-activity-focus__body"/);
+  assert.match(script, /class="my-activity-focus__action"/);
+  const focusRedesign = styles.slice(styles.indexOf("/* Today's focus uses a clear status rail"));
+  const focusCardRule = focusRedesign.slice(
+    focusRedesign.indexOf('.my-activity-overview__compact .my-activity-focus {'),
+    focusRedesign.indexOf('}', focusRedesign.indexOf('.my-activity-overview__compact .my-activity-focus {')) + 1
+  );
+  assert.match(focusCardRule, /border:\s*1px solid rgba\(74,\s*59,\s*48,\s*0\.12\)/);
+  assert.doesNotMatch(focusCardRule, /border-left/);
+  assert.match(styles, /\.my-activity-overview__compact \.my-activity-focus--warning\s*\{[\s\S]*?rgba\(251,\s*240,\s*238,\s*0\.92\)/);
+  assert.match(styles, /\.my-activity-focus--warning \.my-activity-focus__top > span::before\s*\{[\s\S]*?background:\s*var\(--red\)/);
+  assert.match(styles, /\.my-activity-focus--warning \.my-activity-focus__count\s*\{[\s\S]*?background:\s*var\(--red\)[\s\S]*?color:\s*#fff/);
+  assert.match(styles, /\.my-activity-overview__compact \.my-activity-focus \.my-activity-focus__action\s*\{[\s\S]*?color:\s*#963a34/);
+  assert.match(html, /src="js\/focus-data\.js"/);
+  assert.doesNotMatch(script, /Average visit score|Average score|Avg\. score/);
 });
 
 test('the visit list offers search, date, sorting, ops area and bakery filters', () => {
@@ -113,7 +408,9 @@ test('no file is written until the download is confirmed', () => {
 });
 
 test('the confirmation button cannot fire twice', () => {
-  assert.match(script, /confirmBtn\.onclick = function \(\) \{\s*if \(confirmBtn\.disabled\) return;\s*confirmBtn\.disabled = true;\s*confirmBtn\.onclick = null;/);
+  assert.match(script, /confirmBtn\.onclick = async function performConfirm\(\) \{\s*if \(confirmBtn\.disabled\) return;\s*confirmBtn\.disabled = true;/);
+  assert.match(script, /await options\.onConfirm\(\);\s*closeConfirmModal\(\);/);
+  assert.match(script, /confirmBtn\.onclick = performConfirm;/);
 });
 
 test('a check-in records its author separately from whoever last edited it', () => {
@@ -230,8 +527,44 @@ test('a check-in is not claimed by whoever was on the bar', () => {
     meta: { createdByUid: 'uid-1', createdBy: 'sam.partner@gailsbread.co.uk' }
   }), true);
 
+  // Choosing another profile is authoritative: entering the visit does not
+  // keep a second copy in the poster's own Visits list.
+  assert.equal(context.visitIsMine({
+    bakery: 'Balham',
+    type: 'siteVisit',
+    assignedTo: [{ uid: 'uid-2', name: 'Jamie Smith', email: 'jamie@gailsbread.co.uk' }],
+    meta: { createdByUid: 'uid-1', createdBy: 'sam.partner@gailsbread.co.uk' }
+  }), false);
+
   // On a routine visit, Coffee Partner *is* a record of who did it.
   assert.equal(context.visitIsMine({ bakery: 'Balham', coffeePartner: 'Sam Partner' }), true);
+});
+
+test('the visit list credits joint visits and visits completed by colleagues', () => {
+  const context = extract(
+    ['visitAttribution', 'attributedToMe', 'jointVisitLabel', 'visitListCreditLabel'],
+    {
+      G: gails([
+        { uid: 'uid-1', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' },
+        { uid: 'uid-2', name: 'Jamie Smith', email: 'jamie@gailsbread.co.uk' }
+      ]),
+      identity: { uid: 'uid-1', emails: new Set(['sam@gailsbread.co.uk']), names: new Set(['sam partner']) },
+      visitIsMine: (visit) => (visit.assignedTo || []).some((person) => person.uid === 'uid-1')
+    }
+  );
+  const sam = { uid: 'uid-1', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' };
+  const jamie = { uid: 'uid-2', name: 'Jamie Smith', email: 'jamie@gailsbread.co.uk' };
+
+  assert.equal(context.jointVisitLabel({ type: 'siteVisit', assignedTo: [sam] }), '');
+  assert.equal(context.visitListCreditLabel({ type: 'siteVisit', assignedTo: [sam] }), '');
+  assert.equal(
+    context.visitListCreditLabel({ type: 'siteVisit', assignedTo: [sam, jamie] }),
+    'Visited by you and Jamie Smith'
+  );
+  assert.equal(
+    context.visitListCreditLabel({ type: 'siteVisit', assignedTo: [jamie] }),
+    'Visited by Jamie Smith'
+  );
 });
 
 test('visits are attributed by form respondent and by printed auditor name', () => {
@@ -270,12 +603,13 @@ test('a single-word name is too weak to attribute a visit on', () => {
   assert.ok(identity.emails.has('sam@gailsbread.co.uk'));
 });
 
-test('a task completed by this user counts even when a colleague raised it', () => {
+test('task allocation controls the queue while completion still counts in History', () => {
   const context = extract(
     ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName',
-      'taskAttribution', 'attributedToMe', 'taskRaisedByMe', 'taskCompletedByMe', 'taskIsMine'],
+      'taskOwners', 'attributedToMe', 'taskRaisedByMe', 'taskCompletedByMe', 'taskIsMine'],
     {
       G: gails([{ uid: 'uid-1', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' }]),
+      visitsObj: {},
       identity: { uid: 'uid-1', emails: new Set(['sam@gailsbread.co.uk']), names: new Set() }
     }
   );
@@ -283,14 +617,18 @@ test('a task completed by this user counts even when a colleague raised it', () 
   const task = { createdBy: 'other@gailsbread.co.uk', completedByUid: 'uid-1' };
   assert.equal(context.taskRaisedByMe(task), false);
   assert.equal(context.taskCompletedByMe(task), true);
-  assert.equal(context.taskIsMine(task), true);
+  assert.equal(context.taskIsMine(task), false);
+  assert.equal(context.taskIsMine({
+    createdBy: 'other@gailsbread.co.uk',
+    assignedTo: [{ uid: 'uid-1', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' }]
+  }), true);
   assert.equal(context.taskIsMine({ createdBy: 'other@gailsbread.co.uk' }), false);
 });
 
 test('a legacy task linked to my visit is restored to My Activity', () => {
   const context = extract(
     ['normalizeName', 'normalizeEmail', 'matchesMyEmail', 'matchesMyName',
-      'taskAttribution', 'attributedToMe', 'taskIsMine'],
+      'taskOwners', 'attributedToMe', 'taskIsMine'],
     {
       G: gails([{ uid: 'uid-1', name: 'Sam Partner', email: 'sam@gailsbread.co.uk' }]),
       identity: { uid: 'uid-1', emails: new Set(['sam@gailsbread.co.uk']), names: new Set(['sam partner']) },
@@ -446,7 +784,7 @@ test('open actions export the filtered list, not the whole hub', () => {
   const start = script.indexOf('function buildActionsExportData(');
   const builder = script.slice(start, script.indexOf('\n}', start));
   ['Bakery', 'Region', 'Ops Area', 'Action', 'Detail', 'Priority', 'Due Date',
-    'Days Overdue', 'Status', 'Added', 'Completed', 'Assigned To'].forEach((label) => {
+    'Days Overdue', 'Status', 'Added', 'Completed', 'Profiles'].forEach((label) => {
     assert.ok(builder.includes("label: '" + label + "'"), 'export is missing the ' + label + ' column');
   });
   assert.match(builder, /sheetName: 'My Actions'/);
@@ -500,14 +838,14 @@ test('a visit report opens in a modal on the hub itself', () => {
   ['visitReportModal', 'visitReportTitle', 'visitReportSubtitle', 'visitReportBody'].forEach((id) => {
     assert.match(html, new RegExp('id="' + id + '"'));
   });
-  assert.match(html, /src="js\/visit-report\.js"/);
+  assert.match(html, /src="js\/visit-report\.js(?:\?[^"]+)?"/);
 
   // js/visit-report.js reads GAILS.CQVShared at load time, and CQVShared calls
   // CQVCriticals — so this order is load-bearing, not cosmetic.
   // Matched on the src attribute, not the bare filename — the comment above
   // these tags names js/visit-report.js too.
   const order = ['js/cqv-criticals.js', 'js/cqv-shared.js', 'js/visit-report.js']
-    .map((src) => html.indexOf('src="' + src + '"'));
+    .map((src) => html.indexOf('src="' + src));
   assert.ok(order.every((at) => at > 0), 'a report dependency is missing');
   assert.deepEqual(order.slice().sort((a, b) => a - b), order, 'report dependencies load out of order');
 
@@ -537,16 +875,14 @@ test('the hub does not collide with the dashboard\'s own report trigger', () => 
   assert.doesNotMatch(script, /data-visit-report=/);
 });
 
-test('the report\'s history arrows stay inside the user\'s own visits', () => {
+test('the report\'s history arrows stay inside the activity visit list', () => {
   const start = script.indexOf('function syncReportSource(');
   const fn = script.slice(start, script.indexOf('\n}', start));
 
-  // Seeded from myVisits(), not the whole estate: those arrows walk
-  // _allVisitsObj for other visits to the same bakery and apply no ops-area
-  // scoping, so the full set would page a scoped user into bakeries their
-  // Bakery Reports tab hides from them.
-  assert.match(fn, /myVisits\(\)\.forEach/);
-  assert.match(fn, /G\._allVisitsObj = mine/);
+  // Seeded from activityVisits(), not the whole estate: those arrows can
+  // include patch colleagues and the user's own out-of-area visits.
+  assert.match(fn, /activityVisits\(\)\.forEach/);
+  assert.match(fn, /G\._allVisitsObj = patch/);
   assert.doesNotMatch(fn, /G\._allVisitsObj = visitsObj/);
 
   // And the renderer gets the permissions it would have had on the dashboard.

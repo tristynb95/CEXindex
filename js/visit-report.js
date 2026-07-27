@@ -7,6 +7,7 @@ window.GAILS = window.GAILS || {};
   var lockedScrollY = 0;
   var CHART_ID = 'visitReportScoreChart';
   var WAIT_TIME_TARGET_SECONDS = 120;
+  var saveConfirmReturnFocus = null;
 
   var escapeHtml = GAILS.escapeHtml;
 
@@ -51,6 +52,21 @@ window.GAILS = window.GAILS || {};
     document.body.style.left = '';
     document.body.style.right = '';
     window.scrollTo(0, lockedScrollY);
+  }
+
+  // The print stylesheet prints the report on its own by hiding everything
+  // else on the host page, so it is scoped to this class and only applies
+  // while the report is genuinely open. Every page that hosts the report
+  // (dashboard, My Activity, My Team, Bakery Profile) therefore prints the
+  // same way, and a plain Ctrl+P with no report open still prints the page.
+  function showVisitReportModal(modal) {
+    modal.style.display = 'flex';
+    document.body.classList.add('visit-report-open');
+  }
+
+  function hideVisitReportModal(modal) {
+    modal.style.display = 'none';
+    document.body.classList.remove('visit-report-open');
   }
 
   function formatVisitDate(isoDate) {
@@ -613,7 +629,7 @@ window.GAILS = window.GAILS || {};
     window.GAILS._activeVisitReportId = null;
     renderVisitReportActions(null, null);
 
-    modal.style.display = 'flex';
+    showVisitReportModal(modal);
     bodyEl.scrollTop = 0;
     if (!modalWasOpen) lockBackgroundScroll();
   };
@@ -621,7 +637,7 @@ window.GAILS = window.GAILS || {};
   window.GAILS.closeVisitReport = function () {
     var modal = document.getElementById('visitReportModal');
     if (!modal || modal.style.display === 'none') return;
-    modal.style.display = 'none';
+    hideVisitReportModal(modal);
     if (window.GAILS.destroyChart) {
       window.GAILS.destroyChart(CHART_ID);
       window.GAILS.destroyChart(CQV_CHART_ID);
@@ -656,6 +672,27 @@ window.GAILS = window.GAILS || {};
   });
 
   document.addEventListener('keydown', function (event) {
+    var openConfirm = document.getElementById('saveConfirmModal');
+    if (event.key === 'Tab' && openConfirm && openConfirm.style.display !== 'none') {
+      var focusable = Array.prototype.slice.call(openConfirm.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )).filter(function (element) {
+        return element.getAttribute('aria-hidden') !== 'true' && element.style.display !== 'none';
+      });
+      if (focusable.length) {
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !openConfirm.contains(document.activeElement))) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !openConfirm.contains(document.activeElement))) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+      return;
+    }
+
     if (event.key === 'Enter' || event.key === ' ') {
       var focused = event.target;
       if (focused && focused.classList && focused.classList.contains('visit-log-row')) {
@@ -1701,7 +1738,7 @@ window.GAILS = window.GAILS || {};
       subtitleEl.textContent = 'Visit record not found.';
       bodyEl.innerHTML = '';
       renderVisitReportActions(null, null);
-      modal.style.display = 'flex';
+      showVisitReportModal(modal);
       bodyEl.scrollTop = 0;
       if (!modalWasOpen) lockBackgroundScroll();
       return;
@@ -1719,7 +1756,7 @@ window.GAILS = window.GAILS || {};
       subtitleEl.textContent = 'Coffee Quality Visit on ' + formatVisitDate(record.date) + (record.title ? ' — ' + record.title : '');
       bodyEl.innerHTML = buildCqvReportHtml(record);
 
-      modal.style.display = 'flex';
+      showVisitReportModal(modal);
       bodyEl.scrollTop = 0;
       if (!modalWasOpen) lockBackgroundScroll();
       requestAnimationFrame(function () { drawCqvScoreChart(record); });
@@ -1732,7 +1769,7 @@ window.GAILS = window.GAILS || {};
         + (record.auditorName ? ' — ' + record.auditorName : '');
       bodyEl.innerHTML = buildNboReportHtml(record);
 
-      modal.style.display = 'flex';
+      showVisitReportModal(modal);
       bodyEl.scrollTop = 0;
       if (!modalWasOpen) lockBackgroundScroll();
       return;
@@ -1743,11 +1780,15 @@ window.GAILS = window.GAILS || {};
       subtitleEl.textContent = siteVisitKindLabel(record) + ' on ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
 
       var meta = record.meta || {};
-      var stats = [
-        { label: 'Logged By', value: meta.createdBy || record.createdBy || meta.updatedBy || '—' },
-        { label: 'Coffee Partner', html: siteVisitCoffeePartnerHtml(record) },
-        { label: 'Barista', value: record.mod || '—' }
-      ];
+      var stats = [];
+      // Check-ins carry no Logged By card. NBO openings keep it — they are not
+      // always logged by the person who ran the visit. An absent visitKind is a
+      // check-in, matching siteVisitKindLabel().
+      if (record.visitKind && record.visitKind !== 'checkin') {
+        stats.push({ label: 'Logged By', value: meta.createdBy || record.createdBy || meta.updatedBy || '—' });
+      }
+      stats.push({ label: 'Coffee Partner', html: siteVisitCoffeePartnerHtml(record) });
+      stats.push({ label: 'Barista', value: record.mod || '—' });
 
       var statsHtml = '<div class="drill-summary">' + stats.map(function (c) {
         return '<div class="drill-card">' +
@@ -1763,7 +1804,7 @@ window.GAILS = window.GAILS || {};
         '</div>' +
         '</div>';
 
-      modal.style.display = 'flex';
+      showVisitReportModal(modal);
       bodyEl.scrollTop = 0;
       if (!modalWasOpen) lockBackgroundScroll();
       return;
@@ -1773,7 +1814,7 @@ window.GAILS = window.GAILS || {};
     subtitleEl.textContent = 'Visited ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
     bodyEl.innerHTML = buildReportHtml(record);
 
-    modal.style.display = 'flex';
+    showVisitReportModal(modal);
     bodyEl.scrollTop = 0;
     if (!modalWasOpen) lockBackgroundScroll();
     requestAnimationFrame(function () { drawScoreChart(record); });
@@ -1880,6 +1921,7 @@ window.GAILS = window.GAILS || {};
     var subtitleEl = document.getElementById('saveConfirmSubtitle');
     var messageEl = document.getElementById('saveConfirmMessage');
     var confirmBtn = document.getElementById('saveConfirmBtn');
+    var cancelBtn = modal ? modal.querySelector('[data-save-confirm-cancel]') : null;
 
     // If the markup is missing for any reason, fail open so saving still works.
     if (!modal || !confirmBtn) {
@@ -1895,8 +1937,14 @@ window.GAILS = window.GAILS || {};
     if (messageEl) messageEl.textContent = opts.message || 'Are you sure you want to save this?';
     confirmBtn.textContent = opts.confirmLabel || 'Confirm';
     confirmBtn.disabled = false;
+    modal.setAttribute('data-confirm-tone', opts.tone === 'danger' ? 'danger' : 'default');
+    saveConfirmReturnFocus = document.activeElement;
 
     modal.style.display = 'flex';
+    window.requestAnimationFrame(function () {
+      var initialFocus = opts.tone === 'danger' && cancelBtn ? cancelBtn : confirmBtn;
+      if (initialFocus) initialFocus.focus();
+    });
 
     // Fresh handler on every open so callbacks never stack across invocations.
     confirmBtn.onclick = function () {
@@ -1910,7 +1958,14 @@ window.GAILS = window.GAILS || {};
 
   window.GAILS.closeSaveConfirmModal = function () {
     var modal = document.getElementById('saveConfirmModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.style.display = 'none';
+      modal.removeAttribute('data-confirm-tone');
+    }
+    if (saveConfirmReturnFocus && typeof saveConfirmReturnFocus.focus === 'function') {
+      saveConfirmReturnFocus.focus();
+    }
+    saveConfirmReturnFocus = null;
   };
 
   function populateDropdown(selectId, itemsSet, placeholder) {
@@ -2384,7 +2439,9 @@ window.GAILS = window.GAILS || {};
       var entry = meta[name] || {};
       var region = (G.getBakeryRegion ? G.getBakeryRegion(name) : entry.r) || 'Unknown';
       var ops = (G.getBakeryOps ? G.getBakeryOps(name) : entry.o) || 'Unknown';
-      var assignment = G.getRegionAssignment ? G.getRegionAssignment(region) : null;
+      // A region on cover names its Coffee Partner or Coffee Trainer per ops
+      // area, so the directory lists who each bakery actually has.
+      var assignment = G.getRegionAssignment ? G.getRegionAssignment(region, ops) : null;
       var opsAssignment = G.getOpsAreaAssignment ? G.getOpsAreaAssignment(ops, region) : null;
       return {
         bakery: getDirectoryBakeryLabel(name),
@@ -2933,11 +2990,27 @@ window.GAILS = window.GAILS || {};
             var deleteId = deleteBtn.getAttribute('data-followup-delete');
             var delTask = (window.GAILS._followUpActionsObj || {})[deleteId];
             var delName = delTask && delTask.title ? '“' + delTask.title + '”' : 'this follow-up';
-            if (window.confirm('Delete ' + delName + '? This cannot be undone.')) {
-              deleteBtn.disabled = true;
-              Promise.resolve(window.GAILS_Firebase.deleteFollowUpAction(deleteId))
-                .catch(function (err) { console.error(err); alert(err.message || 'Failed to delete follow-up.'); deleteBtn.disabled = false; });
-            }
+            var delBakery = delTask && delTask.bakery
+              ? (window.GAILS.getBakeryMapLabel
+                ? window.GAILS.getBakeryMapLabel(delTask.bakery)
+                : delTask.bakery)
+              : '';
+            window.GAILS.openSaveConfirmModal({
+              title: 'Delete follow-up task?',
+              subtitle: 'This action is permanent and cannot be undone.',
+              message: 'Permanently delete ' + delName + (delBakery ? ' from ' + delBakery : '') + '?',
+              confirmLabel: 'Delete task',
+              tone: 'danger',
+              onConfirm: function () {
+                deleteBtn.disabled = true;
+                Promise.resolve(window.GAILS_Firebase.deleteFollowUpAction(deleteId))
+                  .catch(function (err) {
+                    console.error(err);
+                    alert(err.message || 'Failed to delete follow-up.');
+                    deleteBtn.disabled = false;
+                  });
+              }
+            });
             return;
           }
 
@@ -3012,13 +3085,14 @@ window.GAILS = window.GAILS || {};
             if (!window.GAILS_Firebase || typeof window.GAILS_Firebase.saveSiteVisit !== 'function') {
               throw new Error('Database helper not loaded yet. Please try again.');
             }
-            var newVisitId = await window.GAILS_Firebase.saveSiteVisit(record);
+            var newVisitId = await window.GAILS_Firebase.saveSiteVisit(record, { silent: true });
 
             // Close off ticked tasks and raise any new ones (best-effort — the
             // check-in itself has already saved, so surface but don't unwind).
             var followUpOps = [];
+            var followUpFailed = false;
             tickedIds.forEach(function (id) {
-              followUpOps.push(window.GAILS_Firebase.completeFollowUpAction(id, true));
+              followUpOps.push(window.GAILS_Firebase.completeFollowUpAction(id, true, { silent: true }));
             });
             newTasks.forEach(function (t) {
               followUpOps.push(window.GAILS_Firebase.saveFollowUpAction({
@@ -3030,11 +3104,29 @@ window.GAILS = window.GAILS || {};
                 // Actions raised during a visit belong to whoever the visit was
                 // handed to — assigning a visit assigns its follow-ups with it.
                 assignedTo: assignees.length ? assignees : null
-              }));
+              }, { silent: true }));
             });
             if (followUpOps.length) {
               try { await Promise.all(followUpOps); }
-              catch (fuErr) { console.error('Some follow-up updates failed:', fuErr); }
+              catch (fuErr) {
+                followUpFailed = true;
+                console.error('Some follow-up updates failed:', fuErr);
+              }
+            }
+
+            if (window.GAILS && typeof window.GAILS.notifySuccess === 'function') {
+              var successParts = [
+                record.visitKind && record.visitKind !== 'checkin'
+                  ? 'NBO opening visit saved'
+                  : 'Check-in saved'
+              ];
+              if (!followUpFailed && newTasks.length) {
+                successParts.push(newTasks.length + (newTasks.length === 1 ? ' task created' : ' tasks created'));
+              }
+              if (!followUpFailed && tickedIds.length) {
+                successParts.push(tickedIds.length + (tickedIds.length === 1 ? ' task signed off' : ' tasks signed off'));
+              }
+              window.GAILS.notifySuccess(successParts.join(' · '));
             }
 
             window.GAILS.closeAddSiteVisitModal();

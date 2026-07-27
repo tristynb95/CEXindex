@@ -365,6 +365,48 @@ function _normalizeRegionAssignmentKey(value) {
   return String(value == null ? '' : value).trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+// A region on cover has its Coffee Partner and Coffee Trainer named per ops
+// area instead of once for the whole region — what happens while one of them
+// has left and their patch is split between colleagues. Areas nobody covers,
+// and every region not on cover, still fall back to the region's own pair. See
+// js/region-assignments.js, where the admin maintains this.
+function _normalizeRegionCover(value) {
+  var source = value && typeof value === 'object' ? value : {};
+  var areas = Array.isArray(source.areas) ? source.areas : [];
+  return {
+    enabled: source.enabled === true || source.enabled === 'true',
+    areas: areas.map(function (entry) {
+      var record = entry && typeof entry === 'object' ? entry : {};
+      return {
+        opsArea: String(record.opsArea || '').trim().replace(/\s+/g, ' '),
+        coffeePartner: String(record.coffeePartner || '').trim(),
+        coffeePartnerUid: String(record.coffeePartnerUid || '').trim(),
+        coffeeTrainer: String(record.coffeeTrainer || '').trim(),
+        coffeeTrainerUid: String(record.coffeeTrainerUid || '').trim()
+      };
+    }).filter(function (area) {
+      return !!area.opsArea &&
+        !!(area.coffeePartner || area.coffeePartnerUid ||
+           area.coffeeTrainer || area.coffeeTrainerUid);
+    })
+  };
+}
+
+function _cloneRegionCover(cover) {
+  return {
+    enabled: cover.enabled,
+    areas: cover.areas.map(function (area) {
+      return {
+        opsArea: area.opsArea,
+        coffeePartner: area.coffeePartner,
+        coffeePartnerUid: area.coffeePartnerUid,
+        coffeeTrainer: area.coffeeTrainer,
+        coffeeTrainerUid: area.coffeeTrainerUid
+      };
+    })
+  };
+}
+
 // Coffee Partner and Coffee Trainer ownership is maintained once per region
 // in the admin site directory. Keep a normalized lookup alongside the public
 // snapshot so any bakery-facing view can resolve those names consistently,
@@ -384,7 +426,8 @@ window.GAILS.setRegionAssignments = function (assignments) {
       coffeePartner: String(record && record.coffeePartner || '').trim(),
       coffeePartnerUid: String(record && record.coffeePartnerUid || '').trim(),
       coffeeTrainer: String(record && record.coffeeTrainer || '').trim(),
-      coffeeTrainerUid: String(record && record.coffeeTrainerUid || '').trim()
+      coffeeTrainerUid: String(record && record.coffeeTrainerUid || '').trim(),
+      cover: _normalizeRegionCover(record && record.cover)
     };
     records.push(normalized);
     lookup[_normalizeRegionAssignmentKey(region)] = normalized;
@@ -396,16 +439,41 @@ window.GAILS.setRegionAssignments = function (assignments) {
   return records;
 };
 
-window.GAILS.getRegionAssignment = function (region) {
+// Pass the bakery's ops area to get the pair who actually look after it. The
+// two roles resolve independently, so a region can split its Coffee Partner
+// patch while the same Coffee Trainer carries on across all of it.
+window.GAILS.getRegionAssignment = function (region, opsArea) {
   var key = _normalizeRegionAssignmentKey(region);
   var record = key && window.GAILS._regionAssignmentLookup
     ? window.GAILS._regionAssignmentLookup[key]
     : null;
-  return record ? {
+  if (!record) return null;
+
+  var resolved = {
     region: record.region,
     coffeePartner: record.coffeePartner,
-    coffeeTrainer: record.coffeeTrainer
-  } : null;
+    coffeeTrainer: record.coffeeTrainer,
+    coverEnabled: record.cover.enabled,
+    partnerFromCover: false,
+    trainerFromCover: false
+  };
+  if (!record.cover.enabled) return resolved;
+
+  var areaKey = _normalizeRegionAssignmentKey(opsArea);
+  var area = areaKey && record.cover.areas.filter(function (entry) {
+    return _normalizeRegionAssignmentKey(entry.opsArea) === areaKey;
+  })[0];
+  if (!area) return resolved;
+
+  if (area.coffeePartner || area.coffeePartnerUid) {
+    resolved.coffeePartner = area.coffeePartner;
+    resolved.partnerFromCover = true;
+  }
+  if (area.coffeeTrainer || area.coffeeTrainerUid) {
+    resolved.coffeeTrainer = area.coffeeTrainer;
+    resolved.trainerFromCover = true;
+  }
+  return resolved;
 };
 
 window.GAILS.getRegionAssignmentsSnapshot = function () {
@@ -415,7 +483,8 @@ window.GAILS.getRegionAssignmentsSnapshot = function () {
       coffeePartner: record.coffeePartner,
       coffeePartnerUid: record.coffeePartnerUid,
       coffeeTrainer: record.coffeeTrainer,
-      coffeeTrainerUid: record.coffeeTrainerUid
+      coffeeTrainerUid: record.coffeeTrainerUid,
+      cover: _cloneRegionCover(record.cover)
     };
   });
 };

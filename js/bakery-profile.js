@@ -370,7 +370,9 @@ function renderIdentity(sitePayload) {
   if (typeof G.setOpsAreaAssignments === 'function') {
     G.setOpsAreaAssignments(sitePayload && sitePayload.opsAreaAssignments);
   }
-  var assignment = G.getRegionAssignment ? G.getRegionAssignment(region) : null;
+  // While a region is on cover its Coffee Partner or Coffee Trainer is named
+  // per ops area, so this bakery's ops area decides who it actually has.
+  var assignment = G.getRegionAssignment ? G.getRegionAssignment(region, ops) : null;
   var opsAssignment = G.getOpsAreaAssignment ? G.getOpsAreaAssignment(ops, region) : null;
   // An ops area can have several area head baristas. Each is named, and the one
   // actually based at this bakery is called out — that is the person who is
@@ -387,9 +389,17 @@ function renderIdentity(sitePayload) {
         : entry.name + (areaHeads.length > 1 ? '' : ' (based at ' + profileDisplayBakeryName(entry.homeBakery) + ')');
     }).join(', ');
   }
+  // Someone standing in for a vacant role is named the same way as anyone else,
+  // with "(cover)" so the field team knows the arrangement is temporary.
+  var coffeeTeamRole = function(label, name, fromCover) {
+    if (!name) return '';
+    return label + ': ' + name + (fromCover ? ' (cover)' : '');
+  };
   var coffeeTeam = [
-    assignment && assignment.coffeePartner ? 'Partner: ' + assignment.coffeePartner : '',
-    assignment && assignment.coffeeTrainer ? 'Trainer: ' + assignment.coffeeTrainer : '',
+    coffeeTeamRole('Partner', assignment && assignment.coffeePartner,
+      assignment && assignment.partnerFromCover),
+    coffeeTeamRole('Trainer', assignment && assignment.coffeeTrainer,
+      assignment && assignment.trainerFromCover),
     areaHead
   ].filter(Boolean).join(' · ') || 'Coffee team unassigned';
 
@@ -1028,7 +1038,7 @@ function renderMap() {
   iframe.loading = 'lazy';
   iframe.referrerPolicy = 'strict-origin-when-cross-origin';
   iframe.allowFullscreen = true;
-  iframe.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(destination) + '&z=16&output=embed';
+  iframe.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(destination) + '&z=14&output=embed';
   mapElement.replaceChildren(iframe);
 
   if (directionsLink) {
@@ -1527,6 +1537,7 @@ taskForm.addEventListener('submit', async function(event) {
         updatedBy: who
       }
     });
+    if (typeof G.notifySuccess === 'function') G.notifySuccess('Task created');
     closeTaskForm();
   } catch (error) {
     console.error('Could not add task:', error);
@@ -1559,6 +1570,9 @@ document.getElementById('bakeryTaskList').addEventListener('click', async functi
       'meta/updatedAt': now,
       'meta/updatedBy': currentUser.email || currentUser.uid
     });
+    if (typeof G.notifySuccess === 'function') {
+      G.notifySuccess(done ? 'Task signed off' : 'Task reopened');
+    }
   } catch (error) {
     console.error('Could not update task:', error);
     button.disabled = false;

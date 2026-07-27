@@ -8,10 +8,45 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function notifyMutation(message, options) {
+  if (options && options.silent) return;
+  if (window.GAILS && typeof window.GAILS.notifySuccess === 'function') {
+    window.GAILS.notifySuccess(message);
+  }
+}
+
 function getSiteMetaEntries(payload) {
   if (!payload) return null;
   if (payload.entries && typeof payload.entries === 'object') return payload.entries;
   return payload;
+}
+
+// `cover` is present only on a region whose Coffee Partner or Coffee Trainer
+// patch is currently split between colleagues covering individual ops areas —
+// what happens when one of them leaves. Cover rows carry the bakeries their ops
+// area held when they were saved, which is what follows them across a rename
+// (see js/region-assignments.js). An area nobody covers is not stored at all.
+function cloneRegionCover(cover) {
+  var source = cover && typeof cover === 'object' ? cover : {};
+  var text = function(value) {
+    return String(value == null ? '' : value).trim();
+  };
+  var areas = (Array.isArray(source.areas) ? source.areas : []).map(function(entry) {
+    var area = entry && typeof entry === 'object' ? entry : {};
+    return {
+      opsArea: text(area.opsArea),
+      coffeePartner: text(area.coffeePartner),
+      coffeePartnerUid: text(area.coffeePartnerUid),
+      coffeeTrainer: text(area.coffeeTrainer),
+      coffeeTrainerUid: text(area.coffeeTrainerUid),
+      bakeries: (Array.isArray(area.bakeries) ? area.bakeries : []).map(text).filter(Boolean)
+    };
+  }).filter(function(area) {
+    return !!area.opsArea && !!(area.coffeePartner || area.coffeePartnerUid ||
+      area.coffeeTrainer || area.coffeeTrainerUid);
+  });
+  var enabled = source.enabled === true || source.enabled === 'true';
+  return enabled || areas.length ? { enabled: enabled, areas: areas } : null;
 }
 
 // The uid travels with the readable name so a later rename in the directory
@@ -22,13 +57,16 @@ function cloneRegionAssignments(assignments) {
     ? assignments
     : Object.values(assignments && typeof assignments === 'object' ? assignments : {});
   return records.map(function(record) {
-    return {
+    var cloned = {
       region: String(record && record.region || '').trim(),
       coffeePartner: String(record && record.coffeePartner || '').trim(),
       coffeePartnerUid: String(record && record.coffeePartnerUid || '').trim(),
       coffeeTrainer: String(record && record.coffeeTrainer || '').trim(),
       coffeeTrainerUid: String(record && record.coffeeTrainerUid || '').trim()
     };
+    var cover = cloneRegionCover(record && record.cover);
+    if (cover) cloned.cover = cover;
+    return cloned;
   }).filter(function(record) {
     return !!record.region;
   });
@@ -171,7 +209,7 @@ window.GAILS_Firebase = {
     await set(ref(db, 'portalData/siteMeta'), payload);
     return payload;
   },
-  saveSiteVisit: async function(visitRecord) {
+  saveSiteVisit: async function(visitRecord, options) {
     if (!auth.currentUser) throw new Error('You must be signed in to log a visit.');
     // Only blocks when the resolved role explicitly denies it, so the field
     // form keeps working for built-in roles. The database rules enforce the
@@ -200,6 +238,10 @@ window.GAILS_Firebase = {
       }
     }, visitRecord);
     await set(newVisitRef, payload);
+    notifyMutation(
+      payload.visitKind && payload.visitKind !== 'checkin' ? 'NBO opening visit saved' : 'Check-in saved',
+      options
+    );
     return newVisitRef.key;
   },
   deleteSiteVisit: async function(visitId) {
@@ -214,7 +256,7 @@ window.GAILS_Firebase = {
   // Site-scoped tasks raised on a visit (or ad-hoc) and ticked off later. The
   // same logVisits permission that gates check-ins gates raising/ticking a
   // task; the database rules enforce the identical check server-side.
-  saveFollowUpAction: async function(task) {
+  saveFollowUpAction: async function(task, options) {
     if (!auth.currentUser) throw new Error('You must be signed in to add a follow-up.');
     var perms = window.GAILS && window.GAILS.permissions;
     if (perms && perms.actions && perms.actions.logVisits === false) {
@@ -256,9 +298,10 @@ window.GAILS_Firebase = {
       meta: { updatedAt: nowIsoStr, updatedBy: who }
     });
     await set(newRef, payload);
+    notifyMutation('Task created', options);
     return newRef.key;
   },
-  completeFollowUpAction: async function(taskId, done) {
+  completeFollowUpAction: async function(taskId, done, options) {
     if (!auth.currentUser) throw new Error('You must be signed in to update a follow-up.');
     var perms = window.GAILS && window.GAILS.permissions;
     if (perms && perms.actions && perms.actions.logVisits === false) {
@@ -277,8 +320,9 @@ window.GAILS_Firebase = {
       'meta/updatedAt': nowIsoStr,
       'meta/updatedBy': who
     });
+    notifyMutation(done ? 'Task signed off' : 'Task reopened', options);
   },
-  updateFollowUpAction: async function(taskId, patch) {
+  updateFollowUpAction: async function(taskId, patch, options) {
     if (!auth.currentUser) throw new Error('You must be signed in to update a follow-up.');
     var perms = window.GAILS && window.GAILS.permissions;
     if (perms && perms.actions && perms.actions.logVisits === false) {
@@ -290,6 +334,7 @@ window.GAILS_Firebase = {
       'meta/updatedAt': nowIsoStr,
       'meta/updatedBy': who
     }));
+    notifyMutation('Task updated', options);
   },
   deleteFollowUpAction: async function(taskId) {
     if (!auth.currentUser) throw new Error('You must be signed in to delete a follow-up.');

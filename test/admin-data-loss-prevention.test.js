@@ -26,6 +26,11 @@ test('switching admin panels resolves site changes before changing the view', ()
   assert.match(js, /choice === 'discard'[\s\S]*discardSiteChanges\(\)/);
 });
 
+test('a new admin panel opens at its top rather than the last panel’s scroll position', () => {
+  assert.match(js, /async function navigateToAdminPanel\(panelName\)[\s\S]*scrollPanelToTop\(\)/);
+  assert.match(js, /function scrollPanelToTop\(\)[\s\S]*workspaceMain\.scrollTop = 0[\s\S]*window\.scrollTo\(0, 0\)/);
+});
+
 test('a partially entered bakery is staged before site data is saved', () => {
   assert.match(js, /function hasSiteEntryDraft\(\)/);
   assert.match(js, /function stageSiteEntry\(\)[\s\S]*if \(!name && !region && !ops\) return true/);

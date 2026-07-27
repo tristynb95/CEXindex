@@ -22,6 +22,7 @@ const workspaceShell  = document.getElementById('adminWorkspaceShell');
 const sidebarToggleBtn = document.getElementById('adminSidebarToggle');
 const sidebarToggleLabel = document.querySelector('[data-admin-sidebar-toggle-label]');
 const nav             = document.getElementById('adminPortalNav');
+const workspaceMain   = document.querySelector('.admin-workspace__main');
 const panels          = Array.from(document.querySelectorAll('[data-admin-panel-content]'));
 const summaryCards    = document.getElementById('adminSummaryCards');
 const overviewGrid    = document.getElementById('adminOverviewGrid');
@@ -446,11 +447,36 @@ function cloneMeta(meta) {
   return JSON.parse(JSON.stringify(meta || {}));
 }
 
+// Every region in the directory, each carrying the ops areas inside it and the
+// bakeries those hold. A region only offers cover once it is divided into ops
+// areas, since cover is handed out one area at a time — and an area is followed
+// by its bakeries rather than its name, because ops areas are named after their
+// ops manager. See js/region-assignments.js.
 function detectedSiteRegions(meta) {
-  return [...new Set(Object.values(meta || {}).map(function(entry) {
-    return entry && String(entry.r || '').trim();
-  }).filter(Boolean))].sort(function(a, b) {
-    return a.localeCompare(b);
+  var byRegion = {};
+  var regions = [];
+  Object.keys(meta || {}).forEach(function(bakery) {
+    var entry = meta[bakery] || {};
+    var region = String(entry.r || '').trim();
+    if (!region) return;
+    var key = region.toLowerCase();
+    if (!byRegion[key]) {
+      byRegion[key] = { region: region, opsAreas: [], _byOpsArea: {} };
+      regions.push(byRegion[key]);
+    }
+    var opsArea = String(entry.o || '').trim();
+    if (!opsArea) return;
+    var opsKey = opsArea.toLowerCase();
+    if (!byRegion[key]._byOpsArea[opsKey]) {
+      byRegion[key]._byOpsArea[opsKey] = { opsArea: opsArea, bakeries: [] };
+      byRegion[key].opsAreas.push(byRegion[key]._byOpsArea[opsKey]);
+    }
+    byRegion[key]._byOpsArea[opsKey].bakeries.push(bakery);
+  });
+  return regions.map(function(entry) {
+    return { region: entry.region, opsAreas: entry.opsAreas };
+  }).sort(function(a, b) {
+    return a.region.localeCompare(b.region);
   });
 }
 
@@ -1719,31 +1745,92 @@ function regionAssignmentDisplayName(row, field) {
   return user ? userLabel(user) : (row[field] || '');
 }
 
+function regionCover(row) {
+  var cover = row && row.cover;
+  return {
+    enabled: !!(cover && cover.enabled),
+    areas: (cover && Array.isArray(cover.areas)) ? cover.areas : []
+  };
+}
+
+function regionCoverAreasHtml(row, inputDisabled) {
+  var cover = regionCover(row);
+  if (!cover.enabled) return '';
+
+  if (!cover.areas.length) {
+    return '<tr class="admin-table__row--cover">'
+      + '<td colspan="4" class="admin-empty">This region has no ops areas in the directory yet, so there is'
+      + ' nothing to hand out \u2014 it stays with the region\u2019s own Coffee Partner and Coffee Trainer.</td>'
+      + '</tr>';
+  }
+
+  return cover.areas.map(function(area) {
+    var attrs = ' data-region="' + escapeHtml(row.region) + '"'
+      + ' data-ops-area="' + escapeHtml(area.opsArea) + '"';
+    // Both notes are display-only, and clear once the change is saved.
+    var note = '';
+    if (area.renamedFrom) {
+      note = '<div class="admin-table__rename-note" title="Cover came across with this area\u2019s bakeries.">'
+        + 'Renamed from ' + escapeHtml(area.renamedFrom) + '</div>';
+    } else if (area.retained) {
+      note = '<div class="admin-table__rename-note" title="This ops area is not in the current directory, and nobody has been dropped.">'
+        + 'Not in the current directory</div>';
+    }
+
+    return '<tr class="admin-table__row--cover">'
+      + '<td><div class="admin-table__cover-area">' + escapeHtml(area.opsArea) + '</div>' + note + '</td>'
+      + '<td><input type="text" value="' + escapeHtml(regionAssignmentDisplayName(area, 'coffeePartner')) + '"'
+        + attrs + ' data-field="coffeePartner"'
+        + ' list="regionAssignmentPeople" autocomplete="off" placeholder="Stays with the region"' + inputDisabled + '></td>'
+      + '<td><input type="text" value="' + escapeHtml(regionAssignmentDisplayName(area, 'coffeeTrainer')) + '"'
+        + attrs + ' data-field="coffeeTrainer"'
+        + ' list="regionAssignmentPeople" autocomplete="off" placeholder="Stays with the region"' + inputDisabled + '></td>'
+      + '<td></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function regionAssignmentsMetaText(rows) {
+  var withTeam = 0;
+  var onCover = 0;
+  rows.forEach(function(row) {
+    if (row.coffeePartner || row.coffeePartnerUid ||
+        row.coffeeTrainer || row.coffeeTrainerUid) withTeam++;
+    if (regionCover(row).enabled) onCover++;
+  });
+  return rows.length + ' detected region' + (rows.length === 1 ? '' : 's')
+    + ' \u2022 ' + withTeam + ' with team details'
+    + (onCover ? ' \u2022 ' + onCover + ' on cover' : '')
+    + (state.siteMetaDirty ? ' \u2022 unsaved changes' : ' \u2022 all changes saved');
+}
+
 function renderRegionAssignments() {
   if (!regionAssignmentList) return;
   renderRegionAssignmentPeople();
   var rows = visibleRegionAssignments();
-  var assignmentsComplete = rows.filter(function(row) {
-    return !!(row.coffeePartner || row.coffeePartnerUid ||
-      row.coffeeTrainer || row.coffeeTrainerUid);
-  }).length;
 
   if (regionAssignmentMeta) {
-    regionAssignmentMeta.textContent = rows.length + ' detected region'
-      + (rows.length === 1 ? '' : 's')
-      + ' \u2022 ' + assignmentsComplete + ' with team details'
-      + (state.siteMetaDirty ? ' \u2022 unsaved changes' : ' \u2022 all changes saved');
+    regionAssignmentMeta.textContent = regionAssignmentsMetaText(rows);
   }
 
   if (!rows.length) {
-    regionAssignmentList.innerHTML = '<tr><td colspan="3" class="admin-empty">Upload or add site data to detect regions.</td></tr>';
+    regionAssignmentList.innerHTML = '<tr><td colspan="4" class="admin-empty">Upload or add site data to detect regions.</td></tr>';
     return;
   }
 
   var assignmentsEditable = canEdit('sites');
   var inputDisabled = assignmentsEditable ? '' : ' disabled';
   regionAssignmentList.innerHTML = rows.map(function(row) {
-    return '<tr>'
+    var cover = regionCover(row);
+    var covering = cover.areas.filter(function(area) {
+      return !!(area.coffeePartner || area.coffeePartnerUid ||
+        area.coffeeTrainer || area.coffeeTrainerUid);
+    }).length;
+    var coverLabel = cover.enabled
+      ? (covering ? covering + ' area' + (covering === 1 ? '' : 's') + ' covered' : 'No areas covered yet')
+      : 'Off';
+
+    return '<tr' + (cover.enabled ? ' class="admin-table__row--on-cover"' : '') + '>'
       + '<td><div class="admin-table__title">' + escapeHtml(row.region) + '</div></td>'
       + '<td><input type="text" value="' + escapeHtml(regionAssignmentDisplayName(row, 'coffeePartner')) + '"'
         + ' data-region="' + escapeHtml(row.region) + '" data-field="coffeePartner"'
@@ -1751,7 +1838,16 @@ function renderRegionAssignments() {
       + '<td><input type="text" value="' + escapeHtml(regionAssignmentDisplayName(row, 'coffeeTrainer')) + '"'
         + ' data-region="' + escapeHtml(row.region) + '" data-field="coffeeTrainer"'
         + ' list="regionAssignmentPeople" autocomplete="off" placeholder="Type a person’s name"' + inputDisabled + '></td>'
-      + '</tr>';
+      + '<td><label class="admin-cover-toggle">'
+        + '<input type="checkbox" data-action="toggle-region-cover"'
+        + ' data-region="' + escapeHtml(row.region) + '"'
+        + (cover.enabled ? ' checked' : '')
+        + ' aria-label="Cover ' + escapeHtml(row.region) + ' by ops area"'
+        + inputDisabled + '>'
+        + '<span>' + escapeHtml(coverLabel) + '</span>'
+        + '</label></td>'
+      + '</tr>'
+      + regionCoverAreasHtml(row, inputDisabled);
   }).join('');
 }
 
@@ -3036,7 +3132,17 @@ async function navigateToAdminPanel(panelName) {
   switchPanel(panelName);
   window.history.replaceState(null, '', 'admin.html#' + panelName);
   if (compactSidebarMedia.matches) setSidebarCollapsed(true);
+  scrollPanelToTop();
   return true;
+}
+
+// Panels are long and share one scrolling canvas, so switching view would
+// otherwise open the new panel wherever the last one happened to be scrolled
+// to — part-way down, with its heading and controls out of sight. The window
+// is reset too, for the narrow layout where the page itself scrolls.
+function scrollPanelToTop() {
+  if (workspaceMain) workspaceMain.scrollTop = 0;
+  window.scrollTo(0, 0);
 }
 
 // Users and Roles used to be two panels; they are now one. A bookmark or an
@@ -3293,22 +3399,92 @@ function updateRegionAssignmentDraft(region, field, value, userUid) {
     userUid || ''
   );
   state.regionAssignmentsDraft = next;
+  afterRegionAssignmentEdit();
+}
+
+// Deliberately does not re-render the table: the admin is typing into one of
+// its inputs, and replacing the row would drop the caret.
+function afterRegionAssignmentEdit() {
   setDirty(true);
   updateSiteTableMeta(getVisibleSiteMeta().length);
   if (regionAssignmentMeta) {
-    var rows = visibleRegionAssignments();
-    var assignmentsComplete = rows.filter(function(row) {
-      return !!(row.coffeePartner || row.coffeePartnerUid ||
-        row.coffeeTrainer || row.coffeeTrainerUid);
-    }).length;
-    regionAssignmentMeta.textContent = rows.length + ' detected region'
-      + (rows.length === 1 ? '' : 's')
-      + ' \u2022 ' + assignmentsComplete + ' with team details'
-      + ' \u2022 unsaved changes';
+    regionAssignmentMeta.textContent = regionAssignmentsMetaText(visibleRegionAssignments());
   }
   renderSummary();
   renderOverview();
   renderDataControls();
+}
+
+// Cover for one ops area inside a region whose Coffee Partner or Coffee Trainer
+// has left. Leaving a box empty is not a gap \u2014 that area simply stays with the
+// region's own pair.
+function updateRegionCoverDraft(region, opsArea, field, value, userUid) {
+  var regions = detectedSiteRegions(state.siteMetaDraft);
+  var next = regionAssignmentApi().updateCoverAssignment(
+    regions,
+    state.regionAssignmentsDraft,
+    region,
+    opsArea,
+    field,
+    value
+  );
+  next = regionAssignmentApi().updateCoverAssignment(
+    regions,
+    next,
+    region,
+    opsArea,
+    field + 'Uid',
+    userUid || ''
+  );
+  state.regionAssignmentsDraft = next;
+  afterRegionAssignmentEdit();
+  refreshRegionCoverLabel(region);
+}
+
+// The count beside a region's Cover toggle, kept current without repainting the
+// table the admin is typing into.
+function refreshRegionCoverLabel(region) {
+  if (!regionAssignmentList) return;
+  var toggle = regionAssignmentList.querySelector(
+    '[data-action="toggle-region-cover"][data-region=' + JSON.stringify(String(region)) + ']'
+  );
+  var label = toggle && toggle.parentElement
+    ? toggle.parentElement.querySelector('span')
+    : null;
+  if (!label) return;
+  var covered = regionAssignmentApi().coveredAreas(state.regionAssignmentsDraft, region).length;
+  label.textContent = covered
+    ? formatCount(covered, 'area', 'areas') + ' covered'
+    : 'No areas covered yet';
+}
+
+// Switching cover on opens a row per ops area; switching it off hands the whole
+// region back to its own Coffee Partner and Coffee Trainer, which is what
+// happens once a permanent replacement is in post. Because that discards the
+// split, an admin ending cover that somebody is actually providing is asked
+// first. Repaints either way \u2014 the shape of the table changes.
+function toggleRegionCover(region, enabled) {
+  if (!enabled) {
+    var covered = regionAssignmentApi().coveredAreas(state.regionAssignmentsDraft, region);
+    if (covered.length && !confirm(
+      'End cover for ' + region + '?\n\n'
+      + formatCount(covered.length, 'ops area', 'ops areas')
+      + ' will go back to the region\u2019s own Coffee Partner and Coffee Trainer, '
+      + 'and who was covering them will not be kept.'
+    )) {
+      renderRegionAssignments();
+      return;
+    }
+  }
+
+  state.regionAssignmentsDraft = regionAssignmentApi().setCover(
+    detectedSiteRegions(state.siteMetaDraft),
+    state.regionAssignmentsDraft,
+    region,
+    enabled
+  );
+  afterRegionAssignmentEdit();
+  renderRegionAssignments();
 }
 
 function afterOpsAreaAssignmentEdit() {
@@ -4208,30 +4384,43 @@ siteList.addEventListener('click', function(e) {
 });
 
 if (regionAssignmentList) {
+  // A row carrying an ops area is cover for that area alone; without one the
+  // input is the region's own Coffee Partner or Coffee Trainer.
+  var applyRegionAssignmentInput = function(input, user) {
+    var name = user ? userLabel(user) : input.value;
+    var uid = user ? user.uid : '';
+    if (input.dataset.opsArea) {
+      updateRegionCoverDraft(
+        input.dataset.region,
+        input.dataset.opsArea,
+        input.dataset.field,
+        name,
+        uid
+      );
+      return;
+    }
+    updateRegionAssignmentDraft(input.dataset.region, input.dataset.field, name, uid);
+  };
+
   regionAssignmentList.addEventListener('input', function(e) {
     var input = e.target;
     if (!input.dataset.region || !input.dataset.field) return;
-    var user = resolveRegionAssignmentUser(input.value);
-    updateRegionAssignmentDraft(
-      input.dataset.region,
-      input.dataset.field,
-      user ? userLabel(user) : input.value,
-      user ? user.uid : ''
-    );
+    applyRegionAssignmentInput(input, resolveRegionAssignmentUser(input.value));
   });
 
+  // Picking from the people list stores the readable name rather than the
+  // "Name — email" option text the datalist puts in the box.
   regionAssignmentList.addEventListener('change', function(e) {
     var input = e.target;
+    if (input.dataset.action === 'toggle-region-cover') {
+      toggleRegionCover(input.dataset.region, input.checked);
+      return;
+    }
     if (!input.dataset.region || !input.dataset.field) return;
     var user = resolveRegionAssignmentUser(input.value);
     if (!user) return;
     input.value = userLabel(user);
-    updateRegionAssignmentDraft(
-      input.dataset.region,
-      input.dataset.field,
-      userLabel(user),
-      user.uid
-    );
+    applyRegionAssignmentInput(input, user);
   });
 }
 

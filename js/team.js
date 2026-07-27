@@ -240,28 +240,64 @@ window.GAILS = window.GAILS || {};
       });
     }
 
+    function roleMatches(source, role) {
+      var uid = cleanText(source[role + 'Uid']);
+      return uid ? !!wanted[uid] : legacyLabelMatches(source[role]);
+    }
+
     var records = Array.isArray(assignments)
       ? assignments
       : Object.values(assignments && typeof assignments === 'object' ? assignments : {});
     var regions = {};
+    var coveredAway = {};
+    var coveredAreas = {};
     records.forEach(function(record) {
       var source = record && typeof record === 'object' ? record : {};
       var region = cleanText(source.region);
       if (!region) return;
-      var partnerUid = cleanText(source.coffeePartnerUid || source.partnerUid);
-      var trainerUid = cleanText(source.coffeeTrainerUid || source.trainerUid);
-      var partnerMatches = partnerUid
-        ? !!wanted[partnerUid]
-        : legacyLabelMatches(source.coffeePartner || source.partner);
-      var trainerMatches = trainerUid
-        ? !!wanted[trainerUid]
-        : legacyLabelMatches(source.coffeeTrainer || source.trainer);
-      if (partnerMatches || trainerMatches) regions[region.toLowerCase()] = true;
+      var regionKey = region.toLowerCase();
+      var partnerMatches = roleMatches({
+        coffeePartner: source.coffeePartner || source.partner,
+        coffeePartnerUid: source.coffeePartnerUid || source.partnerUid
+      }, 'coffeePartner');
+      var trainerMatches = roleMatches({
+        coffeeTrainer: source.coffeeTrainer || source.trainer,
+        coffeeTrainerUid: source.coffeeTrainerUid || source.trainerUid
+      }, 'coffeeTrainer');
+      if (partnerMatches || trainerMatches) {
+        regions[regionKey] = { partner: partnerMatches, trainer: trainerMatches };
+      }
+
+      // While a region is on cover its Coffee Partner or Coffee Trainer is
+      // named per ops area, so an area somebody else covers leaves the region
+      // holder's patch — for that role only. See js/region-assignments.js.
+      var cover = source.cover;
+      if (!cover || !(cover.enabled === true || cover.enabled === 'true')) return;
+      (Array.isArray(cover.areas) ? cover.areas : []).forEach(function(entry) {
+        var area = entry && typeof entry === 'object' ? entry : {};
+        var opsArea = cleanText(area.opsArea);
+        if (!opsArea) return;
+        var pair = regionKey + '|' + opsArea.toLowerCase();
+        coveredAway[pair] = {
+          partner: !!(cleanText(area.coffeePartner) || cleanText(area.coffeePartnerUid)),
+          trainer: !!(cleanText(area.coffeeTrainer) || cleanText(area.coffeeTrainerUid))
+        };
+        if (roleMatches(area, 'coffeePartner') || roleMatches(area, 'coffeeTrainer')) {
+          coveredAreas[pair] = true;
+        }
+      });
     });
 
     return Object.keys(bakeryMeta || {}).filter(function(bakery) {
       var entry = bakeryMeta[bakery] || {};
-      return !!regions[cleanText(entry.r || entry.region).toLowerCase()];
+      var regionKey = cleanText(entry.r || entry.region).toLowerCase();
+      var pair = regionKey + '|' + cleanText(entry.o || entry.opsArea).toLowerCase();
+      if (coveredAreas[pair]) return true;
+
+      var held = regions[regionKey];
+      if (!held) return false;
+      var covered = coveredAway[pair] || { partner: false, trainer: false };
+      return (held.partner && !covered.partner) || (held.trainer && !covered.trainer);
     }).sort(function(a, b) {
       return a.localeCompare(b);
     });

@@ -1,6 +1,75 @@
 // ========== MONTH PARSING ==========
 window.GAILS = window.GAILS || {};
 
+// ---------- subtle site-wide success notifications ----------
+// Mutation forms live on several pages, but their confirmation should feel
+// identical everywhere. The region is created lazily so pages that never save
+// anything carry no extra markup. Messages use textContent rather than HTML
+// because task and bakery names can contain user-entered text.
+window.GAILS.notifySuccess = function(message, options) {
+  if (!message || typeof document === 'undefined' || !document.body) return null;
+  options = options || {};
+
+  var region = document.getElementById('appToastRegion');
+  if (!region) {
+    region = document.createElement('div');
+    region.id = 'appToastRegion';
+    region.className = 'app-toast-region';
+    region.setAttribute('aria-live', 'polite');
+    region.setAttribute('aria-relevant', 'additions');
+    region.setAttribute('aria-label', 'Completed actions');
+    document.body.appendChild(region);
+  }
+
+  // Keep bursts (for example several quick task sign-offs) useful rather than
+  // letting notifications cover the page.
+  while (region.children.length >= 3) {
+    region.removeChild(region.firstElementChild);
+  }
+
+  var toast = document.createElement('div');
+  toast.className = 'app-toast app-toast--success';
+  toast.setAttribute('role', 'status');
+
+  var icon = document.createElement('span');
+  icon.className = 'app-toast__icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = '✓';
+
+  var copy = document.createElement('span');
+  copy.className = 'app-toast__copy';
+  copy.textContent = String(message);
+
+  var close = document.createElement('button');
+  close.className = 'app-toast__close';
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Dismiss notification');
+  close.textContent = '×';
+
+  toast.appendChild(icon);
+  toast.appendChild(copy);
+  toast.appendChild(close);
+  region.appendChild(toast);
+
+  var removed = false;
+  var dismiss = function() {
+    if (removed) return;
+    removed = true;
+    toast.classList.remove('is-visible');
+    window.setTimeout(function() {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+      if (region.parentNode && !region.children.length) region.parentNode.removeChild(region);
+    }, 180);
+  };
+
+  close.addEventListener('click', dismiss);
+  var show = function() { toast.classList.add('is-visible'); };
+  if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(show);
+  else window.setTimeout(show, 0);
+  window.setTimeout(dismiss, Math.max(1600, Number(options.duration) || 3200));
+  return { element: toast, dismiss: dismiss };
+};
+
 window.GAILS.MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 window.GAILS.MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

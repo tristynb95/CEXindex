@@ -488,6 +488,14 @@ window.GAILS = window.GAILS || {};
       if (!assignment) return;
       harvestNames(assignment.coffeePartner);
       harvestNames(assignment.coffeeTrainer);
+      // A region on cover names a Coffee Partner or Coffee Trainer per ops
+      // area; those colleagues do these visits too.
+      var cover = assignment.cover;
+      ((cover && cover.areas) || []).forEach(function (area) {
+        if (!area) return;
+        harvestNames(area.coffeePartner);
+        harvestNames(area.coffeeTrainer);
+      });
     });
 
     (input.opsAreaAssignments || []).forEach(function (assignment) {

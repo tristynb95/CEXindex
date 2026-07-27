@@ -1304,6 +1304,25 @@
   padding-top: 13px;
 }
 
+.admin-body .admin-cover-toggle {
+  gap: 6px;
+  font-size: 0.63rem;
+}
+
+.admin-body .admin-cover-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--admin-accent);
+}
+
+.admin-body .admin-table--region-assignments tr.admin-table__row--cover td:first-child {
+  padding-left: 24px;
+}
+
+.admin-body .admin-table__cover-area {
+  font-size: 0.68rem;
+}
+
 /* Shared modal frame */
 .admin-body.admin-modal-open {
   overflow: hidden;
