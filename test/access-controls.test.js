@@ -45,7 +45,7 @@ test('an old #users or #roles link still lands on People & Access', () => {
 
 test('every row of the people table answers "can see" and "can edit"', () => {
   const header = adminHtml.slice(adminHtml.indexOf('admin-table--people'), adminHtml.indexOf('id="adminUserList"'));
-  ['Person', 'Role', 'Reports to', 'Can see', 'Can edit'].forEach((column) => {
+  ['Person', 'Department', 'Role', 'Reports to', 'Can see', 'Can edit'].forEach((column) => {
     assert.ok(header.includes('<th>' + column + '</th>'), 'missing column: ' + column);
   });
   // Both summaries come from the shared describers, so a role reads the same
@@ -66,7 +66,8 @@ test('the roles table shows visibility, editing, and team view side by side', ()
 test('one dialog holds every profile and access decision about a person', () => {
   [
     'userAccessFirstName', 'userAccessLastName',
-    'userAccessRole', 'userAccessManager', 'userAccessOps', 'userAccessMyActivity'
+    'userAccessRole', 'userAccessDepartment', 'userAccessManager', 'userAccessOps', 'userAccessMyActivity',
+    'userAccessDepartmentOperations', 'userAccessDepartmentCoffeeTeam'
   ].forEach((id) => {
     assert.match(adminHtml, new RegExp('id="' + id + '"'));
   });
@@ -75,6 +76,40 @@ test('one dialog holds every profile and access decision about a person', () => 
     assert.match(adminHtml, new RegExp('id="' + id + '"'));
   });
   assert.match(adminScript, /function renderAccessReadout\(\)/);
+});
+
+test('users can be assigned to one of the two fixed departments', () => {
+  assert.match(adminScript, /const DEPARTMENTS = \[[\s\S]*?id: 'operations', name: 'Operations'[\s\S]*?id: 'coffee-team', name: 'Coffee Team'/);
+  assert.match(adminHtml, /id="newDepartmentSelect" required/);
+  assert.match(adminScript, /department: department/);
+  assert.match(adminScript, /department: normalizeDepartment\(users\[uid\]\.department\)/);
+  assert.match(adminScript, /department: normalizeDepartment\(draft\.department\) \|\| null/);
+});
+
+test('department visibility is configured in Manage Access, not on the People card', () => {
+  assert.doesNotMatch(adminHtml, /id="departmentVisibilityControls"/);
+  assert.match(adminHtml, /id="userAccessTeamDepartments"/);
+  assert.match(adminHtml, /Departments visible in My Team/);
+  assert.match(adminScript, /function hiddenMyTeamDepartmentsForDraft\(draft\)/);
+  assert.match(adminScript, /hiddenMyTeamDepartments: hiddenMyTeamDepartments/);
+});
+
+test('My Team applies Manage Access department visibility without page-level checkboxes', () => {
+  assert.doesNotMatch(teamHtml, /id="myTeamDepartmentControls"/);
+  assert.match(teamScript, /let accessibleRoster = \[\]/);
+  assert.match(teamScript, /function applyDepartmentVisibility\(\)/);
+  assert.match(teamScript, /hiddenMyTeamDepartments\[department\] !== true/);
+  assert.match(teamScript, /userProfile && userProfile\.hiddenMyTeamDepartments/);
+  assert.doesNotMatch(teamScript, /data-team-department|departmentControls/);
+  assert.match(teamScript, /import \{ ref, get, onValue \}/);
+});
+
+test('department values and assignments are protected by database rules', () => {
+  const userRule = rules.rules.users.$uid;
+  assert.match(userRule['.validate'], /department'\)\.val\(\) === 'operations'/);
+  assert.match(userRule['.validate'], /department'\)\.val\(\) === 'coffee-team'/);
+  assert.match(userRule['.write'], /newData\.child\('department'\)\.val\(\) === data\.child\('department'\)\.val\(\)/);
+  assert.match(userRule.hiddenMyTeamDepartments.$department['.validate'], /\$department === 'coffee-team'/);
 });
 
 test('the role editor is a see/edit grid built from the shared row list', () => {
@@ -222,7 +257,8 @@ test('selecting a coffee partner shows their whole area', () => {
 });
 
 test('the roster renders the reporting tree, not a flat list', () => {
-  assert.match(teamScript, /rosterRows = G\.Team \? G\.Team\.teamRows\(user\.uid, teamScope, directory\) : \[\]/);
+  assert.match(teamScript, /accessibleRoster = G\.Team \? G\.Team\.visibleTeam\(user\.uid, teamScope, directory\) : \[\]/);
+  assert.match(teamScript, /rosterRows = G\.Team \? G\.Team\.teamRows\(currentUserUid, 'all', roster\) : \[\]/);
   assert.match(teamScript, /--team-depth:' \+ row\.depth/);
   assert.match(read('css/my-team.css'), /\.my-team-person--nested/);
   // A manager's own figures and their area's roll-up are stated separately.

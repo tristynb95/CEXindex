@@ -43,6 +43,7 @@ window.GAILS = window.GAILS || {};
       managerName: cleanText(source.managerName),
       roleId: cleanText(source.roleId || source.role) || 'viewer',
       roleName: cleanText(source.roleName),
+      department: cleanText(source.department).toLowerCase(),
       opsArea: cleanText(source.opsArea)
     };
   }

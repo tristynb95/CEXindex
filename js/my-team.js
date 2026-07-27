@@ -84,11 +84,18 @@ const jumpNav = document.getElementById('myTeamJump');
 
 const FILTER_STORAGE_KEY = 'gails_my_team_filters';
 const VISIT_CHUNK = 20;
+const DEPARTMENTS = [
+  { id: 'operations', name: 'Operations' },
+  { id: 'coffee-team', name: 'Coffee Team' }
+];
 
 let teamScope = 'none';
+let currentUserUid = '';
+let accessibleRoster = [];
 let roster = [];            // [{ uid, name, email, managerUid, roleName, … }]
 let rosterRows = [];        // the same people in tree order: { person, depth, reportCount, teamSize }
 let identities = {};        // uid -> { uid, emails:Set, names:Set } for attribution
+let hiddenMyTeamDepartments = {};
 let visitsObj = {};
 let tasksObj = {};
 let dataReady = { visits: false, tasks: false };
@@ -96,6 +103,7 @@ let dataReady = { visits: false, tasks: false };
 let period = '3';
 let actionsStatus = 'open';
 let visitLimit = VISIT_CHUNK;
+let visitResultCount = 0;
 let selectedUid = '';       // '' means the whole team
 
 // ---------- shared formatting ----------
@@ -182,6 +190,42 @@ function relativeLabel(iso) {
 
 function plural(count, singular, pluralWord) {
   return count + ' ' + (count === 1 ? singular : (pluralWord || singular + 's'));
+}
+
+function normalizeDepartment(value) {
+  var normalized = String(value || '').trim().toLowerCase();
+  return DEPARTMENTS.some(function (department) { return department.id === normalized; })
+    ? normalized
+    : '';
+}
+
+function sanitizeHiddenDepartments(value) {
+  var source = value && typeof value === 'object' ? value : {};
+  var hidden = {};
+  DEPARTMENTS.forEach(function (department) {
+    if (source[department.id] === true) hidden[department.id] = true;
+  });
+  return hidden;
+}
+
+function applyDepartmentVisibility() {
+  roster = accessibleRoster.filter(function (person) {
+    var department = normalizeDepartment(person.department);
+    return !department || hiddenMyTeamDepartments[department] !== true;
+  });
+
+  identities = {};
+  roster.forEach(function (person) {
+    identities[person.uid] = buildIdentity(person);
+  });
+
+  // The role/reporting-line check has already produced accessibleRoster. Using
+  // an all-scope layout here only rebuilds the hierarchy among the filtered
+  // people, lifting a visible report to the top when their manager is hidden.
+  rosterRows = G.Team ? G.Team.teamRows(currentUserUid, 'all', roster) : [];
+  if (selectedUid && !roster.some(function (person) { return person.uid === selectedUid; })) {
+    selectedUid = '';
+  }
 }
 
 // GAIL's reporting periods, matching js/my-activity.js so "last 3 months" spans
@@ -420,9 +464,13 @@ function statsFor(uids, visits, tasks) {
 
 function renderScopeNote() {
   if (!scopeNote) return;
-  scopeNote.textContent = teamScope === 'all'
+  var base = teamScope === 'all'
     ? 'Showing everyone on the coffee team.'
     : 'Showing everyone who reports to you, and everyone who reports to them.';
+  var hiddenNames = DEPARTMENTS.filter(function (department) {
+    return hiddenMyTeamDepartments[department.id] === true;
+  }).map(function (department) { return department.name; });
+  scopeNote.textContent = base + (hiddenNames.length ? ' Hidden: ' + hiddenNames.join(' and ') + '.' : '');
 }
 
 function renderStats() {
@@ -802,9 +850,15 @@ function renderRoster() {
   if (rosterCount) rosterCount.textContent = plural(roster.length, 'person', 'people');
 
   if (!roster.length) {
-    rosterEl.innerHTML = emptyStateHtml('&#128101;', teamScope === 'all'
-      ? 'No people are published to the team directory yet. An administrator can publish it from the People & Access panel.'
-      : 'Nobody reports to you yet. An administrator sets reporting lines in the People & Access panel.');
+    var allDepartmentsHidden = accessibleRoster.length && accessibleRoster.every(function (person) {
+      var department = normalizeDepartment(person.department);
+      return department && hiddenMyTeamDepartments[department] === true;
+    });
+    rosterEl.innerHTML = emptyStateHtml('&#128101;', allDepartmentsHidden
+      ? 'Every department in your team is hidden. An administrator can change the departments visible to you from Manage Access.'
+      : (teamScope === 'all'
+        ? 'No people are published to the team directory yet. An administrator can publish it from the People & Access panel.'
+        : 'Nobody reports to you yet. An administrator sets reporting lines in the People & Access panel.'));
     if (rosterSummary) rosterSummary.textContent = '';
     return;
   }
@@ -999,6 +1053,7 @@ function renderVisits() {
     }
     return String(b.date).localeCompare(String(a.date));
   });
+  visitResultCount = visits.length;
 
   if (visitsSummary) {
     visitsSummary.textContent = visits.length
@@ -1013,7 +1068,10 @@ function renderVisits() {
         ? 'No visits match that search in this period.'
         : 'No visits credited to the team ' + periodLabel() + '.')
       : 'Loading the team’s visits…');
-    if (visitsMoreBtn) visitsMoreBtn.hidden = true;
+    if (visitsMoreBtn) {
+      visitsMoreBtn.hidden = true;
+      visitsMoreBtn.disabled = true;
+    }
     return;
   }
 
@@ -1023,8 +1081,10 @@ function renderVisits() {
   }
   visitsList.innerHTML = visibleVisits.map(visitRowHtml).join('');
   if (visitsMoreBtn) {
-    visitsMoreBtn.hidden = visits.length <= visitLimit;
-    visitsMoreBtn.textContent = 'Show more (' + (visits.length - visitLimit) + ' left)';
+    var remaining = Math.max(0, visits.length - visibleVisits.length);
+    visitsMoreBtn.hidden = remaining === 0;
+    visitsMoreBtn.disabled = remaining === 0;
+    visitsMoreBtn.textContent = 'Show more (' + remaining + ' left)';
   }
 }
 
@@ -1314,7 +1374,8 @@ if (insightsSection) {
 
 if (visitsMoreBtn) {
   visitsMoreBtn.addEventListener('click', function () {
-    visitLimit += VISIT_CHUNK;
+    if (visitsMoreBtn.disabled || visitLimit >= visitResultCount) return;
+    visitLimit = Math.min(visitResultCount, visitLimit + VISIT_CHUNK);
     renderVisits();
   });
 }
@@ -1387,6 +1448,7 @@ function showGuardError(message) {
 }
 
 async function loadTeam(user) {
+  currentUserUid = user.uid;
   var initial = await Promise.all([
     get(ref(db, 'admins/' + user.uid)),
     get(ref(db, 'users/' + user.uid)),
@@ -1395,6 +1457,9 @@ async function loadTeam(user) {
 
   var isAdmin = initial[0].exists() && initial[0].val() === true;
   var userProfile = initial[1].exists() ? initial[1].val() : null;
+  hiddenMyTeamDepartments = sanitizeHiddenDepartments(
+    userProfile && userProfile.hiddenMyTeamDepartments
+  );
   if (userProfile && userProfile.role === 'admin') isAdmin = true;
   if (!isAdmin && !userProfile) {
     await signOut(auth);
@@ -1449,13 +1514,8 @@ async function loadTeam(user) {
   }
 
   // js/team.js normalizes each directory record, so roleName arrives with it.
-  roster = G.Team ? G.Team.visibleTeam(user.uid, teamScope, directory) : [];
-  roster.forEach(function (person) {
-    identities[person.uid] = buildIdentity(person);
-  });
-  // The same people in tree order, so a coffee partner is followed by their
-  // own area head baristas rather than sitting in one flat list.
-  rosterRows = G.Team ? G.Team.teamRows(user.uid, teamScope, directory) : [];
+  accessibleRoster = G.Team ? G.Team.visibleTeam(user.uid, teamScope, directory) : [];
+  applyDepartmentVisibility();
 
   if (greetingEl) {
     var firstName = String((userProfile && userProfile.firstName) || user.displayName || '').split(' ')[0];

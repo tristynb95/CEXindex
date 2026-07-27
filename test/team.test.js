@@ -36,12 +36,18 @@ function uids(list) {
 }
 
 test('normalizes both roster shapes into the same person record', () => {
-  const fromDirectory = Team.normalizePerson('u1', { name: '  Alex   Partner ', email: 'Alex@GAILS.com', managerUid: ' m1 ' });
+  const fromDirectory = Team.normalizePerson('u1', {
+    name: '  Alex   Partner ',
+    email: 'Alex@GAILS.com',
+    managerUid: ' m1 ',
+    department: ' Coffee-Team '
+  });
   const fromAdminList = Team.normalizePerson('u1', { firstName: 'Alex', lastName: 'Partner', email: 'alex@gails.com', managerUid: 'm1', role: 'coffee-partner' });
 
   assert.equal(fromDirectory.name, 'Alex Partner');
   assert.equal(fromDirectory.email, 'alex@gails.com');
   assert.equal(fromDirectory.managerUid, 'm1');
+  assert.equal(fromDirectory.department, 'coffee-team');
   assert.equal(fromAdminList.name, 'Alex Partner');
   assert.equal(fromAdminList.roleId, 'coffee-partner');
 });

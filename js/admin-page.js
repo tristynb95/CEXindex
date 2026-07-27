@@ -27,6 +27,9 @@ const summaryCards    = document.getElementById('adminSummaryCards');
 const overviewGrid    = document.getElementById('adminOverviewGrid');
 const heroSummary     = document.getElementById('adminHeroSummary');
 const heroMeta        = document.getElementById('adminHeroMeta');
+const panelEyebrow    = document.getElementById('adminPanelEyebrow');
+const panelTitle      = document.getElementById('adminPanelTitle');
+const panelDescription = document.getElementById('adminPanelDescription');
 const userList        = document.getElementById('adminUserList');
 const createUserForm  = document.getElementById('createUserForm');
 const inviteUserBtn   = document.getElementById('inviteUserBtn');
@@ -40,6 +43,7 @@ const newFirstNameInput = document.getElementById('newFirstNameInput');
 const newLastNameInput = document.getElementById('newLastNameInput');
 const newEmailInput   = document.getElementById('newEmailInput');
 const roleSelect      = document.getElementById('newRoleSelect');
+const newDepartmentSelect = document.getElementById('newDepartmentSelect');
 const newManagerSelect = document.getElementById('newManagerSelect');
 const newOpsSelect    = document.getElementById('newOpsSelect');
 const createMsg       = document.getElementById('createMsg');
@@ -57,6 +61,9 @@ const userAccessEmail   = document.getElementById('userAccessEmail');
 const userAccessFirstName = document.getElementById('userAccessFirstName');
 const userAccessLastName = document.getElementById('userAccessLastName');
 const userAccessRole    = document.getElementById('userAccessRole');
+const userAccessDepartment = document.getElementById('userAccessDepartment');
+const userAccessDepartmentOperations = document.getElementById('userAccessDepartmentOperations');
+const userAccessDepartmentCoffeeTeam = document.getElementById('userAccessDepartmentCoffeeTeam');
 const userAccessManager = document.getElementById('userAccessManager');
 const userAccessOps     = document.getElementById('userAccessOps');
 const userAccessMyActivity = document.getElementById('userAccessMyActivity');
@@ -163,6 +170,12 @@ const cqvConfirmDate      = document.getElementById('cqvConfirmDate');
 const cqvConfirmCoffeePartner = document.getElementById('cqvConfirmCoffeePartner');
 const cqvConfirmWarning   = document.getElementById('cqvConfirmWarning');
 const cqvConfirmSummary   = document.getElementById('cqvConfirmSummary');
+const unsavedChangesModal = document.getElementById('unsavedChangesModal');
+const unsavedChangesClose = document.getElementById('unsavedChangesClose');
+const unsavedChangesCancel = document.getElementById('unsavedChangesCancel');
+const unsavedChangesDiscard = document.getElementById('unsavedChangesDiscard');
+const unsavedChangesSave  = document.getElementById('unsavedChangesSave');
+const unsavedChangesMessage = document.getElementById('unsavedChangesMessage');
 
 // ── Routine visit schema ──
 // Sourced from js/visit-schema.js (shared with index.html's js/visit-report.js)
@@ -171,6 +184,10 @@ const cqvConfirmSummary   = document.getElementById('cqvConfirmSummary');
 // apps-script/RoutineVisitSync.gs's QUESTION_MAP when questions change.
 const VISIT_GENERAL_FIELDS = window.GAILS_VISIT_SCHEMA.general;
 const VISIT_SECTIONS = window.GAILS_VISIT_SCHEMA.sections;
+const DEPARTMENTS = [
+  { id: 'operations', name: 'Operations' },
+  { id: 'coffee-team', name: 'Coffee Team' }
+];
 
 // ── State ──
 const state = {
@@ -207,6 +224,8 @@ let usersUnsubscribe = null;
 let visitsUnsubscribe = null;
 let rolesUnsubscribe = null;
 let appSettingsUnsubscribe = null;
+const dirtyDrafts = new Set();
+let unsavedChangesResolve = null;
 
 // ── Role helpers ──
 function canView(areaKey) {
@@ -254,6 +273,32 @@ function roleOptionsHtml(selected) {
     return '<option value="' + escapeHtml(role.id) + '" ' + (role.id === selected ? 'selected' : '') + '>'
       + escapeHtml(role.def.name || role.id) + '</option>';
   }).join('');
+}
+
+function normalizeDepartment(value) {
+  var normalized = String(value || '').trim().toLowerCase();
+  var department = DEPARTMENTS.find(function(item) {
+    return item.id === normalized || item.name.toLowerCase() === normalized;
+  });
+  return department ? department.id : '';
+}
+
+function departmentName(value) {
+  var normalized = normalizeDepartment(value);
+  var department = DEPARTMENTS.find(function(item) { return item.id === normalized; });
+  return department ? department.name : 'Unassigned';
+}
+
+function departmentOptionsHtml(selected, requireSelection) {
+  var current = normalizeDepartment(selected);
+  var emptyLabel = requireSelection ? 'Choose a department' : 'Unassigned';
+  return '<option value=""' + (current ? '' : ' selected') + (requireSelection ? ' disabled' : '') + '>'
+    + emptyLabel + '</option>'
+    + DEPARTMENTS.map(function(department) {
+      return '<option value="' + escapeHtml(department.id) + '"'
+        + (department.id === current ? ' selected' : '') + '>'
+        + escapeHtml(department.name) + '</option>';
+    }).join('');
 }
 
 // The ops areas a user can be scoped to are the ops areas mapped in the site
@@ -329,6 +374,10 @@ function populateRoleSelects() {
   if (newManagerSelect) {
     var currentManager = newManagerSelect.value || '';
     newManagerSelect.innerHTML = managerOptionsHtml('', currentManager);
+  }
+  if (newDepartmentSelect) {
+    var currentDepartment = normalizeDepartment(newDepartmentSelect.value);
+    newDepartmentSelect.innerHTML = departmentOptionsHtml(currentDepartment, true);
   }
   if (newOpsSelect) {
     var currentOps = newOpsSelect.value || '';
@@ -573,9 +622,63 @@ function clearMessage(el) {
 
 function setDirty(flag) {
   state.siteMetaDirty = !!flag;
-  saveSitesBtn.textContent = state.siteMetaDirty ? 'Save Site Data' : 'Site Data Saved';
-  resetSitesBtn.disabled = !state.siteMetaDirty;
+  updateSiteSaveControls();
 }
+
+function updateSiteSaveControls() {
+  var hasChanges = hasSiteChanges();
+  saveSitesBtn.textContent = hasChanges ? 'Save Site Data' : 'Site Data Saved';
+  resetSitesBtn.disabled = !hasChanges;
+}
+
+function markDraftDirty(context, flag) {
+  if (flag === false) dirtyDrafts.delete(context);
+  else dirtyDrafts.add(context);
+}
+
+function hasSiteEntryDraft() {
+  return [siteNameInput, siteRegionInput, siteOpsInput].some(function(input) {
+    return !!(input && input.value.trim());
+  });
+}
+
+function hasSiteChanges() {
+  return state.siteMetaDirty || hasSiteEntryDraft();
+}
+
+function hasUnsavedAdminChanges() {
+  return hasSiteChanges() || dirtyDrafts.size > 0 || !!state.cqvPending;
+}
+
+function settleUnsavedChanges(choice) {
+  if (!unsavedChangesResolve) return;
+  var resolve = unsavedChangesResolve;
+  unsavedChangesResolve = null;
+  unsavedChangesModal.style.display = 'none';
+  resolve(choice);
+}
+
+function promptUnsavedChanges(message) {
+  if (!unsavedChangesModal) return Promise.resolve('cancel');
+  if (unsavedChangesResolve) return Promise.resolve('cancel');
+  if (unsavedChangesMessage) unsavedChangesMessage.textContent = message;
+  unsavedChangesModal.style.display = 'flex';
+  window.requestAnimationFrame(function() {
+    if (unsavedChangesSave) unsavedChangesSave.focus();
+  });
+  return new Promise(function(resolve) {
+    unsavedChangesResolve = resolve;
+  });
+}
+
+// Browsers deliberately control the text and buttons shown during refresh,
+// tab close, or address-bar navigation. Setting returnValue gives the user the
+// native Stay/Leave choice; staying keeps every draft available to save.
+window.addEventListener('beforeunload', function(event) {
+  if (!hasUnsavedAdminChanges()) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
 
 function currentUserId() {
   return primaryAuth.currentUser ? primaryAuth.currentUser.uid : '';
@@ -1106,7 +1209,7 @@ function userStatus(user) {
 function renderUsers() {
   if (!userList) return;
   if (!state.users.length) {
-    userList.innerHTML = '<tr><td colspan="6" class="admin-empty">Nobody has dashboard access yet.</td></tr>';
+    userList.innerHTML = '<tr><td colspan="7" class="admin-empty">Nobody has dashboard access yet.</td></tr>';
     return;
   }
   var canManageUsers = canEdit('users');
@@ -1129,6 +1232,8 @@ function renderUsers() {
         + '<div class="admin-status-note">' + escapeHtml(user.email || 'Unknown') + '</div>'
         + '<div class="admin-status-note admin-status-note--' + escapeHtml(status.tone) + '">' + escapeHtml(status.label) + '</div>'
       + '</td>'
+      + '<td><div class="admin-department-pill admin-department-pill--' + escapeHtml(user.department || 'unassigned') + '">'
+        + escapeHtml(departmentName(user.department)) + '</div></td>'
       + '<td><div class="' + roleClass + '">' + escapeHtml(roleDisplayName(user.role)) + '</div></td>'
       + '<td>'
         + (manager
@@ -1165,10 +1270,25 @@ function accessDraftFor(user) {
     firstName: user.firstName || '',
     lastName: user.lastName || '',
     role: user.role || 'viewer',
+    department: user.department === 'operations' || user.department === 'coffee-team' ? user.department : '',
+    myTeamDepartments: {
+      operations: !(user.hiddenMyTeamDepartments && user.hiddenMyTeamDepartments.operations === true),
+      'coffee-team': !(user.hiddenMyTeamDepartments && user.hiddenMyTeamDepartments['coffee-team'] === true)
+    },
     managerUid: user.managerUid || '',
     opsArea: user.opsArea || '',
     myActivity: user.myActivity === true
   };
+}
+
+function hiddenMyTeamDepartmentsForDraft(draft) {
+  var hidden = {};
+  DEPARTMENTS.forEach(function(department) {
+    if (!draft.myTeamDepartments || draft.myTeamDepartments[department.id] !== true) {
+      hidden[department.id] = true;
+    }
+  });
+  return Object.keys(hidden).length ? hidden : null;
 }
 
 function renderAccessReadout() {
@@ -1202,6 +1322,7 @@ function openAccessModal(uid) {
   var isCurrent = currentUserId() === uid;
   var editable = canEdit('users') && !isCurrent;
 
+  markDraftDirty('access', false);
   state.accessUserUid = uid;
   state.accessDraft = accessDraftFor(user);
   clearMessage(userAccessMsg);
@@ -1221,6 +1342,18 @@ function openAccessModal(uid) {
   if (userAccessRole) {
     userAccessRole.innerHTML = roleOptionsHtml(state.accessDraft.role);
     userAccessRole.disabled = !editable;
+  }
+  if (userAccessDepartment) {
+    userAccessDepartment.innerHTML = departmentOptionsHtml(state.accessDraft.department, false);
+    userAccessDepartment.disabled = !canEdit('users');
+  }
+  if (userAccessDepartmentOperations) {
+    userAccessDepartmentOperations.checked = state.accessDraft.myTeamDepartments.operations;
+    userAccessDepartmentOperations.disabled = !canEdit('users');
+  }
+  if (userAccessDepartmentCoffeeTeam) {
+    userAccessDepartmentCoffeeTeam.checked = state.accessDraft.myTeamDepartments['coffee-team'];
+    userAccessDepartmentCoffeeTeam.disabled = !canEdit('users');
   }
   if (userAccessManager) {
     userAccessManager.innerHTML = managerOptionsHtml(uid, state.accessDraft.managerUid);
@@ -1252,12 +1385,32 @@ function openAccessModal(uid) {
 
   renderAccessReadout();
   userAccessModal.style.display = 'flex';
+  window.requestAnimationFrame(function() {
+    var firstControl = userAccessFirstName && !userAccessFirstName.disabled
+      ? userAccessFirstName
+      : userAccessClose;
+    if (firstControl) firstControl.focus();
+  });
 }
 
 function closeAccessModal() {
+  markDraftDirty('access', false);
   state.accessUserUid = null;
   state.accessDraft = null;
   if (userAccessModal) userAccessModal.style.display = 'none';
+}
+
+async function requestCloseAccessModal() {
+  if (!dirtyDrafts.has('access')) {
+    closeAccessModal();
+    return;
+  }
+  var choice = await promptUnsavedChanges('Save these access settings before closing?');
+  if (choice === 'save') {
+    if (userAccessSave) userAccessSave.click();
+  } else if (choice === 'discard') {
+    closeAccessModal();
+  }
 }
 
 // ── Role editor ──
@@ -1361,6 +1514,7 @@ function syncAccessGridPair(changed) {
 function openRoleEditor(roleId) {
   if (!roleEditorModal) return;
   var role = roleId ? state.roles[roleId] : null;
+  markDraftDirty('role', false);
   state.editingRoleId = role ? roleId : null;
   clearMessage(roleEditorMsg);
 
@@ -1384,9 +1538,23 @@ function openRoleEditor(roleId) {
 }
 
 function closeRoleEditor() {
+  markDraftDirty('role', false);
   state.editingRoleId = null;
   if (roleEditorModal) roleEditorModal.style.display = 'none';
   clearMessage(roleEditorMsg);
+}
+
+async function requestCloseRoleEditor() {
+  if (!dirtyDrafts.has('role')) {
+    closeRoleEditor();
+    return;
+  }
+  var choice = await promptUnsavedChanges('Save this role before closing the editor?');
+  if (choice === 'save') {
+    if (roleForm) roleForm.requestSubmit();
+  } else if (choice === 'discard') {
+    closeRoleEditor();
+  }
 }
 
 function renderRoles() {
@@ -1990,11 +2158,27 @@ function openCqvConfirmModal(record, warnings, file) {
     cqvConfirmWarning.style.display = 'none';
   }
   cqvConfirmModal.style.display = 'flex';
+  window.requestAnimationFrame(function() {
+    if (cqvConfirmBakery) cqvConfirmBakery.focus();
+  });
 }
 
 function closeCqvConfirmModal() {
   cqvConfirmModal.style.display = 'none';
   state.cqvPending = null;
+}
+
+async function requestCloseCqvConfirmModal() {
+  if (!state.cqvPending) {
+    closeCqvConfirmModal();
+    return;
+  }
+  var choice = await promptUnsavedChanges('Save this parsed visit report before closing?');
+  if (choice === 'save') {
+    saveCqvRecord();
+  } else if (choice === 'discard') {
+    closeCqvConfirmModal();
+  }
 }
 
 async function handleCqvFile(file) {
@@ -2588,16 +2772,35 @@ function visitForAttributionEdit(visit) {
 function openVisitDetail(id) {
   var visit = state.visits.find(function(v) { return v.id === id; });
   if (!visit) return;
+  markDraftDirty('visit', false);
   state.visitDetailId = id;
   visitDetailBody.innerHTML = buildVisitDetailHtml(visitForAttributionEdit(visit));
   if (window.GAILS.MentionField) window.GAILS.MentionField.enhanceAll(visitDetailBody);
   visitDetailModal.style.display = 'flex';
+  window.requestAnimationFrame(function() {
+    if (visitDetailClose) visitDetailClose.focus();
+  });
 }
 
 function closeVisitDetail() {
+  markDraftDirty('visit', false);
   visitDetailModal.style.display = 'none';
   visitDetailBody.innerHTML = '';
   state.visitDetailId = null;
+}
+
+async function requestCloseVisitDetail() {
+  if (!dirtyDrafts.has('visit')) {
+    closeVisitDetail();
+    return;
+  }
+  var choice = await promptUnsavedChanges('Save the changes to this visit before closing?');
+  if (choice === 'save') {
+    var saveButton = visitDetailBody.querySelector('[data-action="save-visit-detail"]');
+    if (saveButton) saveButton.click();
+  } else if (choice === 'discard') {
+    closeVisitDetail();
+  }
 }
 
 function collectVisitFormValues() {
@@ -2706,21 +2909,15 @@ function openDeleteConfirmModal(promptText) {
     deleteConfirmPromptText.textContent = promptText;
     deleteConfirmInput.value = '';
     deleteConfirmSubmitBtn.disabled = true;
-    deleteConfirmSubmitBtn.textContent = 'Delete';
-    deleteConfirmSubmitBtn.style.cursor = 'not-allowed';
-    deleteConfirmSubmitBtn.style.opacity = '0.5';
+    deleteConfirmSubmitBtn.textContent = 'Delete visit';
     deleteConfirmModal.style.display = 'flex';
+    window.requestAnimationFrame(function() {
+      deleteConfirmInput.focus();
+    });
     
     function onInput() {
       var matches = deleteConfirmInput.value.trim().toLowerCase() === 'delete record';
       deleteConfirmSubmitBtn.disabled = !matches;
-      if (matches) {
-        deleteConfirmSubmitBtn.style.cursor = 'pointer';
-        deleteConfirmSubmitBtn.style.opacity = '1';
-      } else {
-        deleteConfirmSubmitBtn.style.cursor = 'not-allowed';
-        deleteConfirmSubmitBtn.style.opacity = '0.5';
-      }
     }
     
     async function onSubmit() {
@@ -2733,6 +2930,7 @@ function openDeleteConfirmModal(promptText) {
     
     function onCancel() {
       cleanup();
+      deleteConfirmModal.style.display = 'none';
       resolve(false);
     }
     
@@ -2794,13 +2992,51 @@ function renderPortal() {
 // ── Navigation ──
 function switchPanel(panelName) {
   state.activePanel = panelName;
+  var activeButton = null;
   Array.from(nav.querySelectorAll('[data-admin-panel]')).forEach(function(btn) {
-    btn.classList.toggle('active', btn.dataset.adminPanel === panelName);
+    var isActive = btn.dataset.adminPanel === panelName;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-current', isActive ? 'page' : 'false');
+    if (isActive) activeButton = btn;
   });
   panels.forEach(function(panel) {
-    panel.classList.toggle('active', panel.dataset.adminPanelContent === panelName);
+    var isActive = panel.dataset.adminPanelContent === panelName;
+    panel.classList.toggle('active', isActive);
+    panel.setAttribute('aria-hidden', String(!isActive));
   });
+  if (activeButton) {
+    var eyebrow = activeButton.querySelector('.admin-pg-nav__eyebrow');
+    var title = activeButton.querySelector('.admin-pg-nav__content strong');
+    var description = activeButton.querySelector('.admin-pg-nav__meta');
+    if (panelEyebrow) panelEyebrow.textContent = eyebrow ? eyebrow.textContent.trim() : 'Admin';
+    if (panelTitle) panelTitle.textContent = title ? title.textContent.trim() : 'Admin';
+    if (panelDescription) panelDescription.textContent = description ? description.textContent.trim() : '';
+    if (title) document.title = title.textContent.trim() + ' — GAIL’s Admin';
+  }
   if (panelName === 'overview') renderActivityLog();
+}
+
+async function resolveSiteChangesBeforeLeaving(message) {
+  if (!hasSiteChanges()) return true;
+  var choice = await promptUnsavedChanges(message || 'Save the site directory changes before continuing?');
+  if (choice === 'save') return saveSiteData();
+  if (choice === 'discard') {
+    discardSiteChanges();
+    return true;
+  }
+  return false;
+}
+
+async function navigateToAdminPanel(panelName) {
+  if (!panelName || panelName === state.activePanel) return true;
+  if (state.activePanel === 'sites') {
+    var canLeave = await resolveSiteChangesBeforeLeaving('Save the site directory changes before switching admin views?');
+    if (!canLeave) return false;
+  }
+  switchPanel(panelName);
+  window.history.replaceState(null, '', 'admin.html#' + panelName);
+  if (compactSidebarMedia.matches) setSidebarCollapsed(true);
+  return true;
 }
 
 // Users and Roles used to be two panels; they are now one. A bookmark or an
@@ -2899,13 +3135,16 @@ async function saveAccessModal() {
   if (firstName.length > 50 || lastName.length > 50) {
     throw new Error('First and last names must be 50 characters or fewer.');
   }
+  var hiddenMyTeamDepartments = hiddenMyTeamDepartmentsForDraft(draft);
 
   // The signed-in admin may safely update their own name, but their role and
   // reporting line remain locked to prevent an accidental lockout.
   if (uid === currentUserId()) {
     await update(ref(db, 'users/' + uid), {
       firstName: firstName,
-      lastName: lastName
+      lastName: lastName,
+      department: normalizeDepartment(draft.department) || null,
+      hiddenMyTeamDepartments: hiddenMyTeamDepartments
     });
     if (primaryAuth.currentUser) {
       await updateProfile(primaryAuth.currentUser, {
@@ -2927,6 +3166,8 @@ async function saveAccessModal() {
     firstName: firstName,
     lastName: lastName,
     role: draft.role,
+    department: normalizeDepartment(draft.department) || null,
+    hiddenMyTeamDepartments: hiddenMyTeamDepartments,
     opsArea: draft.opsArea,
     managerUid: draft.managerUid,
     myActivity: draft.myActivity === true
@@ -2965,6 +3206,7 @@ function publishDirectoryEntries(users) {
       email: email,
       managerUid: user.managerUid || '',
       roleId: user.role || 'viewer',
+      department: normalizeDepartment(user.department),
       opsArea: user.opsArea || ''
     };
   }).filter(function(person) { return !!person.name; });
@@ -2985,6 +3227,7 @@ function publishDirectoryEntries(users) {
       managerUid: person.managerUid,
       roleId: person.roleId,
       roleName: roleDisplayName(person.roleId),
+      department: person.department,
       opsArea: person.opsArea
     }).catch(function(error) {
       console.warn('Could not publish ' + person.name + ' to the team directory:', error);
@@ -3188,12 +3431,14 @@ function ensurePortalSync() {
             lastName: users[uid].lastName || '',
             email: users[uid].email || 'Unknown',
             role: users[uid].role || 'viewer',
+            department: normalizeDepartment(users[uid].department),
             opsArea: users[uid].opsArea || '',
             // The whole reporting hierarchy is derived from this one field.
             managerUid: users[uid].managerUid || '',
             // Absent means off: My Activity is opt-in, so a user who has never
             // been granted it does not have it.
             myActivity: users[uid].myActivity === true,
+            hiddenMyTeamDepartments: users[uid].hiddenMyTeamDepartments || null,
             invitation: users[uid].invitation || null
           };
         });
@@ -3356,6 +3601,27 @@ onAuthStateChanged(primaryAuth, async function(user) {
 });
 
 // ── Event listeners ──
+[unsavedChangesClose, unsavedChangesCancel].forEach(function(control) {
+  if (control) control.addEventListener('click', function() {
+    settleUnsavedChanges('cancel');
+  });
+});
+if (unsavedChangesDiscard) {
+  unsavedChangesDiscard.addEventListener('click', function() {
+    settleUnsavedChanges('discard');
+  });
+}
+if (unsavedChangesSave) {
+  unsavedChangesSave.addEventListener('click', function() {
+    settleUnsavedChanges('save');
+  });
+}
+if (unsavedChangesModal) {
+  unsavedChangesModal.addEventListener('click', function(event) {
+    if (event.target === unsavedChangesModal) settleUnsavedChanges('cancel');
+  });
+}
+
 if (profileMenuBtn && profileMenuPopover) {
   profileMenuBtn.addEventListener('click', function(event) {
     event.stopPropagation();
@@ -3375,8 +3641,20 @@ if (profileMenuBtn && profileMenuPopover) {
   });
 }
 
+Array.from(document.querySelectorAll('a[href]')).forEach(function(anchor) {
+  anchor.addEventListener('click', async function(event) {
+    if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if (!hasSiteChanges()) return;
+    event.preventDefault();
+    var canLeave = await resolveSiteChangesBeforeLeaving('Save the site directory changes before leaving Admin?');
+    if (canLeave) window.location.href = anchor.href;
+  });
+});
+
 signOutBtn.addEventListener('click', async function() {
   setProfileMenuOpen(false);
+  var canLeave = await resolveSiteChangesBeforeLeaving('Save the site directory changes before signing out?');
+  if (!canLeave) return;
   if (usersUnsubscribe) { usersUnsubscribe(); usersUnsubscribe = null; }
   if (visitsUnsubscribe) { visitsUnsubscribe(); visitsUnsubscribe = null; }
   if (rolesUnsubscribe) { rolesUnsubscribe(); rolesUnsubscribe = null; }
@@ -3430,28 +3708,32 @@ visitDetailBody.addEventListener('click', async function(e) {
   }
 });
 
+['input', 'change'].forEach(function(eventName) {
+  visitDetailBody.addEventListener(eventName, function(event) {
+    if (state.visitDetailId && event.target.matches('[data-field]')) {
+      markDraftDirty('visit', true);
+    }
+  });
+});
+
 if (visitDetailClose) {
-  visitDetailClose.addEventListener('click', closeVisitDetail);
+  visitDetailClose.addEventListener('click', requestCloseVisitDetail);
 }
 
 visitDetailModal.addEventListener('click', function(e) {
-  if (e.target === visitDetailModal) closeVisitDetail();
+  if (e.target === visitDetailModal) requestCloseVisitDetail();
 });
 
-nav.addEventListener('click', function(e) {
+nav.addEventListener('click', async function(e) {
   var btn = e.target.closest('[data-admin-panel]');
   if (!btn) return;
-  switchPanel(btn.dataset.adminPanel);
-  window.history.replaceState(null, '', 'admin.html#' + btn.dataset.adminPanel);
-  if (compactSidebarMedia.matches) setSidebarCollapsed(true);
+  await navigateToAdminPanel(btn.dataset.adminPanel);
 });
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', async function(e) {
   var link = e.target.closest('[data-admin-panel-target]');
   if (!link) return;
-  switchPanel(link.dataset.adminPanelTarget);
-  window.history.replaceState(null, '', 'admin.html#' + link.dataset.adminPanelTarget);
-  if (compactSidebarMedia.matches) setSidebarCollapsed(true);
+  await navigateToAdminPanel(link.dataset.adminPanelTarget);
 });
 
 if (sidebarToggleBtn) {
@@ -3469,6 +3751,7 @@ if (compactSidebarMedia && typeof compactSidebarMedia.addEventListener === 'func
 // ── Invite modal ──
 function openInviteModal() {
   if (!inviteUserModal || !canEdit('users')) return;
+  markDraftDirty('invite', false);
   clearMessage(inviteMsg);
   createUserForm.reset();
   populateRoleSelects();
@@ -3478,7 +3761,21 @@ function openInviteModal() {
 }
 
 function closeInviteModal() {
+  markDraftDirty('invite', false);
   if (inviteUserModal) inviteUserModal.style.display = 'none';
+}
+
+async function requestCloseInviteModal() {
+  if (!dirtyDrafts.has('invite')) {
+    closeInviteModal();
+    return;
+  }
+  var choice = await promptUnsavedChanges('Send this invitation before closing?');
+  if (choice === 'save') {
+    if (createUserForm) createUserForm.requestSubmit();
+  } else if (choice === 'discard') {
+    closeInviteModal();
+  }
 }
 
 // The same read-out the access modal shows, so what an invitation grants is
@@ -3487,8 +3784,10 @@ function renderInviteSummary() {
   if (!inviteSummary) return;
   var perms = permissionsForRole(roleSelect ? roleSelect.value : 'viewer');
   var manager = newManagerSelect && newManagerSelect.value ? managerLabel(newManagerSelect.value) : '';
+  var department = normalizeDepartment(newDepartmentSelect ? newDepartmentSelect.value : '');
   var parts = ['They will see ' + describeVisibility(perms).toLowerCase() + '.'];
   parts.push('They can edit: ' + describeEditing(perms).toLowerCase() + '.');
+  if (department) parts.push('Department: ' + departmentName(department) + '.');
   if (manager) parts.push('Their work will appear on ' + manager + '’s My Team.');
   inviteSummary.textContent = parts.join(' ');
 }
@@ -3506,9 +3805,11 @@ createUserForm.addEventListener('submit', async function(e) {
     var lastName = newLastNameInput.value.trim();
     var email = newEmailInput.value.trim();
     var role  = roleSelect.value;
+    var department = normalizeDepartment(newDepartmentSelect ? newDepartmentSelect.value : '');
     var managerUid = newManagerSelect ? newManagerSelect.value : '';
     var opsArea = newOpsSelect ? newOpsSelect.value : '';
     if (!firstName || !lastName) throw new Error('Enter their first and last name.');
+    if (!department) throw new Error('Choose Operations or Coffee Team.');
     var pass = createInvitationPassword();
     var cred  = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
     var uid   = cred.user.uid;
@@ -3518,6 +3819,7 @@ createUserForm.addEventListener('submit', async function(e) {
       lastName: lastName,
       email: email,
       role: role,
+      department: department,
       managerUid: managerUid,
       opsArea: opsArea,
       invitation: {
@@ -3556,6 +3858,7 @@ createUserForm.addEventListener('submit', async function(e) {
     }
 
     createUserForm.reset();
+    markDraftDirty('invite', false);
     populateRoleSelects();
 
     if (emailSent) {
@@ -3608,6 +3911,19 @@ if (userAccessRole) {
     renderAccessReadout();
   });
 }
+if (userAccessDepartment) {
+  userAccessDepartment.addEventListener('change', function() {
+    if (!state.accessDraft) return;
+    state.accessDraft.department = normalizeDepartment(userAccessDepartment.value);
+  });
+}
+[userAccessDepartmentOperations, userAccessDepartmentCoffeeTeam].forEach(function(checkbox) {
+  if (!checkbox) return;
+  checkbox.addEventListener('change', function() {
+    if (!state.accessDraft) return;
+    state.accessDraft.myTeamDepartments[checkbox.value] = checkbox.checked;
+  });
+});
 if (userAccessManager) {
   userAccessManager.addEventListener('change', function() {
     if (!state.accessDraft) return;
@@ -3726,25 +4042,40 @@ if (userAccessResetPw) {
 }
 
 [userAccessClose, userAccessCancel].forEach(function(control) {
-  if (control) control.addEventListener('click', closeAccessModal);
+  if (control) control.addEventListener('click', requestCloseAccessModal);
 });
 if (userAccessModal) {
+  ['input', 'change'].forEach(function(eventName) {
+    userAccessModal.addEventListener(eventName, function(event) {
+      if (!state.accessDraft || !event.target.matches('input, select, textarea')) return;
+      if (event.target === userAccessMyActivity && state.accessUserUid === currentUserId()) return;
+      markDraftDirty('access', true);
+    });
+  });
   userAccessModal.addEventListener('click', function(event) {
-    if (event.target === userAccessModal) closeAccessModal();
+    if (event.target === userAccessModal) requestCloseAccessModal();
   });
 }
 
 // ── Invite modal ──
 if (inviteUserBtn) inviteUserBtn.addEventListener('click', openInviteModal);
 [inviteUserClose, inviteUserCancel].forEach(function(control) {
-  if (control) control.addEventListener('click', closeInviteModal);
+  if (control) control.addEventListener('click', requestCloseInviteModal);
 });
 if (inviteUserModal) {
   inviteUserModal.addEventListener('click', function(event) {
-    if (event.target === inviteUserModal) closeInviteModal();
+    if (event.target === inviteUserModal) requestCloseInviteModal();
   });
 }
-[roleSelect, newManagerSelect, newOpsSelect].forEach(function(select) {
+[createUserForm].forEach(function(form) {
+  if (!form) return;
+  ['input', 'change'].forEach(function(eventName) {
+    form.addEventListener(eventName, function() {
+      markDraftDirty('invite', true);
+    });
+  });
+});
+[roleSelect, newDepartmentSelect, newManagerSelect, newOpsSelect].forEach(function(select) {
   if (select) select.addEventListener('change', renderInviteSummary);
 });
 
@@ -3777,6 +4108,11 @@ if (roleForm) {
     clearMessage(roleEditorMsg);
     saveRoleFromForm();
   });
+  ['input', 'change'].forEach(function(eventName) {
+    roleForm.addEventListener(eventName, function() {
+      markDraftDirty('role', true);
+    });
+  });
 }
 
 if (roleAccessGrid) {
@@ -3788,11 +4124,11 @@ if (roleAccessGrid) {
 
 if (newRoleBtn) newRoleBtn.addEventListener('click', function() { openRoleEditor(null); });
 [roleEditorClose, roleEditorCancel].forEach(function(control) {
-  if (control) control.addEventListener('click', closeRoleEditor);
+  if (control) control.addEventListener('click', requestCloseRoleEditor);
 });
 if (roleEditorModal) {
   roleEditorModal.addEventListener('click', function(event) {
-    if (event.target === roleEditorModal) closeRoleEditor();
+    if (event.target === roleEditorModal) requestCloseRoleEditor();
   });
 }
 
@@ -3816,12 +4152,16 @@ if (roleList) {
   });
 }
 
-// One Escape handler for all three access dialogs, closing only the open one.
+// Escape closes the topmost admin dialog without affecting anything beneath it.
 document.addEventListener('keydown', function(event) {
   if (event.key !== 'Escape') return;
-  if (userAccessModal && userAccessModal.style.display === 'flex') closeAccessModal();
-  else if (roleEditorModal && roleEditorModal.style.display === 'flex') closeRoleEditor();
-  else if (inviteUserModal && inviteUserModal.style.display === 'flex') closeInviteModal();
+  if (unsavedChangesModal && unsavedChangesModal.style.display === 'flex') settleUnsavedChanges('cancel');
+  else if (deleteConfirmModal && deleteConfirmModal.style.display === 'flex') deleteConfirmCancel.click();
+  else if (cqvConfirmModal && cqvConfirmModal.style.display === 'flex') requestCloseCqvConfirmModal();
+  else if (visitDetailModal && visitDetailModal.style.display === 'flex') requestCloseVisitDetail();
+  else if (userAccessModal && userAccessModal.style.display === 'flex') requestCloseAccessModal();
+  else if (roleEditorModal && roleEditorModal.style.display === 'flex') requestCloseRoleEditor();
+  else if (inviteUserModal && inviteUserModal.style.display === 'flex') requestCloseInviteModal();
 });
 
 siteSearchInput.addEventListener('input', function(e) {
@@ -3829,14 +4169,16 @@ siteSearchInput.addEventListener('input', function(e) {
   renderSites();
 });
 
-siteForm.addEventListener('submit', function(e) {
-  e.preventDefault();
+function stageSiteEntry() {
   var name   = siteNameInput.value.trim();
   var region = siteRegionInput.value.trim();
   var ops    = siteOpsInput.value.trim();
+  if (!name && !region && !ops) return true;
   if (!name || !region || !ops) {
     setMessage(siteMsg, 'error', 'Enter a bakery name, region, and ops area to add a site.');
-    return;
+    var missingInput = !name ? siteNameInput : (!region ? siteRegionInput : siteOpsInput);
+    if (missingInput) missingInput.focus();
+    return false;
   }
   state.siteMetaDraft[name] = { r: region, o: ops };
   siteNameInput.value  = '';
@@ -3845,7 +4187,14 @@ siteForm.addEventListener('submit', function(e) {
   setDirty(true);
   setMessage(siteMsg, 'success', 'Added ' + name + ' to the site directory.');
   renderPortal();
+  return true;
+}
+
+siteForm.addEventListener('submit', function(e) {
+  e.preventDefault();
+  stageSiteEntry();
 });
+siteForm.addEventListener('input', updateSiteSaveControls);
 
 siteList.addEventListener('input', function(e) {
   var input = e.target;
@@ -3948,7 +4297,9 @@ if (opsAreaAssignmentList) {
   });
 }
 
-saveSitesBtn.addEventListener('click', async function() {
+async function saveSiteData() {
+  if (!stageSiteEntry()) return false;
+  if (!state.siteMetaDirty) return true;
   saveSitesBtn.disabled = true;
   setMessage(siteMsg, 'info', 'Saving site data to Firebase…');
   try {
@@ -3986,21 +4337,34 @@ saveSitesBtn.addEventListener('click', async function() {
     setDirty(false);
     setMessage(siteMsg, 'success', 'Site directory saved for all dashboard users.');
     renderPortal();
+    return true;
   } catch (err) {
     setMessage(siteMsg, 'error', 'Error: ' + err.message);
+    return false;
   } finally {
     saveSitesBtn.disabled = false;
   }
-});
+}
 
-resetSitesBtn.addEventListener('click', function() {
+function discardSiteChanges() {
   state.siteMetaDraft = cloneMeta(state.siteMetaSource);
   state.regionAssignmentsDraft = cloneMeta(state.regionAssignmentsSource);
   state.opsAreaAssignmentsDraft = cloneMeta(state.opsAreaAssignmentsSource);
   state.siteImportInfo = state.siteMetaSourceInfo ? cloneMeta(state.siteMetaSourceInfo) : null;
+  siteNameInput.value = '';
+  siteRegionInput.value = '';
+  siteOpsInput.value = '';
   setDirty(false);
   clearMessage(siteMsg);
   renderPortal();
+}
+
+saveSitesBtn.addEventListener('click', function() {
+  saveSiteData();
+});
+
+resetSitesBtn.addEventListener('click', function() {
+  discardSiteChanges();
 });
 
 if (siteImportBrowseBtn) {
@@ -4097,8 +4461,9 @@ if (datasetImportZone) {
   });
 }
 
-portalUploadBtn.addEventListener('click', function() {
-  window.location.href = 'index.html';
+portalUploadBtn.addEventListener('click', async function() {
+  var canLeave = await resolveSiteChangesBeforeLeaving('Save the site directory changes before returning to the dashboard?');
+  if (canLeave) window.location.href = 'index.html';
 });
 
 clearDatasetBtn.addEventListener('click', async function() {
@@ -4214,11 +4579,11 @@ if (cqvImportZone) {
   });
 }
 
-if (cqvConfirmClose) cqvConfirmClose.addEventListener('click', closeCqvConfirmModal);
-if (cqvConfirmCancel) cqvConfirmCancel.addEventListener('click', closeCqvConfirmModal);
+if (cqvConfirmClose) cqvConfirmClose.addEventListener('click', requestCloseCqvConfirmModal);
+if (cqvConfirmCancel) cqvConfirmCancel.addEventListener('click', requestCloseCqvConfirmModal);
 if (cqvConfirmModal) {
   cqvConfirmModal.addEventListener('click', function(e) {
-    if (e.target === cqvConfirmModal) closeCqvConfirmModal();
+    if (e.target === cqvConfirmModal) requestCloseCqvConfirmModal();
   });
 }
 if (cqvConfirmSubmitBtn) cqvConfirmSubmitBtn.addEventListener('click', saveCqvRecord);

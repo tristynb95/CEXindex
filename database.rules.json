@@ -19,7 +19,13 @@
       ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('roles').child(root.child('users').child(auth.uid).child('role').val()).child('permissions').child('admin').child('users').val() === 'view' || root.child('roles').child(root.child('users').child(auth.uid).child('role').val()).child('permissions').child('admin').child('users').val() === 'edit')",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (auth.uid === $uid && data.exists() && newData.exists() && newData.child('role').val() === data.child('role').val() && newData.child('myActivity').val() === data.child('myActivity').val() && newData.child('managerUid').val() === data.child('managerUid').val()) || (root.child('roles').child(root.child('users').child(auth.uid).child('role').val()).child('permissions').child('admin').child('users').val() === 'edit' && newData.child('role').val() !== 'admin' && data.child('role').val() !== 'admin'))"
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (auth.uid === $uid && data.exists() && newData.exists() && newData.child('role').val() === data.child('role').val() && newData.child('department').val() === data.child('department').val() && newData.child('myActivity').val() === data.child('myActivity').val() && newData.child('managerUid').val() === data.child('managerUid').val()) || (root.child('roles').child(root.child('users').child(auth.uid).child('role').val()).child('permissions').child('admin').child('users').val() === 'edit' && newData.child('role').val() !== 'admin' && data.child('role').val() !== 'admin'))",
+        ".validate": "!newData.exists() || !newData.child('department').exists() || newData.child('department').val() === 'operations' || newData.child('department').val() === 'coffee-team'",
+        "hiddenMyTeamDepartments": {
+          "$department": {
+            ".validate": "($department === 'operations' || $department === 'coffee-team') && newData.val() === true"
+          }
+        }
       }
     },
 

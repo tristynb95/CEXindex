@@ -95,6 +95,8 @@ let actionsStatus = 'open';
 let timelineKind = 'all';
 let timelineLimit = TIMELINE_CHUNK;
 let visitLimit = VISIT_CHUNK;
+let timelineResultCount = 0;
+let visitResultCount = 0;
 let visitOptionsSignature = '';
 let actionOptionsSignature = '';
 let pendingVisitExport = null;
@@ -993,6 +995,7 @@ function renderVisits() {
   syncVisitFilterOptions();
 
   var visits = filteredVisits();
+  visitResultCount = visits.length;
   var filters = readVisitFilters();
   syncVisitResetState(filters);
 
@@ -1016,7 +1019,10 @@ function renderVisits() {
     visitsListEl.innerHTML = emptyStateHtml('&#128196;', dataReady.visits
       ? 'No visits match these filters. Widen the date range or clear the search.'
       : 'Loading your visits…');
-    if (visitsMoreBtn) visitsMoreBtn.hidden = true;
+    if (visitsMoreBtn) {
+      visitsMoreBtn.hidden = true;
+      visitsMoreBtn.disabled = true;
+    }
     return;
   }
 
@@ -1029,8 +1035,10 @@ function renderVisits() {
     shown.map(visitRowHtml).join('');
 
   if (visitsMoreBtn) {
-    visitsMoreBtn.hidden = visits.length <= visitLimit;
-    visitsMoreBtn.textContent = 'Show more (' + (visits.length - shown.length) + ' left)';
+    var remaining = Math.max(0, visits.length - shown.length);
+    visitsMoreBtn.hidden = remaining === 0;
+    visitsMoreBtn.disabled = remaining === 0;
+    visitsMoreBtn.textContent = 'Show more (' + remaining + ' left)';
   }
 
   // Cached so the export always mirrors exactly what the filters produced,
@@ -1506,13 +1514,17 @@ function renderTimeline() {
       : '';
   }
 
+  timelineResultCount = events.length;
   if (!events.length) {
     timelineList.innerHTML = emptyStateHtml('&#128340;', anyDataReady()
       ? (search
         ? 'No activity matches that search. Try a bakery, action, or visit type.'
         : 'Nothing recorded here yet. Log a visit, add a note, or raise a follow-up and it will appear.')
       : 'Loading your activity…');
-    if (timelineMoreBtn) timelineMoreBtn.hidden = true;
+    if (timelineMoreBtn) {
+      timelineMoreBtn.hidden = true;
+      timelineMoreBtn.disabled = true;
+    }
     return;
   }
 
@@ -1537,8 +1549,9 @@ function renderTimeline() {
   timelineList.innerHTML = html;
 
   if (timelineMoreBtn) {
-    var remaining = events.length - visible.length;
-    timelineMoreBtn.hidden = remaining <= 0;
+    var remaining = Math.max(0, events.length - visible.length);
+    timelineMoreBtn.hidden = remaining === 0;
+    timelineMoreBtn.disabled = remaining === 0;
     timelineMoreBtn.textContent = 'Show more (' + remaining + ' remaining)';
   }
 }
@@ -1816,7 +1829,8 @@ if (timelineFilter) {
 
 if (timelineMoreBtn) {
   timelineMoreBtn.addEventListener('click', function () {
-    timelineLimit += TIMELINE_CHUNK;
+    if (timelineMoreBtn.disabled || timelineLimit >= timelineResultCount) return;
+    timelineLimit = Math.min(timelineResultCount, timelineLimit + TIMELINE_CHUNK);
     renderTimeline();
   });
 }
@@ -1879,7 +1893,8 @@ if (visitsReset) {
 
 if (visitsMoreBtn) {
   visitsMoreBtn.addEventListener('click', function () {
-    visitLimit += VISIT_CHUNK;
+    if (visitsMoreBtn.disabled || visitLimit >= visitResultCount) return;
+    visitLimit = Math.min(visitResultCount, visitLimit + VISIT_CHUNK);
     renderVisits();
   });
 }

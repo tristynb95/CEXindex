@@ -22,9 +22,10 @@
     }
   </script>
   <link rel="stylesheet" href="css/styles.css?v=20260725-ux-04">
+  <link rel="stylesheet" href="css/admin.css?v=20260727-admin-06">
 </head>
 
-<body>
+<body class="admin-body">
   <!-- ANIMATED BACKGROUND -->
   <div class="glass-bg">
     <div class="glass-bg-blob blob1"></div>
@@ -36,7 +37,7 @@
   <div id="authGuard" class="admin-page-guard">
     <div class="auth-loading-content">
       <img class="auth-loading__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
-      <p class="auth-loading__text">Verifying admin access <span class="auth-small-spinner"></span></p>
+      <p class="auth-loading__text">Verifying Admin Access... <span class="auth-small-spinner"></span></p>
     </div>
   </div>
 
@@ -106,23 +107,16 @@
 
         </div>
 
-        <div class="admin-portal__hero-card">
-          <div class="admin-portal__hero-label">Live Summary</div>
-          <div id="adminHeroSummary" class="admin-portal__hero-value">Loading&hellip;</div>
-          <div id="adminHeroMeta" class="admin-portal__hero-meta">Checking Firebase workspace status</div>
-        </div>
-
-        <div class="admin-portal__summary" id="adminSummaryCards"></div>
-
-        <div class="login-card__highlights admin-stage__highlights">
-          <div class="login-card__highlight">
-            <span class="login-card__highlight-label">Focus</span>
-            <strong>Choose a panel, make updates, and publish changes back to the shared portal.</strong>
+        <div class="admin-command-strip" aria-label="Workspace status">
+          <div class="admin-portal__hero-card">
+            <span class="admin-live-indicator" aria-hidden="true"></span>
+            <div>
+              <div class="admin-portal__hero-label">Live workspace</div>
+              <div id="adminHeroSummary" class="admin-portal__hero-value">Loading&hellip;</div>
+              <div id="adminHeroMeta" class="admin-portal__hero-meta">Checking Firebase workspace status</div>
+            </div>
           </div>
-          <div class="login-card__highlight">
-            <span class="login-card__highlight-label">Guardrails</span>
-            <strong>Role changes, site mappings, and dataset actions stay grouped inside one secure admin flow.</strong>
-          </div>
+          <div class="admin-portal__summary" id="adminSummaryCards"></div>
         </div>
 
         <div id="adminWorkspaceShell" class="admin-workspace__shell" data-sidebar-collapsed="false">
@@ -130,9 +124,9 @@
               <div class="admin-workspace__sidebar-head">
                 <div class="admin-workspace__sidebar-top">
                   <div>
-                    <p class="admin-workspace__sidebar-label">Menu</p>
-                    <h3 class="admin-workspace__sidebar-title">Admin panels</h3>
-                    <p class="admin-workspace__sidebar-copy">Collapse the side menu when you want more room for tables, forms, and dataset controls.</p>
+                    <p class="admin-workspace__sidebar-label">Workspace</p>
+                    <h3 class="admin-workspace__sidebar-title">Admin tools</h3>
+                    <p class="admin-workspace__sidebar-copy">Choose a task area.</p>
                   </div>
                   <button
                     type="button"
@@ -223,17 +217,17 @@
               </nav>
 
               <div class="admin-workspace__sidebar-note">
-                <p class="admin-workspace__sidebar-note-label">Quick view</p>
-                <strong>Everything from the old split layout now lives inside this single admin workspace.</strong>
+                <p class="admin-workspace__sidebar-note-label">Tip</p>
+                <strong>Collapse the menu to give wide tables more room.</strong>
               </div>
             </aside>
 
             <div class="admin-workspace__main">
               <div class="admin-workspace__banner">
                 <div>
-                  <p class="admin-workspace__banner-label">Control Centre</p>
-                  <h3>Use the collapsible side menu to move between admin tasks.</h3>
-                  <p>Jump between access, site ownership, and dataset panels without leaving the workspace card.</p>
+                  <p class="admin-workspace__banner-label" id="adminPanelEyebrow">Monitor</p>
+                  <h3 id="adminPanelTitle">Overview</h3>
+                  <p id="adminPanelDescription">Workspace health, recent activity, and common admin tasks.</p>
                 </div>
               </div>
 
@@ -314,7 +308,7 @@
                 <div class="admin-section__header">
                   <div>
                     <h3>People</h3>
-                    <p>Everyone with dashboard access. Each row shows what that person can see, what they can change, and who they report to &mdash; open <strong>Manage</strong> to change any of it in one place.</p>
+                    <p>Everyone with dashboard access, organised into Operations and Coffee Team. Each row shows what that person can see, what they can change, and who they report to &mdash; open <strong>Manage</strong> to change any of it in one place.</p>
                   </div>
                   <div class="admin-section__header-actions">
                     <button type="button" id="inviteUserBtn" class="btn">&#43; Invite person</button>
@@ -327,6 +321,7 @@
                     <thead>
                       <tr>
                         <th>Person</th>
+                        <th>Department</th>
                         <th>Role</th>
                         <th>Reports to</th>
                         <th>Can see</th>
@@ -594,7 +589,7 @@
                 </section>
 
                 <div id="visitDetailModal" class="modal-overlay" style="display:none;">
-                  <div class="visit-detail-panel">
+                  <div class="visit-detail-panel" role="dialog" aria-modal="true" aria-label="Visit details">
                     <button type="button" id="visitDetailClose" class="modal-close-btn modal-close-btn--absolute"
                       aria-label="Close visit detail" title="Close">&#10005;</button>
                     <div id="visitDetailBody" class="visit-detail-body"></div>
@@ -603,27 +598,28 @@
 
                 <!-- DELETE CONFIRMATION MODAL -->
                 <div id="deleteConfirmModal" class="modal-overlay" style="display:none;">
-                  <div class="visit-detail-panel" style="max-width: 460px; padding: 25px 28px;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 18px;">
+                  <div class="visit-detail-panel admin-dialog admin-dialog--compact" role="alertdialog" aria-modal="true" aria-labelledby="deleteConfirmTitle" aria-describedby="deleteConfirmPromptText">
+                    <div class="admin-dialog__head">
                       <div>
-                        <h3 style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Delete Visit Record</h3>
-                        <p style="font-size:0.86rem;color:var(--muted-l);margin:5px 0 0 0;">This action is permanent and cannot be undone.</p>
+                        <p class="admin-dialog__eyebrow admin-dialog__eyebrow--danger">Permanent action</p>
+                        <h3 id="deleteConfirmTitle">Delete visit record</h3>
+                        <p>This cannot be undone.</p>
                       </div>
                       <button type="button" id="deleteConfirmClose" class="modal-close-btn"
                         aria-label="Close delete confirmation" title="Close">&#10005;</button>
                     </div>
                     
-                    <div style="display: flex; flex-direction: column; gap: 15px;">
-                      <p id="deleteConfirmPromptText" style="font-size:0.92rem; line-height: 1.5; color: var(--text-2); margin: 0;"></p>
+                    <div class="admin-dialog__body">
+                      <p id="deleteConfirmPromptText" class="admin-dialog__prompt"></p>
                       
-                      <div style="display:flex; flex-direction:column; gap:6px;">
-                        <label for="deleteConfirmInput" style="font-size:0.72rem; font-weight:700; text-transform:uppercase; color:var(--muted-l); letter-spacing: 0.05em;">Type <strong style="color:var(--text); font-weight: 800;">delete record</strong> to confirm</label>
-                        <input type="text" id="deleteConfirmInput" autocomplete="off" placeholder="delete record" class="visit-log-input" style="width: 100%; border: 1px solid var(--card-border); border-radius: 8px; background: var(--bg); color: var(--text); padding: 8px 12px; font-size: 0.85rem;" />
+                      <div class="admin-form-field">
+                        <label for="deleteConfirmInput">Type <strong>delete record</strong> to confirm</label>
+                        <input type="text" id="deleteConfirmInput" autocomplete="off" placeholder="delete record" class="visit-log-input">
                       </div>
                       
-                      <div style="display:flex; gap:12px; margin-top: 10px; justify-content: flex-end;">
-                        <button type="button" id="deleteConfirmCancel" class="admin-inline-btn" style="padding: 8px 14px;">Cancel</button>
-                        <button type="button" id="deleteConfirmSubmitBtn" class="admin-inline-danger" disabled style="padding: 8px 16px; opacity: 0.5; cursor: not-allowed;">Delete</button>
+                      <div class="admin-dialog__actions">
+                        <button type="button" id="deleteConfirmCancel" class="admin-inline-btn">Cancel</button>
+                        <button type="button" id="deleteConfirmSubmitBtn" class="admin-inline-danger" disabled>Delete visit</button>
                       </div>
                     </div>
                   </div>
@@ -633,17 +629,18 @@
                      title and submit button are relabelled per report type in
                      js/admin-page.js) -->
                 <div id="cqvConfirmModal" class="modal-overlay" style="display:none;">
-                  <div class="visit-detail-panel" style="max-width: 480px; padding: 25px 28px;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 18px;">
+                  <div class="visit-detail-panel admin-dialog" role="dialog" aria-modal="true" aria-labelledby="cqvConfirmTitle">
+                    <div class="admin-dialog__head">
                       <div>
-                        <h3 id="cqvConfirmTitle" style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Confirm CQV Details</h3>
-                        <p style="font-size:0.86rem;color:var(--muted-l);margin:5px 0 0 0;">Parsed from the PDF &mdash; check these match before saving.</p>
+                        <p class="admin-dialog__eyebrow">Import review</p>
+                        <h3 id="cqvConfirmTitle">Confirm CQV details</h3>
+                        <p>Parsed from the PDF &mdash; check these match before saving.</p>
                       </div>
                       <button type="button" id="cqvConfirmClose" class="modal-close-btn"
                         aria-label="Close import confirmation" title="Close">&#10005;</button>
                     </div>
 
-                    <div style="display:flex; flex-direction:column; gap:14px;">
+                    <div class="admin-dialog__body">
                       <div id="cqvConfirmWarning" class="admin-message is-info" style="display:none;"></div>
                       <label class="admin-form-field">
                         <span>Bakery</span>
@@ -659,10 +656,10 @@
                           data-mention-field placeholder="Start typing a name">
                         <small class="mention-field-hint">Prefilled from the PDF. Type and select a Coffee Partner from the directory to override it.</small>
                       </label>
-                      <div id="cqvConfirmSummary" style="font-size:0.85rem; line-height:1.5; color:var(--text-2); background:rgba(34, 31, 26,0.02); border:1px solid var(--card-border); border-radius:10px; padding:12px 14px;"></div>
-                      <div style="display:flex; gap:12px; margin-top: 6px; justify-content: flex-end;">
-                        <button type="button" id="cqvConfirmCancel" class="admin-inline-btn" style="padding: 8px 14px;">Cancel</button>
-                        <button type="button" id="cqvConfirmSubmitBtn" class="btn" style="padding: 8px 16px;">Save CQV</button>
+                      <div id="cqvConfirmSummary" class="admin-dialog__summary"></div>
+                      <div class="admin-dialog__actions">
+                        <button type="button" id="cqvConfirmCancel" class="admin-inline-btn">Cancel</button>
+                        <button type="button" id="cqvConfirmSubmitBtn" class="btn">Save CQV</button>
                       </div>
                     </div>
                   </div>
@@ -701,6 +698,11 @@
                           <select id="userAccessRole"></select>
                           <small class="admin-form-field__hint">Decides what they can see and edit everywhere.</small>
                         </label>
+                        <label class="admin-form-field" for="userAccessDepartment">
+                          <span>Department</span>
+                          <select id="userAccessDepartment"></select>
+                          <small class="admin-form-field__hint">Organises them in the People admin card.</small>
+                        </label>
                         <label class="admin-form-field" for="userAccessManager">
                           <span>Reports to</span>
                           <select id="userAccessManager"></select>
@@ -727,6 +729,27 @@
                           <strong id="userAccessTeam">&mdash;</strong>
                         </div>
                       </div>
+
+                      <fieldset class="access-department-visibility" id="userAccessTeamDepartments">
+                        <legend>Departments visible in My Team</legend>
+                        <p>Choose which departments contribute people, visits, actions, charts, and totals to this person&rsquo;s My Team page.</p>
+                        <div class="access-department-visibility__options">
+                          <label class="access-department-option" for="userAccessDepartmentOperations">
+                            <input type="checkbox" id="userAccessDepartmentOperations" value="operations">
+                            <span>
+                              <strong>Operations</strong>
+                              <small>Include Operations people and their activity.</small>
+                            </span>
+                          </label>
+                          <label class="access-department-option" for="userAccessDepartmentCoffeeTeam">
+                            <input type="checkbox" id="userAccessDepartmentCoffeeTeam" value="coffee-team">
+                            <span>
+                              <strong>Coffee Team</strong>
+                              <small>Include Coffee Team people and their activity.</small>
+                            </span>
+                          </label>
+                        </div>
+                      </fieldset>
 
                       <label class="admin-toggle-row" for="userAccessMyActivity">
                         <input type="checkbox" id="userAccessMyActivity">
@@ -826,6 +849,10 @@
                           <span>Role</span>
                           <select id="newRoleSelect"></select>
                         </label>
+                        <label class="admin-form-field" for="newDepartmentSelect">
+                          <span>Department</span>
+                          <select id="newDepartmentSelect" required></select>
+                        </label>
                         <label class="admin-form-field" for="newManagerSelect">
                           <span>Reports to</span>
                           <select id="newManagerSelect"></select>
@@ -887,6 +914,31 @@
             </div>
         </div>
       </main>
+    </div>
+  </div>
+
+  <!-- Shared dirty-state decision dialog. It is intentionally outside the
+       workspace so it can sit above any admin panel or editor modal. -->
+  <div id="unsavedChangesModal" class="modal-overlay modal-overlay--decision" style="display:none;">
+    <div class="visit-detail-panel admin-dialog admin-dialog--compact" role="alertdialog" aria-modal="true"
+      aria-labelledby="unsavedChangesTitle" aria-describedby="unsavedChangesMessage">
+      <div class="admin-dialog__head">
+        <div>
+          <p class="admin-dialog__eyebrow">Unsaved changes</p>
+          <h3 id="unsavedChangesTitle">Save before leaving?</h3>
+          <p>Your latest edits have not been published yet.</p>
+        </div>
+        <button type="button" id="unsavedChangesClose" class="modal-close-btn"
+          aria-label="Close unsaved changes prompt" title="Close">&#10005;</button>
+      </div>
+      <div class="admin-dialog__body">
+        <p id="unsavedChangesMessage" class="admin-dialog__prompt">Would you like to save your changes before continuing?</p>
+        <div class="admin-dialog__actions admin-dialog__actions--three">
+          <button type="button" id="unsavedChangesCancel" class="admin-secondary-btn">Keep editing</button>
+          <button type="button" id="unsavedChangesDiscard" class="admin-inline-danger">Discard changes</button>
+          <button type="button" id="unsavedChangesSave" class="btn">Save changes</button>
+        </div>
+      </div>
     </div>
   </div>
 

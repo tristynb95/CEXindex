@@ -25,6 +25,19 @@ test('My Activity has bounded, searchable long-form sections', () => {
   assert.match(activityScript, /timelineSearch\.value\.trim\(\)\.toLowerCase\(\)/);
 });
 
+test('Show more pagers stop at the available results and stay hidden at the end', () => {
+  assert.match(sharedStyles, /\.visit-log-show-more\[hidden\]\s*\{\s*display: none;/);
+
+  assert.match(teamScript, /Math\.max\(0, visits\.length - visibleVisits\.length\)/);
+  assert.match(teamScript, /visitLimit = Math\.min\(visitResultCount, visitLimit \+ VISIT_CHUNK\)/);
+  assert.doesNotMatch(teamScript, /visits\.length - visitLimit/);
+
+  assert.match(activityScript, /Math\.max\(0, visits\.length - shown\.length\)/);
+  assert.match(activityScript, /visitLimit = Math\.min\(visitResultCount, visitLimit \+ VISIT_CHUNK\)/);
+  assert.match(activityScript, /Math\.max\(0, events\.length - visible\.length\)/);
+  assert.match(activityScript, /timelineLimit = Math\.min\(timelineResultCount, timelineLimit \+ TIMELINE_CHUNK\)/);
+});
+
 test('summary metrics and section navigation are actionable on both pages', () => {
   assert.match(activityScript, /href="#' \+ destinations\[index\]/);
   assert.match(teamScript, /href="#' \+ destinations\[index\]/);

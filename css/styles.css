@@ -13908,6 +13908,10 @@ body.visit-log-filter-open .mobile-bottom-nav {
   transition: all 0.2s ease;
 }
 
+.visit-log-show-more[hidden] {
+  display: none;
+}
+
 .visit-log-show-more:hover {
   color: var(--accent);
   border-color: var(--accent);
@@ -14214,7 +14218,9 @@ table.nps-splits-collapsed .nps-split-col {
 .admin-table--people th:nth-child(2),
 .admin-table--people td:nth-child(2),
 .admin-table--people th:nth-child(3),
-.admin-table--people td:nth-child(3) {
+.admin-table--people td:nth-child(3),
+.admin-table--people th:nth-child(4),
+.admin-table--people td:nth-child(4) {
   width: 150px;
 }
 
@@ -14225,6 +14231,32 @@ table.nps-splits-collapsed .nps-split-col {
 
 .admin-table__title--sm {
   font-size: 0.84rem;
+}
+
+.admin-department-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid rgba(47, 111, 107, 0.2);
+  border-radius: 999px;
+  background: rgba(47, 111, 107, 0.09);
+  color: #245e5a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-department-pill--coffee-team {
+  border-color: rgba(107, 79, 168, 0.22);
+  background: rgba(107, 79, 168, 0.1);
+  color: #5e438f;
+}
+
+.admin-department-pill--unassigned {
+  border-color: var(--card-border);
+  background: rgba(34, 31, 26, 0.04);
+  color: var(--muted-l);
 }
 
 .admin-status-note--self {
@@ -14367,6 +14399,79 @@ table.nps-splits-collapsed .nps-split-col {
   font-weight: 600;
   line-height: 1.45;
   color: var(--text);
+}
+
+.access-department-visibility {
+  margin: 0;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: rgba(34, 31, 26, 0.02);
+}
+
+.access-department-visibility legend {
+  padding: 0 5px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.access-department-visibility > p {
+  margin: 0 0 11px;
+  color: var(--muted-l);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.access-department-visibility__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.access-department-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--card);
+  cursor: pointer;
+}
+
+.access-department-option:has(input:checked) {
+  border-color: rgba(47, 111, 107, 0.34);
+  background: rgba(47, 111, 107, 0.07);
+}
+
+.access-department-option input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: #2f6f6b;
+}
+
+.access-department-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.access-department-option strong {
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.access-department-option small {
+  color: var(--muted-l);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 560px) {
+  .access-department-visibility__options {
+    grid-template-columns: 1fr;
+  }
 }
 
 .access-modal__note {
