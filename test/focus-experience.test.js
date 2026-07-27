@@ -41,7 +41,10 @@ test('uses Benchmark as the single user-facing performance lens', () => {
   assert.doesNotMatch(app, /globalIndexToggle|state\.indexType|state\.rankingsMetric|state\.targetMetric/);
   assert.doesNotMatch(html, /Peer Score Band|<th>Peer Score<\/th>|<th>Peer Band<\/th>/);
   assert.match(html, /id="bandFilterLabel">Benchmark Band<\/label>/);
-  assert.match(html, /<option value="ac">Benchmark Score<\/option>/);
+  // Benchmark is also the league table's default sort, so the option carries
+  // an explicit selected attribute rather than relying on document order.
+  assert.match(html, /<option value="ac" selected>Benchmark Score<\/option>/);
+  assert.doesNotMatch(html, /<option value="c">/);
 });
 
 test('uses a neutral label on the mobile filter button', () => {

@@ -1,6 +1,39 @@
 // ========== TABLES MODULE ==========
 window.GAILS = window.GAILS || {};
 
+// On tables that opt in with data-rank-follows-sort, the "Rank" and "Top %"
+// columns describe a bakery's position in the ordering that is on screen right
+// now, so they are numbered from the DOM after every sort — whether that sort
+// came from the "Sort by" dropdown or from clicking a column header. Rows
+// flagged data-rank-eligible="false" (no data / part-period) sit outside the
+// cohort and stay dashed.
+window.GAILS.renumberRankedTable = function (table) {
+  if (!table || table.dataset.rankFollowsSort !== 'true') return;
+  var tbody = table.querySelector('tbody');
+  if (!tbody) return;
+
+  var rankIdx = parseInt(table.dataset.rankCol || '0', 10);
+  var percentIdx = table.dataset.rankPercentCol ? parseInt(table.dataset.rankPercentCol, 10) : -1;
+  var rows = Array.from(tbody.querySelectorAll('tr'));
+  var cohortSize = rows.filter(function (row) { return row.dataset.rankEligible !== 'false'; }).length;
+  var position = 0;
+
+  rows.forEach(function (row) {
+    var eligible = row.dataset.rankEligible !== 'false';
+    if (eligible) position += 1;
+
+    var rankCell = row.cells[rankIdx];
+    if (rankCell) rankCell.innerHTML = eligible ? String(position) : '&mdash;';
+
+    var percentCell = percentIdx >= 0 ? row.cells[percentIdx] : null;
+    if (percentCell) {
+      percentCell.innerHTML = eligible && cohortSize
+        ? 'Top ' + Math.max(1, Math.ceil((position / cohortSize) * 100)) + '%'
+        : '&mdash;';
+    }
+  });
+};
+
 window.GAILS.makeSortable = function (container) {
   if (!container) return;
   var targets = container.tagName === 'TABLE' ? [container] : Array.from(container.querySelectorAll('table'));
@@ -60,6 +93,7 @@ window.GAILS.makeSortable = function (container) {
         return isAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
       });
       rows.forEach(function (r) { currentTbody.appendChild(r); });
+      window.GAILS.renumberRankedTable(table);
     }
 
     if (activeColIdx !== 0 && activeColIdx < headers.length) {
@@ -482,7 +516,14 @@ window.GAILS.renderLeagueTable = function (data) {
     var aRankable = a && !a.noData && !a.incompletePeriod;
     var bRankable = b && !b.noData && !b.incompletePeriod;
     if (aRankable !== bRankable) return aRankable ? -1 : 1;
-    return desc ? sortVal(b) - sortVal(a) : sortVal(a) - sortVal(b);
+    var byMetric = desc ? sortVal(b) - sortVal(a) : sortVal(a) - sortVal(b);
+    if (byMetric) return byMetric;
+    // Saturated metrics (a wall of 100s) would otherwise order arbitrarily, so
+    // settle ties on the company benchmark ranking and then the bakery name.
+    var aRank = a && a.companyRank ? a.companyRank : Infinity;
+    var bRank = b && b.companyRank ? b.companyRank : Infinity;
+    if (aRank !== bRank) return aRank - bRank;
+    return String((a && a.b) || '').localeCompare(String((b && b.b) || ''), 'en-GB');
   });
   var absBandClass = function (b) { return G.bc(b); };
   var hasVal = function (v) { return v !== null && v !== undefined && !isNaN(v); };
@@ -490,19 +531,15 @@ window.GAILS.renderLeagueTable = function (data) {
   var pctOrDash = function (v) { return hasVal(v) ? v + '%' : '—'; };
   document.getElementById('tableBody').innerHTML = sorted.map(function (b) {
     var rankEligible = !b.noData && !b.incompletePeriod;
-    var rankLabel = rankEligible && b.companyRank
-      ? b.companyRank
-      : '&mdash;';
-    var topPercentLabel = rankEligible && b.companyTopPercent
-      ? 'Top ' + b.companyTopPercent + '%'
-      : '&mdash;';
+    // Both position cells are filled in by renumberRankedTable below, which
+    // keeps them true to whatever ordering the table is currently showing.
     return '<tr data-rank-eligible="' + rankEligible + '">' +
-      '<td style="font-weight:600">' + rankLabel + '</td>' +
+      '<td style="font-weight:600">&mdash;</td>' +
       '<td style="font-weight:500">' + G.bakeryProfileLink(b.b, {
         returnUrl: 'index.html#table',
         returnLabel: 'League Table'
       }) + '</td>' +
-      '<td style="font-weight:600">' + topPercentLabel + '</td>' +
+      '<td style="font-weight:600">&mdash;</td>' +
       '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryRegion(b.b) + '</td>' +
       '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(b.b) + '</td>' +
       '<td style="font-weight:600">' + numOrDash(b.ac) + '</td>' +
@@ -522,6 +559,10 @@ window.GAILS.renderLeagueTable = function (data) {
       '<td>' + numOrDash(b.td) + '</td>' +
       '</tr>';
   }).join('');
-  G.makeSortable(document.getElementById('tableBody').closest('table'));
+  var table = document.getElementById('tableBody').closest('table');
+  G.renumberRankedTable(table);
+  // makeSortable re-applies any header-click sort saved on the table, and
+  // renumbers again itself if it does.
+  G.makeSortable(table);
   G.syncNpsSplitTables();
 };

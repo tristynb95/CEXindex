@@ -31,6 +31,57 @@ test('bakery profile contains every requested dashboard section', () => {
   assert.match(html, /js\/bakery-profile\.js/);
 });
 
+test('bakery profile labels NBO imports and opening check-ins accurately', () => {
+  const match = script.match(/function formatVisitType\(visit\) \{[\s\S]*?\n\}/);
+  assert.ok(match, 'formatVisitType helper should exist');
+  const context = {
+    G: {
+      NBOShared: {
+        visitLabel(visit) {
+          return 'NBO: Coffee Visit ' + (visit.visitNumber || 1);
+        }
+      }
+    },
+    result: null
+  };
+  vm.createContext(context);
+  vm.runInContext(match[0] + '\nresult = formatVisitType;', context);
+
+  assert.equal(context.result({ type: 'nbo', visitNumber: 1 }), 'NBO: Coffee Visit 1');
+  assert.equal(
+    context.result({ type: 'siteVisit', visitKind: 'nboOpening' }),
+    'NBO: Opening'
+  );
+  assert.equal(
+    context.result({ type: 'siteVisit', visitKind: 'checkin' }),
+    'Routine visit'
+  );
+
+  const sharedHelperPosition = html.indexOf('js/nbo-shared.js');
+  const profileScriptPosition = html.indexOf('js/bakery-profile.js');
+  assert.ok(sharedHelperPosition >= 0 && sharedHelperPosition < profileScriptPosition);
+  assert.match(script, /formatVisitType\(lastVisit\)/);
+  assert.match(script, /formatVisitType\(visit\)/);
+});
+
+test('bakery profile opens visit reports in the shared modal', () => {
+  ['visitReportModal', 'visitReportTitle', 'visitReportSubtitle', 'visitReportBody'].forEach((id) => {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  });
+  assert.match(html, /js\/visit-schema\.js/);
+  assert.match(html, /js\/cqv-shared\.js/);
+  assert.match(html, /js\/nbo-shared\.js/);
+  assert.match(html, /js\/visit-report\.js/);
+  assert.match(script, /data-bakery-visit-report="/);
+  assert.match(script, /G\._allVisitsObj = value/);
+  assert.match(script, /G\.openVisitReportById\(reportButton\.getAttribute\('data-bakery-visit-report'\)\)/);
+  assert.match(profileStyles, /\.bakery-activity-row__report \{/);
+
+  const reportPosition = html.indexOf('js/visit-report.js');
+  const profilePosition = html.indexOf('js/bakery-profile.js');
+  assert.ok(reportPosition >= 0 && reportPosition < profilePosition);
+});
+
 test('bakery profile shows an all-time score trend above the local area', () => {
   const chartPosition = html.indexOf('id="bakeryPerformanceChart"');
   const mapPosition = html.indexOf('class="bakery-profile-grid bakery-profile-grid--map"');

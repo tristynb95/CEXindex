@@ -345,48 +345,6 @@ h4 {
   stroke-linejoin: round;
 }
 
-/* ── Global Index Type Toggle (header bar) ── */
-.header-index-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.header-index-toggle__label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 240, 232, 0.8);
-  white-space: nowrap;
-}
-
-/* Override .header button defaults for the toggle pills (on red band) */
-.header-index-toggle .overview-rankings-toggle {
-  border-color: rgba(255, 255, 255, 0.24);
-  background: rgba(70, 14, 11, 0.22);
-  box-shadow: none;
-}
-
-.header-index-toggle .overview-rankings-toggle__btn {
-  border-radius: 999px;
-  min-height: auto;
-  box-shadow: none;
-  padding: 6px 14px;
-  font-size: 0.73rem;
-  color: rgba(255, 240, 232, 0.72);
-}
-
-.header-index-toggle .overview-rankings-toggle__btn:hover {
-  color: #fff;
-}
-
-.header-index-toggle .overview-rankings-toggle__btn.active {
-  background: #fff;
-  color: var(--accent);
-  box-shadow: 0 2px 8px rgba(70, 14, 11, 0.3);
-}
-
 /* One-time account confirmation shown after an invited user's first sign-in. */
 .dashboard-invitation {
   position: fixed;
@@ -535,12 +493,6 @@ h4 {
   .dashboard-invitation__details>div {
     grid-template-columns: 1fr;
     gap: 1px;
-  }
-}
-
-@media (max-width: 480px) {
-  .header-index-toggle__label {
-    display: none;
   }
 }
 
@@ -6716,6 +6668,107 @@ body.table-fullscreen-lock {
   width: 28%;
 }
 
+/* Area Head Baristas sit under the Region Coffee Team as a second table, so it
+   is separated by a rule rather than by another card. */
+.admin-region-assignments__subsection {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--card-border);
+}
+
+.admin-table--ops-area-assignments {
+  min-width: 640px;
+}
+
+.admin-table--ops-area-assignments th:first-child,
+.admin-table--ops-area-assignments td:first-child {
+  width: 28%;
+}
+
+/* Region banner above each run of ops areas. Overrides the sticky header rule
+   inherited from .admin-table th so the banner scrolls with its own rows. */
+.admin-table__group-row th {
+  position: static;
+  padding: 10px 16px;
+  background: rgba(30, 112, 196, 0.06);
+  color: var(--text);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.admin-table__group-row th span {
+  margin-right: 8px;
+}
+
+/* Reassurance under a renamed ops area: the details followed the bakeries, not
+   the old label. Clears itself once the change is saved. */
+.admin-table__rename-note {
+  margin-top: 3px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted-l);
+}
+
+/* An ops area can hold several area head baristas, one per row. Continuation
+   rows lose the divider above them so each ops area reads as one block. */
+.admin-table--ops-area-assignments tr.admin-table__row--continued td {
+  border-top: none;
+}
+
+.admin-table--ops-area-assignments tr:not(.admin-table__row--continued) td {
+  border-top: 1px solid var(--card-border);
+}
+
+.admin-table--ops-area-assignments tr.admin-table__row--continued td:first-child {
+  padding-top: 0;
+}
+
+.admin-table__actions-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.admin-icon-btn {
+  width: 28px;
+  height: 28px;
+  margin-left: 6px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-icon-btn:hover {
+  background: rgba(30, 112, 196, 0.1);
+  border-color: rgba(30, 112, 196, 0.3);
+  color: var(--text);
+}
+
+.admin-icon-btn--add:hover {
+  background: rgba(46, 138, 87, 0.12);
+  border-color: rgba(46, 138, 87, 0.32);
+}
+
+.admin-icon-btn:focus-visible {
+  outline: 2px solid rgba(30, 112, 196, 0.55);
+  outline-offset: 2px;
+}
+
+.admin-table__group-row th em {
+  color: var(--muted-l);
+  font-style: normal;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .admin-site-import__zone {
   cursor: pointer;
 }
@@ -11187,122 +11240,9 @@ a,
   .header {
     border-bottom: none;
   }
-
-  /* Relative/absolute index toggle: a stylish notch that extends down from
-     the banner's top-right corner as a seamless continuation of the red
-     band, overlaying the content below. Absolutely positioned (relative to
-     the sticky header), so it's out of flow — pages without the toggle
-     don't reflow when it appears/disappears, and it stays pinned with the
-     banner while scrolling. */
-  .header-index-toggle {
-    position: absolute;
-    /* Overlap 1px up into the banner so no sub-pixel hairline appears at the
-       join — the notch red matches the banner's lower edge, so the overlap
-       is invisible. */
-    top: calc(100% - 1px);
-    right: 0;
-    gap: 0;
-    margin: 0;
-    padding: 4px 16px 8px 14px;
-    /* Same bright red as the banner's lower edge — kept flat so the notch
-       stays as vivid as the band it hangs from, not darkened. */
-    background: #A32520;
-    border-radius: 0 0 0 18px;
-    /* Only a soft drop shadow to lift it over the content — no inner
-       shadow that would dull the surface. */
-    box-shadow: -8px 10px 20px rgba(120, 28, 22, 0.24);
-  }
-
-  /* Top-left concave fillet removed by request — the notch now meets the
-     banner with a straight left edge, keeping only the rounded bottom-left
-     corner (border-radius above). */
-  .header-index-toggle::before {
-    content: none;
-  }
-
-  /* Just the pills in the notch — the "Index" caption is redundant here */
-  .header-index-toggle__label {
-    display: none;
-  }
-
-  /* Light, airy track — a translucent white well rather than a dark recess */
-  .header-index-toggle .overview-rankings-toggle {
-    padding: 3px;
-    background: rgba(255, 255, 255, 0.14);
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: none;
-  }
-
-  .header-index-toggle .overview-rankings-toggle__btn {
-    min-height: auto;
-    padding: 3px 15px;
-    font-size: 0.72rem;
-    letter-spacing: 0.02em;
-    color: rgba(255, 244, 238, 0.82);
-  }
-
-  .header-index-toggle .overview-rankings-toggle__btn:hover {
-    color: #fff;
-  }
-
-  /* Crisp white active pill with just a whisper of lift */
-  .header-index-toggle .overview-rankings-toggle__btn.active {
-    background: #fff;
-    color: var(--accent);
-    box-shadow: 0 1px 4px rgba(70, 14, 11, 0.2);
-  }
 }
 
-/* On compact layouts the shared index toggle moves into the filter section.
-   It spans the full grid so it remains the first, clearest filter choice. */
 @media (max-width: 980px) {
-  .header-index-toggle.is-mobile-filter {
-    position: static;
-    top: auto;
-    right: auto;
-    grid-column: 1 / -1;
-    width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    margin: 0;
-    padding: 0 0 14px;
-    border-bottom: 1px solid rgba(34, 31, 26, 0.08);
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .header-index-toggle.is-mobile-filter .header-index-toggle__label {
-    display: block;
-    color: var(--muted-l);
-  }
-
-  .header-index-toggle.is-mobile-filter .overview-rankings-toggle {
-    flex: 0 0 auto;
-    margin-left: 0;
-    padding: 3px;
-    border-color: rgba(178, 42, 36, 0.18);
-    background: rgba(178, 42, 36, 0.07);
-    box-shadow: 0 2px 8px rgba(120, 28, 22, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  }
-
-  .header-index-toggle.is-mobile-filter .overview-rankings-toggle__btn {
-    min-height: auto;
-    padding: 7px 16px;
-    color: rgba(34, 31, 26, 0.45);
-  }
-
-  .header-index-toggle.is-mobile-filter .overview-rankings-toggle__btn:hover {
-    color: rgba(34, 31, 26, 0.75);
-  }
-
-  .header-index-toggle.is-mobile-filter .overview-rankings-toggle__btn.active {
-    background: linear-gradient(135deg, #B5312A 0%, #A32520 100%);
-    color: #fff;
-    box-shadow: 0 2px 10px rgba(120, 28, 22, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  }
-
   body[data-dash-tab="cei"] .section-page-title {
     margin-top: 0;
   }

@@ -508,8 +508,8 @@
     G.storeDashboardMapData(data);
     if (data.length === 0 || n === 0) {
       var dashMetrics = [
-        { eyebrow: 'NPS', title: 'NPS (Drink & Meal)', meta: 'Target: 55', primary: true },
-        { eyebrow: 'Index', title: 'Benchmark Score', meta: 'vs company benchmark', primary: true }
+        { eyebrow: 'Index', title: 'Benchmark Score', meta: 'vs company benchmark', primary: true },
+        { eyebrow: 'NPS', title: 'NPS (Drink & Meal)', meta: 'Target: 55', primary: true }
       ];
       dashMetrics.push(
         { eyebrow: 'SHINE', title: 'Drink Quality', meta: 'Target: 90%' },
@@ -616,39 +616,39 @@
       });
     var cards = [
       buildMetricCard({
-        value: nps,
-        compare: Math.round(nps),
-        display: Math.round(nps).toString(),
-        eyebrow: 'NPS',
-        title: 'NPS (Drink & Meal)',
-        meta: 'Target: 55',
-        priorKey: 'n',
+        value: acei,
+        compare: Math.round(acei),
+        display: Math.round(acei).toString(),
+        eyebrow: 'Index',
+        title: 'Benchmark Score',
+        meta: 'vs company benchmark',
+        priorKey: 'ac',
         bands: [
-          { test: function (val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
-          { test: function (val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
-          { test: function (val) { return val <= 60; }, tone: 'kpi-green', status: 'On Target' },
-          { test: function (val) { return val > 60; }, tone: 'kpi-blue', status: 'Exceeding' }
+          { test: function (val) { return val > 92; }, tone: 'kpi-blue', status: 'Exceeding' },
+          { test: function (val) { return val >= 75; }, tone: 'kpi-green', status: 'Meeting' },
+          { test: function (val) { return val >= 60; }, tone: 'kpi-amber', status: 'Approaching' },
+          { test: function (val) { return val < 60; }, tone: 'kpi-red', status: 'Below Standard' }
         ],
-        labels: { good: 'Exceeding', warn: 'Watch', bad: 'Below' },
+        labels: { good: 'Meeting', warn: 'Approaching', bad: 'Below Standard' },
         primary: true
       })
     ];
 
     cards.push(buildMetricCard({
-      value: acei,
-      compare: Math.round(acei),
-      display: Math.round(acei).toString(),
-      eyebrow: 'Index',
-      title: 'Benchmark Score',
-      meta: 'vs company benchmark',
-      priorKey: 'ac',
+      value: nps,
+      compare: Math.round(nps),
+      display: Math.round(nps).toString(),
+      eyebrow: 'NPS',
+      title: 'NPS (Drink & Meal)',
+      meta: 'Target: 55',
+      priorKey: 'n',
       bands: [
-        { test: function (val) { return val > 92; }, tone: 'kpi-blue', status: 'Exceeding' },
-        { test: function (val) { return val >= 75; }, tone: 'kpi-green', status: 'Meeting' },
-        { test: function (val) { return val >= 60; }, tone: 'kpi-amber', status: 'Approaching' },
-        { test: function (val) { return val < 60; }, tone: 'kpi-red', status: 'Below Standard' }
+        { test: function (val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
+        { test: function (val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
+        { test: function (val) { return val <= 60; }, tone: 'kpi-green', status: 'On Target' },
+        { test: function (val) { return val > 60; }, tone: 'kpi-blue', status: 'Exceeding' }
       ],
-      labels: { good: 'Meeting', warn: 'Approaching', bad: 'Below Standard' },
+      labels: { good: 'Exceeding', warn: 'Watch', bad: 'Below' },
       primary: true
     }));
 

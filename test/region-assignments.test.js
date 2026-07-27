@@ -146,6 +146,13 @@ test('wires the region table and preserved assignments into admin saves and uplo
   assert.match(adminSource, /list="regionAssignmentPeople"/);
   assert.match(adminSource, /user \? user\.uid : ''/);
   assert.match(adminSource, /regionAssignments:\s*mergeRegionAssignmentsForMeta\(entries, regionAssignments\)/);
-  assert.match(adminSource, /preservedRegionAssignments[\s\S]*buildSiteMetaPayload\(imported\.meta, importInfo, preservedRegionAssignments\)/);
+  assert.match(adminSource, /preservedRegionAssignments[\s\S]*buildSiteMetaPayload\([\s\S]*?preservedRegionAssignments/);
   assert.match(authSource, /existingPayload && existingPayload\.regionAssignments/);
+});
+
+test('carries the picked person’s uid through the save, rather than only their name', () => {
+  const authSource = fs.readFileSync(path.join(root, 'js', 'auth.js'), 'utf8');
+
+  assert.match(authSource, /coffeePartnerUid: String\(record && record\.coffeePartnerUid/);
+  assert.match(authSource, /coffeeTrainerUid: String\(record && record\.coffeeTrainerUid/);
 });

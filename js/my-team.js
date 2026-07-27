@@ -1408,6 +1408,9 @@ async function loadTeam(user) {
   if (typeof G.setRegionAssignments === 'function') {
     G.setRegionAssignments((sitePayload && sitePayload.regionAssignments) || []);
   }
+  if (typeof G.setOpsAreaAssignments === 'function') {
+    G.setOpsAreaAssignments((sitePayload && sitePayload.opsAreaAssignments) || []);
+  }
 
   var roleId = isAdmin ? 'admin' : (userProfile && userProfile.role) || 'viewer';
   var customRole = null;
@@ -1439,7 +1442,10 @@ async function loadTeam(user) {
     G.Mentions.addPeople(Object.keys(directory).map(function (uid) {
       return { uid: uid, name: directory[uid] && directory[uid].name, email: directory[uid] && directory[uid].email };
     }));
-    G.Mentions.addHarvested({ regionAssignments: (sitePayload && sitePayload.regionAssignments) || [] });
+    G.Mentions.addHarvested({
+      regionAssignments: (sitePayload && sitePayload.regionAssignments) || [],
+      opsAreaAssignments: (sitePayload && sitePayload.opsAreaAssignments) || []
+    });
   }
 
   // js/team.js normalizes each directory record, so roleName arrives with it.

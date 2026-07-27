@@ -98,6 +98,9 @@ const managerList     = document.getElementById('adminManagerList');
 const regionAssignmentList = document.getElementById('regionAssignmentList');
 const regionAssignmentMeta = document.getElementById('regionAssignmentMeta');
 const regionAssignmentPeople = document.getElementById('regionAssignmentPeople');
+const opsAreaAssignmentList = document.getElementById('opsAreaAssignmentList');
+const opsAreaAssignmentMeta = document.getElementById('opsAreaAssignmentMeta');
+const opsAreaAssignmentBakeries = document.getElementById('opsAreaAssignmentBakeries');
 const dataGrid        = document.getElementById('adminDataGrid');
 const dataMsg         = document.getElementById('dataMsg');
 const datasetImportZone = document.getElementById('datasetImportZone');
@@ -182,6 +185,8 @@ const state = {
   siteMetaDraft: {},
   regionAssignmentsSource: [],
   regionAssignmentsDraft: [],
+  opsAreaAssignmentsSource: [],
+  opsAreaAssignmentsDraft: [],
   siteMetaDirty: false,
   siteSearch: '',
   datasetInfo: null,
@@ -420,6 +425,85 @@ function visibleRegionAssignments() {
   );
 }
 
+// Each distinct region/ops area pairing in the directory, which is what the
+// Area Head Barista table lists. Ops area names repeat across regions, so the
+// pair — not the ops area alone — is what identifies a row. The bakeries in
+// each pairing travel with it: ops areas are named after their ops manager, so
+// membership is what identifies one across a rename. See
+// js/ops-area-assignments.js.
+function detectedSiteOpsAreas(meta) {
+  var byKey = {};
+  var pairs = [];
+  Object.keys(meta || {}).forEach(function(bakery) {
+    var entry = meta[bakery] || {};
+    var opsArea = String(entry.o || '').trim();
+    if (!opsArea) return;
+    var region = String(entry.r || '').trim();
+    var key = (region + ' ' + opsArea).toLowerCase();
+    if (!byKey[key]) {
+      byKey[key] = { region: region, opsArea: opsArea, bakeries: [] };
+      pairs.push(byKey[key]);
+    }
+    byKey[key].bakeries.push(bakery);
+  });
+  return pairs;
+}
+
+function opsAreaAssignmentApi() {
+  if (!window.GAILS_OPS_AREA_ASSIGNMENTS) {
+    throw new Error('Area Head Barista support is unavailable on this page.');
+  }
+  return window.GAILS_OPS_AREA_ASSIGNMENTS;
+}
+
+function mergeOpsAreaAssignmentsForMeta(meta, assignments) {
+  return opsAreaAssignmentApi().mergeDetectedOpsAreas(
+    detectedSiteOpsAreas(meta),
+    assignments
+  );
+}
+
+function visibleOpsAreaAssignments() {
+  return opsAreaAssignmentApi().assignmentsForOpsAreas(
+    detectedSiteOpsAreas(state.siteMetaDraft),
+    state.opsAreaAssignmentsDraft
+  );
+}
+
+// Lists at most three by name and counts the rest, so a big restructure gives
+// the gist without turning the message into a wall of text.
+function listOpsAreaChanges(items, describe) {
+  var listed = items.slice(0, 3).map(describe);
+  var text = listed.join(', ');
+  if (items.length > listed.length) {
+    text += ', and ' + (items.length - listed.length) + ' more';
+  }
+  return text;
+}
+
+// Spells out each renamed ops area rather than quietly moving the details, so
+// an admin who expected to lose them can see exactly what happened.
+function describeOpsAreaRenames(renames) {
+  var text = listOpsAreaChanges(renames, function(rename) {
+    var who = rename.baristas.length ? ' (' + rename.baristas.join(', ') + ')' : '';
+    return '“' + rename.from.opsArea + '” is now “' + rename.to.opsArea + '”' + who;
+  });
+  return renames.length === 1
+    ? 'One ops area came across under a new name, bringing its area head barista with it: ' + text + '.'
+    : renames.length + ' ops areas came across under new names, bringing their area head baristas with them: ' + text + '.';
+}
+
+// Merged areas keep everyone rather than the app picking between them, so the
+// admin is told where to go and prune.
+function describeOpsAreaMerges(merges) {
+  var text = listOpsAreaChanges(merges, function(item) {
+    return '“' + item.opsArea + '” (' + (item.baristas.join(', ') || 'no names yet') + ')';
+  });
+  return merges.length === 1
+    ? 'One ops area now draws on more than one previous area, so every area head barista involved is listed against it — remove any who no longer apply: ' + text + '.'
+    : merges.length + ' ops areas now draw on more than one previous area, so every area head barista involved is listed against them — remove any who no longer apply: ' + text + '.';
+}
+
 function formatDate(iso) {
   if (!iso) return 'Not recorded yet';
   var d = new Date(iso);
@@ -573,7 +657,7 @@ function renderImportZones() {
   }
 }
 
-function buildSiteMetaPayload(meta, sourceInfo, regionAssignments) {
+function buildSiteMetaPayload(meta, sourceInfo, regionAssignments, opsAreaAssignments) {
   var entries = window.GAILS && typeof window.GAILS.cloneBakeryMeta === 'function'
     ? window.GAILS.cloneBakeryMeta(meta)
     : cloneMeta(meta);
@@ -589,6 +673,7 @@ function buildSiteMetaPayload(meta, sourceInfo, regionAssignments) {
   return {
     entries: entries,
     regionAssignments: mergeRegionAssignmentsForMeta(entries, regionAssignments),
+    opsAreaAssignments: mergeOpsAreaAssignmentsForMeta(entries, opsAreaAssignments),
     siteCount: Object.keys(entries || {}).length,
     regionCount: regions.size,
     managerCount: managers.size,
@@ -732,7 +817,7 @@ function confirmSiteImport() {
   var hasDraft = Object.keys(state.siteMetaDraft).length > 0;
   if (!hasDraft && !state.siteMetaDirty) return true;
 
-  return confirm('Importing a workbook will immediately replace the shared site directory for all dashboard users. Coffee Partner and Coffee Trainer details for matching regions will be kept. Continue?');
+  return confirm('Importing a workbook will immediately replace the shared site directory for all dashboard users. Coffee Partner and Coffee Trainer details for matching regions, and Area Head Barista details for matching ops areas, will be kept. Continue?');
 }
 
 async function importSiteWorkbook(file) {
@@ -765,13 +850,32 @@ async function importSiteWorkbook(file) {
       imported.meta,
       state.regionAssignmentsDraft
     );
-    var payload = buildSiteMetaPayload(imported.meta, importInfo, preservedRegionAssignments);
+    // Ops areas carry their ops manager's name, so a leaver shows up in the
+    // workbook as a renamed area, and a restructure shows up as bakeries moving
+    // between them. Worked out before the merge is applied, purely so the admin
+    // is told which details moved, and which were held back for them to decide.
+    var opsAreaChanges = opsAreaAssignmentApi().detectChanges(
+      detectedSiteOpsAreas(imported.meta),
+      state.opsAreaAssignmentsDraft
+    );
+    var preservedOpsAreaAssignments = mergeOpsAreaAssignmentsForMeta(
+      imported.meta,
+      state.opsAreaAssignmentsDraft
+    );
+    var payload = buildSiteMetaPayload(
+      imported.meta,
+      importInfo,
+      preservedRegionAssignments,
+      preservedOpsAreaAssignments
+    );
     await set(ref(db, 'portalData/siteMeta'), payload);
 
     state.siteMetaDraft = cloneMeta(imported.meta);
     state.siteMetaSource = cloneMeta(imported.meta);
     state.regionAssignmentsSource = cloneMeta(payload.regionAssignments);
     state.regionAssignmentsDraft = cloneMeta(payload.regionAssignments);
+    state.opsAreaAssignmentsSource = cloneMeta(payload.opsAreaAssignments);
+    state.opsAreaAssignmentsDraft = cloneMeta(payload.opsAreaAssignments);
     state.siteImportInfo = normalizeSiteImportInfo({
       fileName: payload.sourceName,
       sheetName: payload.sourceSheetName,
@@ -795,8 +899,17 @@ async function importSiteWorkbook(file) {
         + (imported.duplicateCount === 1 ? ' was' : 's were')
         + ' merged by bakery name.';
     }
-    summary += ' Existing Coffee Partner and Coffee Trainer details were kept for matching regions.';
-    setMessage(siteMsg, 'success', summary);
+    summary += ' Existing Coffee Partner and Coffee Trainer details were kept for matching regions,'
+      + ' and Area Head Barista details for matching ops areas.';
+    if (opsAreaChanges.renames.length) {
+      summary += ' ' + describeOpsAreaRenames(opsAreaChanges.renames);
+    }
+    if (opsAreaChanges.merges.length) {
+      summary += ' ' + describeOpsAreaMerges(opsAreaChanges.merges);
+    }
+    // A merge leaves the admin something to prune, so the message says so
+    // rather than reading as "all done".
+    setMessage(siteMsg, opsAreaChanges.merges.length ? 'info' : 'success', summary);
   } catch (err) {
     console.error('Failed to import site workbook:', err);
     setMessage(siteMsg, 'error', 'Could not import that workbook: ' + err.message);
@@ -1470,6 +1583,130 @@ function renderRegionAssignments() {
         + ' data-region="' + escapeHtml(row.region) + '" data-field="coffeeTrainer"'
         + ' list="regionAssignmentPeople" autocomplete="off" placeholder="Type a person’s name"' + inputDisabled + '></td>'
       + '</tr>';
+  }).join('');
+}
+
+function renderOpsAreaAssignmentBakeries() {
+  if (!opsAreaAssignmentBakeries) return;
+  opsAreaAssignmentBakeries.innerHTML = Object.keys(state.siteMetaDraft || {})
+    .sort(function(a, b) { return a.localeCompare(b); })
+    .map(function(name) {
+      var entry = state.siteMetaDraft[name] || {};
+      var detail = [entry.o, entry.r].filter(Boolean).join(' • ');
+      return '<option value="' + escapeHtml(name) + '">' + escapeHtml(detail) + '</option>';
+    }).join('');
+}
+
+// The stored uid is what survives a rename in the people directory, so it wins
+// over the name saved alongside it.
+function opsAreaBaristaDisplayName(entry) {
+  var user = entry.uid && findUser(entry.uid);
+  return user ? userLabel(user) : (entry.name || '');
+}
+
+function opsAreaBaristaEntries(row) {
+  var entries = (row && row.baristas) || [];
+  // Always one row to type into, even before anyone has been named.
+  return entries.length ? entries : [{ name: '', uid: '', homeBakery: '' }];
+}
+
+function opsAreaAssignmentsMetaText(rows, dirtyOverride) {
+  var named = 0;
+  var shared = 0;
+  rows.forEach(function(row) {
+    var withNames = ((row && row.baristas) || []).filter(function(entry) {
+      return !!(entry.name || entry.uid);
+    });
+    if (withNames.length) named++;
+    if (withNames.length > 1) shared++;
+  });
+  var isDirty = typeof dirtyOverride === 'boolean' ? dirtyOverride : state.siteMetaDirty;
+  return rows.length + ' ops area' + (rows.length === 1 ? '' : 's')
+    + ' • ' + named + ' with an area head barista'
+    + (shared ? ' • ' + shared + ' with more than one' : '')
+    + (isDirty ? ' • unsaved changes' : ' • all changes saved');
+}
+
+// Ops areas are listed under their region so the table reads the way the
+// estate is actually organised, rather than as one flat alphabetical list.
+function renderOpsAreaAssignments() {
+  if (!opsAreaAssignmentList) return;
+  renderRegionAssignmentPeople();
+  renderOpsAreaAssignmentBakeries();
+  var rows = visibleOpsAreaAssignments();
+
+  if (opsAreaAssignmentMeta) {
+    opsAreaAssignmentMeta.textContent = opsAreaAssignmentsMetaText(rows);
+  }
+
+  if (!rows.length) {
+    opsAreaAssignmentList.innerHTML = '<tr><td colspan="4" class="admin-empty">Upload or add site data to detect ops areas.</td></tr>';
+    return;
+  }
+
+  var assignmentsEditable = canEdit('sites');
+  var inputDisabled = assignmentsEditable ? '' : ' disabled';
+  var grouped = {};
+  var regionOrder = [];
+  rows.forEach(function(row) {
+    var region = row.region || 'Unassigned region';
+    if (!grouped[region]) {
+      grouped[region] = [];
+      regionOrder.push(region);
+    }
+    grouped[region].push(row);
+  });
+
+  opsAreaAssignmentList.innerHTML = regionOrder.map(function(region) {
+    var groupRows = grouped[region];
+    return '<tr class="admin-table__group-row">'
+      + '<th scope="rowgroup" colspan="4">'
+      + '<span>' + escapeHtml(region) + '</span>'
+      + '<em>' + groupRows.length + ' ops area' + (groupRows.length === 1 ? '' : 's') + '</em>'
+      + '</th>'
+      + '</tr>'
+      + groupRows.map(function(row) {
+        var entries = opsAreaBaristaEntries(row);
+        var opsAttrs = ' data-region="' + escapeHtml(row.region) + '"'
+          + ' data-ops-area="' + escapeHtml(row.opsArea) + '"';
+        // Shown only while the rename is still an unsaved change; once saved,
+        // the new name is simply the name.
+        var note = row.renamedFrom
+          ? '<div class="admin-table__rename-note" title="These area head baristas came across with their bakeries.">'
+            + 'Renamed from ' + escapeHtml(row.renamedFrom.opsArea) + '</div>'
+          : '';
+
+        return entries.map(function(entry, index) {
+          var isFirst = index === 0;
+          var isLast = index === entries.length - 1;
+          var entryAttrs = opsAttrs + ' data-index="' + index + '"';
+          var actions = '';
+          if (assignmentsEditable) {
+            actions += '<button type="button" class="admin-icon-btn" data-action="remove-barista"'
+              + entryAttrs + ' aria-label="Remove this area head barista from '
+              + escapeHtml(row.opsArea) + '" title="Remove this area head barista">&minus;</button>';
+            if (isLast) {
+              actions += '<button type="button" class="admin-icon-btn admin-icon-btn--add"'
+                + ' data-action="add-barista"' + opsAttrs
+                + ' aria-label="Add another area head barista to ' + escapeHtml(row.opsArea) + '"'
+                + ' title="Add another area head barista">+</button>';
+            }
+          }
+
+          return '<tr' + (isFirst ? '' : ' class="admin-table__row--continued"') + '>'
+            + '<td>' + (isFirst
+              ? '<div class="admin-table__title">' + escapeHtml(row.opsArea) + '</div>' + note
+              : '<span class="sr-only">' + escapeHtml(row.opsArea) + '</span>') + '</td>'
+            + '<td><input type="text" value="' + escapeHtml(opsAreaBaristaDisplayName(entry)) + '"'
+              + entryAttrs + ' data-field="name"'
+              + ' list="regionAssignmentPeople" autocomplete="off" placeholder="Type a person’s name"' + inputDisabled + '></td>'
+            + '<td><input type="text" value="' + escapeHtml(entry.homeBakery || '') + '"'
+              + entryAttrs + ' data-field="homeBakery"'
+              + ' list="opsAreaAssignmentBakeries" autocomplete="off" placeholder="Bakery they normally work at"' + inputDisabled + '></td>'
+            + '<td class="admin-table__actions-cell">' + actions + '</td>'
+            + '</tr>';
+        }).join('');
+      }).join('');
   }).join('');
 }
 
@@ -2418,6 +2655,7 @@ function renderPortal() {
   populateRoleSelects();
   renderSites();
   renderRegionAssignments();
+  renderOpsAreaAssignments();
   renderVisits();
   renderDataControls();
   renderImportZones();
@@ -2488,6 +2726,10 @@ function syncSiteMetaFromSource(payload) {
     state.siteMetaSource,
     payload && payload.regionAssignments
   );
+  state.opsAreaAssignmentsSource = mergeOpsAreaAssignmentsForMeta(
+    state.siteMetaSource,
+    payload && payload.opsAreaAssignments
+  );
   state.siteMetaSourceInfo = normalizeSiteImportInfo({
     fileName: payload && payload.sourceName,
     sheetName: payload && payload.sourceSheetName,
@@ -2499,12 +2741,14 @@ function syncSiteMetaFromSource(payload) {
   if (!state.siteMetaDirty) {
     state.siteMetaDraft = cloneMeta(state.siteMetaSource);
     state.regionAssignmentsDraft = cloneMeta(state.regionAssignmentsSource);
+    state.opsAreaAssignmentsDraft = cloneMeta(state.opsAreaAssignmentsSource);
     state.siteImportInfo = state.siteMetaSourceInfo ? cloneMeta(state.siteMetaSourceInfo) : null;
   }
   renderSummary();
   renderOverview();
   renderSites();
   renderRegionAssignments();
+  renderOpsAreaAssignments();
   renderDataControls();
   renderImportZones();
 }
@@ -2656,6 +2900,7 @@ function updateSiteDraft(name, field, value) {
   renderSummary();
   renderOverview();
   renderRegionAssignments();
+  renderOpsAreaAssignments();
   renderDataControls();
 }
 
@@ -2693,11 +2938,84 @@ function updateRegionAssignmentDraft(region, field, value, userUid) {
   renderDataControls();
 }
 
+function afterOpsAreaAssignmentEdit() {
+  setDirty(true);
+  updateSiteTableMeta(getVisibleSiteMeta().length);
+  if (opsAreaAssignmentMeta) {
+    opsAreaAssignmentMeta.textContent = opsAreaAssignmentsMetaText(visibleOpsAreaAssignments(), true);
+  }
+  renderSummary();
+  renderOverview();
+  renderDataControls();
+}
+
+// Deliberately does not re-render the table: the admin is typing into one of
+// its inputs, and replacing the row would drop the caret.
+function updateOpsAreaBaristaDraft(region, opsArea, index, field, value, userUid) {
+  var pairs = detectedSiteOpsAreas(state.siteMetaDraft);
+  var next = opsAreaAssignmentApi().updateBarista(
+    pairs,
+    state.opsAreaAssignmentsDraft,
+    region,
+    opsArea,
+    index,
+    field,
+    value
+  );
+  if (field === 'name') {
+    next = opsAreaAssignmentApi().updateBarista(
+      pairs, next, region, opsArea, index, 'uid', userUid || ''
+    );
+  }
+  state.opsAreaAssignmentsDraft = next;
+  afterOpsAreaAssignmentEdit();
+}
+
+// Adding and removing rows does change the shape of the table, so unlike
+// typing these two repaint it.
+function addOpsAreaBarista(region, opsArea) {
+  state.opsAreaAssignmentsDraft = opsAreaAssignmentApi().addBarista(
+    detectedSiteOpsAreas(state.siteMetaDraft),
+    state.opsAreaAssignmentsDraft,
+    region,
+    opsArea
+  );
+  afterOpsAreaAssignmentEdit();
+  renderOpsAreaAssignments();
+}
+
+function removeOpsAreaBarista(region, opsArea, index) {
+  var rows = visibleOpsAreaAssignments();
+  var target = rows.find(function(row) {
+    return row.region === region && row.opsArea === opsArea;
+  });
+  var entry = target && (target.baristas || [])[index];
+
+  // Only worth interrupting for when there is something to lose — an empty row
+  // the admin just added away again is not a deletion.
+  if (entry && (entry.name || entry.homeBakery)) {
+    var who = entry.name || 'This area head barista';
+    if (!confirm('Remove ' + who + ' as an area head barista for ' + opsArea + '?')) return;
+  }
+
+  state.opsAreaAssignmentsDraft = opsAreaAssignmentApi().removeBarista(
+    detectedSiteOpsAreas(state.siteMetaDraft),
+    state.opsAreaAssignmentsDraft,
+    region,
+    opsArea,
+    index
+  );
+  afterOpsAreaAssignmentEdit();
+  renderOpsAreaAssignments();
+}
+
 function removeSite(name) {
   if (!confirm('Remove ' + name + ' from the shared site directory?')) return;
   delete state.siteMetaDraft[name];
   setDirty(true);
   renderSites();
+  renderRegionAssignments();
+  renderOpsAreaAssignments();
   renderSummary();
   renderOverview();
   renderDataControls();
@@ -2765,6 +3083,7 @@ function ensurePortalSync() {
       renderUsers();
       renderRoles();
       renderRegionAssignments();
+      renderOpsAreaAssignments();
     }, function(err) {
       console.error('Failed to sync users:', err);
       setMessage(createMsg, 'error', 'Could not load active users from Firebase.');
@@ -3437,6 +3756,68 @@ if (regionAssignmentList) {
   });
 }
 
+if (opsAreaAssignmentList) {
+  opsAreaAssignmentList.addEventListener('input', function(e) {
+    var input = e.target;
+    if (!input.dataset.opsArea || !input.dataset.field || !input.dataset.index) return;
+    var index = Number(input.dataset.index);
+    if (input.dataset.field === 'homeBakery') {
+      updateOpsAreaBaristaDraft(
+        input.dataset.region,
+        input.dataset.opsArea,
+        index,
+        'homeBakery',
+        input.value
+      );
+      return;
+    }
+    var user = resolveRegionAssignmentUser(input.value);
+    updateOpsAreaBaristaDraft(
+      input.dataset.region,
+      input.dataset.opsArea,
+      index,
+      'name',
+      user ? userLabel(user) : input.value,
+      user ? user.uid : ''
+    );
+  });
+
+  // Picking from the people list stores the readable name rather than the
+  // "Name — email" option text the datalist puts in the box.
+  opsAreaAssignmentList.addEventListener('change', function(e) {
+    var input = e.target;
+    if (!input.dataset.opsArea || !input.dataset.field || !input.dataset.index) return;
+    if (input.dataset.field === 'homeBakery') return;
+    var user = resolveRegionAssignmentUser(input.value);
+    if (!user) return;
+    input.value = userLabel(user);
+    updateOpsAreaBaristaDraft(
+      input.dataset.region,
+      input.dataset.opsArea,
+      Number(input.dataset.index),
+      'name',
+      userLabel(user),
+      user.uid
+    );
+  });
+
+  opsAreaAssignmentList.addEventListener('click', function(e) {
+    var addBtn = e.target.closest('[data-action="add-barista"]');
+    if (addBtn) {
+      addOpsAreaBarista(addBtn.dataset.region, addBtn.dataset.opsArea);
+      return;
+    }
+    var removeBtn = e.target.closest('[data-action="remove-barista"]');
+    if (removeBtn) {
+      removeOpsAreaBarista(
+        removeBtn.dataset.region,
+        removeBtn.dataset.opsArea,
+        Number(removeBtn.dataset.index)
+      );
+    }
+  });
+}
+
 saveSitesBtn.addEventListener('click', async function() {
   saveSitesBtn.disabled = true;
   setMessage(siteMsg, 'info', 'Saving site data to Firebase…');
@@ -3446,19 +3827,23 @@ saveSitesBtn.addEventListener('click', async function() {
       payload = await window.GAILS_Firebase.saveSiteMeta(
         state.siteMetaDraft,
         state.siteImportInfo,
-        state.regionAssignmentsDraft
+        state.regionAssignmentsDraft,
+        state.opsAreaAssignmentsDraft
       );
     } else {
       payload = buildSiteMetaPayload(
         state.siteMetaDraft,
         state.siteImportInfo,
-        state.regionAssignmentsDraft
+        state.regionAssignmentsDraft,
+        state.opsAreaAssignmentsDraft
       );
       await set(ref(db, 'portalData/siteMeta'), payload);
     }
     state.siteMetaSource = cloneMeta(state.siteMetaDraft);
     state.regionAssignmentsSource = cloneMeta((payload && payload.regionAssignments) || []);
     state.regionAssignmentsDraft = cloneMeta(state.regionAssignmentsSource);
+    state.opsAreaAssignmentsSource = cloneMeta((payload && payload.opsAreaAssignments) || []);
+    state.opsAreaAssignmentsDraft = cloneMeta(state.opsAreaAssignmentsSource);
     state.siteMetaSourceInfo = normalizeSiteImportInfo({
       fileName: payload && payload.sourceName,
       sheetName: payload && payload.sourceSheetName,
@@ -3481,6 +3866,7 @@ saveSitesBtn.addEventListener('click', async function() {
 resetSitesBtn.addEventListener('click', function() {
   state.siteMetaDraft = cloneMeta(state.siteMetaSource);
   state.regionAssignmentsDraft = cloneMeta(state.regionAssignmentsSource);
+  state.opsAreaAssignmentsDraft = cloneMeta(state.opsAreaAssignmentsSource);
   state.siteImportInfo = state.siteMetaSourceInfo ? cloneMeta(state.siteMetaSourceInfo) : null;
   setDirty(false);
   clearMessage(siteMsg);
@@ -3614,13 +4000,16 @@ restoreMetaBtn.addEventListener('click', async function() {
     var payload = buildSiteMetaPayload(
       defaults,
       { fileName: 'Default site map', siteCount: Object.keys(defaults).length },
-      state.regionAssignmentsDraft
+      state.regionAssignmentsDraft,
+      state.opsAreaAssignmentsDraft
     );
     await set(ref(db, 'portalData/siteMeta'), payload);
     state.siteMetaSource = cloneMeta(defaults);
     state.siteMetaDraft  = cloneMeta(defaults);
     state.regionAssignmentsSource = cloneMeta(payload.regionAssignments);
     state.regionAssignmentsDraft = cloneMeta(payload.regionAssignments);
+    state.opsAreaAssignmentsSource = cloneMeta(payload.opsAreaAssignments);
+    state.opsAreaAssignmentsDraft = cloneMeta(payload.opsAreaAssignments);
     state.siteMetaSourceInfo = normalizeSiteImportInfo({
       fileName: payload.sourceName,
       sheetName: payload.sourceSheetName,

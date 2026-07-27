@@ -1998,13 +1998,22 @@ async function loadActivityHub(user) {
   var sitePayload = initial[2].exists() ? initial[2].val() : null;
   var siteEntries = sitePayload && sitePayload.entries ? sitePayload.entries : sitePayload;
   if (typeof G.setBakeryMeta === 'function') G.setBakeryMeta(siteEntries);
+  if (typeof G.setRegionAssignments === 'function') {
+    G.setRegionAssignments((sitePayload && sitePayload.regionAssignments) || []);
+  }
+  if (typeof G.setOpsAreaAssignments === 'function') {
+    G.setOpsAreaAssignments((sitePayload && sitePayload.opsAreaAssignments) || []);
+  }
 
   if (G.Mentions) {
     var directory = initial[3] && initial[3].exists() ? initial[3].val() : {};
     G.Mentions.addPeople(Object.keys(directory).map(function (uid) {
       return { uid: uid, name: directory[uid] && directory[uid].name, email: directory[uid] && directory[uid].email };
     }));
-    G.Mentions.addHarvested({ regionAssignments: (sitePayload && sitePayload.regionAssignments) || [] });
+    G.Mentions.addHarvested({
+      regionAssignments: (sitePayload && sitePayload.regionAssignments) || [],
+      opsAreaAssignments: (sitePayload && sitePayload.opsAreaAssignments) || []
+    });
   }
 
   // My Activity is opt-in per user, granted in the admin portal. The menu entry

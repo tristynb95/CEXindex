@@ -87,6 +87,11 @@ test('builds the bakery directory with exactly the requested fields', () => {
       ? { coffeePartner: 'Alex', coffeeTrainer: 'Jordan' }
       : { coffeePartner: 'Sam', coffeeTrainer: 'Taylor' };
   };
+  GAILS.getOpsAreaAssignment = function (ops) {
+    return ops === 'Ops One'
+      ? { areaHeadBarista: 'Robin', homeBakery: 'Alpha' }
+      : { areaHeadBarista: 'Ash', homeBakery: 'Beta' };
+  };
 
   const rows = plain(GAILS.buildBakeryDirectoryRows({}));
 
@@ -96,14 +101,16 @@ test('builds the bakery directory with exactly the requested fields', () => {
       ops: 'Ops One',
       region: 'South Region',
       coffeePartner: 'Alex',
-      coffeeTrainer: 'Jordan'
+      coffeeTrainer: 'Jordan',
+      areaHeadBarista: 'Robin'
     },
     {
       bakery: 'Beta',
       ops: 'Ops Two',
       region: 'North Region',
       coffeePartner: 'Sam',
-      coffeeTrainer: 'Taylor'
+      coffeeTrainer: 'Taylor',
+      areaHeadBarista: 'Ash'
     }
   ]);
   assert.deepEqual(Object.keys(rows[0]), [
@@ -111,7 +118,8 @@ test('builds the bakery directory with exactly the requested fields', () => {
     'ops',
     'region',
     'coffeePartner',
-    'coffeeTrainer'
+    'coffeeTrainer',
+    'areaHeadBarista'
   ]);
 });
 
@@ -129,9 +137,17 @@ test('filters the directory across bakery, ops, region, partner and trainer', ()
       : { coffeePartner: 'Sam', coffeeTrainer: 'Taylor' };
   };
 
+  GAILS.getOpsAreaAssignment = function (ops) {
+    return ops === 'Ops One' ? { areaHeadBarista: 'Robin' } : { areaHeadBarista: 'Ash' };
+  };
+
   assert.deepEqual(
     plain(GAILS.buildBakeryDirectoryRows({ search: 'taylor' })).map((row) => row.bakery),
     ['Beta']
+  );
+  assert.deepEqual(
+    plain(GAILS.buildBakeryDirectoryRows({ search: 'robin' })).map((row) => row.bakery),
+    ['Alpha']
   );
   assert.deepEqual(
     plain(GAILS.buildBakeryDirectoryRows({ region: 'South Region', ops: 'Ops One' })).map((row) => row.bakery),

@@ -536,7 +536,9 @@ window.GAILS = window.GAILS || {};
     return {
       previous: currentIndex > 0 ? history[currentIndex - 1] : null,
       next: currentIndex !== -1 && currentIndex < history.length - 1 ? history[currentIndex + 1] : null,
-      position: currentIndex === -1 ? 0 : currentIndex + 1,
+      // Number reports newest-first without changing the established arrow
+      // behavior: left still moves to an older visit and right to a newer one.
+      position: currentIndex === -1 ? 0 : history.length - currentIndex,
       total: history.length
     };
   }
@@ -2383,12 +2385,14 @@ window.GAILS = window.GAILS || {};
       var region = (G.getBakeryRegion ? G.getBakeryRegion(name) : entry.r) || 'Unknown';
       var ops = (G.getBakeryOps ? G.getBakeryOps(name) : entry.o) || 'Unknown';
       var assignment = G.getRegionAssignment ? G.getRegionAssignment(region) : null;
+      var opsAssignment = G.getOpsAreaAssignment ? G.getOpsAreaAssignment(ops, region) : null;
       return {
         bakery: getDirectoryBakeryLabel(name),
         ops: ops,
         region: region,
         coffeePartner: assignment && assignment.coffeePartner || '',
-        coffeeTrainer: assignment && assignment.coffeeTrainer || ''
+        coffeeTrainer: assignment && assignment.coffeeTrainer || '',
+        areaHeadBarista: opsAssignment && opsAssignment.areaHeadBarista || ''
       };
     }).filter(function (row) {
       if (regionFilter && row.region !== regionFilter) return false;
@@ -2400,14 +2404,16 @@ window.GAILS = window.GAILS || {};
         row.ops,
         row.region,
         row.coffeePartner,
-        row.coffeeTrainer
+        row.coffeeTrainer,
+        row.areaHeadBarista
       ].join(' ').toLowerCase().indexOf(search) !== -1;
     }).sort(function (a, b) {
       var sortFields = {
         region: 'region',
         ops: 'ops',
         partner: 'coffeePartner',
-        trainer: 'coffeeTrainer'
+        trainer: 'coffeeTrainer',
+        barista: 'areaHeadBarista'
       };
       var field = sortFields[sortBy] || 'bakery';
       var aVal = a[field] || '￿';
@@ -2470,6 +2476,7 @@ window.GAILS = window.GAILS || {};
         '<td data-label="Region">' + escapeHtml(row.region) + '</td>' +
         '<td data-label="Coffee Partner">' + escapeHtml(row.coffeePartner || '—') + '</td>' +
         '<td data-label="Coffee Trainer">' + escapeHtml(row.coffeeTrainer || '—') + '</td>' +
+        '<td data-label="Area Head Barista">' + escapeHtml(row.areaHeadBarista || '—') + '</td>' +
         '</tr>';
     }
 
@@ -2478,7 +2485,8 @@ window.GAILS = window.GAILS || {};
       region: 'region',
       ops: 'ops',
       partner: 'coffeePartner',
-      trainer: 'coffeeTrainer'
+      trainer: 'coffeeTrainer',
+      barista: 'areaHeadBarista'
     };
     var groupField = groupFields[groupBy];
     var bodyHtml = '';
@@ -2507,7 +2515,7 @@ window.GAILS = window.GAILS || {};
         var isCollapsed = !!collapsedGroups[groupName];
         var groupCount = groupedRows[groupName].length;
         return '<tr class="bakery-directory__group-row' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
-          '<th scope="rowgroup" colspan="5">' +
+          '<th scope="rowgroup" colspan="6">' +
           '<button type="button" class="bakery-directory__group-toggle" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
           '<svg class="bakery-directory__group-chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
           '<span>' + escapeHtml(groupName) + '</span>' +
@@ -2535,10 +2543,11 @@ window.GAILS = window.GAILS || {};
         { label: 'Ops Area', type: 'text', width: 22 },
         { label: 'Region', type: 'text', width: 17 },
         { label: 'Coffee Partner', type: 'text', width: 22 },
-        { label: 'Coffee Trainer', type: 'text', width: 22 }
+        { label: 'Coffee Trainer', type: 'text', width: 22 },
+        { label: 'Area Head Barista', type: 'text', width: 22 }
       ],
       rows: orderedRows.map(function (row) {
-        return [row.bakery, row.ops, row.region, row.coffeePartner, row.coffeeTrainer];
+        return [row.bakery, row.ops, row.region, row.coffeePartner, row.coffeeTrainer, row.areaHeadBarista];
       })
     };
     renderBakeryDirectorySummary(orderedRows.length, !!groupField);
@@ -2553,6 +2562,7 @@ window.GAILS = window.GAILS || {};
       '<th scope="col">Region</th>' +
       '<th scope="col">Coffee Partner</th>' +
       '<th scope="col">Coffee Trainer</th>' +
+      '<th scope="col">Area Head Barista</th>' +
       '</tr></thead>' +
       '<tbody>' + bodyHtml + '</tbody></table></div>';
   }

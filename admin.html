@@ -454,6 +454,34 @@
                     </table>
                   </div>
                   <datalist id="regionAssignmentPeople"></datalist>
+
+                  <div class="admin-region-assignments__subsection">
+                    <div class="admin-region-assignments__header">
+                      <div>
+                        <h4>Area Head Baristas</h4>
+                        <p>Every ops area detected in the site directory, grouped under its region. Name the Area
+                          Head Barista who looks after each one and the bakery they normally work at — an area can
+                          have more than one, so use + and &minus; to add and remove rows. Each person stays with
+                          their home bakery when a new site directory is uploaded, so areas can be renamed, split or
+                          merged without losing anyone.</p>
+                      </div>
+                      <div class="admin-toolbar__meta" id="opsAreaAssignmentMeta">Loading ops areas&hellip;</div>
+                    </div>
+                    <div class="admin-table-wrap admin-table-wrap--tall">
+                      <table class="admin-table admin-table--ops-area-assignments">
+                        <thead>
+                          <tr>
+                            <th>Ops Area</th>
+                            <th>Area Head Barista</th>
+                            <th>Home Bakery</th>
+                            <th><span class="sr-only">Add or remove</span></th>
+                          </tr>
+                        </thead>
+                        <tbody id="opsAreaAssignmentList"></tbody>
+                      </table>
+                    </div>
+                    <datalist id="opsAreaAssignmentBakeries"></datalist>
+                  </div>
                 </div>
 
                 <div class="admin-toolbar">
@@ -870,6 +898,7 @@
   <script src="js/mention-field.js"></script>
   <script src="js/attribution.js"></script>
   <script src="js/region-assignments.js"></script>
+  <script src="js/ops-area-assignments.js"></script>
   <!-- Reporting lines: who reports to whom, and therefore whose work a manager
        sees on My Team. Must load before js/admin-page.js reads GAILS.Team. -->
   <script src="js/team.js"></script>

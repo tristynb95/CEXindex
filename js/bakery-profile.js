@@ -255,14 +255,18 @@ function formatDate(value, includeTime) {
   return date.toLocaleString('en-GB', options);
 }
 
-function formatVisitType(type) {
-  var labels = {
-    siteVisit: 'Routine visit',
-    cqv: 'Coffee Quality Visit',
-    cqvFollowUp: 'CQV follow-up',
-    nbo: 'New Bakery Opening'
-  };
-  return labels[type] || 'Bakery visit';
+function formatVisitType(visit) {
+  if (!visit) return 'Bakery visit';
+  if (visit.type === 'siteVisit') {
+    return visit.visitKind === 'nboOpening' ? 'NBO: Opening' : 'Routine visit';
+  }
+  if (visit.type === 'cqv') return visit.isFollowUp ? 'CQV follow-up' : 'Coffee Quality Visit';
+  if (visit.type === 'nbo') {
+    return G.NBOShared
+      ? G.NBOShared.visitLabel(visit)
+      : 'NBO: Coffee Visit ' + (visit.visitNumber || 1);
+  }
+  return 'Bakery visit';
 }
 
 function metricValue(value, suffix) {
@@ -359,10 +363,30 @@ function renderIdentity(sitePayload) {
   var ops = bakeryMeta && bakeryMeta.o || 'Unknown ops area';
   var assignments = sitePayload && sitePayload.regionAssignments;
   if (typeof G.setRegionAssignments === 'function') G.setRegionAssignments(assignments);
+  if (typeof G.setOpsAreaAssignments === 'function') {
+    G.setOpsAreaAssignments(sitePayload && sitePayload.opsAreaAssignments);
+  }
   var assignment = G.getRegionAssignment ? G.getRegionAssignment(region) : null;
+  var opsAssignment = G.getOpsAreaAssignment ? G.getOpsAreaAssignment(ops, region) : null;
+  // An ops area can have several area head baristas. Each is named, and the one
+  // actually based at this bakery is called out — that is the person who is
+  // here day to day.
+  var areaHeads = ((opsAssignment && opsAssignment.baristas) || []).filter(function(entry) {
+    return entry && entry.name;
+  });
+  var areaHead = '';
+  if (areaHeads.length) {
+    areaHead = 'Area Head' + (areaHeads.length > 1 ? 's' : '') + ': ' + areaHeads.map(function(entry) {
+      if (!entry.homeBakery) return entry.name;
+      return sameBakery(entry.homeBakery)
+        ? entry.name + ' (based here)'
+        : entry.name + (areaHeads.length > 1 ? '' : ' (based at ' + profileDisplayBakeryName(entry.homeBakery) + ')');
+    }).join(', ');
+  }
   var coffeeTeam = [
     assignment && assignment.coffeePartner ? 'Partner: ' + assignment.coffeePartner : '',
-    assignment && assignment.coffeeTrainer ? 'Trainer: ' + assignment.coffeeTrainer : ''
+    assignment && assignment.coffeeTrainer ? 'Trainer: ' + assignment.coffeeTrainer : '',
+    areaHead
   ].filter(Boolean).join(' · ') || 'Coffee team unassigned';
 
   document.title = title + ' — Bakery Profile';
@@ -477,7 +501,7 @@ function renderStats() {
     {
       eyebrow: 'Last visit',
       value: lastVisit ? formatDate(lastVisit.date, false).replace(/\s\d{4}$/, '') : '—',
-      meta: lastVisit ? formatVisitType(lastVisit.type) : 'No visits logged yet',
+      meta: lastVisit ? formatVisitType(lastVisit) : 'No visits logged yet',
       tone: 'purple'
     },
     {
@@ -1033,11 +1057,16 @@ function renderVisits() {
     var visitorHtml = visit.coffeePartner && G.Mentions
       ? G.Mentions.formatSelectionHtml(visit.coffeePartner)
       : escapeHtml(visit.coffeePartner || (visit.meta && (visit.meta.createdBy || visit.meta.updatedBy)) || '');
+    var reportLabel = 'View ' + formatVisitType(visit) + ' report from ' + formatDate(visit.date, false);
     return '<article class="bakery-activity-row">' +
       '<div class="bakery-activity-row__marker" aria-hidden="true"></div>' +
       '<div class="bakery-activity-row__body">' +
-      '<div class="bakery-activity-row__top"><strong>' + escapeHtml(formatVisitType(visit.type)) + '</strong>' +
-      (score ? '<span class="bakery-profile-tag">' + escapeHtml(score) + '</span>' : '') + '</div>' +
+      '<div class="bakery-activity-row__top"><strong>' + escapeHtml(formatVisitType(visit)) + '</strong>' +
+      '<span class="bakery-activity-row__actions">' +
+      (score ? '<span class="bakery-profile-tag">' + escapeHtml(score) + '</span>' : '') +
+      '<button type="button" class="bakery-activity-row__report" data-bakery-visit-report="' +
+      escapeHtml(visit.id) + '" aria-label="' + escapeHtml(reportLabel) + '">View report</button>' +
+      '</span></div>' +
       '<p>' + escapeHtml(formatDate(visit.date, false)) + (visit.time ? ' · ' + escapeHtml(visit.time) : '') + '</p>' +
       (visitorHtml ? '<small>' + visitorHtml + '</small>' : '') +
       '</div></article>';
@@ -1260,6 +1289,7 @@ function showGuardError(title, message) {
 function startLiveData() {
   visitsUnsubscribe = onValue(ref(db, 'routineVisits'), function(snapshot) {
     var value = snapshot.exists() ? snapshot.val() : {};
+    G._allVisitsObj = value;
     visits = Object.keys(value).map(function(id) { return Object.assign({ id: id }, value[id]); });
     if (G.Mentions) G.Mentions.addHarvested({ visits: value });
     renderVisits();
@@ -1431,6 +1461,12 @@ bakerySwitcherMenu.addEventListener('keydown', function(event) {
 
 document.addEventListener('click', function(event) {
   if (!bakerySwitcher.contains(event.target)) setBakerySelectorOpen(false);
+});
+
+document.getElementById('bakeryVisitLog').addEventListener('click', function(event) {
+  var reportButton = event.target.closest('[data-bakery-visit-report]');
+  if (!reportButton || typeof G.openVisitReportById !== 'function') return;
+  G.openVisitReportById(reportButton.getAttribute('data-bakery-visit-report'));
 });
 
 taskAddToggle.addEventListener('click', openTaskForm);

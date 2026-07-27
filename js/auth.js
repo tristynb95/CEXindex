@@ -14,6 +14,9 @@ function getSiteMetaEntries(payload) {
   return payload;
 }
 
+// The uid travels with the readable name so a later rename in the directory
+// still resolves to the same person — dropping it here would silently undo
+// what the admin picked from the people list.
 function cloneRegionAssignments(assignments) {
   var records = Array.isArray(assignments)
     ? assignments
@@ -22,14 +25,65 @@ function cloneRegionAssignments(assignments) {
     return {
       region: String(record && record.region || '').trim(),
       coffeePartner: String(record && record.coffeePartner || '').trim(),
-      coffeeTrainer: String(record && record.coffeeTrainer || '').trim()
+      coffeePartnerUid: String(record && record.coffeePartnerUid || '').trim(),
+      coffeeTrainer: String(record && record.coffeeTrainer || '').trim(),
+      coffeeTrainerUid: String(record && record.coffeeTrainerUid || '').trim()
     };
   }).filter(function(record) {
     return !!record.region;
   });
 }
 
-function buildSiteMetaPayload(meta, sourceInfo, regionAssignments) {
+// Area Head Baristas are held per ops area rather than per region, and an ops
+// area can have more than one. Each entry pairs the person with their home
+// bakery — the bakery they work out of — which is what lets the app follow them
+// when areas are renamed, split or merged (see js/ops-area-assignments.js).
+// `bakeries` is the membership the area had when it was saved, used as the
+// fallback for anyone with no home bakery recorded yet.
+function cloneOpsAreaAssignments(assignments) {
+  var records = Array.isArray(assignments)
+    ? assignments
+    : Object.values(assignments && typeof assignments === 'object' ? assignments : {});
+  var text = function(value) {
+    return String(value == null ? '' : value).trim();
+  };
+  return records.map(function(record) {
+    var source = record && typeof record === 'object' ? record : {};
+    var baristas = Array.isArray(source.baristas) ? source.baristas : [];
+
+    // A record written before an ops area could hold more than one reads as a
+    // single entry, so an older saved directory keeps working untouched.
+    if (!baristas.length && (source.areaHeadBarista || source.homeBakery)) {
+      baristas = [{
+        name: source.areaHeadBarista,
+        uid: source.areaHeadBaristaUid,
+        homeBakery: source.homeBakery
+      }];
+    }
+
+    return {
+      region: text(source.region),
+      opsArea: text(source.opsArea),
+      baristas: baristas.map(function(entry) {
+        var value = entry && typeof entry === 'object' ? entry : {};
+        return {
+          name: text(value.name),
+          uid: text(value.uid),
+          homeBakery: text(value.homeBakery)
+        };
+        // A row the admin added but never filled in is not worth storing.
+      }).filter(function(entry) {
+        return !!(entry.name || entry.homeBakery);
+      }),
+      bakeries: (Array.isArray(source.bakeries) ? source.bakeries : [])
+        .map(text).filter(Boolean)
+    };
+  }).filter(function(record) {
+    return !!record.opsArea;
+  });
+}
+
+function buildSiteMetaPayload(meta, sourceInfo, regionAssignments, opsAreaAssignments) {
   var entries = window.GAILS && typeof window.GAILS.cloneBakeryMeta === 'function'
     ? window.GAILS.cloneBakeryMeta(meta)
     : meta;
@@ -45,6 +99,7 @@ function buildSiteMetaPayload(meta, sourceInfo, regionAssignments) {
   return {
     entries: entries,
     regionAssignments: cloneRegionAssignments(regionAssignments),
+    opsAreaAssignments: cloneOpsAreaAssignments(opsAreaAssignments),
     siteCount: Object.keys(entries || {}).length,
     regionCount: regions.size,
     managerCount: managers.size,
@@ -95,15 +150,24 @@ window.GAILS_Firebase = {
     localStorage.removeItem('gails_firebase_cache_ts');
     localStorage.removeItem('gails_firebase_cache');
   },
-  saveSiteMeta: async function(meta, sourceInfo, regionAssignments) {
+  // A caller that does not pass the people assignments is only replacing the
+  // site mapping, so the saved Coffee Team and Area Head Barista details are
+  // read back first rather than being blanked by the write.
+  saveSiteMeta: async function(meta, sourceInfo, regionAssignments, opsAreaAssignments) {
     if (!auth.currentUser) return;
     var assignments = regionAssignments;
-    if (typeof assignments === 'undefined') {
+    var opsAssignments = opsAreaAssignments;
+    if (typeof assignments === 'undefined' || typeof opsAssignments === 'undefined') {
       var existingSnapshot = await get(ref(db, 'portalData/siteMeta'));
       var existingPayload = existingSnapshot.exists() ? existingSnapshot.val() : null;
-      assignments = existingPayload && existingPayload.regionAssignments;
+      if (typeof assignments === 'undefined') {
+        assignments = existingPayload && existingPayload.regionAssignments;
+      }
+      if (typeof opsAssignments === 'undefined') {
+        opsAssignments = existingPayload && existingPayload.opsAreaAssignments;
+      }
     }
-    var payload = buildSiteMetaPayload(meta, sourceInfo, assignments);
+    var payload = buildSiteMetaPayload(meta, sourceInfo, assignments, opsAssignments);
     await set(ref(db, 'portalData/siteMeta'), payload);
     return payload;
   },
@@ -360,14 +424,19 @@ function applySiteMeta(payload) {
   if (window.GAILS && typeof window.GAILS.setRegionAssignments === 'function') {
     window.GAILS.setRegionAssignments(payload && payload.regionAssignments);
   }
+  if (window.GAILS && typeof window.GAILS.setOpsAreaAssignments === 'function') {
+    window.GAILS.setOpsAreaAssignments(payload && payload.opsAreaAssignments);
+  }
   if (window.GAILS && typeof window.GAILS.setBakeryMeta === 'function') {
     window.GAILS.setBakeryMeta(meta);
   }
-  // The regional coffee team is the curated list of who actually runs these
-  // visits, so it feeds the @mention picker (js/mentions.js).
+  // The regional coffee team and the area head baristas are the curated list of
+  // who actually runs these visits, so they feed the @mention picker
+  // (js/mentions.js).
   if (window.GAILS && window.GAILS.Mentions) {
     window.GAILS.Mentions.addHarvested({
-      regionAssignments: (payload && payload.regionAssignments) || []
+      regionAssignments: (payload && payload.regionAssignments) || [],
+      opsAreaAssignments: (payload && payload.opsAreaAssignments) || []
     });
   }
   window.dispatchEvent(new CustomEvent('gails:site-meta-sync', {

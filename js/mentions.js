@@ -490,6 +490,16 @@ window.GAILS = window.GAILS || {};
       harvestNames(assignment.coffeeTrainer);
     });
 
+    (input.opsAreaAssignments || []).forEach(function (assignment) {
+      if (!assignment) return;
+      // An ops area can list several area head baristas; older records carried
+      // a single name on the assignment itself.
+      (assignment.baristas || []).forEach(function (entry) {
+        if (entry) harvestNames(entry.name);
+      });
+      harvestNames(assignment.areaHeadBarista);
+    });
+
     var visits = input.visits || {};
     Object.keys(visits).forEach(function (id) {
       var visit = visits[id];

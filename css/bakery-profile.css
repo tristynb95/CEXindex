@@ -900,6 +900,35 @@
   gap: 10px;
 }
 
+.bakery-activity-row__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 7px;
+  align-items: center;
+}
+
+.bakery-activity-row__report {
+  min-height: 28px;
+  padding: 0 10px;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.64rem;
+  font-weight: 800;
+  background: var(--accent-light);
+  border: 1px solid rgba(181, 49, 42, 0.16);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+
+.bakery-activity-row__report:hover {
+  border-color: var(--accent);
+}
+
+.bakery-activity-row__report:focus-visible {
+  outline: 3px solid rgba(181, 49, 42, 0.22);
+  outline-offset: 2px;
+}
+
 .bakery-activity-row strong,
 .bakery-task-row strong {
   font-size: 0.78rem;

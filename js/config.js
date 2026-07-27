@@ -420,7 +420,121 @@ window.GAILS.getRegionAssignmentsSnapshot = function () {
   });
 };
 
+// Area Head Barista ownership is maintained once per ops area in the admin
+// site directory. Ops area names are only guaranteed unique inside their own
+// region, so the primary lookup is keyed on the pair. A second lookup on the
+// ops area alone lets a caller that only knows the bakery's ops area resolve
+// it too — but only while that name is unambiguous across regions, so a
+// duplicated ops area name can never hand back the wrong region's barista.
+window.GAILS.setOpsAreaAssignments = function (assignments) {
+  var source = Array.isArray(assignments)
+    ? assignments
+    : Object.values(assignments && typeof assignments === 'object' ? assignments : {});
+  var records = [];
+  var lookup = {};
+  var opsOnlyLookup = {};
+  var ambiguousOpsAreas = {};
+
+  source.forEach(function (record) {
+    var opsArea = String(record && record.opsArea || '').trim().replace(/\s+/g, ' ');
+    if (!opsArea) return;
+    var region = String(record && record.region || '').trim().replace(/\s+/g, ' ');
+
+    var baristas = (Array.isArray(record && record.baristas) ? record.baristas : [])
+      .map(function (entry) {
+        var value = entry && typeof entry === 'object' ? entry : {};
+        return {
+          name: String(value.name || '').trim(),
+          uid: String(value.uid || '').trim(),
+          homeBakery: String(value.homeBakery || '').trim()
+        };
+      }).filter(function (entry) { return !!(entry.name || entry.homeBakery); });
+
+    // An ops area saved before it could hold more than one area head barista
+    // reads as a single entry.
+    if (!baristas.length && record && (record.areaHeadBarista || record.homeBakery)) {
+      baristas = [{
+        name: String(record.areaHeadBarista || '').trim(),
+        uid: String(record.areaHeadBaristaUid || '').trim(),
+        homeBakery: String(record.homeBakery || '').trim()
+      }];
+    }
+
+    var named = baristas.filter(function (entry) { return !!entry.name; });
+    var normalized = {
+      region: region,
+      opsArea: opsArea,
+      baristas: baristas,
+      // Flattened for the many read-only surfaces that just want to print who
+      // looks after an ops area.
+      areaHeadBarista: named.map(function (entry) { return entry.name; }).join(' · '),
+      areaHeadBaristaUid: named.length === 1 ? named[0].uid : '',
+      homeBakery: named.length === 1 ? named[0].homeBakery : ''
+    };
+    records.push(normalized);
+
+    var opsKey = _normalizeRegionAssignmentKey(opsArea);
+    lookup[_normalizeRegionAssignmentKey(region) + ' ' + opsKey] = normalized;
+    if (Object.prototype.hasOwnProperty.call(opsOnlyLookup, opsKey)) {
+      ambiguousOpsAreas[opsKey] = true;
+    } else {
+      opsOnlyLookup[opsKey] = normalized;
+    }
+  });
+
+  Object.keys(ambiguousOpsAreas).forEach(function (key) {
+    delete opsOnlyLookup[key];
+  });
+
+  records.sort(function (a, b) {
+    return a.region.localeCompare(b.region) || a.opsArea.localeCompare(b.opsArea);
+  });
+  window.GAILS.OPS_AREA_ASSIGNMENTS = records;
+  window.GAILS._opsAreaAssignmentLookup = lookup;
+  window.GAILS._opsAreaOnlyAssignmentLookup = opsOnlyLookup;
+  return records;
+};
+
+window.GAILS.getOpsAreaAssignment = function (opsArea, region) {
+  var opsKey = _normalizeRegionAssignmentKey(opsArea);
+  if (!opsKey) return null;
+  var record = null;
+  if (region && window.GAILS._opsAreaAssignmentLookup) {
+    record = window.GAILS._opsAreaAssignmentLookup[
+      _normalizeRegionAssignmentKey(region) + ' ' + opsKey
+    ] || null;
+  }
+  if (!record && window.GAILS._opsAreaOnlyAssignmentLookup) {
+    record = window.GAILS._opsAreaOnlyAssignmentLookup[opsKey] || null;
+  }
+  return record ? {
+    region: record.region,
+    opsArea: record.opsArea,
+    baristas: record.baristas.map(function (entry) {
+      return { name: entry.name, uid: entry.uid, homeBakery: entry.homeBakery };
+    }),
+    areaHeadBarista: record.areaHeadBarista,
+    homeBakery: record.homeBakery
+  } : null;
+};
+
+window.GAILS.getOpsAreaAssignmentsSnapshot = function () {
+  return (window.GAILS.OPS_AREA_ASSIGNMENTS || []).map(function (record) {
+    return {
+      region: record.region,
+      opsArea: record.opsArea,
+      baristas: record.baristas.map(function (entry) {
+        return { name: entry.name, uid: entry.uid, homeBakery: entry.homeBakery };
+      }),
+      areaHeadBarista: record.areaHeadBarista,
+      areaHeadBaristaUid: record.areaHeadBaristaUid,
+      homeBakery: record.homeBakery
+    };
+  });
+};
+
 window.GAILS.setRegionAssignments([]);
+window.GAILS.setOpsAreaAssignments([]);
 window.GAILS.setBakeryMeta(window.GAILS.DEFAULT_BAKERY_META);
 
 window.GAILS.getBakeryRegion = function (b) {
