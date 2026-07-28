@@ -22,16 +22,23 @@ window.GAILS = window.GAILS || {};
 (function () {
   'use strict';
 
-  // How much of the estate's activity somebody wants to hear about. The default
-  // comes from their role (roles/{roleId}.notificationScope); a person can
-  // narrow or widen it for themselves on their profile page
+  // How much of the estate's activity somebody hears about. The default comes
+  // from their role (roles/{roleId}.notificationScope); a person can widen or
+  // narrow it for themselves on their profile page
   // (users/{uid}.notificationScope), which then wins.
+  //
+  // There is deliberately **no way to switch notifications off**. The narrowest
+  // setting is still your own tasks and your own bakeries, because a task
+  // somebody assigns you is not something you get to stop being told about.
+  // A 'none' left on an old record normalizes to 'area' like any other
+  // unrecognised value, so nobody stays silenced by a setting that no longer
+  // exists.
   //
   // The keys live here because delivery is decided here. Their labels and
   // descriptions live with the other role settings, in NOTIFICATION_SCOPES in
   // js/permissions.js — an ES module this classic script cannot import, and the
   // one the admin role editor and the profile page both read.
-  var SCOPE_KEYS = ['all', 'area', 'none'];
+  var SCOPE_KEYS = ['all', 'area'];
 
   // 'area' is the default for a role that has never been given one: a new role
   // hears about its own work and its own patch, and an admin widens it
@@ -218,10 +225,9 @@ window.GAILS = window.GAILS || {};
   // The whole delivery rule, in order:
   //
   //   - you are never told about your own action;
-  //   - 'none' means none, including your own tasks — someone who has switched
-  //     off has switched off;
   //   - anything naming you personally always reaches you: your task, or a task
-  //     you raised being closed by somebody else;
+  //     you raised being closed by somebody else. There is no setting that
+  //     turns this off;
   //   - an estate-wide change reaches everyone, because it is not one area's
   //     news to miss — the numbers under every bakery just moved;
   //   - 'all' takes the rest of the estate's activity too;
@@ -232,7 +238,6 @@ window.GAILS = window.GAILS || {};
     var reader = normalizeViewer(viewer);
     if (!reader.uid) return false;
     if (cleanText(event.actorUid) === reader.uid) return false;
-    if (reader.scope === 'none') return false;
     if (isTarget(event, reader.uid)) return true;
     if (type.estateWide) return true;
     if (reader.scope === 'all') return true;

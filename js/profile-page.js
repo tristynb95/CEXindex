@@ -9,10 +9,7 @@ import {
   updateProfile
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { ref, get, set, update as updateRecord, remove } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-import {
-  BUILTIN_ROLES, resolveRolePermissions, canSeeTeam,
-  NOTIFICATION_SCOPES, notificationScopeOf, notificationScopeLabel
-} from './permissions.js';
+import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
 import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
 
 const authGuard = document.getElementById('profileAuthGuard');
@@ -45,9 +42,6 @@ const emailPasswordInput = document.getElementById('profileEmailPassword');
 const emailModalMessage = document.getElementById('profileEmailModalMessage');
 const emailConfirmBtn = document.getElementById('profileEmailConfirmBtn');
 
-const notificationScopeEl = document.getElementById('profileNotificationScope');
-const notificationInheritedEl = document.getElementById('profileNotificationsInherited');
-const notificationMessageEl = document.getElementById('profileNotificationMessage');
 
 let profileRecord = null;
 let currentRoleName = 'Viewer';
@@ -74,80 +68,6 @@ function setMessage(element, type, text) {
   element.className = 'profile-message' + (type ? ' is-' + type : '');
   element.textContent = text || '';
   element.hidden = !text;
-}
-
-// ── Notifications ──
-// The role sets the default; this is where a person overrides it for
-// themselves. "Follow my role" is a real option rather than the absence of one,
-// because it is what keeps them moving when the role's default changes.
-function renderNotificationScope() {
-  if (!notificationScopeEl) return;
-  var roleDefault = notificationScopeOf(currentPermissions);
-  var chosen = (profileRecord && profileRecord.notificationScope) || '';
-
-  if (notificationInheritedEl) {
-    notificationInheritedEl.textContent = 'Your role gives you: ' +
-      notificationScopeLabel(roleDefault).toLowerCase() + '.';
-  }
-
-  var options = [{
-    key: '',
-    label: 'Follow my role',
-    description: 'Whatever your role is set to — ' + notificationScopeLabel(roleDefault).toLowerCase() +
-      ' — including if that changes later.'
-  }].concat(NOTIFICATION_SCOPES.map(function(scope) {
-    // The role descriptions are written about somebody else ("their own area"),
-    // so this page asks the same question in the first person.
-    return {
-      key: scope.key,
-      label: scope.label,
-      description: scope.description.replace(/\btheir own\b/g, 'my').replace(/\bthey\b/g, 'I')
-    };
-  }));
-
-  notificationScopeEl.innerHTML = options.map(function(option) {
-    return '<label class="profile-notification-option">' +
-      '<input type="radio" name="profileNotificationScope" value="' + escapeAttr(option.key) + '"' +
-      (option.key === chosen ? ' checked' : '') + '>' +
-      '<span class="profile-notification-option__body">' +
-      '<strong>' + escapeText(option.label) + '</strong>' +
-      '<span>' + escapeText(option.description) + '</span>' +
-      '</span>' +
-      '</label>';
-  }).join('');
-}
-
-function escapeText(value) {
-  var node = document.createElement('span');
-  node.textContent = String(value == null ? '' : value);
-  return node.innerHTML;
-}
-
-function escapeAttr(value) {
-  return escapeText(value).replace(/"/g, '&quot;');
-}
-
-if (notificationScopeEl) {
-  notificationScopeEl.addEventListener('change', async function(event) {
-    var input = event.target.closest('input[name="profileNotificationScope"]');
-    if (!input || !auth.currentUser || !profileRecord) return;
-    var next = input.value || null;
-    profileRecord.notificationScope = next || '';
-    setMessage(notificationMessageEl, '', '');
-    try {
-      // Written on change rather than behind a Save button: it is one choice
-      // about your own account, and it takes effect on the next render.
-      await updateRecord(ref(db, 'users/' + auth.currentUser.uid), { notificationScope: next });
-      setMessage(notificationMessageEl, 'success', 'Notification settings saved.');
-      renderNotificationScope();
-      if (headerProfileMenu && headerProfileMenu.notifications) {
-        headerProfileMenu.notifications.update(auth.currentUser, profileRecord, currentPermissions);
-      }
-    } catch (error) {
-      console.error('Could not save notification settings:', error);
-      setMessage(notificationMessageEl, 'error', 'That could not be saved. Try again.');
-    }
-  });
 }
 
 function setButtonBusy(button, busy, busyText, readyText) {
@@ -364,7 +284,6 @@ onAuthStateChanged(auth, async function(user) {
       }
     });
     renderProfile(user, profileRecord);
-    renderNotificationScope();
     authGuard.style.display = 'none';
     page.hidden = false;
   } catch (error) {

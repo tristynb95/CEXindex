@@ -15210,22 +15210,6 @@ table.nps-splits-collapsed .nps-split-col {
   text-align: center;
 }
 
-.notification-panel__footer {
-  display: block;
-  margin-top: 4px;
-  padding: 10px 12px 4px;
-  border-top: 1px solid var(--card-border);
-  color: var(--muted-l);
-  font-size: 0.76rem;
-  font-weight: 600;
-  text-align: center;
-  text-decoration: none;
-}
-
-.notification-panel__footer:hover {
-  color: var(--text);
-}
-
 .notification-item {
   display: flex;
   align-items: flex-start;
@@ -15471,8 +15455,7 @@ table.nps-splits-collapsed .nps-split-col {
     overflow: hidden;
   }
 
-  .notification-panel__head,
-  .notification-panel__footer {
+  .notification-panel__head {
     flex: 0 0 auto;
   }
 
@@ -15804,58 +15787,6 @@ table.nps-splits-collapsed .nps-split-col {
 .profile-field small {
   color: var(--muted-l);
   font-size: 0.76rem;
-}
-
-/* ── Notification preference ──
-   The same option cards the admin role editor uses, asked in the first person.
-   The person's own choice overrides their role's default. */
-.profile-notification-options {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.profile-notification-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  background: var(--bg);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.profile-notification-option:hover {
-  border-color: var(--accent);
-}
-
-.profile-notification-option:has(input:checked) {
-  border-color: var(--accent);
-  background: var(--red-d);
-}
-
-.profile-notification-option input {
-  margin-top: 3px;
-  flex-shrink: 0;
-  accent-color: var(--accent);
-}
-
-.profile-notification-option__body {
-  display: grid;
-  gap: 3px;
-}
-
-.profile-notification-option__body strong {
-  font-size: 0.86rem;
-  color: var(--text);
-}
-
-.profile-notification-option__body span {
-  color: var(--muted-l);
-  font-size: 0.78rem;
-  line-height: 1.45;
 }
 
 .profile-message {

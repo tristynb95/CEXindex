@@ -99,9 +99,15 @@ test('"everything" takes the whole estate', () => {
   assert.equal(Notifications.shouldDeliver(anywhere, viewer({ scope: 'all' })), true);
 });
 
-test('"nothing" means nothing, including their own tasks', () => {
+test('there is no way to switch notifications off', () => {
+  // The narrowest setting still delivers your own tasks — a task somebody
+  // assigns you is not something you get to stop being told about.
   const mine = event({ type: 'task.assigned', bakery: 'Henley', targetUids: ['bobby'] });
-  assert.equal(Notifications.shouldDeliver(mine, viewer({ scope: 'none' })), false);
+  assert.equal(Notifications.shouldDeliver(mine, viewer({ scope: 'area' })), true);
+  // A 'none' left on an old record reads as 'area' rather than silencing them.
+  assert.equal(Notifications.shouldDeliver(mine, viewer({ scope: 'none' })), true);
+  assert.equal(Notifications.normalizeScope('none'), 'area');
+  assert.doesNotMatch(read('js/notifications.js'), /scope === 'none'/);
 });
 
 test('a task assigned to you reaches you wherever the bakery is', () => {
@@ -141,9 +147,8 @@ test('an admin data update reaches everyone, because it is nobody\'s area news',
   });
   assert.equal(Notifications.shouldDeliver(dataUpdate, viewer()), true);
   assert.equal(Notifications.shouldDeliver(dataUpdate, viewer({ scope: 'all' })), true);
-  // Except the person who did it, and anyone who has switched off.
+  // Except the person who did it.
   assert.equal(Notifications.shouldDeliver(dataUpdate, viewer({ uid: 'admin' })), false);
-  assert.equal(Notifications.shouldDeliver(dataUpdate, viewer({ scope: 'none' })), false);
 });
 
 test('a bakery outside the patch still matches on the region a regional manager holds', () => {
@@ -158,9 +163,9 @@ test('a signed-out reader is delivered nothing', () => {
 // ── Scope resolution ──────────────────────────────────────────────────────
 
 test('a person\'s own choice beats their role, and no choice follows the role', () => {
-  assert.equal(Notifications.resolveScope('all', 'none'), 'none');
+  assert.equal(Notifications.resolveScope('all', 'area'), 'area');
   assert.equal(Notifications.resolveScope('all', ''), 'all');
-  assert.equal(Notifications.resolveScope('none', undefined), 'none');
+  assert.equal(Notifications.resolveScope('area', undefined), 'area');
   // Nonsense in either position falls back rather than throwing the bell away.
   assert.equal(Notifications.resolveScope('nonsense', 'rubbish'), 'area');
 });
@@ -170,11 +175,25 @@ test('a role that predates the bell still hears about its own patch', () => {
   assert.match(permissions, /export function normalizeNotificationScope/);
   assert.match(permissions, /NOTIFICATION_SCOPE_KEYS\.indexOf\(value\) === -1 \? 'area' : value/);
   // The keys live with the delivery rule; the labels live with the other role
-  // settings. Both lists have to name the same three things.
-  assert.deepEqual(plain(Notifications.SCOPE_KEYS), ['all', 'area', 'none']);
-  ['all', 'area', 'none'].forEach((key) => {
+  // settings. Both lists have to name the same two things.
+  assert.deepEqual(plain(Notifications.SCOPE_KEYS), ['all', 'area']);
+  ['all', 'area'].forEach((key) => {
     assert.match(permissions, new RegExp("key: '" + key + "'"));
   });
+});
+
+test('notifications are set by admins, not by the person receiving them', () => {
+  // The role default and the per-person override both live in the admin
+  // portal. The profile page carries no notification control at all.
+  assert.match(read('admin.html'), /id="roleNotificationScope"/);
+  assert.match(read('admin.html'), /id="userAccessNotifications"/);
+  // profile.html still loads js/notifications.js — the bell in its own header
+  // needs it — but carries no control over what that bell delivers.
+  assert.doesNotMatch(read('profile.html'), /id="profileNotification/);
+  assert.doesNotMatch(read('profile.html'), /id="notifications"/);
+  assert.doesNotMatch(read('js/profile-page.js'), /otificationScope/);
+  // And the panel no longer points people at a setting they cannot change.
+  assert.doesNotMatch(centre, /profile\.html#notifications/);
 });
 
 test('the role default rides in the stored permission shape', () => {
@@ -372,7 +391,7 @@ test('the pages ask for the stylesheet version that carries the bell', () => {
   // new CSS without bumping it ships nothing.
   ['index.html', 'admin.html', 'bakery-profile.html', 'my-activity.html', 'my-team.html', 'profile.html']
     .forEach((page) => {
-      assert.match(read(page), /css\/styles\.css\?v=20260728-notification-centre-02/, page);
+      assert.match(read(page), /css\/styles\.css\?v=20260728-notification-centre-05/, page);
     });
   assert.match(read('css/styles.css'), /\.profile-menu__bell \{/);
 });

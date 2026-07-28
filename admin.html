@@ -21,7 +21,7 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=20260728-notification-centre-02-mobile-banners-03-notification-fit-04">
+  <link rel="stylesheet" href="css/styles.css?v=20260728-notification-centre-05-mobile-banners-03-notification-fit-04">
   <link rel="stylesheet" href="css/admin.css?v=20260727-admin-07">
 </head>
 
@@ -735,7 +735,7 @@
                         <label class="admin-form-field" for="userAccessNotifications">
                           <span>Notifications</span>
                           <select id="userAccessNotifications"></select>
-                          <small class="admin-form-field__hint">What reaches their header bell. They can change this themselves.</small>
+                          <small class="admin-form-field__hint">What they get told about, if their role&rsquo;s default is not right for them.</small>
                         </label>
                       </div>
 
@@ -746,9 +746,9 @@
                       <fieldset class="access-patch" id="userAccessPatch">
                         <legend>Bakeries they look after</legend>
                         <p class="access-patch__copy">
-                          Drives their notifications, and their Bakery Reports scope while the estate-wide rule below is on.
-                          Tick a whole region for a regional manager, or individual areas for an ops manager.
-                          Leave it empty and they see and hear about the whole estate.
+                          Tick a whole region for a regional manager, or single areas for an ops manager.
+                          This is what they get notified about, and — while the estate-wide rule below is on —
+                          the only Bakery Reports they can see. Leave it empty and they get the lot.
                         </p>
                         <div class="access-patch__list" id="userAccessPatchList"></div>
                         <p class="access-patch__summary" id="userAccessPatchSummary"></p>
@@ -848,7 +848,7 @@
 
                       <fieldset class="access-team">
                         <legend>Notifications</legend>
-                        <p class="access-team__copy">What lands in the header bell by default. Anyone holding this role can change it for themselves on their profile, and that choice wins.</p>
+                        <p class="access-team__copy">What this role gets told about. Set here for everyone holding it, and per person in their access settings if somebody needs different. There is no way to turn notifications off.</p>
                         <div class="access-team__options" id="roleNotificationScope"></div>
                       </fieldset>
                     </form>
@@ -988,7 +988,7 @@
   </div>
 
   <script src="js/config.js"></script>
-  <script src="js/utils.js?v=20260728-notification-centre-02"></script>
+  <script src="js/utils.js?v=20260728-notification-centre-05"></script>
   <script src="js/cei.js"></script>
   <script src="js/parser.js"></script>
   <script src="js/tables.js"></script>

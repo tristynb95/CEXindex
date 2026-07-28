@@ -442,7 +442,7 @@ function notificationScopeOptionsHtml(selected, roleId) {
   var current = normalizeNotificationScope(selected) === selected ? selected : '';
   var inherited = notificationScopeLabel(permissionsForRole(roleId).notificationScope);
   return '<option value=""' + (current === '' ? ' selected' : '') + '>'
-    + escapeHtml('Follow their role — ' + inherited.toLowerCase()) + '</option>'
+    + escapeHtml('Same as their role (' + inherited.toLowerCase() + ')') + '</option>'
     + NOTIFICATION_SCOPES.map(function(scope) {
       return '<option value="' + escapeHtml(scope.key) + '"' + (scope.key === current ? ' selected' : '') + '>'
         + escapeHtml(scope.label) + '</option>';

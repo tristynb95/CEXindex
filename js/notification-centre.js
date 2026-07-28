@@ -102,7 +102,6 @@ export function mountNotificationCentre(options) {
           'Mark all read</button>' +
       '</div>' +
       '<div class="notification-panel__list" data-notification-list></div>' +
-      '<a class="notification-panel__footer" href="profile.html#notifications">Notification settings</a>' +
     '</div>';
 
   const toggle = settings.trigger || null;
@@ -160,14 +159,11 @@ export function mountNotificationCentre(options) {
   // assigned is quiet by design, and someone whose bell never rings deserves to
   // know that rather than assume it is broken.
   function emptyMessage(reader) {
-    if (reader.scope === 'none') {
-      return 'Notifications are switched off for you. Turn them back on in your notification settings.';
-    }
     if (reader.scope === 'area' && !reader.bakeries.length) {
-      return 'Nothing new. You are set to hear about your own area, but no bakeries are assigned to you yet — ' +
-        'so only your own tasks and estate-wide updates will land here.';
+      return 'Nothing here yet. You are set to hear about your own bakeries, but none are assigned to you — ' +
+        'so for now you will only see your own tasks.';
     }
-    return 'Nothing new. Reports, tasks and notes from your colleagues land here.';
+    return 'Nothing here yet. Reports, tasks and notes from the rest of the team will show up here.';
   }
 
   function renderList(visible) {

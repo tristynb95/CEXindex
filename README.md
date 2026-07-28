@@ -280,22 +280,30 @@ state lives at `notificationReads/{uid}`, which only that user can read or write
 The delivery rule (`js/notifications.js`), in order:
 
 - you are never told about your own action;
-- **Nothing** means nothing, including your own tasks — someone who has switched
-  off has switched off;
 - anything naming you personally always reaches you: your task, or a task you
   raised being closed by somebody else;
 - an estate-wide change reaches everyone, because it is not one area's news to
   miss — the numbers under every bakery just moved;
 - **Everything** takes the rest of the estate's activity too;
-- **My area** takes only activity at the bakeries in your patch.
+- **Just their bakeries** takes only activity at the bakeries in their patch.
 
-Scope is set **by role** (`roles/{roleId}.notificationScope`, in the role
-editor), and a person can override it for themselves on their profile page
-(`users/{uid}.notificationScope`). "Follow my role" is a real option rather than
-the absence of one, which is what keeps someone moving when the role's default
-changes. A role that predates the bell resolves to **My area** — it hears about
-its own work and its own patch, and an admin widens it deliberately rather than
-everyone being opted into everything.
+**There is no "off".** The narrowest setting still delivers your own tasks and
+your own bakeries, because a task somebody assigns you is not something you get
+to stop being told about. A `'none'` left on an old record normalizes to `area`
+like any other unrecognised value, so nobody stays silenced by a setting that no
+longer exists.
+
+**Notifications are set by admins, not by the person receiving them.** The
+default is per role (`roles/{roleId}.notificationScope`, in the role editor),
+and one person can be moved off that default in their access dialog
+(`users/{uid}.notificationScope` — the dropdown's first option is "Same as their
+role", which is a real value rather than the absence of one, and is what keeps
+them moving when the role's default changes). The profile page carries no
+notification control at all.
+
+A role that predates the bell resolves to **Just their bakeries** — it hears
+about its own work and its own patch, and an admin widens it deliberately rather
+than everyone being opted into everything.
 
 Recording a notification is **best-effort and never blocks the change it
 describes** (`js/notification-write.js`): a rejected write is logged and

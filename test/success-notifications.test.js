@@ -30,8 +30,8 @@ test('every page that can surface the shared workflow loads the notification ass
   ['index.html', 'my-activity.html', 'bakery-profile.html', 'admin.html', 'my-team.html']
     .forEach((file) => {
       const html = read(file);
-      assert.match(html, /css\/styles\.css\?v=20260728-notification-centre-02/, file + ' styles');
-      assert.match(html, /js\/utils\.js\?v=20260728-notification-centre-02/, file + ' utility');
+      assert.match(html, /css\/styles\.css\?v=20260728-notification-centre-05/, file + ' styles');
+      assert.match(html, /js\/utils\.js\?v=20260728-notification-centre-05/, file + ' utility');
     });
 });
 

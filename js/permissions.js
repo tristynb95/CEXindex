@@ -62,18 +62,21 @@ export const TEAM_SCOPE_KEYS = TEAM_SCOPES.map(function(scope) { return scope.ke
 
 // How much of the estate's activity the role hears about in the header bell.
 //
-// This is the *default* for everyone holding the role. A person can narrow or
-// widen it for themselves on their profile page (users/{uid}.notificationScope),
+// This is the *default* for everyone holding the role. A person can widen or
+// narrow it for themselves on their profile page (users/{uid}.notificationScope),
 // which then wins — so changing the role default only moves the people who have
 // never expressed a preference of their own.
+//
+// There is deliberately no "off". The narrowest setting still delivers their own
+// tasks and their own bakeries, because a task somebody assigns you is not
+// something you get to stop being told about.
 //
 // The delivery rule these keys drive lives in js/notifications.js, which is a
 // classic script and cannot import this module; it holds the keys, this holds
 // how they read.
 export const NOTIFICATION_SCOPES = [
-  { key: 'all', label: 'Everything', description: 'Every report, task, note and data update across the whole estate.' },
-  { key: 'area', label: 'Their own area', description: 'Their own tasks, estate-wide data updates, and activity at the bakeries they look after.' },
-  { key: 'none', label: 'Nothing', description: 'No notifications at all, including their own tasks.' }
+  { key: 'all', label: 'Everything', description: 'Every report, task and note from across the whole estate.' },
+  { key: 'area', label: 'Just their bakeries', description: 'Anything that happens at the bakeries they look after, plus their own tasks and any time the shared data is updated.' }
 ];
 
 export const NOTIFICATION_SCOPE_KEYS = NOTIFICATION_SCOPES.map(function(scope) { return scope.key; });
@@ -218,7 +221,9 @@ export function normalizeTeamScope(value) {
 
 // Unlike teamScope, an unset notification scope is not "off": a role created
 // before the bell existed should still hear about its own tasks and its own
-// patch, so the absent value means 'area'.
+// patch, so the absent value means 'area'. The retired 'none' setting falls
+// through the same door, which is what un-silences anyone who was switched off
+// before the option was withdrawn.
 export function normalizeNotificationScope(value) {
   return NOTIFICATION_SCOPE_KEYS.indexOf(value) === -1 ? 'area' : value;
 }
@@ -229,7 +234,7 @@ export function notificationScopeOf(permissions) {
 
 export function notificationScopeLabel(scope) {
   var match = NOTIFICATION_SCOPES.find(function(entry) { return entry.key === normalizeNotificationScope(scope); });
-  return match ? match.label : 'Their own area';
+  return match ? match.label : 'Just their bakeries';
 }
 
 // Fills in any missing keys on a stored permission object so callers can
