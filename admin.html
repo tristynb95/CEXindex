@@ -21,7 +21,7 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=20260727-region-cover-01">
+  <link rel="stylesheet" href="css/styles.css?v=20260728-notification-centre-02-mobile-banners-03-notification-fit-04">
   <link rel="stylesheet" href="css/admin.css?v=20260727-admin-07">
 </head>
 
@@ -58,6 +58,7 @@
                 <button type="button" id="adminProfileMenuBtn" class="admin-secondary-btn profile-menu__trigger"
                   aria-haspopup="menu" aria-expanded="false" aria-controls="adminProfileMenuPopover">
                   <span id="adminProfileMenuAvatar" class="profile-menu__avatar" aria-hidden="true">P</span>
+                  <span class="profile-menu__dot" data-notification-dot hidden></span>
                   <span>Profile</span>
                   <svg class="profile-menu__chevron" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
                     <path d="m6 8 4 4 4-4" />
@@ -67,6 +68,15 @@
                   <div class="profile-menu__identity">
                     <span id="adminProfileMenuName">Your profile</span>
                     <small id="adminProfileMenuEmail"></small>
+                    <button type="button" class="profile-menu__bell" data-notification-trigger
+                      aria-haspopup="dialog" aria-expanded="false" title="Notifications">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7" />
+                        <path d="M13.7 20a2 2 0 0 1-3.4 0" />
+                      </svg>
+                      <span class="profile-menu__count" data-notification-count hidden>0</span>
+                      <span class="sr-only">Notifications</span>
+                    </button>
                   </div>
                   <a class="profile-menu__item" href="profile.html" role="menuitem">
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -91,6 +101,14 @@
                     </svg>
                     My Team
                   </a>
+                  <a class="profile-menu__item" href="admin.html" role="menuitem"
+                    data-admin-portal-link hidden aria-current="page">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <rect x="3" y="11" width="18" height="11" rx="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    Admin Portal
+                  </a>
                   <button type="button" id="adminPageSignOut" class="profile-menu__item profile-menu__item--danger" role="menuitem">
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -100,6 +118,7 @@
                     Sign out
                   </button>
                 </div>
+                <div data-notification-centre></div>
               </div>
             </div>
           </div>
@@ -713,12 +732,27 @@
                           <select id="userAccessManager"></select>
                           <small class="admin-form-field__hint">Their manager sees their visits and tasks on My Team.</small>
                         </label>
-                        <label class="admin-form-field" for="userAccessOps">
-                          <span>Bakery Reports scope</span>
-                          <select id="userAccessOps"></select>
-                          <small class="admin-form-field__hint">Only applies while the estate-wide rule below is on.</small>
+                        <label class="admin-form-field" for="userAccessNotifications">
+                          <span>Notifications</span>
+                          <select id="userAccessNotifications"></select>
+                          <small class="admin-form-field__hint">What reaches their header bell. They can change this themselves.</small>
                         </label>
                       </div>
+
+                      <!-- The patch: which part of the estate this person looks
+                           after. Ops areas are named after their ops manager, so
+                           each saved area also stores the bakeries it held — that
+                           is what follows it through a rename. -->
+                      <fieldset class="access-patch" id="userAccessPatch">
+                        <legend>Bakeries they look after</legend>
+                        <p class="access-patch__copy">
+                          Drives their notifications, and their Bakery Reports scope while the estate-wide rule below is on.
+                          Tick a whole region for a regional manager, or individual areas for an ops manager.
+                          Leave it empty and they see and hear about the whole estate.
+                        </p>
+                        <div class="access-patch__list" id="userAccessPatchList"></div>
+                        <p class="access-patch__summary" id="userAccessPatchSummary"></p>
+                      </fieldset>
 
                       <div class="access-modal__readout">
                         <div class="access-modal__readout-col">
@@ -810,6 +844,12 @@
                         <legend>Team view</legend>
                         <p class="access-team__copy">What this role sees on the My Team page. Reporting lines are set per person, in their access settings.</p>
                         <div class="access-team__options" id="roleTeamScope"></div>
+                      </fieldset>
+
+                      <fieldset class="access-team">
+                        <legend>Notifications</legend>
+                        <p class="access-team__copy">What lands in the header bell by default. Anyone holding this role can change it for themselves on their profile, and that choice wins.</p>
+                        <div class="access-team__options" id="roleNotificationScope"></div>
                       </fieldset>
                     </form>
                     <div class="access-modal__footer">
@@ -948,7 +988,7 @@
   </div>
 
   <script src="js/config.js"></script>
-  <script src="js/utils.js?v=20260727-region-cover-01"></script>
+  <script src="js/utils.js?v=20260728-notification-centre-02"></script>
   <script src="js/cei.js"></script>
   <script src="js/parser.js"></script>
   <script src="js/tables.js"></script>
@@ -957,6 +997,8 @@
   <script src="js/cqv-shared.js"></script>
   <script src="js/cqv-parser.js"></script>
   <script src="js/nbo-shared.js"></script>
+  <script src="js/patch.js"></script>
+  <script src="js/notifications.js"></script>
   <script src="js/mentions.js"></script>
   <script src="js/mention-field.js"></script>
   <script src="js/attribution.js"></script>

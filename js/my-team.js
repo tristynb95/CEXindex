@@ -1483,7 +1483,8 @@ async function loadTeam(user) {
     var roleSnapshot = await get(ref(db, 'roles/' + roleId));
     customRole = roleSnapshot.exists() ? roleSnapshot.val() : null;
   }
-  teamScope = teamScopeOf(resolveRolePermissions(roleId, customRole));
+  var permissions = resolveRolePermissions(roleId, customRole);
+  teamScope = teamScopeOf(permissions);
 
   // The menu entry is hidden without a team scope, but the page has to refuse a
   // typed URL too — this is the check a bookmark cannot walk around. The
@@ -1532,6 +1533,7 @@ async function loadTeam(user) {
     profile: userProfile,
     showActivity: !!(userProfile && userProfile.myActivity === true),
     showTeam: true,
+    permissions: permissions,
     onSignOut: async function () {
       await signOut(auth);
       window.location.href = 'index.html';

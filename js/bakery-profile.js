@@ -12,6 +12,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
 import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
+import { recordNotification, followUpTargets } from './notification-write.js';
 
 const G = window.GAILS || {};
 const guard = document.getElementById('bakeryProfileGuard');
@@ -1422,6 +1423,7 @@ async function loadBakeryProfile(user) {
     profile: currentUserProfile,
     showActivity: !!(currentUserProfile && currentUserProfile.myActivity === true),
     showTeam: canSeeTeam(permissions),
+    permissions: permissions,
     onSignOut: async function() {
       await signOut(auth);
       window.location.replace('index.html');
@@ -1537,6 +1539,15 @@ taskForm.addEventListener('submit', async function(event) {
         updatedBy: who
       }
     });
+    // This form has no assignee picker, so the task belongs to whoever raised
+    // it. That leaves no personal targets — the bakery's own people still hear
+    // about it through their area.
+    recordNotification('task.assigned', {
+      bakery: bakeryName,
+      subject: title,
+      entityId: taskRef.key,
+      targetUids: []
+    });
     if (typeof G.notifySuccess === 'function') G.notifySuccess('Task created');
     closeTaskForm();
   } catch (error) {
@@ -1570,6 +1581,14 @@ document.getElementById('bakeryTaskList').addEventListener('click', async functi
       'meta/updatedAt': now,
       'meta/updatedBy': currentUser.email || currentUser.uid
     });
+    if (done) {
+      recordNotification('task.completed', {
+        bakery: task.bakery || bakeryName,
+        subject: task.title,
+        entityId: task.id,
+        targetUids: followUpTargets(task)
+      });
+    }
     if (typeof G.notifySuccess === 'function') {
       G.notifySuccess(done ? 'Task signed off' : 'Task reopened');
     }
@@ -1614,6 +1633,13 @@ noteForm.addEventListener('submit', async function(event) {
         createdBy: author,
         updatedAt: null,
         updatedBy: null
+      });
+      // Only a new note is news. Editing your own wording later is not
+      // something to tell the team about a second time.
+      recordNotification('note.added', {
+        bakery: bakeryName,
+        subject: body,
+        entityId: noteRef.key
       });
     }
     resetNoteEditor();

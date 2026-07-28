@@ -3,6 +3,8 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https:/
 import { ref, get, set, update, remove, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess, canSeeTeam } from './permissions.js';
 import { createProfileMenu } from './profile-menu.js';
+import { recordNotification, followUpTargets } from './notification-write.js';
+import { mountNotificationCentre } from './notification-centre.js';
 
 function nowIso() {
   return new Date().toISOString();
@@ -174,6 +176,12 @@ window.GAILS_Firebase = {
       } catch (cacheErr) {
         console.warn('Could not update local cache:', cacheErr);
       }
+      // A new workbook moves every bakery's numbers, so everybody hears about
+      // it — see the estateWide flag in js/notifications.js.
+      recordNotification('data.updated', {
+        subject: 'the shared dataset',
+        detail: records.length + ' rows' + (sourceName ? ' from ' + sourceName : '')
+      });
       console.log('Firebase DB: Saved successfully.');
     } catch (e) {
       console.error('Firebase DB: Save failed.', e);
@@ -207,6 +215,10 @@ window.GAILS_Firebase = {
     }
     var payload = buildSiteMetaPayload(meta, sourceInfo, assignments, opsAssignments);
     await set(ref(db, 'portalData/siteMeta'), payload);
+    recordNotification('data.updated', {
+      subject: 'the site directory',
+      detail: payload.siteCount ? payload.siteCount + ' sites' : ''
+    });
     return payload;
   },
   saveSiteVisit: async function(visitRecord, options) {
@@ -238,6 +250,13 @@ window.GAILS_Firebase = {
       }
     }, visitRecord);
     await set(newVisitRef, payload);
+    // Colleagues hear about a report the moment it lands, so the bakery's own
+    // people are not the last to know what was found there.
+    recordNotification('report.created', {
+      bakery: payload.bakery,
+      subject: payload.visitKind && payload.visitKind !== 'checkin' ? 'NBO opening visit' : 'Check-in',
+      entityId: newVisitRef.key
+    });
     notifyMutation(
       payload.visitKind && payload.visitKind !== 'checkin' ? 'NBO opening visit saved' : 'Check-in saved',
       options
@@ -298,6 +317,15 @@ window.GAILS_Firebase = {
       meta: { updatedAt: nowIsoStr, updatedBy: who }
     });
     await set(newRef, payload);
+    // Only the people it lands on are told, and never the person raising it —
+    // a task you gave yourself is not news. buildEvent drops the actor, so a
+    // self-assigned task simply notifies nobody.
+    recordNotification('task.assigned', {
+      bakery: payload.bakery,
+      subject: payload.title,
+      entityId: newRef.key,
+      targetUids: followUpTargets(payload)
+    });
     notifyMutation('Task created', options);
     return newRef.key;
   },
@@ -311,6 +339,18 @@ window.GAILS_Firebase = {
     var whoUid = auth.currentUser.uid;
     var whoName = auth.currentUser.displayName || '';
     var nowIsoStr = nowIso();
+    // Read before writing: signing a task off has to tell both the people it
+    // was assigned to and the person who raised it, and only the stored record
+    // knows who they are.
+    var existing = null;
+    if (done) {
+      try {
+        var taskSnapshot = await get(ref(db, 'followUpActions/' + taskId));
+        existing = taskSnapshot.exists() ? taskSnapshot.val() : null;
+      } catch (error) {
+        console.warn('Could not read the task before signing it off:', error);
+      }
+    }
     await update(ref(db, 'followUpActions/' + taskId), {
       status: done ? 'done' : 'open',
       completedAt: done ? nowIsoStr : null,
@@ -320,6 +360,16 @@ window.GAILS_Firebase = {
       'meta/updatedAt': nowIsoStr,
       'meta/updatedBy': who
     });
+    // Reopening is a correction rather than news, so only a sign-off is
+    // announced — to the assignees and to whoever raised it.
+    if (done && existing) {
+      recordNotification('task.completed', {
+        bakery: existing.bakery,
+        subject: existing.title,
+        entityId: taskId,
+        targetUids: followUpTargets(existing)
+      });
+    }
     notifyMutation(done ? 'Task signed off' : 'Task reopened', options);
   },
   updateFollowUpAction: async function(taskId, patch, options) {
@@ -355,7 +405,7 @@ const loginBtn = document.getElementById('loginBtn');
 const emailInput = document.getElementById('emailInput');
 const passwordInput = document.getElementById('passwordInput');
 const loginError = document.getElementById('loginError');
-const adminBtn = document.getElementById('adminBtn');
+const adminPortalLink = document.querySelector('.header [data-admin-portal-link]');
 const profileMenu = document.querySelector('.header [data-profile-menu]');
 const profileMenuBtn = document.getElementById('profileMenuBtn');
 const profileMenuPopover = document.getElementById('profileMenuPopover');
@@ -407,8 +457,24 @@ const profileMenuUi = createProfileMenu({
   emailEl: profileMenuEmail
 });
 
+// Notifications live inside that menu — see js/notification-centre.js, which
+// subscribes to the feed itself and is told who is signed in once the profile
+// resolves. Mounting can only fail if the header markup is missing, so the null
+// guard keeps every call site free of one.
+const notificationCentre = mountNotificationCentre({
+  root: document.querySelector('.header [data-notification-centre]'),
+  trigger: document.querySelector('.header [data-notification-trigger]'),
+  count: document.querySelector('.header [data-notification-count]'),
+  dot: document.querySelector('.header [data-notification-dot]'),
+  // The panel takes the menu's place, and Back brings the menu back.
+  onOpen: function() { profileMenuUi.setOpen(false); },
+  onBack: function() { profileMenuUi.setOpen(true); }
+}) || { update: function() {}, setOpen: function() {} };
+
 function setProfileMenuOpen(open) {
   profileMenuUi.setOpen(open);
+  // One surface at a time: opening the menu closes the panel it replaced.
+  if (open) notificationCentre.setOpen(false);
 }
 
 function updateProfileMenu(user, profile) {
@@ -856,6 +922,8 @@ onAuthStateChanged(auth, async (user) => {
         // Scopes Bakery Reports client-side: the user's assigned ops area, and
         // the master switch (live-synced), are read by js/visit-report.js.
         window.GAILS.userOpsArea = (userProfile && userProfile.opsArea) || '';
+        window.GAILS.userPatch = (userProfile && userProfile.patch) || null;
+        notificationCentre.update(user, userProfile, permissions);
         applyMyActivityAccess(userProfile);
         applyMyTeamAccess(permissions);
         showApp(isAdmin, permissions);
@@ -894,7 +962,9 @@ onAuthStateChanged(auth, async (user) => {
     stopReportVisibilitySync();
     stopUserDirectorySync();
     window.GAILS.userOpsArea = '';
+    window.GAILS.userPatch = null;
     window.GAILS.currentPerson = null;
+    notificationCentre.update(null);
     applyMyActivityAccess(null);
     applyMyTeamAccess(null);
     applySiteMeta(null);
@@ -965,7 +1035,7 @@ function showApp(isAdmin, permissions) {
     containerEl.style.display = 'block';
 
     const uploader = document.getElementById('uploadZone');
-    if (adminBtn) adminBtn.style.display = (isAdmin || hasAdminPanelAccess(permissions)) ? 'inline-block' : 'none';
+    if (adminPortalLink) adminPortalLink.hidden = !(isAdmin || hasAdminPanelAccess(permissions));
 
     // Always hide upload zone initially — loadSharedDashboardData will reveal it
     // for admins only if there is no Firebase data to load.
@@ -1011,12 +1081,6 @@ if (loginForm) {
   loginForm.addEventListener('submit', handleLogin);
 } else if (loginBtn) {
   loginBtn.addEventListener('click', handleLogin);
-}
-
-if (adminBtn) {
-  adminBtn.addEventListener('click', function() {
-    window.location.href = 'admin.html';
-  });
 }
 
 if (profileMenuBtn && profileMenuPopover) {

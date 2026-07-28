@@ -3207,6 +3207,7 @@ async function loadActivityHub(user) {
     profile: userProfile,
     showActivity: true,
     showTeam: canSeeTeam(permissions),
+    permissions: permissions,
     onSignOut: async function () {
       await signOut(auth);
       window.location.href = 'index.html';

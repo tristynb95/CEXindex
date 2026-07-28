@@ -44,7 +44,12 @@ Shared code lives in one place per concern; prefer extending these over re-copyi
 - `js/mention-field.js` — `GAILS.MentionField`, the two-face editor for it.
 - `js/attribution.js` — `GAILS.Attribution`, who a visit or follow-up belongs to.
 - `js/team.js` — `GAILS.Team`, the reporting hierarchy: who reports to whom.
-- `js/permissions.js` — roles, the see/edit access grid, and team scope (ES module).
+- `js/patch.js` — `GAILS.Patch`, which ops areas and regions a person looks after.
+- `js/notifications.js` — `GAILS.Notifications`, what an event is and who it reaches.
+- `js/notification-centre.js` — the bell, its panel, and their subscriptions (ES module).
+- `js/notification-write.js` — the one place an event is recorded (ES module).
+- `js/permissions.js` — roles, the see/edit access grid, team scope, and the
+  notification-scope default (ES module).
 
 ## Assigning a visit
 
@@ -108,13 +113,15 @@ The panel is three sections, in the order the questions get asked:
 - **People** — one row per person showing their role, who they report to, and a
   plain-English summary of what they can see and change. **Manage** opens a
   single dialog holding every access decision about them: role, reporting line,
-  Bakery Reports scope, and their My Activity switch. A read-out under the
-  fields says what those choices add up to *before* they are saved.
+  the bakeries they look after, their notification setting, and their My Activity
+  switch. A read-out under the fields says what those choices add up to *before*
+  they are saved.
 - **Roles** — the same two questions asked once per role, as **one grid with a
   "Can see" column and a "Can edit" column**. Every capability in the app is a
   row. Ticking Edit ticks See, and clearing See clears Edit, because "can change
   it but cannot look at it" is not a state the stored levels can express and
-  would be a lie if it were.
+  would be a lie if it were. Two three-way settings sit under the grid: the team
+  view, and the notification default.
 - **Estate-wide rules** — settings applied on top of every role, whoever holds
   it. Currently just the Bakery Reports ops-area restriction.
 
@@ -207,6 +214,101 @@ The flag gates three things, and all three matter:
   walk around;
 - the database rules, which stop a non-admin granting it to themselves by
   writing their own user record — the same clause that already pins `role`.
+
+## Which sites a person looks after
+
+A person's **patch** is the part of the estate they own: the ops areas an ops
+manager runs, and the regions a regional manager covers. It is stored at
+`users/{uid}.patch` and resolved by `js/patch.js`.
+
+The problem it exists to solve is that **ops areas are named after their ops
+manager** ("Bobby Holmes"), so the name changes the moment that person moves on
+— even though the area itself has not. Anything keyed on the label silently
+detaches on the next site directory upload: the app sees a brand new area, not a
+renamed one.
+
+So a saved ops area carries the bakeries it held when it was saved, and is
+re-found by membership rather than by name:
+
+1. the current ops area holding **more than half** of the saved bakeries — the
+   durable match, and the only one that survives a rename;
+2. failing that, the current ops area still carrying the saved name;
+3. failing that, nothing is guessed. The assignment is kept and reported as
+   unresolved in People & Access, so an admin can re-point it, rather than being
+   dropped or quietly attached to the wrong area.
+
+Regions are geographic and stable, so they are matched on the name.
+
+The bakery list is stamped fresh every time a person is saved, which is what
+keeps the next restructure judged against the current shape of the estate. This
+is the same rule `js/ops-area-assignments.js` follows for Area Head Baristas.
+
+The original single-field `users/{uid}.opsArea` still exists and still works: it
+reads as a one-area patch, and is written back alongside the patch for anything
+still consuming it (including the team directory). Nobody needed migrating.
+
+The patch drives two things: the Bakery Reports ops-area restriction, and which
+bakeries count as "my area" for notifications.
+
+## Notifications
+
+A bell in the **top-right of the profile card**, carrying an unread count, which
+opens a panel in place of the menu. The profile trigger itself carries a dot, so
+an unread notification is visible without opening anything. One control in the
+header, not two. `js/notification-centre.js` mounts it, and the four standalone
+pages get it from the single mount in `js/standalone-profile-menu.js`.
+
+Five things raise a notification:
+
+| Event | Raised when |
+| --- | --- |
+| `report.created` | somebody logs a check-in or NBO visit |
+| `task.assigned` | a follow-up is raised, to the people it lands on |
+| `task.completed` | a follow-up is signed off, to its assignees **and** whoever raised it |
+| `note.added` | a note is added to a bakery profile |
+| `data.updated` | an admin republishes the dataset or the site directory |
+
+**One shared feed, filtered per reader.** Every event is written once to
+`notificationEvents/{id}` and every signed-in user reads the node — exactly how
+`routineVisits`, `followUpActions` and `bakeryNotes` already work. Nothing is
+fanned out per recipient, so a role change or a re-drawn ops area takes effect on
+the next render rather than needing thousands of copies rewritten. Delivery is
+therefore a **presentation** decision made on the reader's own device — the same
+standing as the Bakery Reports restriction, and not a security boundary. Read
+state lives at `notificationReads/{uid}`, which only that user can read or write.
+
+The delivery rule (`js/notifications.js`), in order:
+
+- you are never told about your own action;
+- **Nothing** means nothing, including your own tasks — someone who has switched
+  off has switched off;
+- anything naming you personally always reaches you: your task, or a task you
+  raised being closed by somebody else;
+- an estate-wide change reaches everyone, because it is not one area's news to
+  miss — the numbers under every bakery just moved;
+- **Everything** takes the rest of the estate's activity too;
+- **My area** takes only activity at the bakeries in your patch.
+
+Scope is set **by role** (`roles/{roleId}.notificationScope`, in the role
+editor), and a person can override it for themselves on their profile page
+(`users/{uid}.notificationScope`). "Follow my role" is a real option rather than
+the absence of one, which is what keeps someone moving when the role's default
+changes. A role that predates the bell resolves to **My area** — it hears about
+its own work and its own patch, and an admin widens it deliberately rather than
+everyone being opted into everything.
+
+Recording a notification is **best-effort and never blocks the change it
+describes** (`js/notification-write.js`): a rejected write is logged and
+swallowed, because a colleague not hearing about a check-in is a smaller failure
+than the check-in not being saved.
+
+> **This needs a rules deploy** for `notificationEvents` and
+> `notificationReads` — run `firebase deploy --only database`. Until then the
+> feed read is refused, and the bell stays empty rather than the header breaking.
+
+The panel shows the last 30 days, capped at 250 events server-side
+(`orderByChild('at')` + `limitToLast`), so a reader never pulls the whole history
+down to draw 40 rows.
 
 ## Who a record belongs to
 

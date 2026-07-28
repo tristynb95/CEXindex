@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20260725-ux-04">
+  <link rel="stylesheet" href="css/styles.css?v=20260728-notification-centre-02-mobile-banners-03-notification-fit-04">
 </head>
 
 <body class="profile-body">
@@ -42,7 +42,11 @@
         </span>
       </a>
       <div class="profile-page__header-actions">
-        <a href="index.html" class="profile-page__header-link standalone-header-button">← Dashboard</a>
+        <a href="index.html" class="profile-page__header-link standalone-header-button"
+          aria-label="Back to dashboard">
+          <span class="profile-page__header-back-icon" aria-hidden="true">←</span>
+          <span class="profile-page__header-back-label">Dashboard</span>
+        </a>
         <div data-standalone-account-menu></div>
       </div>
     </header>
@@ -106,6 +110,19 @@
               <button type="submit" id="profileSaveBtn" class="btn">Save changes</button>
             </div>
           </form>
+        </section>
+
+        <section class="profile-card profile-card--form" id="notifications" aria-labelledby="profileNotificationsTitle">
+          <div class="profile-card__head">
+            <div>
+              <p class="profile-card__eyebrow">Notifications</p>
+              <h2 id="profileNotificationsTitle">What reaches your bell</h2>
+            </div>
+            <p class="profile-security-note" id="profileNotificationsInherited"></p>
+          </div>
+
+          <div class="profile-notification-options" id="profileNotificationScope"></div>
+          <div id="profileNotificationMessage" class="profile-message" role="status" aria-live="polite" hidden></div>
         </section>
 
         <section class="profile-card profile-card--form profile-card--security" aria-labelledby="profilePasswordTitle">
@@ -177,6 +194,8 @@
     </section>
   </div>
 
+  <script src="js/patch.js"></script>
+  <script src="js/notifications.js"></script>
   <script type="module" src="js/profile-page.js"></script>
 </body>
 

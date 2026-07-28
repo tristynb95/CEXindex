@@ -13,20 +13,40 @@ window.GAILS = window.GAILS || {};
 
   // ── Bakery Reports visibility scope ──
   // When an admin turns the master switch on (appSettings/reportVisibility) and
-  // a user has an assigned ops area (users/{uid}.opsArea), that user only sees
-  // Bakery Reports for their own ops area. Admins, users with no assignment, and
-  // everyone when the switch is off, see every site. This is a client-side
-  // visibility control applied to the Bakery Reports tab only — see the auth
-  // flow in js/auth.js which populates GAILS.userOpsArea and
-  // GAILS.reportVisibilityEnabled.
+  // a user has been given a patch — the ops areas or regions they look after
+  // (users/{uid}.patch) — that user only sees Bakery Reports for their own
+  // bakeries. Admins, users with no patch, and everyone when the switch is off,
+  // see every site. This is a client-side visibility control applied to the
+  // Bakery Reports tab only — see the auth flow in js/auth.js, which populates
+  // GAILS.userPatch, GAILS.userOpsArea and GAILS.reportVisibilityEnabled.
+  //
+  // The patch is resolved rather than compared by name, so an ops area renamed
+  // after its manager left still matches. js/patch.js explains why that matters;
+  // GAILS.userOpsArea remains the fallback for a profile saved before patches
+  // existed, and for a page that has not loaded js/patch.js.
+  function reportPatchBakeries() {
+    var G = window.GAILS;
+    if (!G.userPatch || !G.Patch) return null;
+    var bakeries = G.Patch.patchBakeries(G.userPatch, G.BAKERY_META);
+    return bakeries.length ? bakeries : null;
+  }
+
   function reportScopeActive() {
     var G = window.GAILS;
-    return !G.isAdmin && !!G.reportVisibilityEnabled && !!G.userOpsArea;
+    if (G.isAdmin || !G.reportVisibilityEnabled) return false;
+    return !!reportPatchBakeries() || !!G.userOpsArea;
   }
 
   function reportBakeryAllowed(bakery) {
     if (!reportScopeActive()) return true;
     var G = window.GAILS;
+    var patch = reportPatchBakeries();
+    if (patch) {
+      var key = G.resolveBakeryMetaKey ? G.resolveBakeryMetaKey(bakery) : bakery;
+      return patch.some(function (name) {
+        return (G.resolveBakeryMetaKey ? G.resolveBakeryMetaKey(name) : name) === key;
+      });
+    }
     return (G.getBakeryOps ? G.getBakeryOps(bakery) : '') === G.userOpsArea;
   }
 

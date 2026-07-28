@@ -1825,10 +1825,15 @@ body.bakery-profile-modal-open {
   }
 
   .bakery-profile-header__actions {
-    flex: 1 1 auto;
-    justify-content: flex-end;
+    display: grid;
+    flex: 0 1 260px;
+    width: 260px;
+    grid-template-columns: 34px minmax(0, 180px) 34px;
+    justify-content: end;
+    align-items: center;
     gap: 6px;
     margin-left: auto;
+    min-width: 0;
   }
 
   .bakery-profile-header__back {
@@ -1936,7 +1941,6 @@ body.bakery-profile-modal-open {
   }
 
   .bakery-profile-header__actions {
-    grid-template-columns: 34px minmax(0, 1fr) 34px;
     gap: 4px;
   }
 

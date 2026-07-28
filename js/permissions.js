@@ -60,6 +60,24 @@ export const TEAM_SCOPES = [
 
 export const TEAM_SCOPE_KEYS = TEAM_SCOPES.map(function(scope) { return scope.key; });
 
+// How much of the estate's activity the role hears about in the header bell.
+//
+// This is the *default* for everyone holding the role. A person can narrow or
+// widen it for themselves on their profile page (users/{uid}.notificationScope),
+// which then wins — so changing the role default only moves the people who have
+// never expressed a preference of their own.
+//
+// The delivery rule these keys drive lives in js/notifications.js, which is a
+// classic script and cannot import this module; it holds the keys, this holds
+// how they read.
+export const NOTIFICATION_SCOPES = [
+  { key: 'all', label: 'Everything', description: 'Every report, task, note and data update across the whole estate.' },
+  { key: 'area', label: 'Their own area', description: 'Their own tasks, estate-wide data updates, and activity at the bakeries they look after.' },
+  { key: 'none', label: 'Nothing', description: 'No notifications at all, including their own tasks.' }
+];
+
+export const NOTIFICATION_SCOPE_KEYS = NOTIFICATION_SCOPES.map(function(scope) { return scope.key; });
+
 function allTabs(value) {
   var tabs = {};
   DASHBOARD_TABS.forEach(function(tab) { tabs[tab.key] = value; });
@@ -86,13 +104,13 @@ export const BUILTIN_ROLES = {
     name: 'Admin',
     description: 'Full access to the dashboard, every admin panel, and the whole team.',
     builtIn: true,
-    permissions: { tabs: allTabs(true), actions: allActions(true), admin: allAreas('edit'), teamScope: 'all' }
+    permissions: { tabs: allTabs(true), actions: allActions(true), admin: allAreas('edit'), teamScope: 'all', notificationScope: 'all' }
   },
   viewer: {
     name: 'Viewer',
     description: 'Sees the full dashboard and can log visits. No admin portal access.',
     builtIn: true,
-    permissions: { tabs: allTabs(true), actions: allActions(true), admin: allAreas('none'), teamScope: 'none' }
+    permissions: { tabs: allTabs(true), actions: allActions(true), admin: allAreas('none'), teamScope: 'none', notificationScope: 'area' }
   }
 };
 
@@ -179,21 +197,39 @@ export function readAccessGrid(permissions) {
   return grid;
 }
 
-// Turns a grid back into a stored permission object. teamScope rides alongside
-// because it is part of the same "what can this role reach" decision, but it is
-// a three-way choice rather than a see/edit pair.
-export function permissionsFromAccessGrid(grid, teamScope) {
+// Turns a grid back into a stored permission object. teamScope and
+// notificationScope ride alongside because they are part of the same "what does
+// this role reach" decision, but each is a three-way choice rather than a
+// see/edit pair.
+export function permissionsFromAccessGrid(grid, teamScope, notificationScope) {
   var perms = normalizePermissions(null);
   ACCESS_ROWS.forEach(function(row) {
     var cell = (grid && grid[row.key]) || {};
     row.write(perms, !!cell.see, !!cell.edit);
   });
   perms.teamScope = normalizeTeamScope(teamScope);
+  perms.notificationScope = normalizeNotificationScope(notificationScope);
   return perms;
 }
 
 export function normalizeTeamScope(value) {
   return TEAM_SCOPE_KEYS.indexOf(value) === -1 ? 'none' : value;
+}
+
+// Unlike teamScope, an unset notification scope is not "off": a role created
+// before the bell existed should still hear about its own tasks and its own
+// patch, so the absent value means 'area'.
+export function normalizeNotificationScope(value) {
+  return NOTIFICATION_SCOPE_KEYS.indexOf(value) === -1 ? 'area' : value;
+}
+
+export function notificationScopeOf(permissions) {
+  return normalizePermissions(permissions).notificationScope;
+}
+
+export function notificationScopeLabel(scope) {
+  var match = NOTIFICATION_SCOPES.find(function(entry) { return entry.key === normalizeNotificationScope(scope); });
+  return match ? match.label : 'Their own area';
 }
 
 // Fills in any missing keys on a stored permission object so callers can
@@ -215,7 +251,13 @@ export function normalizePermissions(permissions) {
   });
   // Roles created before My Team existed carry no teamScope at all, which is
   // exactly the same as not being granted it.
-  return { tabs: tabs, actions: actions, admin: admin, teamScope: normalizeTeamScope(source.teamScope) };
+  return {
+    tabs: tabs,
+    actions: actions,
+    admin: admin,
+    teamScope: normalizeTeamScope(source.teamScope),
+    notificationScope: normalizeNotificationScope(source.notificationScope)
+  };
 }
 
 // Resolves a user's role id to a normalized permission object. customRoleDef

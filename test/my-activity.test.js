@@ -962,10 +962,19 @@ test('the access modal reads a person back, including a missing flag', () => {
   const start = adminScript.indexOf('function accessDraftFor(');
   const source = adminScript.slice(start, adminScript.indexOf('\n}', start) + 2);
 
-  const sandbox = {};
+  // The draft reads the patch through js/patch.js, so the real module is loaded
+  // rather than stubbed — an ops area that arrives as a bare name has to come
+  // back out as a patch.
+  const sandbox = { window: {} };
   vm.createContext(sandbox);
-  vm.runInContext(source + '\nthis.accessDraftFor = accessDraftFor;', sandbox);
+  vm.runInContext(fs.readFileSync(path.join(root, 'js', 'patch.js'), 'utf8'), sandbox);
+  vm.runInContext(
+    'function patchApi() { return window.GAILS.Patch; }\n' + source +
+    '\nthis.accessDraftFor = accessDraftFor;',
+    sandbox
+  );
 
+  const plain = (value) => JSON.parse(JSON.stringify(value));
   const on = sandbox.accessDraftFor({
     firstName: 'Alex',
     lastName: 'Partner',
@@ -976,7 +985,7 @@ test('the access modal reads a person back, including a missing flag', () => {
     opsArea: 'North',
     managerUid: 'm1'
   });
-  assert.deepEqual({ ...on, myTeamDepartments: { ...on.myTeamDepartments } }, {
+  assert.deepEqual(plain(on), {
     firstName: 'Alex',
     lastName: 'Partner',
     role: 'admin',
@@ -986,14 +995,17 @@ test('the access modal reads a person back, including a missing flag', () => {
       'coffee-team': true
     },
     managerUid: 'm1',
-    opsArea: 'North',
+    // The original single-area field reads back as a one-area patch, so nobody
+    // loses their scope on the way through.
+    patch: { opsAreas: [{ region: '', opsArea: 'North', bakeries: [] }], regions: [] },
+    notificationScope: '',
     myActivity: true
   });
 
   // Absent means off, and an unset role means Viewer — a record that predates
   // any of these fields is readable, not broken.
   const bare = sandbox.accessDraftFor({});
-  assert.deepEqual({ ...bare, myTeamDepartments: { ...bare.myTeamDepartments } }, {
+  assert.deepEqual(plain(bare), {
     firstName: '',
     lastName: '',
     role: 'viewer',
@@ -1003,7 +1015,8 @@ test('the access modal reads a person back, including a missing flag', () => {
       'coffee-team': true
     },
     managerUid: '',
-    opsArea: '',
+    patch: { opsAreas: [], regions: [] },
+    notificationScope: '',
     myActivity: false
   });
 });

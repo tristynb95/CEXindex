@@ -88,6 +88,25 @@
       }
     },
 
+    "notificationEvents": {
+      ".read": "auth != null",
+      ".indexOn": ["at"],
+      "$eventId": {
+        ".write": "auth != null && ((!data.exists() && newData.exists() && newData.child('actorUid').val() === auth.uid) || (data.exists() && !newData.exists() && (root.child('admins').child(auth.uid).val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')))",
+        ".validate": "newData.hasChildren(['type', 'at', 'actorUid']) && newData.child('type').isString() && newData.child('at').isNumber() && newData.child('actorUid').val() === auth.uid && (!newData.child('subject').exists() || newData.child('subject').val().length <= 200) && (!newData.child('detail').exists() || newData.child('detail').val().length <= 200)",
+        "targets": {
+          "$targetUid": { ".validate": "newData.val() === true" }
+        }
+      }
+    },
+
+    "notificationReads": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
     "bakeryNotes": {
       ".read": "auth != null",
       "$bakeryKey": {

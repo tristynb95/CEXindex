@@ -30,15 +30,18 @@ test('every page that can surface the shared workflow loads the notification ass
   ['index.html', 'my-activity.html', 'bakery-profile.html', 'admin.html', 'my-team.html']
     .forEach((file) => {
       const html = read(file);
-      assert.match(html, /css\/styles\.css\?v=20260727-region-cover-01/, file + ' styles');
-      assert.match(html, /js\/utils\.js\?v=20260727-region-cover-01/, file + ' utility');
+      assert.match(html, /css\/styles\.css\?v=20260728-notification-centre-02/, file + ' styles');
+      assert.match(html, /js\/utils\.js\?v=20260728-notification-centre-02/, file + ' utility');
     });
 });
 
+// The gaps allow for the notification event each write also records
+// (js/notification-write.js) — the guarantee under test is that the toast still
+// fires inside the success path, after the await, and never before it.
 test('shared Firebase mutations notify only after successful writes', () => {
-  assert.match(auth, /await set\(newVisitRef, payload\);[\s\S]{0,180}notifyMutation\(/);
-  assert.match(auth, /await set\(newRef, payload\);[\s\S]{0,80}notifyMutation\('Task created'/);
-  assert.match(auth, /await update\(ref\(db, 'followUpActions\/' \+ taskId\)[\s\S]{0,420}notifyMutation\(done \? 'Task signed off' : 'Task reopened'/);
+  assert.match(auth, /await set\(newVisitRef, payload\);[\s\S]{0,560}notifyMutation\(/);
+  assert.match(auth, /await set\(newRef, payload\);[\s\S]{0,700}notifyMutation\('Task created'/);
+  assert.match(auth, /await update\(ref\(db, 'followUpActions\/' \+ taskId\)[\s\S]{0,1000}notifyMutation\(done \? 'Task signed off' : 'Task reopened'/);
   assert.match(auth, /updateFollowUpAction:[\s\S]{0,650}notifyMutation\('Task updated'/);
   assert.match(auth, /if \(options && options\.silent\) return/);
 });
@@ -57,6 +60,6 @@ test('direct-write task surfaces notify for create, edit, sign-off, and reopen',
   assert.match(myActivity, /await set\(taskRef, payload\);[\s\S]{0,100}G\.notifySuccess\('Task created'\)/);
   assert.match(myActivity, /await update\(ref\(db, 'followUpActions\/' \+ taskId\)[\s\S]{0,420}G\.notifySuccess\('Task updated'\)/);
   assert.match(myActivity, /G\.notifySuccess\(done \? 'Task signed off' : 'Task reopened'\)/);
-  assert.match(bakeryProfile, /await set\(taskRef,[\s\S]{0,900}G\.notifySuccess\('Task created'\)/);
-  assert.match(bakeryProfile, /await update\(ref\(db, 'followUpActions\/' \+ task\.id\)[\s\S]{0,500}G\.notifySuccess\(done \? 'Task signed off' : 'Task reopened'\)/);
+  assert.match(bakeryProfile, /await set\(taskRef,[\s\S]{0,1400}G\.notifySuccess\('Task created'\)/);
+  assert.match(bakeryProfile, /await update\(ref\(db, 'followUpActions\/' \+ task\.id\)[\s\S]{0,900}G\.notifySuccess\(done \? 'Task signed off' : 'Task reopened'\)/);
 });

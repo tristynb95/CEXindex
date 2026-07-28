@@ -12,6 +12,7 @@ const activityStyles = read('css/my-activity.css');
 const teamHtml = read('my-team.html');
 const teamScript = read('js/my-team.js');
 const teamStyles = read('css/my-team.css');
+const profileHtml = read('profile.html');
 const sharedStyles = read('css/styles.css');
 const standaloneMenu = read('js/standalone-profile-menu.js');
 
@@ -181,6 +182,71 @@ test('My Activity and My Team keep their top banner visible while scrolling', ()
   assert.match(activityStyles, /\.my-activity-jump \{[\s\S]*?position: static;/);
 });
 
+test('My Activity mobile header uses matching unclipped action buttons', () => {
+  assert.match(
+    activityHtml,
+    /id="myActivityBackLink"[\s\S]{0,220}aria-label="Back to dashboard"[\s\S]{0,220}my-activity-header__back-label">Dashboard/
+  );
+  assert.match(
+    teamHtml,
+    /id="myTeamBackLink"[\s\S]{0,220}aria-label="Back to dashboard"[\s\S]{0,220}my-activity-header__back-label">Dashboard/
+  );
+
+  assert.match(
+    activityStyles,
+    /@media \(max-width: 520px\)[\s\S]*?\.my-activity-header__link \{[\s\S]*?flex: 0 0 34px;[\s\S]*?width: 34px;[\s\S]*?max-width: 34px;[\s\S]*?padding: 0;[\s\S]*?justify-content: center;/
+  );
+  assert.match(
+    activityStyles,
+    /\.my-activity-header__back-label \{\s*display: none;/
+  );
+  assert.match(
+    activityStyles,
+    /\.my-activity-header \[data-standalone-account-menu\],[\s\S]*?\.standalone-profile-menu__trigger \{[\s\S]*?width: 34px;/
+  );
+  assert.doesNotMatch(
+    activityStyles,
+    /\.my-activity-header__link \{[\s\S]{0,120}overflow: hidden;/
+  );
+});
+
+test('Profile mobile header matches the compact standalone action buttons', () => {
+  assert.match(
+    profileHtml,
+    /profile-page__header-link standalone-header-button"[\s\S]{0,120}aria-label="Back to dashboard"[\s\S]{0,180}profile-page__header-back-label">Dashboard/
+  );
+  assert.match(
+    sharedStyles,
+    /@media \(max-width: 520px\)[\s\S]*?\.profile-page__header-link \{[\s\S]*?flex: 0 0 34px;[\s\S]*?width: 34px;[\s\S]*?max-width: 34px;[\s\S]*?padding: 0;[\s\S]*?justify-content: center;/
+  );
+  assert.match(
+    sharedStyles,
+    /\.profile-page__header-back-label \{\s*display: none;/
+  );
+  assert.match(
+    sharedStyles,
+    /\.profile-page__header \[data-standalone-account-menu\],[\s\S]*?\.standalone-profile-menu__trigger \{[\s\S]*?width: 34px;/
+  );
+});
+
+test('all mobile banner buttons use the Overview rounded rectangle', () => {
+  const mobileStart = sharedStyles.indexOf(
+    '@media (max-width: 520px)',
+    sharedStyles.indexOf('.standalone-profile-menu__trigger:focus-visible')
+  );
+  const mobileEnd = sharedStyles.indexOf('#createUserForm', mobileStart);
+  const mobileControls = sharedStyles.slice(mobileStart, mobileEnd);
+
+  [
+    '.my-activity-header .standalone-header-button',
+    '.profile-page__header .standalone-header-button',
+    '.bakery-profile-header .standalone-header-button',
+    '.standalone-profile-menu__trigger'
+  ].forEach((selector) => assert.ok(mobileControls.includes(selector), selector));
+  assert.match(mobileControls, /border-radius: 10px;/);
+  assert.match(sharedStyles, /#profileMenuBtn \{[\s\S]{0,180}border-radius: (?:8px|10px);/);
+});
+
 test('standalone pages share the dashboard profile dropdown and button style', () => {
   ['profile.html', 'my-activity.html', 'my-team.html', 'bakery-profile.html'].forEach((file) => {
     const page = read(file);
@@ -188,11 +254,12 @@ test('standalone pages share the dashboard profile dropdown and button style', (
     assert.doesNotMatch(page, />Sign out<\/button>/, file + ' still has a separate sign-out button');
   });
 
-  ['Profile', 'My Activity', 'My Team', 'Sign out'].forEach((label) => {
+  ['Profile', 'My Activity', 'My Team', 'Admin Portal', 'Sign out'].forEach((label) => {
     assert.match(standaloneMenu, new RegExp(label.replace(' ', '\\s*')));
   });
   assert.match(standaloneMenu, /activityLink\.hidden = settings\.showActivity !== true/);
   assert.match(standaloneMenu, /teamLink\.hidden = settings\.showTeam !== true/);
+  assert.match(standaloneMenu, /adminLink\.hidden = !hasAdminPanelAccess\(settings\.permissions\)/);
   assert.match(sharedStyles, /\.standalone-profile-menu__trigger/);
   assert.match(sharedStyles, /min-height: 34px/);
   assert.match(sharedStyles, /border-radius: var\(--r-pill\)/);

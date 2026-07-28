@@ -66,8 +66,10 @@ test('the roles table shows visibility, editing, and team view side by side', ()
 test('one dialog holds every profile and access decision about a person', () => {
   [
     'userAccessFirstName', 'userAccessLastName',
-    'userAccessRole', 'userAccessDepartment', 'userAccessManager', 'userAccessOps', 'userAccessMyActivity',
-    'userAccessDepartmentOperations', 'userAccessDepartmentCoffeeTeam'
+    'userAccessRole', 'userAccessDepartment', 'userAccessManager', 'userAccessMyActivity',
+    'userAccessDepartmentOperations', 'userAccessDepartmentCoffeeTeam',
+    // Which part of the estate they look after, and what reaches their bell.
+    'userAccessPatchList', 'userAccessNotifications'
   ].forEach((id) => {
     assert.match(adminHtml, new RegExp('id="' + id + '"'));
   });
@@ -178,7 +180,7 @@ test('the team directory is published alongside the mention directory', () => {
 // ── My Team ───────────────────────────────────────────────────────────────
 
 test('My Team is granted by the role, not a per-user switch', () => {
-  assert.match(teamScript, /teamScope = teamScopeOf\(resolveRolePermissions\(roleId, customRole\)\)/);
+  assert.match(teamScript, /var permissions = resolveRolePermissions\(roleId, customRole\);\s*\r?\n\s*teamScope = teamScopeOf\(permissions\)/);
   // Hidden in the menu without it…
   ['index.html', 'admin.html'].forEach((page) => {
     assert.match(read(page), /data-my-team-link hidden/);
@@ -191,6 +193,27 @@ test('My Team is granted by the role, not a per-user switch', () => {
   // …and the page refuses a typed URL, which a hidden menu entry cannot do.
   assert.match(teamScript, /if \(teamScope === 'none'\) \{/);
   assert.match(teamScript, /showGuardError\('My Team is not switched on for your role/);
+});
+
+test('Admin Portal is available from every profile menu only with admin access', () => {
+  assert.match(read('index.html'), /data-admin-portal-link hidden/);
+  assert.match(authScript, /adminPortalLink\.hidden = !\(isAdmin \|\| hasAdminPanelAccess\(permissions\)\)/);
+
+  assert.match(standaloneMenuScript, /href="admin\.html" role="menuitem"[\s\S]*?data-admin-portal-link hidden/);
+  assert.match(standaloneMenuScript, /import \{ hasAdminPanelAccess \} from '\.\/permissions\.js'/);
+  assert.match(standaloneMenuScript, /adminLink\.hidden = !hasAdminPanelAccess\(settings\.permissions\)/);
+
+  assert.match(adminHtml, /href="admin\.html" role="menuitem"[\s\S]*?data-admin-portal-link hidden/);
+  assert.match(adminScript, /adminPortalLink\.hidden = !hasAdminPanelAccess\(state\.permissions\)/);
+
+  [
+    'js/profile-page.js',
+    'js/my-activity.js',
+    'js/my-team.js',
+    'js/bakery-profile.js'
+  ].forEach((file) => {
+    assert.match(read(file), /mountStandaloneProfileMenu\(\{[\s\S]*?permissions: [a-zA-Z]+/, file);
+  });
 });
 
 test('the roster is read from teamDirectory, never from /users', () => {

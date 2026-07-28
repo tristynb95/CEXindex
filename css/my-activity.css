@@ -99,6 +99,11 @@
   color: #fff;
 }
 
+.my-activity-header__back-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
 /* ---------- page frame ---------- */
 
 .my-activity-main {
@@ -2837,6 +2842,7 @@ body.my-activity-modal-open {
   }
 
   .my-activity-header__actions {
+    flex: 0 0 auto;
     width: auto;
     margin-left: auto;
     justify-content: flex-end;
@@ -3063,15 +3069,33 @@ body.my-activity-modal-open {
   }
 }
 
-@media (max-width: 460px) {
-  .my-activity-header__brand span {
+@media (max-width: 520px) {
+  .my-activity-header__link {
+    flex: 0 0 34px;
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .my-activity-header__back-label {
     display: none;
   }
 
-  .my-activity-header__link {
-    max-width: 40px;
-    overflow: hidden;
-    white-space: nowrap;
+  .my-activity-header [data-standalone-account-menu],
+  .my-activity-header .standalone-profile-menu__trigger {
+    flex: 0 0 34px;
+    width: 34px;
+    min-width: 34px;
+  }
+}
+
+@media (max-width: 460px) {
+  .my-activity-header__brand span {
+    display: none;
   }
 
   .my-activity-today {

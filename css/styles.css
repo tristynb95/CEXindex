@@ -313,7 +313,6 @@ h4 {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-#adminBtn,
 #profileMenuBtn {
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 248, 242, 0.94);
@@ -325,24 +324,12 @@ h4 {
   padding-block: 5px;
 }
 
-#adminBtn:hover,
 #profileMenuBtn:hover {
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
   border-color: rgba(255, 255, 255, 0.5);
   box-shadow: 0 2px 10px rgba(70, 14, 11, 0.25);
   transform: translateY(-1px);
-}
-
-.header-btn-icon {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 /* One-time account confirmation shown after an invited user's first sign-in. */
@@ -10974,7 +10961,6 @@ a,
     font-size: 0.7rem;
   }
 
-  #adminBtn,
   #profileMenuBtn {
     font-size: 0.74rem;
     padding: 6px 10px;
@@ -11282,8 +11268,7 @@ a,
     flex-wrap: nowrap;
   }
 
-  /* Both header action buttons → compact icon-only squares */
-  #adminBtn,
+  /* Header action button → compact icon-only square */
   #profileMenuBtn {
     width: 30px;
     height: 30px;
@@ -11294,15 +11279,27 @@ a,
     border-radius: 8px;
   }
 
+  /* The trigger loses its label here, so the dot moves onto the icon itself. */
+  .profile-menu__dot {
+    top: 1px;
+    left: 20px;
+    width: 8px;
+    height: 8px;
+  }
+
+  /* Anchored to the profile control, the panel would run off the left edge on a
+     phone. Pin it across the viewport instead, still hanging from the header. */
+  .notification-panel {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+
   /* Hide text labels, keep SVG icons */
   .header-btn-text {
     display: none;
-  }
-
-  .header-btn-icon {
-    width: 14px;
-    height: 14px;
-    flex: 0 0 14px;
   }
 
   /* The banner's crisp 1px bottom border would otherwise cut straight across
@@ -14713,6 +14710,97 @@ table.nps-splits-collapsed .nps-split-col {
   gap: 8px;
 }
 
+/* ── The patch editor ──
+   Which part of the estate one person looks after: a region, with the ops areas
+   inside it. Same fieldset furniture as the team-view options above. */
+.access-patch {
+  margin: 0 0 18px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: rgba(34, 31, 26, 0.02);
+}
+
+.access-patch legend {
+  padding: 0 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.access-patch__copy {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted-l);
+}
+
+.access-patch__list {
+  display: grid;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.access-patch__region {
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.access-patch__region-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.83rem;
+  cursor: pointer;
+}
+
+.access-patch__region-head input {
+  accent-color: var(--accent);
+}
+
+.access-patch__count {
+  margin-left: auto;
+  color: var(--muted-l);
+  font-size: 0.72rem;
+}
+
+.access-patch__areas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 8px;
+  padding-left: 22px;
+}
+
+.access-patch__area {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.access-patch__area input {
+  accent-color: var(--accent);
+}
+
+/* A whole region already covers every area inside it, so those ticks are shown
+   as satisfied rather than as another choice. */
+.access-patch__area input:disabled + span {
+  color: var(--muted-l);
+}
+
+.access-patch__summary {
+  margin: 12px 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-l);
+}
+
 .access-team__option {
   display: flex;
   align-items: flex-start;
@@ -14875,6 +14963,361 @@ table.nps-splits-collapsed .nps-split-col {
   z-index: 1000;
 }
 
+/* ── Notifications in the profile menu ────────────────────────────────────
+   Notifications are a bell in the top-right of the profile card rather than a
+   second control in the header, so the header keeps one button. The bell
+   carries its unread count; the profile trigger carries a dot, because that is
+   the only part visible with the menu closed. */
+/* Scoped to the popover so it wins over the base .profile-menu__identity rule
+   further down the file, which sets padding on all four sides. */
+.profile-menu__popover .profile-menu__identity {
+  position: relative;
+  padding-right: 46px;
+  /* The base rule clips with overflow:hidden to keep a long email in bounds,
+     which would also clip the count sitting proud of the bell. */
+  overflow: visible;
+}
+
+/* Every rule here is scoped under .profile-menu, and that is load-bearing: on
+   the dashboard this button sits inside .header, whose blanket `.header button`
+   rule (0,1,1) outranks a lone class. Left alone it imposes 16px of side
+   padding, which crushes a 32px button's content box to nothing and shrinks the
+   icon out of existence. The extra class wins the specificity outright. */
+.profile-menu .profile-menu__bell {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted-l);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.profile-menu .profile-menu__bell:hover,
+.profile-menu .profile-menu__bell[aria-expanded="true"] {
+  border-color: var(--card-border);
+  background: var(--card-hover);
+  box-shadow: none;
+  color: var(--text);
+  transform: none;
+}
+
+.profile-menu .profile-menu__bell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.profile-menu .profile-menu__bell[hidden] {
+  display: none;
+}
+
+.profile-menu .profile-menu__bell svg {
+  width: 18px;
+  height: 18px;
+  /* Never let the icon be the thing that gives way if the box is squeezed. */
+  flex: 0 0 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Anything unread turns the bell itself into the alert, so the count is a
+   confirmation rather than the only signal. */
+.profile-menu .profile-menu__bell:has(.profile-menu__count:not([hidden])) {
+  color: var(--accent);
+}
+
+.profile-menu .profile-menu__count {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.98);
+  color: #fff;
+  font-size: 0.63rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.profile-menu .profile-menu__count[hidden] {
+  display: none;
+}
+
+/* The unread marker on the closed trigger. Positioned against the avatar so it
+   reads as belonging to the person, not floating in the header. */
+.profile-menu__trigger {
+  position: relative;
+}
+
+.profile-menu__dot {
+  position: absolute;
+  top: 3px;
+  left: 24px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(150, 33, 27, 0.95);
+}
+
+.profile-menu--light .profile-menu__dot,
+.standalone-profile-menu .profile-menu__dot {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.profile-menu__dot[hidden] {
+  display: none;
+}
+
+/* ── Notification panel ─────────────────────────────────────────────────── */
+/* Deliberately the profile popover's surface — same radius, border, shadow and
+   blur — so the two controls in one header open into the same object. */
+.notification-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(380px, calc(100vw - 28px));
+  padding: 8px;
+  border: 1px solid rgba(34, 31, 26, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 50px rgba(48, 36, 22, 0.2);
+  color: var(--text);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 1000;
+}
+
+.notification-panel[hidden] {
+  display: none;
+}
+
+.notification-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.notification-panel__head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* The panel replaced the profile menu rather than covering it, so there has to
+   be a way back to it. */
+.notification-panel .notification-panel__back {
+  width: 26px;
+  height: 26px;
+  min-height: 0;
+  flex: 0 0 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted-l);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.notification-panel .notification-panel__back:hover {
+  background: var(--card-hover);
+  box-shadow: none;
+  color: var(--text);
+  transform: none;
+}
+
+.notification-panel .notification-panel__back svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Scoped for the same reason as the bell above: on the dashboard this panel
+   renders inside .header, whose blanket `.header button` rule would otherwise
+   impose pill padding and a 34px floor on both of these controls. */
+.notification-panel .notification-panel__clear {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.notification-panel .notification-panel__clear:hover {
+  background: none;
+  box-shadow: none;
+  transform: none;
+  text-decoration: underline;
+}
+
+.notification-panel .notification-panel__clear[hidden] {
+  display: none;
+}
+
+.notification-panel__list {
+  max-height: min(60vh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.notification-panel__empty {
+  margin: 0;
+  padding: 22px 12px 24px;
+  color: var(--muted-l);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.notification-panel__footer {
+  display: block;
+  margin-top: 4px;
+  padding: 10px 12px 4px;
+  border-top: 1px solid var(--card-border);
+  color: var(--muted-l);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.notification-panel__footer:hover {
+  color: var(--text);
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.notification-item:hover {
+  background: var(--card-hover);
+  color: var(--text);
+}
+
+.notification-item__icon {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--muted-l);
+}
+
+.notification-item__body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notification-item__title {
+  font-size: 0.83rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.notification-item__detail,
+.notification-item__time {
+  overflow: hidden;
+  color: var(--muted-l);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Unread carries the weight; a dot rather than a wash, so a long list of new
+   items does not turn the panel into a block of colour. */
+.notification-item--unread .notification-item__title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.notification-item--unread .notification-item__icon {
+  color: var(--accent);
+}
+
+.notification-item--unread {
+  position: relative;
+}
+
+.notification-item--unread::after {
+  content: "";
+  position: absolute;
+  top: 15px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Something addressed to this person by name, rather than news from their
+   patch — worth telling apart at a glance. */
+.notification-item--personal .notification-item__title::after {
+  content: "For you";
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: rgba(181, 49, 42, 0.1);
+  color: var(--accent);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
 /* The admin workspace is light rather than red, but its two header actions
    use the same 34px pill geometry as the dashboard controls. */
 .admin-workspace__actions .admin-secondary-btn {
@@ -15009,7 +15452,48 @@ table.nps-splits-collapsed .nps-split-col {
   color: var(--accent);
 }
 
+@media (max-width: 640px) {
+  /* Keep the whole notification surface inside the usable mobile viewport.
+     The controller measures the current header and browser chrome; the list is
+     the only flexible region, so the title and settings link always remain in
+     reach while a long feed scrolls between them. */
+  .notification-panel {
+    position: fixed;
+    top: var(--notification-panel-top, 68px);
+    right: max(10px, env(safe-area-inset-right));
+    bottom: auto;
+    left: max(10px, env(safe-area-inset-left));
+    width: auto;
+    max-height: var(--notification-panel-max-height, calc(100dvh - 78px));
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .notification-panel__head,
+  .notification-panel__footer {
+    flex: 0 0 auto;
+  }
+
+  .notification-panel__list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+}
+
 @media (max-width: 520px) {
+  /* Match the Overview header: compact rounded rectangles, never pills or
+     circles, across every standalone mobile banner. */
+  .my-activity-header .standalone-header-button,
+  .profile-page__header .standalone-header-button,
+  .bakery-profile-header .standalone-header-button,
+  .standalone-profile-menu__trigger {
+    border-radius: 10px;
+  }
+
   .standalone-profile-menu__label {
     display: none;
   }
@@ -15116,6 +15600,11 @@ table.nps-splits-collapsed .nps-split-col {
 .profile-page__header-link:hover {
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
+}
+
+.profile-page__header-back-icon {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .profile-page__main {
@@ -15317,6 +15806,58 @@ table.nps-splits-collapsed .nps-split-col {
   font-size: 0.76rem;
 }
 
+/* ── Notification preference ──
+   The same option cards the admin role editor uses, asked in the first person.
+   The person's own choice overrides their role's default. */
+.profile-notification-options {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.profile-notification-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.profile-notification-option:hover {
+  border-color: var(--accent);
+}
+
+.profile-notification-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--red-d);
+}
+
+.profile-notification-option input {
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.profile-notification-option__body {
+  display: grid;
+  gap: 3px;
+}
+
+.profile-notification-option__body strong {
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.profile-notification-option__body span {
+  color: var(--muted-l);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .profile-message {
   padding: 12px 14px;
   border-radius: 12px;
@@ -15492,7 +16033,9 @@ body.profile-modal-open {
   }
 
   .profile-page__header-actions {
+    flex: 0 0 auto;
     gap: 6px;
+    margin-left: auto;
   }
 
   .profile-page__header-link {
@@ -15548,6 +16091,30 @@ body.profile-modal-open {
   .profile-modal .profile-form__actions>* {
     justify-content: center;
     width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .profile-page__header-link {
+    flex: 0 0 34px;
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .profile-page__header-back-label {
+    display: none;
+  }
+
+  .profile-page__header [data-standalone-account-menu],
+  .profile-page__header .standalone-profile-menu__trigger {
+    flex: 0 0 34px;
+    width: 34px;
+    min-width: 34px;
   }
 }
 
@@ -17781,19 +18348,12 @@ html {
     margin-bottom: 3px;
   }
 
-  /* Comfortable 34px touch targets for the icon buttons */
-  #adminBtn,
+  /* Comfortable 34px touch target for the icon button */
   #profileMenuBtn {
     width: 34px;
     height: 34px;
     min-height: 34px;
     border-radius: 10px;
-  }
-
-  .header-btn-icon {
-    width: 15px;
-    height: 15px;
-    flex: 0 0 15px;
   }
 }
 

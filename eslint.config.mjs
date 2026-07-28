@@ -13,6 +13,8 @@ const ESM_FILES = [
   'js/bakery-profile.js',
   'js/my-activity.js',
   'js/my-team.js',
+  'js/notification-centre.js',
+  'js/notification-write.js',
   'js/permissions.js',
   'js/profile-menu.js',
   'js/profile-page.js',

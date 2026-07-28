@@ -7,9 +7,12 @@ import {
   ACCESS_GROUPS, accessRowsForGroup, readAccessGrid, permissionsFromAccessGrid,
   TEAM_SCOPES, normalizeTeamScope, teamScopeLabel, describeVisibility, describeEditing,
   DASHBOARD_TABS, ADMIN_AREAS, BUILTIN_ROLES, normalizePermissions, resolveRolePermissions,
-  hasAdminPanelAccess, canViewArea, canEditArea, canSeeTeam
+  hasAdminPanelAccess, canViewArea, canEditArea, canSeeTeam,
+  NOTIFICATION_SCOPES, normalizeNotificationScope, notificationScopeLabel
 } from './permissions.js';
 import { createProfileMenu } from './profile-menu.js';
+import { recordNotification } from './notification-write.js';
+import { mountNotificationCentre } from './notification-centre.js';
 
 const secondaryApp = initializeApp(firebaseConfig, 'AdminPage');
 const secondaryAuth = getAuth(secondaryApp);
@@ -66,7 +69,9 @@ const userAccessDepartment = document.getElementById('userAccessDepartment');
 const userAccessDepartmentOperations = document.getElementById('userAccessDepartmentOperations');
 const userAccessDepartmentCoffeeTeam = document.getElementById('userAccessDepartmentCoffeeTeam');
 const userAccessManager = document.getElementById('userAccessManager');
-const userAccessOps     = document.getElementById('userAccessOps');
+const userAccessNotifications = document.getElementById('userAccessNotifications');
+const userAccessPatchList = document.getElementById('userAccessPatchList');
+const userAccessPatchSummary = document.getElementById('userAccessPatchSummary');
 const userAccessMyActivity = document.getElementById('userAccessMyActivity');
 const userAccessSee     = document.getElementById('userAccessSee');
 const userAccessEdit    = document.getElementById('userAccessEdit');
@@ -151,6 +156,7 @@ const roleNameInput       = document.getElementById('roleNameInput');
 const roleDescInput       = document.getElementById('roleDescInput');
 const roleAccessGrid      = document.getElementById('roleAccessGrid');
 const roleTeamScope       = document.getElementById('roleTeamScope');
+const roleNotificationScope = document.getElementById('roleNotificationScope');
 const roleSubmitBtn       = document.getElementById('roleSubmitBtn');
 const newRoleBtn          = document.getElementById('newRoleBtn');
 const roleMsg             = document.getElementById('roleMsg');
@@ -324,6 +330,131 @@ function opsAreaOptionsHtml(selected) {
     }).join('');
 }
 
+// ── The patch editor ──
+// Which part of the estate one person looks after, as regions each holding
+// their ops areas — so a single control answers both "which areas does this ops
+// manager run" and "which regions does this regional manager cover".
+//
+// The draft holds plain names, because names are what the admin is ticking. The
+// bakeries each area holds are stamped on at save time, and they are what lets
+// the assignment survive the area being renamed after a leaver. See js/patch.js.
+function patchApi() {
+  return window.GAILS && window.GAILS.Patch;
+}
+
+function patchEstateTree() {
+  var byRegion = {};
+  var order = [];
+  Object.keys(state.siteMetaDraft || {}).forEach(function(bakery) {
+    var entry = (state.siteMetaDraft || {})[bakery] || {};
+    var region = String(entry.r || '').trim();
+    var opsArea = String(entry.o || '').trim();
+    if (!region) return;
+    if (!byRegion[region]) {
+      byRegion[region] = { region: region, opsAreas: [], seen: {} };
+      order.push(region);
+    }
+    if (!opsArea || byRegion[region].seen[opsArea]) return;
+    byRegion[region].seen[opsArea] = true;
+    byRegion[region].opsAreas.push(opsArea);
+  });
+  return order.sort().map(function(region) {
+    return { region: region, opsAreas: byRegion[region].opsAreas.sort() };
+  });
+}
+
+function draftPatch() {
+  if (!state.accessDraft) return { opsAreas: [], regions: [] };
+  if (!state.accessDraft.patch) state.accessDraft.patch = { opsAreas: [], regions: [] };
+  return state.accessDraft.patch;
+}
+
+function renderPatchEditor(editable) {
+  if (!userAccessPatchList) return;
+  var patch = draftPatch();
+  var pickedAreas = patch.opsAreas.map(function(area) { return area.opsArea; });
+  var tree = patchEstateTree();
+
+  if (!tree.length) {
+    userAccessPatchList.innerHTML = '<p class="admin-empty">Upload or add site data to map regions and ops areas.</p>';
+  } else {
+    userAccessPatchList.innerHTML = tree.map(function(node) {
+      var wholeRegion = patch.regions.indexOf(node.region) !== -1;
+      var areas = node.opsAreas.map(function(area) {
+        // A whole region already includes every area inside it, so those ticks
+        // read as covered rather than as a second thing to choose.
+        var checked = wholeRegion || pickedAreas.indexOf(area) !== -1;
+        return '<label class="access-patch__area">'
+          + '<input type="checkbox" data-patch-ops-area="' + escapeHtml(area) + '"'
+          + ' data-patch-region="' + escapeHtml(node.region) + '"'
+          + (checked ? ' checked' : '')
+          + (editable && !wholeRegion ? '' : ' disabled') + '>'
+          + '<span>' + escapeHtml(area) + '</span>'
+          + '</label>';
+      }).join('');
+      return '<div class="access-patch__region">'
+        + '<label class="access-patch__region-head">'
+        + '<input type="checkbox" data-patch-region-all="' + escapeHtml(node.region) + '"'
+        + (wholeRegion ? ' checked' : '') + (editable ? '' : ' disabled') + '>'
+        + '<strong>' + escapeHtml(node.region) + '</strong>'
+        + '<span class="access-patch__count">' + escapeHtml(formatCount(node.opsAreas.length, 'area', 'areas')) + '</span>'
+        + '</label>'
+        + '<div class="access-patch__areas">' + areas + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  if (!userAccessPatchSummary) return;
+  var api = patchApi();
+  var resolved = api ? api.resolvePatch(patch, state.siteMetaDraft) : null;
+  var parts = [resolved && resolved.bakeries.length
+    ? formatCount(resolved.bakeries.length, 'bakery', 'bakeries')
+    : 'The whole estate'];
+  // An area that has been renamed since it was saved, or has left the directory
+  // altogether, is called out so the admin can see it rather than being told
+  // nothing while the assignment quietly stops matching.
+  (resolved ? resolved.opsAreas : []).forEach(function(area) {
+    if (area.renamed) parts.push('“' + area.savedAs.opsArea + '” is now “' + area.opsArea + '”');
+  });
+  (resolved ? resolved.unresolved : []).forEach(function(area) {
+    parts.push('“' + area.opsArea + '” is no longer in the site directory');
+  });
+  userAccessPatchSummary.textContent = parts.join(' · ');
+}
+
+function togglePatchRegion(region, on) {
+  var patch = draftPatch();
+  patch.regions = patch.regions.filter(function(name) { return name !== region; });
+  if (!on) return;
+  patch.regions.push(region);
+  // Taking the whole region makes any individual area inside it redundant.
+  var inside = (patchEstateTree().filter(function(node) {
+    return node.region === region;
+  })[0] || {}).opsAreas || [];
+  patch.opsAreas = patch.opsAreas.filter(function(area) {
+    return inside.indexOf(area.opsArea) === -1;
+  });
+}
+
+// The person's own notification choice. The empty option is not "nothing" — it
+// is "follow my role", so the list names what the role currently gives them.
+function notificationScopeOptionsHtml(selected, roleId) {
+  var current = normalizeNotificationScope(selected) === selected ? selected : '';
+  var inherited = notificationScopeLabel(permissionsForRole(roleId).notificationScope);
+  return '<option value=""' + (current === '' ? ' selected' : '') + '>'
+    + escapeHtml('Follow their role — ' + inherited.toLowerCase()) + '</option>'
+    + NOTIFICATION_SCOPES.map(function(scope) {
+      return '<option value="' + escapeHtml(scope.key) + '"' + (scope.key === current ? ' selected' : '') + '>'
+        + escapeHtml(scope.label) + '</option>';
+    }).join('');
+}
+
+function togglePatchOpsArea(region, opsArea, on) {
+  var patch = draftPatch();
+  patch.opsAreas = patch.opsAreas.filter(function(area) { return area.opsArea !== opsArea; });
+  if (on) patch.opsAreas.push({ region: region, opsArea: opsArea, bakeries: [] });
+}
+
 // ── Reporting lines ──
 // The manager field is one uid on each user record (users/{uid}.managerUid).
 // Everything about the hierarchy is derived from it — see js/team.js.
@@ -396,6 +527,14 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+// Republishing the dataset or the site directory changes the numbers under
+// every bakery at once, so it reaches everybody's bell rather than one area's —
+// see the estateWide flag in js/notifications.js. Best-effort: the save has
+// already succeeded by the time this runs.
+function announceDataUpdate(subject, detail) {
+  recordNotification('data.updated', { subject: subject, detail: detail || '' });
+}
+
 // Firebase Auth needs an initial password when the account is created. It is
 // deliberately random and never shown or shared: the invitation email lets the
 // user choose their own password before signing in.
@@ -426,12 +565,26 @@ const profileMenuUi = createProfileMenu({
   emailEl: profileMenuEmail
 });
 
+// Notifications sit inside that menu, exactly as they do on every other page —
+// see js/notification-centre.js.
+const notificationCentre = mountNotificationCentre({
+  root: document.querySelector('[data-notification-centre]'),
+  trigger: document.querySelector('[data-notification-trigger]'),
+  count: document.querySelector('[data-notification-count]'),
+  dot: document.querySelector('[data-notification-dot]'),
+  onOpen: function() { profileMenuUi.setOpen(false); },
+  onBack: function() { profileMenuUi.setOpen(true); }
+}) || { update: function() {}, setOpen: function() {} };
+
 function setProfileMenuOpen(open) {
   profileMenuUi.setOpen(open);
+  // One surface at a time: opening the menu closes the panel it replaced.
+  if (open) notificationCentre.setOpen(false);
 }
 
 function updateProfileMenu(user, profile) {
   profileMenuUi.update(user, profile);
+  notificationCentre.update(user, profile, state.permissions);
   // My Activity is opt-in per user (users/{uid}.myActivity), so the menu entry
   // stays hidden until an admin grants it — including for admins themselves.
   var myActivityLink = document.querySelector('[data-my-activity-link]');
@@ -440,6 +593,10 @@ function updateProfileMenu(user, profile) {
   // access this account already resolved to.
   var myTeamLink = document.querySelector('[data-my-team-link]');
   if (myTeamLink) myTeamLink.hidden = !canSeeTeam(state.permissions);
+  // This page is already guarded by the same permission, but keeping the item
+  // gated makes the profile menu's contract identical on every page.
+  var adminPortalLink = document.querySelector('[data-admin-portal-link]');
+  if (adminPortalLink) adminPortalLink.hidden = !hasAdminPanelAccess(state.permissions);
 }
 
 // ── Helpers ──
@@ -999,6 +1156,7 @@ async function importSiteWorkbook(file) {
       preservedOpsAreaAssignments
     );
     await set(ref(db, 'portalData/siteMeta'), payload);
+    announceDataUpdate('the site directory', imported.siteCount + ' sites from ' + file.name);
 
     state.siteMetaDraft = cloneMeta(imported.meta);
     state.siteMetaSource = cloneMeta(imported.meta);
@@ -1094,6 +1252,7 @@ async function importDatasetWorkbook(file) {
       updatedBy: payload.updatedBy
     };
     await set(ref(db, 'dashboardMeta'), meta);
+    announceDataUpdate('the shared dataset', payload.recordCount + ' rows from ' + file.name);
     state.datasetInfo = meta;
     renderSummary();
     renderOverview();
@@ -1249,8 +1408,12 @@ function renderUsers() {
     // Scope and feature switches sharpen the plain "can see" summary the role
     // gives, because those are per-person and the role summary cannot know them.
     var seeExtras = [];
-    if (user.opsArea) seeExtras.push('Bakery Reports limited to ' + user.opsArea);
+    var patchLabel = describeUserPatch(user);
+    if (patchLabel) seeExtras.push('Bakery Reports limited to ' + patchLabel);
     if (user.myActivity) seeExtras.push('My Activity hub');
+    if (user.notificationScope) {
+      seeExtras.push('Notified about: ' + notificationScopeLabel(user.notificationScope).toLowerCase());
+    }
 
     return '<tr>'
       + '<td>'
@@ -1302,7 +1465,15 @@ function accessDraftFor(user) {
       'coffee-team': !(user.hiddenMyTeamDepartments && user.hiddenMyTeamDepartments['coffee-team'] === true)
     },
     managerUid: user.managerUid || '',
-    opsArea: user.opsArea || '',
+    // The patch reads the new field and falls back to the original
+    // users/{uid}.opsArea name, so nobody's existing scope is lost on the way
+    // through. Saving stamps the current bakeries onto it — see js/patch.js.
+    patch: patchApi()
+      ? patchApi().normalizePatch(user.patch || user.opsArea)
+      : { opsAreas: [], regions: [] },
+    // Blank means "whatever their role says", which is what makes the role
+    // default meaningful. Only an explicit choice is stored.
+    notificationScope: user.notificationScope || '',
     myActivity: user.myActivity === true
   };
 }
@@ -1321,7 +1492,8 @@ function renderAccessReadout() {
   if (!state.accessDraft) return;
   var perms = permissionsForRole(state.accessDraft.role);
   var seeParts = [describeVisibility(perms)];
-  if (state.accessDraft.opsArea) seeParts.push('Bakery Reports limited to ' + state.accessDraft.opsArea);
+  var patchLabel = describeDraftPatch();
+  if (patchLabel) seeParts.push('Bakery Reports limited to ' + patchLabel);
   if (state.accessDraft.myActivity) seeParts.push('their My Activity hub');
 
   if (userAccessSee) userAccessSee.textContent = seeParts.join(' · ');
@@ -1334,6 +1506,30 @@ function renderAccessReadout() {
         ? ' (' + formatCount(directReportCount(state.accessUserUid), 'person', 'people') + ' reporting in)'
         : '');
   }
+}
+
+function describeUserPatch(user) {
+  var api = patchApi();
+  if (!api) return user && user.opsArea ? user.opsArea : '';
+  var patch = (user && (user.patch || user.opsArea)) || null;
+  if (api.isEmptyPatch(patch)) return '';
+  return api.describePatch(api.resolvePatch(patch, state.siteMetaDraft));
+}
+
+// The patch in words, or '' for somebody who looks after the whole estate.
+function describeDraftPatch() {
+  var api = patchApi();
+  if (!api || !state.accessDraft) return '';
+  if (api.isEmptyPatch(state.accessDraft.patch)) return '';
+  return api.describePatch(api.resolvePatch(state.accessDraft.patch, state.siteMetaDraft));
+}
+
+// Everything still reading the original single-area field gets the first area
+// of the patch. A regional manager has no single ops area, so they get none —
+// which is also what they had before the patch existed.
+function firstPatchOpsArea(storedPatch) {
+  var areas = (storedPatch && storedPatch.opsAreas) || [];
+  return areas.length === 1 ? areas[0].opsArea : '';
 }
 
 function directReportCount(uid) {
@@ -1385,10 +1581,14 @@ function openAccessModal(uid) {
     userAccessManager.innerHTML = managerOptionsHtml(uid, state.accessDraft.managerUid);
     userAccessManager.disabled = !editable;
   }
-  if (userAccessOps) {
-    userAccessOps.innerHTML = opsAreaOptionsHtml(state.accessDraft.opsArea);
-    userAccessOps.disabled = !editable;
+  if (userAccessNotifications) {
+    userAccessNotifications.innerHTML = notificationScopeOptionsHtml(
+      state.accessDraft.notificationScope,
+      state.accessDraft.role
+    );
+    userAccessNotifications.disabled = !canEdit('users');
   }
+  renderPatchEditor(editable);
   // The feature switch stays live even on your own account: role and reporting
   // line lock themselves so an admin cannot demote or orphan themselves, but a
   // switch that only reveals your own work is safe to flip on yourself — and
@@ -1479,18 +1679,24 @@ function buildRoleAccessGrid() {
       + '</div>';
   }).join('');
 
-  if (roleTeamScope) {
-    roleTeamScope.innerHTML = TEAM_SCOPES.map(function(scope) {
-      return '<label class="access-team__option">'
-        + '<input type="radio" name="roleTeamScope" value="' + escapeHtml(scope.key) + '"'
-        + (scope.key === 'none' ? ' checked' : '') + '>'
-        + '<span class="access-team__option-body">'
-        + '<strong>' + escapeHtml(scope.label) + '</strong>'
-        + '<span>' + escapeHtml(scope.description) + '</span>'
-        + '</span>'
-        + '</label>';
-    }).join('');
-  }
+  renderScopeOptions(roleTeamScope, 'roleTeamScope', TEAM_SCOPES, 'none');
+  renderScopeOptions(roleNotificationScope, 'roleNotificationScope', NOTIFICATION_SCOPES, 'area');
+}
+
+// The two three-way role settings — team view and notifications — are the same
+// control, so they are drawn by the same function.
+function renderScopeOptions(container, name, scopes, defaultKey) {
+  if (!container) return;
+  container.innerHTML = scopes.map(function(scope) {
+    return '<label class="access-team__option">'
+      + '<input type="radio" name="' + escapeHtml(name) + '" value="' + escapeHtml(scope.key) + '"'
+      + (scope.key === defaultKey ? ' checked' : '') + '>'
+      + '<span class="access-team__option-body">'
+      + '<strong>' + escapeHtml(scope.label) + '</strong>'
+      + '<span>' + escapeHtml(scope.description) + '</span>'
+      + '</span>'
+      + '</label>';
+  }).join('');
 }
 
 function setRoleGridValues(permissions) {
@@ -1502,9 +1708,19 @@ function setRoleGridValues(permissions) {
     if (seeBox) seeBox.checked = grid[key].see;
     if (editBox) editBox.checked = grid[key].edit;
   });
-  var scope = normalizeTeamScope(normalizePermissions(permissions).teamScope);
-  var radio = roleTeamScope && roleTeamScope.querySelector('[value="' + scope + '"]');
+  var perms = normalizePermissions(permissions);
+  checkScopeOption(roleTeamScope, normalizeTeamScope(perms.teamScope));
+  checkScopeOption(roleNotificationScope, normalizeNotificationScope(perms.notificationScope));
+}
+
+function checkScopeOption(container, value) {
+  var radio = container && container.querySelector('[value="' + value + '"]');
   if (radio) radio.checked = true;
+}
+
+function checkedScopeValue(container, name, fallback) {
+  var checked = container && container.querySelector('[name="' + name + '"]:checked');
+  return checked ? checked.value : fallback;
 }
 
 function collectRoleGridValues() {
@@ -1514,8 +1730,11 @@ function collectRoleGridValues() {
     var editBox = roleAccessGrid && roleAccessGrid.querySelector('[data-access-edit="' + row.key + '"]');
     grid[row.key] = { see: !!(seeBox && seeBox.checked), edit: !!(editBox && editBox.checked) };
   });
-  var checkedScope = roleTeamScope && roleTeamScope.querySelector('[name="roleTeamScope"]:checked');
-  return permissionsFromAccessGrid(grid, checkedScope ? checkedScope.value : 'none');
+  return permissionsFromAccessGrid(
+    grid,
+    checkedScopeValue(roleTeamScope, 'roleTeamScope', 'none'),
+    checkedScopeValue(roleNotificationScope, 'roleNotificationScope', 'area')
+  );
 }
 
 function ACCESS_ROWS_ALL() {
@@ -1606,7 +1825,8 @@ function renderRoles() {
       + '</td>'
       + '<td><div class="admin-status-note">' + escapeHtml(describeVisibility(perms)) + '</div></td>'
       + '<td><div class="admin-status-note">' + escapeHtml(describeEditing(perms)) + '</div></td>'
-      + '<td><div class="admin-status-note">' + escapeHtml(teamScopeLabel(perms.teamScope)) + '</div></td>'
+      + '<td><div class="admin-status-note">' + escapeHtml(teamScopeLabel(perms.teamScope)) + '</div>'
+      + '<div class="admin-status-note">Notified about: ' + escapeHtml(notificationScopeLabel(perms.notificationScope).toLowerCase()) + '</div></td>'
       + '<td>' + formatCount(assigned, 'person', 'people') + '</td>'
       + '<td>' + actionsHtml + '</td>'
       + '</tr>';
@@ -3268,13 +3488,23 @@ async function saveAccessModal() {
       + ', so they cannot also be their manager.');
   }
 
+  // Stamping records the bakeries each ops area holds right now, which is what
+  // lets the assignment follow that area through a rename. js/patch.js returns
+  // null for an empty patch, so "looks after nothing in particular" leaves no
+  // record behind.
+  var storedPatch = patchApi() ? patchApi().toStored(draft.patch, state.siteMetaDraft) : null;
+
   await update(ref(db, 'users/' + uid), {
     firstName: firstName,
     lastName: lastName,
     role: draft.role,
     department: normalizeDepartment(draft.department) || null,
     hiddenMyTeamDepartments: hiddenMyTeamDepartments,
-    opsArea: draft.opsArea,
+    patch: storedPatch,
+    // Kept in step for everything still reading the original single-area field,
+    // including the team directory the My Team page publishes.
+    opsArea: firstPatchOpsArea(storedPatch),
+    notificationScope: draft.notificationScope || null,
     managerUid: draft.managerUid,
     myActivity: draft.myActivity === true
   });
@@ -3609,6 +3839,12 @@ function ensurePortalSync() {
             role: users[uid].role || 'viewer',
             department: normalizeDepartment(users[uid].department),
             opsArea: users[uid].opsArea || '',
+            // Which part of the estate they look after — see js/patch.js. The
+            // original single-area field above is kept in step alongside it.
+            patch: users[uid].patch || null,
+            // Blank means "follow my role", so it is stored only when someone
+            // has actually chosen for themselves.
+            notificationScope: users[uid].notificationScope || '',
             // The whole reporting hierarchy is derived from this one field.
             managerUid: users[uid].managerUid || '',
             // Absent means off: My Activity is opt-in, so a user who has never
@@ -4107,10 +4343,30 @@ if (userAccessManager) {
     renderAccessReadout();
   });
 }
-if (userAccessOps) {
-  userAccessOps.addEventListener('change', function() {
+if (userAccessNotifications) {
+  userAccessNotifications.addEventListener('change', function() {
     if (!state.accessDraft) return;
-    state.accessDraft.opsArea = userAccessOps.value;
+    state.accessDraft.notificationScope = userAccessNotifications.value;
+    markDraftDirty('access', true);
+    renderAccessReadout();
+  });
+}
+if (userAccessPatchList) {
+  userAccessPatchList.addEventListener('change', function(event) {
+    if (!state.accessDraft) return;
+    var box = event.target.closest('input[type="checkbox"]');
+    if (!box) return;
+    if (box.dataset.patchRegionAll) {
+      togglePatchRegion(box.dataset.patchRegionAll, box.checked);
+    } else if (box.dataset.patchOpsArea) {
+      togglePatchOpsArea(box.dataset.patchRegion, box.dataset.patchOpsArea, box.checked);
+    } else {
+      return;
+    }
+    markDraftDirty('access', true);
+    // Ticking a whole region disables the areas inside it, so the list is
+    // redrawn rather than patched in place.
+    renderPatchEditor(true);
     renderAccessReadout();
   });
 }
@@ -4509,6 +4765,7 @@ async function saveSiteData() {
       );
       await set(ref(db, 'portalData/siteMeta'), payload);
     }
+    announceDataUpdate('the site directory', (payload && payload.siteCount ? payload.siteCount + ' sites' : ''));
     state.siteMetaSource = cloneMeta(state.siteMetaDraft);
     state.regionAssignmentsSource = cloneMeta((payload && payload.regionAssignments) || []);
     state.regionAssignmentsDraft = cloneMeta(state.regionAssignmentsSource);
@@ -4688,6 +4945,7 @@ restoreMetaBtn.addEventListener('click', async function() {
       state.opsAreaAssignmentsDraft
     );
     await set(ref(db, 'portalData/siteMeta'), payload);
+    announceDataUpdate('the site directory', 'restored to the default site map');
     state.siteMetaSource = cloneMeta(defaults);
     state.siteMetaDraft  = cloneMeta(defaults);
     state.regionAssignmentsSource = cloneMeta(payload.regionAssignments);
