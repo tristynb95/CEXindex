@@ -16,6 +16,11 @@ const profileHtml = read('profile.html');
 const sharedStyles = read('css/styles.css');
 const standaloneMenu = read('js/standalone-profile-menu.js');
 
+test('the expanded dashboard menu stays compact without changing its collapsed rail', () => {
+  assert.match(sharedStyles, /\.dashboard-sidebar\s*\{[\s\S]*?width:\s*232px;[\s\S]*?flex:\s*0\s+0\s+232px/);
+  assert.match(sharedStyles, /data-sidebar-collapsed[^\]]+\] \.dashboard-sidebar\s*\{[\s\S]*?width:\s*96px/);
+});
+
 test('My Activity has bounded, searchable long-form sections', () => {
   ['myTimelineSearch', 'myTimelineSummary'].forEach((id) => {
     assert.match(activityHtml, new RegExp('id="' + id + '"'));

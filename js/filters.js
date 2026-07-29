@@ -20,79 +20,24 @@ window.GAILS.getRollingMonths = function() {
       record.ac !== null && record.ac !== undefined && !isNaN(record.ac);
   }
 
-  // Every metric on the period aggregate is one of three shapes. Listing them
-  // lets a bakery's rows be walked once instead of once per metric — the old
-  // per-key closures each re-scanned the rows, roughly forty times over.
-  var MEAN_KEYS = ['n', 's2', 's3', 'o5', 'ov', 'fr', 'dr', 'ef', 'ep', 'dp',
-    'fp', 'np', 'c', 's2w', 'ac', 'ats', 'c_raw', 'ac_raw'];
-  // Sparse metrics: averaged over only the rows that carry a real number, so a
-  // record predating the column does not drag the period average to NaN.
-  var MEAN_DEFINED_KEYS = ['s4', 'a_at', 's30', 'at', 'at12', 'at9', 'nc', 'nm', 'nd', 'na'];
-  var SUM_KEYS = ['td', 'vc', 'vf', 'va'];
-
-  function isNumber(value) {
-    return typeof value === 'number' && !isNaN(value);
-  }
-
-  // One pass per bakery producing every total the aggregate needs. Means keep a
-  // raw running total (so an undefined column still yields NaN, as before);
-  // sparse means and sums track their own count of real numbers.
-  function tallyRows(rows) {
-    var means = {};
-    var definedTotals = {};
-    var definedCounts = {};
-    var i;
-
-    for (i = 0; i < MEAN_KEYS.length; i++) means[MEAN_KEYS[i]] = 0;
-    for (i = 0; i < MEAN_DEFINED_KEYS.length; i++) { definedTotals[MEAN_DEFINED_KEYS[i]] = 0; definedCounts[MEAN_DEFINED_KEYS[i]] = 0; }
-    for (i = 0; i < SUM_KEYS.length; i++) { definedTotals[SUM_KEYS[i]] = 0; definedCounts[SUM_KEYS[i]] = 0; }
-
-    var volume = 0;
-    var scoredMonths = new Set();
-
-    for (var r = 0; r < rows.length; r++) {
-      var record = rows[r];
-      var key;
-
-      for (i = 0; i < MEAN_KEYS.length; i++) {
-        key = MEAN_KEYS[i];
-        means[key] += record[key];
-      }
-      for (i = 0; i < MEAN_DEFINED_KEYS.length; i++) {
-        key = MEAN_DEFINED_KEYS[i];
-        if (isNumber(record[key])) { definedTotals[key] += record[key]; definedCounts[key]++; }
-      }
-      for (i = 0; i < SUM_KEYS.length; i++) {
-        key = SUM_KEYS[i];
-        if (isNumber(record[key])) { definedTotals[key] += record[key]; definedCounts[key]++; }
-      }
-
-      volume += record.v;
-      var scored = G.hasScoredData ? G.hasScoredData(record) : (record && !record.noData);
-      if (scored) scoredMonths.add(record.m);
-    }
-
-    return {
-      mean: function(key) { return means[key] / rows.length; },
-      meanDefined: function(key) {
-        return definedCounts[key] ? definedTotals[key] / definedCounts[key] : null;
-      },
-      sum: function(key) {
-        return definedCounts[key] ? Math.round(definedTotals[key]) : null;
-      },
-      volume: Math.round(volume),
-      scoredMonthCount: scoredMonths.size
-    };
-  }
-
   function aggregatePeriodRecords(records, selectedMonths) {
-    var source = (records || []).map(function(record) { return Object.assign({}, record); });
+    var source = records || [];
+
+    // The single-month path hands its records straight back to the dashboard
+    // after stamping ranks and bands on them, so those have to be copies —
+    // writing to state.ALL would corrupt the stored dataset.
     if (selectedMonths.length <= 1) {
+      source = source.map(function(record) { return Object.assign({}, record); });
       G.recomputeTimelinessRanks(source);
       source.forEach(G.ensureBands);
       return source;
     }
 
+    // The multi-month path only ever reads these records — every value below is
+    // averaged or summed into a brand-new aggregate object, and the two mutating
+    // helpers are applied to that aggregate, never to a source row. So it can
+    // work off state.ALL directly. Copying first was the single most expensive
+    // step of a refresh, and bought nothing.
     var grouped = {};
     var monthsPresent = new Set();
     source.forEach(function(record) {
@@ -109,15 +54,28 @@ window.GAILS.getRollingMonths = function() {
 
     Object.keys(grouped).forEach(function(bakery) {
       var rows = grouped[bakery];
-      var tally = tallyRows(rows);
-      var avg = tally.mean;
-      var avgDefined = tally.meanDefined;
-      var sum = tally.sum;
+      var avg = function(key) {
+        return rows.reduce(function(total, record) { return total + record[key]; }, 0) / rows.length;
+      };
+      var avgDefined = function(key) {
+        var values = rows
+          .map(function(record) { return record[key]; })
+          .filter(function(value) { return typeof value === 'number' && !isNaN(value); });
+        return values.length ? values.reduce(function(total, value) { return total + value; }, 0) / values.length : null;
+      };
       var round1 = function(value) {
         return value === null ? null : Math.round(value * 10) / 10;
       };
-      var totalVolume = tally.volume;
-      var scoredMonthCount = tally.scoredMonthCount;
+      var sum = function(key) {
+        var values = rows
+          .map(function(record) { return record[key]; })
+          .filter(function(value) { return typeof value === 'number' && !isNaN(value); });
+        return values.length ? Math.round(values.reduce(function(total, value) { return total + value; }, 0)) : null;
+      };
+      var totalVolume = Math.round(rows.reduce(function(total, record) { return total + record.v; }, 0));
+      var scoredMonthCount = new Set(rows
+        .filter(function(record) { return G.hasScoredData ? G.hasScoredData(record) : record && !record.noData; })
+        .map(function(record) { return record.m; })).size;
 
       var aggregate = {
         b: bakery,

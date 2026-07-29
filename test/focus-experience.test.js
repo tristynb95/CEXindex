@@ -62,7 +62,10 @@ test('puts the recommendation and action list before secondary analysis', () => 
 
   assert.ok(summary.indexOf('id="targetHubQueue"') < summary.indexOf('id="focusAreaDetails"'));
   assert.ok(summary.indexOf('id="focusAreaDetails"') < summary.indexOf('id="focusInsightsDetails"'));
-  assert.match(summary, /How support priority is calculated/);
+  assert.match(summary, /How is support priority calculated\?/);
+  assert.match(summary, /class="focus-method focus-method--overlay focus-priority-help"/);
+  assert.match(summary, /class="focus-priority-help__tooltip"[^>]*role="tooltip"/);
+  assert.match(styles, /\.focus-priority-help,\s*\.focus-priority-help\[open\] \{[\s\S]*?margin-left: auto/);
   assert.match(html, /<span>Priorities<\/span>/);
   assert.doesNotMatch(html, /<span>Where to focus<\/span>/);
   assert.match(summary, /<h2>Priority Overview<\/h2>/);
@@ -71,7 +74,7 @@ test('puts the recommendation and action list before secondary analysis', () => 
   assert.doesNotMatch(summary, /Start with the recommended bakery/);
   assert.match(summary, /six most recent completed months/);
   assert.match(summary, /remaining weights are rebalanced/);
-  assert.match(summary, /recent time in focus/);
+  assert.match(summary, /recent time in focus/i);
   assert.doesNotMatch(summary, /id="targetSummary"/);
 });
 

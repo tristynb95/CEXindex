@@ -747,6 +747,13 @@ test('the page styles cover both the desktop grid and small screens', () => {
   assert.match(styles, /\.my-activity-modal__dialog/);
 });
 
+test('mobile tab panels cannot widen the activity page beyond the viewport', () => {
+  assert.match(styles, /\.my-activity-main\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(styles, /\.my-activity-main\s*>\s*\*,\s*\[data-activity-panel\]\s*\{[\s\S]*?min-width:\s*0;[\s\S]*?max-width:\s*100%/);
+  assert.match(styles, /#section-actions \.my-activity-card__actions\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(styles, /#section-actions \.my-activity-card__actions \.my-activity-pill\s*\{[\s\S]*?grid-column:\s*1\s*\/\s*-1/);
+});
+
 test('open actions can be filtered by bakery, ops area, and searched', () => {
   ['myActionsSearch', 'myActionsOps', 'myActionsBakery', 'myActionsSort'].forEach((id) => {
     assert.match(html, new RegExp('id="' + id + '"'), id + ' control is missing');

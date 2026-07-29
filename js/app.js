@@ -38,6 +38,34 @@
   var dashboardTabsWithKpis = {
     overview: true
   };
+  var BENCHMARK_MEETING_SCORE = 75;
+  var BENCHMARK_SCORE_PARTS = [
+    { label: 'Drink quality', weightKey: 'dr' },
+    { label: 'Customer-rated efficiency', weightKey: 'ef' },
+    { label: 'Friendliness', weightKey: 'fr' },
+    { label: 'Drink + Meal NPS', weightKey: 'nps' },
+    { label: 'Coffee efficiency', weightKey: 'time' },
+    { label: 'Average wait time', weightKey: 'at' }
+  ];
+
+  function benchmarkScoreInfoHtml() {
+    var weightRows = BENCHMARK_SCORE_PARTS.map(function (part) {
+      var weight = G.CEI_WEIGHTS && G.CEI_WEIGHTS[part.weightKey];
+      var percentage = typeof weight === 'number' ? Math.round(weight * 100) + '%' : '\u2014';
+      return '<li><span>' + part.label + '</span><strong>' + percentage + '</strong></li>';
+    }).join('');
+    return '<details class="kpi-info">'
+      + '<summary aria-label="How the Benchmark Score is calculated"><span aria-hidden="true">i</span></summary>'
+      + '<div class="kpi-info__panel">'
+      + '<strong>How the score works</strong>'
+      + '<p>Six results make one score out of 100.</p>'
+      + '<ul class="kpi-info__weights">' + weightRows + '</ul>'
+      + '<p class="kpi-info__target"><strong>' + BENCHMARK_MEETING_SCORE + '+</strong> means Meeting.</p>'
+      + '<a class="kpi-info__link" href="#cei" data-benchmark-methodology>View the full methodology <span aria-hidden="true">\u2192</span></a>'
+      + '</div>'
+      + '</details>';
+  }
+
 
   function formatSelectedPeriod() {
     var selectedMonths = state.selectedMonths || [];
@@ -507,20 +535,22 @@
     updateHeaderSummary(data.length);
     G.storeDashboardMapData(data);
     if (data.length === 0 || n === 0) {
+      // Two rows of four: Benchmark leads the SHINE trio, NPS leads the KV Link trio.
       var dashMetrics = [
-        { eyebrow: 'Index', title: 'Benchmark Score', meta: 'vs company benchmark', primary: true },
-        { eyebrow: 'NPS', title: 'NPS (Drink & Meal)', meta: 'Target: 55', primary: true }
+        { eyebrow: 'Index', title: 'Benchmark Score', meta: 'Target: ' + BENCHMARK_MEETING_SCORE, primary: true, info: true }
       ];
       dashMetrics.push(
         { eyebrow: 'SHINE', title: 'Drink Quality', meta: 'Target: 90%' },
         { eyebrow: 'SHINE', title: 'Efficiency', meta: 'Target: 90%' },
         { eyebrow: 'SHINE', title: 'Friendliness', meta: 'Target: 90%' },
+        { eyebrow: 'NPS', title: 'NPS (Drink & Meal)', meta: 'Target: 55', primary: true },
         { eyebrow: 'KV Link', title: 'Coffee Efficiency', meta: 'Target: 70% < 2 min' },
         { eyebrow: 'KV Link', title: 'Avg Wait Time', meta: 'Target: ≤ 2:00' },
         { eyebrow: 'KV Link', title: 'Orders >5 Min', meta: 'Target: < 1%' }
       );
       dashboardKpiRow.innerHTML = dashMetrics.map(function (metric) {
-        return '<article class="kpi kpi-muted' + (metric.primary ? ' kpi--primary' : '') + '">'
+        return '<article class="kpi kpi-muted' + (metric.primary ? ' kpi--primary' : '') + (metric.info ? ' kpi--has-info' : '') + '">'
+          + (metric.info ? benchmarkScoreInfoHtml() : '')
           + '<div class="kpi__top">'
           + '<span class="kpi__eyebrow">' + metric.eyebrow + '</span>'
           + '<span class="kpi__status">No Data</span>'
@@ -577,7 +607,8 @@
         delta: kpiDeltaHtml(config.value, prior, config.priorKey, config.invert, config.deltaFormat),
         tone: status.tone,
         status: status.status,
-        primary: !!config.primary
+        primary: !!config.primary,
+        info: !!config.info
       };
     };
     var nps = G.avg(scoredData, 'n');
@@ -621,37 +652,21 @@
         display: Math.round(acei).toString(),
         eyebrow: 'Index',
         title: 'Benchmark Score',
-        meta: 'vs company benchmark',
+        meta: 'Target: ' + BENCHMARK_MEETING_SCORE,
         priorKey: 'ac',
         bands: [
           { test: function (val) { return val > 92; }, tone: 'kpi-blue', status: 'Exceeding' },
-          { test: function (val) { return val >= 75; }, tone: 'kpi-green', status: 'Meeting' },
+          { test: function (val) { return val >= BENCHMARK_MEETING_SCORE; }, tone: 'kpi-green', status: 'Meeting' },
           { test: function (val) { return val >= 60; }, tone: 'kpi-amber', status: 'Approaching' },
           { test: function (val) { return val < 60; }, tone: 'kpi-red', status: 'Below Standard' }
         ],
         labels: { good: 'Meeting', warn: 'Approaching', bad: 'Below Standard' },
-        primary: true
+        primary: true,
+        info: true
       })
     ];
 
-    cards.push(buildMetricCard({
-      value: nps,
-      compare: Math.round(nps),
-      display: Math.round(nps).toString(),
-      eyebrow: 'NPS',
-      title: 'NPS (Drink & Meal)',
-      meta: 'Target: 55',
-      priorKey: 'n',
-      bands: [
-        { test: function (val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
-        { test: function (val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
-        { test: function (val) { return val <= 60; }, tone: 'kpi-green', status: 'On Target' },
-        { test: function (val) { return val > 60; }, tone: 'kpi-blue', status: 'Exceeding' }
-      ],
-      labels: { good: 'Exceeding', warn: 'Watch', bad: 'Below' },
-      primary: true
-    }));
-
+    // Two rows of four: Benchmark leads the SHINE trio, NPS leads the KV Link trio.
     cards.push(
       buildMetricCard({
         value: dr,
@@ -708,6 +723,23 @@
         labels: { good: 'On Target', warn: 'Watch', bad: 'Below' }
       }),
       buildMetricCard({
+        value: nps,
+        compare: Math.round(nps),
+        display: Math.round(nps).toString(),
+        eyebrow: 'NPS',
+        title: 'NPS (Drink & Meal)',
+        meta: 'Target: 55',
+        priorKey: 'n',
+        bands: [
+          { test: function (val) { return val < 45; }, tone: 'kpi-red', status: 'Below' },
+          { test: function (val) { return val < 55; }, tone: 'kpi-amber', status: 'Watch' },
+          { test: function (val) { return val <= 60; }, tone: 'kpi-green', status: 'On Target' },
+          { test: function (val) { return val > 60; }, tone: 'kpi-blue', status: 'Exceeding' }
+        ],
+        labels: { good: 'Exceeding', warn: 'Watch', bad: 'Below' },
+        primary: true
+      }),
+      buildMetricCard({
         value: ts,
         compare: Math.round(ts),
         display: Math.round(ts) + '%',
@@ -747,7 +779,8 @@
     );
 
     dashboardKpiRow.innerHTML = cards.map(function (metric) {
-      return '<article class="kpi ' + metric.tone + (metric.primary ? ' kpi--primary' : '') + '">'
+      return '<article class="kpi ' + metric.tone + (metric.primary ? ' kpi--primary' : '') + (metric.info ? ' kpi--has-info' : '') + '">'
+        + (metric.info ? benchmarkScoreInfoHtml() : '')
         + '<div class="kpi__top">'
         + '<span class="kpi__eyebrow">' + metric.eyebrow + '</span>'
         + '<span class="kpi__status">' + metric.status + '</span>'
@@ -856,6 +889,14 @@
   if (G.setNetworkMapMetric) G.setNetworkMapMetric('absolute');
   if (G.setTargetMapMetric) G.setTargetMapMetric('absolute');
 
+  function syncMapSegmentedControl(selector, dataKey, value) {
+    Array.from(document.querySelectorAll(selector)).forEach(function (toggleBtn) {
+      var selected = toggleBtn.dataset[dataKey] === value;
+      toggleBtn.classList.toggle('active', selected);
+      toggleBtn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    });
+  }
+
   // ========== NETWORK MAP AREA TOGGLE ==========
   var _networkMapArea = 'off';
   Array.from(document.querySelectorAll('[data-map-area]')).forEach(function (btn) {
@@ -863,9 +904,7 @@
       var nextArea = btn.dataset.mapArea === 'on' ? 'on' : 'off';
       if (_networkMapArea === nextArea) return;
       _networkMapArea = nextArea;
-      Array.from(document.querySelectorAll('[data-map-area]')).forEach(function (toggleBtn) {
-        toggleBtn.classList.toggle('active', toggleBtn.dataset.mapArea === nextArea);
-      });
+      syncMapSegmentedControl('[data-map-area]', 'mapArea', nextArea);
       if (G.setNetworkMapArea) G.setNetworkMapArea(nextArea);
     });
   });
@@ -877,9 +916,7 @@
       var nextArea = btn.dataset.targetMapArea === 'on' ? 'on' : 'off';
       if (_targetMapArea === nextArea) return;
       _targetMapArea = nextArea;
-      Array.from(document.querySelectorAll('[data-target-map-area]')).forEach(function (toggleBtn) {
-        toggleBtn.classList.toggle('active', toggleBtn.dataset.targetMapArea === nextArea);
-      });
+      syncMapSegmentedControl('[data-target-map-area]', 'targetMapArea', nextArea);
       if (G.setTargetMapArea) G.setTargetMapArea(nextArea);
     });
   });
@@ -891,9 +928,7 @@
       var nextVisit = btn.dataset.mapVisit;
       if (_networkMapVisit === nextVisit) return;
       _networkMapVisit = nextVisit;
-      Array.from(document.querySelectorAll('[data-map-visit]')).forEach(function (toggleBtn) {
-        toggleBtn.classList.toggle('active', toggleBtn.dataset.mapVisit === nextVisit);
-      });
+      syncMapSegmentedControl('[data-map-visit]', 'mapVisit', nextVisit);
       if (G.setNetworkMapVisitFilter) G.setNetworkMapVisitFilter(nextVisit);
     });
   });
@@ -905,9 +940,7 @@
       var nextVisit = btn.dataset.targetMapVisit;
       if (_targetMapVisit === nextVisit) return;
       _targetMapVisit = nextVisit;
-      Array.from(document.querySelectorAll('[data-target-map-visit]')).forEach(function (toggleBtn) {
-        toggleBtn.classList.toggle('active', toggleBtn.dataset.targetMapVisit === nextVisit);
-      });
+      syncMapSegmentedControl('[data-target-map-visit]', 'targetMapVisit', nextVisit);
       if (G.setTargetMapVisitFilter) G.setTargetMapVisitFilter(nextVisit);
     });
   });
@@ -1533,8 +1566,9 @@
   function activateDashboardHashTarget() {
     var target = String(window.location.hash || '').replace(/^#(?:tab-)?/, '');
     if (!target) return;
-    var button = document.querySelector('.tab[data-tab="' + target + '"]');
-    if (!button) return;
+    var trigger = document.querySelector('.tab[data-tab="' + target + '"], ' +
+      '.dashboard-footer__link[data-footer-tab="' + target + '"]');
+    if (!trigger) return;
     activateDashboardTab(target);
   }
   window.addEventListener('hashchange', activateDashboardHashTarget);
@@ -1973,15 +2007,42 @@
   // a native <details> otherwise only closes via its own summary. Delegated so
   // it also covers the trend-table one, which is re-rendered on every refresh.
   (function () {
+    var floatingDisclosureSelector = '.focus-method--overlay, .kpi-info';
     document.addEventListener('click', function (e) {
-      var clicked = e.target && e.target.closest ? e.target.closest('.focus-method--overlay') : null;
-      document.querySelectorAll('.focus-method--overlay[open]').forEach(function (el) {
+      var methodAnchor = e.target && e.target.closest ? e.target.closest('[data-method-anchor]') : null;
+      if (!methodAnchor) return;
+      var chapter = document.getElementById(methodAnchor.getAttribute('data-method-anchor'));
+      if (!chapter) return;
+      e.preventDefault();
+      document.querySelectorAll('[data-method-anchor].is-active').forEach(function (button) {
+        button.classList.remove('is-active');
+      });
+      methodAnchor.classList.add('is-active');
+      chapter.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'start'
+      });
+      chapter.focus({ preventScroll: true });
+    });
+    document.addEventListener('click', function (e) {
+      var methodologyLink = e.target && e.target.closest ? e.target.closest('[data-benchmark-methodology]') : null;
+      if (!methodologyLink) return;
+      e.preventDefault();
+      var disclosure = methodologyLink.closest('.kpi-info');
+      if (disclosure) disclosure.open = false;
+      activateDashboardTab('cei');
+      if (window.location.hash !== '#cei') window.location.hash = 'cei';
+      scrollToTop();
+    });
+    document.addEventListener('click', function (e) {
+      var clicked = e.target && e.target.closest ? e.target.closest(floatingDisclosureSelector) : null;
+      document.querySelectorAll('.focus-method--overlay[open], .kpi-info[open]').forEach(function (el) {
         if (el !== clicked) el.open = false;
       });
     });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
-      var open = document.querySelector('.focus-method--overlay[open]');
+      var open = document.querySelector('.focus-method--overlay[open], .kpi-info[open]');
       if (!open) return;
       open.open = false;
       var summary = open.querySelector('summary');

@@ -10,6 +10,7 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 const charts = fs.readFileSync(path.join(root, 'js', 'charts.js'), 'utf8');
 const tables = fs.readFileSync(path.join(root, 'js', 'tables.js'), 'utf8');
+const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
 
 function createRankingContext() {
   const GAILS = {
@@ -80,4 +81,27 @@ test('the product exposes one benchmark score plus comparison context', () => {
   assert.match(tables, /\? b\.companyRank\s*:/);
   assert.match(charts, /Company rank:/);
   assert.doesNotMatch(app, /state\.(?:indexType|rankingsMetric|targetMetric)/);
+});
+
+test('the benchmark KPI names the Meeting score as its target', () => {
+  assert.match(app, /var BENCHMARK_MEETING_SCORE = 75;/);
+  assert.equal((app.match(/meta: 'Target: ' \+ BENCHMARK_MEETING_SCORE/g) || []).length, 2);
+  assert.doesNotMatch(app, /vs company benchmark/);
+});
+
+test('the benchmark KPI explains the score in plain language', () => {
+  assert.match(app, /<details class="kpi-info">/);
+  assert.match(app, /aria-label="How the Benchmark Score is calculated"/);
+  assert.match(app, /Six results make one score out of 100/);
+  assert.match(app, /Drink quality[\s\S]*Customer-rated efficiency[\s\S]*Friendliness[\s\S]*Drink \+ Meal NPS[\s\S]*Coffee efficiency[\s\S]*Average wait time/);
+  assert.match(app, /G\.CEI_WEIGHTS\[part\.weightKey\]/);
+  assert.match(app, /data-benchmark-methodology/);
+  assert.match(app, /activateDashboardTab\('cei'\)/);
+  assert.match(app, /floatingDisclosureSelector = '\.focus-method--overlay, \.kpi-info'/);
+  assert.match(app, /activateDashboardHashTarget[\s\S]*?dashboard-footer__link\[data-footer-tab=/);
+  assert.match(styles, /\.kpi-info summary\s*\{[\s\S]*?width: 20px;[\s\S]*?height: 20px;/);
+  assert.match(styles, /\.kpi-info summary::marker\s*\{\s*content: '';/);
+  assert.match(styles, /\.kpi-info__panel\s*\{[\s\S]*?position: absolute;[\s\S]*?width: min\(330px, calc\(100vw - 32px\)\)/);
+  assert.match(styles, /\.kpi\.kpi-blue \.kpi__status\s*\{\s*background:/);
+  assert.doesNotMatch(styles, /\.kpi\.kpi-blue \.kpi__status\s*\{[^}]*\.kpi--has-info/);
 });

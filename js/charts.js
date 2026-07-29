@@ -47,6 +47,16 @@ if (typeof Chart !== 'undefined') {
   }
 }
 
+// Ink and rule colours shared by the chart configs, mirroring the CSS custom
+// properties of the same name so charts and cards stay in step.
+window.GAILS.CHART_INK = {
+  strong: '#221F1A',
+  body: '#4D463C',
+  muted: '#8C8272',
+  grid: 'rgba(34, 31, 26, 0.05)',
+  track: 'rgba(34, 31, 26, 0.05)'
+};
+
 var _charts = {};
 
 window.GAILS.makeChart = function (id, config) {
@@ -74,7 +84,9 @@ window.GAILS.renderOverviewCharts = function (data) {
   var chartData = data.filter(function (r) { return r && !r.noData; });
   var n = chartData.length;
   if (!n) {
-    ['npsHist', 'overviewBandSplit', 'npsVsCei', 'cxRadar', 'absComponentDrag', 'top10Chart', 'bot10Chart'].forEach(G.destroyChart);
+    ['npsVsCei', 'absComponentDrag'].forEach(G.destroyChart);
+    var emptySplit = document.getElementById('bandSplit');
+    if (emptySplit) emptySplit.innerHTML = '';
     return;
   }
   var valueKey = 'ac';
@@ -82,75 +94,134 @@ window.GAILS.renderOverviewCharts = function (data) {
   var colorMap = G.ABSCOL;
   var bandNames = G.ABS_BAND_NAMES;
   var metricLabel = 'Benchmark Score';
+  // Benchmark Score cut-offs between bands — mirrors the ladder in ensureBands
+  // (js/cei.js) and the ranges in ABS_BAND_RANGES.
+  var BAND_CUTS = [60, 75, 90];
 
-  // NPS Histogram
-  var bins = []; for (var i = -10; i <= 100; i += 10) bins.push({ min: i, max: i + 10, count: 0 });
-  chartData.forEach(function (b) { var idx = bins.findIndex(function (bn) { return b.n >= bn.min && b.n < bn.max; }); if (idx >= 0) bins[idx].count++; });
-  G.makeChart('npsHist', { type: 'bar', data: { labels: bins.map(function (b) { return b.min + '\u2013' + b.max; }), datasets: [{ data: bins.map(function (b) { return b.count; }), backgroundColor: 'rgba(178, 42, 36,0.5)', hoverBackgroundColor: '#B22A24', borderRadius: 6 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Bakeries' } }, x: { title: { display: true, text: 'NPS (D+M)' } } }, onHover: function (evt, elements) { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; }, onClick: function (evt, elements) { if (elements.length > 0) { var idx = elements[0].index; var bin = bins[idx]; var bakeries = chartData.filter(function (b) { return b.n >= bin.min && b.n < bin.max; }); if (bakeries.length > 0) { G.showDrillDown('NPS (D+M) ' + bin.min + '\u2013' + bin.max, bakeries.length + ' bakeries in this segment', bakeries, 'nps'); } } } } });
-
-  // CEI band split by selected lens
+  // Band split. Deliberately DOM bars rather than a pie: five shares of an
+  // estate are a magnitude comparison, and arcs are the one form that makes
+  // "is Meeting bigger than Approaching?" hard to answer. Bars share a
+  // baseline, carry their own count and share as text, and cost far less
+  // height than a ring plus its legend.
   var bandSplitTitle = document.getElementById('overviewBandSplitTitle');
   if (bandSplitTitle) bandSplitTitle.textContent = 'Index Band Split (' + metricLabel + ')';
-  // "Incomplete" and "No Data" are both unscored states, already sharing the
-  // same grey in colorMap — fold them into a single "Not Scored" slice.
-  var pieBandNames = bandNames.filter(function (bn) { return bn !== 'Incomplete' && bn !== 'No Data'; });
-  var pieLabels = pieBandNames.concat(['Not Scored']);
-  var pieColors = pieBandNames.map(function (bn) { return colorMap[bn]; }).concat([colorMap['Incomplete'] || colorMap['No Data'] || '#B3AA99']);
-  var pieCounts = pieBandNames.map(function (bn) { return data.filter(function (d) { return d[bandKey] === bn; }).length; })
-    .concat([data.filter(function (d) { return d[bandKey] === 'Incomplete' || d[bandKey] === 'No Data'; }).length]);
-  G.makeChart('overviewBandSplit', {
-    type: 'doughnut',
-    data: {
-      labels: pieLabels,
-      datasets: [{
-        data: pieCounts,
-        backgroundColor: pieColors,
-        borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255,0.6)'
-      }]
-    },
-    options: {
-      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
-      onClick: function (evt, elements) {
-        if (!elements.length) return;
-        var idx = elements[0].index;
-        var band = pieLabels[idx];
-        var bakeries = band === 'Not Scored'
-          ? data.filter(function (d) { return d[bandKey] === 'Incomplete' || d[bandKey] === 'No Data'; })
-          : data.filter(function (d) { return d[bandKey] === band; });
-        G.showDrillDown(band, bakeries.length + ' bakeries in this band', bakeries, 'absolute');
-      }
-    }
-  });
+  var splitEl = document.getElementById('bandSplit');
+  if (splitEl) {
+    // "Incomplete" and "No Data" are both unscored states, already sharing the
+    // same grey in colorMap — fold them into a single "Not Scored" row. It is
+    // counted off `data`, not `chartData`, so this stays the one place on the
+    // Overview showing how much of the estate has no score at all.
+    var splitBandNames = bandNames.filter(function (bn) { return bn !== 'Incomplete' && bn !== 'No Data'; });
+    var isUnscored = function (d) { return d[bandKey] === 'Incomplete' || d[bandKey] === 'No Data'; };
+    var splitRows = splitBandNames.map(function (bn) {
+      return { label: bn, color: colorMap[bn], count: data.filter(function (d) { return d[bandKey] === bn; }).length };
+    }).concat([{
+      label: 'Not Scored',
+      color: colorMap['Incomplete'] || colorMap['No Data'] || '#B3AA99',
+      count: data.filter(isUnscored).length
+    }]);
+    var splitTotal = splitRows.reduce(function (a, r) { return a + r.count; }, 0);
+    // Bars scale against the largest band, not the total: no band is ever close
+    // to the whole estate, so scaling to the total would leave every bar a stub.
+    var splitMax = splitRows.reduce(function (a, r) { return Math.max(a, r.count); }, 0) || 1;
+
+    splitEl.innerHTML = splitRows.map(function (row) {
+      var pct = splitTotal ? Math.round(row.count / splitTotal * 100) : 0;
+      // The band names alone don't say where the cut-offs are, so each row
+      // carries its score range for the hover bubble and for screen readers.
+      var range = (G.ABS_BAND_RANGES && G.ABS_BAND_RANGES[row.label]) || '';
+      return '<button type="button" class="band-split__row" data-band="' + G.escapeHtml(row.label) + '"'
+        + ' data-range="' + G.escapeHtml(range) + '"'
+        + (row.count ? '' : ' disabled')
+        + ' aria-label="' + G.escapeHtml(row.label) + (range ? ', ' + G.escapeHtml(range) : '')
+        + ': ' + row.count + ' bakeries, ' + pct + ' per cent">'
+        + '<span class="band-split__name">'
+        + '<span class="band-split__dot" style="background:' + row.color + '"></span>'
+        + G.escapeHtml(row.label)
+        + '</span>'
+        + '<span class="band-split__track">'
+        + '<span class="band-split__fill" style="width:' + (row.count / splitMax * 100) + '%;'
+        + 'background:' + row.color + '"></span>'
+        + '</span>'
+        + '<span class="band-split__count">' + row.count + '</span>'
+        + '<span class="band-split__pct">' + pct + '%</span>'
+        + '</button>';
+    }).join('');
+
+    splitEl.onclick = function (evt) {
+      var btn = evt.target.closest('.band-split__row');
+      if (!btn) return;
+      var band = btn.dataset.band;
+      var bakeries = band === 'Not Scored'
+        ? data.filter(isUnscored)
+        : data.filter(function (d) { return d[bandKey] === band; });
+      if (!bakeries.length) return;
+      G.showDrillDown(band, bakeries.length + ' bakeries in this band', bakeries, 'absolute');
+    };
+  }
 
   // NPS vs CEI
   var npsScatterTitle = document.getElementById('npsScatterTitle');
   if (npsScatterTitle) npsScatterTitle.textContent = 'NPS (Drink + Meal) vs ' + metricLabel;
-  G.makeChart('npsVsCei', { type: 'scatter', data: { datasets: [{ data: chartData.map(function (b) { return { x: b[valueKey], y: b.n }; }), backgroundColor: chartData.map(function (b) { return colorMap[b[bandKey]] + '99'; }), borderColor: chartData.map(function (b) { return colorMap[b[bandKey]]; }), borderWidth: 1, pointRadius: 4.5, pointHitRadius: 12, pointHoverRadius: 7 }] }, options: { interaction: { mode: 'nearest', intersect: true }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (items) { return chartData[items[0].dataIndex].b; }, label: function (ctx) { var b = chartData[ctx.dataIndex]; return [metricLabel + ': ' + b[valueKey] + ' (' + b[bandKey] + ')', 'Company rank: ' + (b.companyRank ? b.companyRank + ' of ' + b.companyCohortSize : 'Not ranked'), 'NPS (D+M): ' + b.n, 'Vol: ' + b.v + ' (' + b.co + ' confidence)']; } } } }, scales: { x: { title: { display: true, text: metricLabel }, min: 0, max: 100 }, y: { title: { display: true, text: 'NPS (D+M)' }, min: -15, max: 105 } } } });
-
-  // Radar by selected CEI band
-  var radarTitle = document.getElementById('overviewRadarTitle');
-  if (radarTitle) radarTitle.textContent = 'Customer Experience by ' + metricLabel + ' Band';
-  var cxBandSeries = bandNames.map(function (band) {
-    var rows = chartData.filter(function (b) { return b[bandKey] === band; });
-    if (!rows.length) return null;
-    return {
-      label: band,
-      data: [avg(rows, 'ov'), avg(rows, 'fr'), avg(rows, 'dr'), avg(rows, 'ef')],
-      borderColor: colorMap[band],
-      backgroundColor: colorMap[band] + '33',
-      borderWidth: 2
-    };
-  }).filter(Boolean);
-  if (cxBandSeries.length) {
-    G.makeChart('cxRadar', {
-      type: 'radar', data: {
-        labels: ['Overall', 'Friendliness', 'Quality', 'Overall Efficiency'], datasets: cxBandSeries
-      }, options: { scales: { r: { min: 60, max: 100, ticks: { stepSize: 10 } } }, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
-    });
-  } else {
-    G.destroyChart('cxRadar');
-  }
+  // Marks and axes are deliberately light here: washed fill behind a hairline,
+  // recessive grid, small muted type — the same weights the KPI tiles and the
+  // band split use, so the lower row reads as part of the same system.
+  G.makeChart('npsVsCei', {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: chartData.map(function (b) { return { x: b[valueKey], y: b.n }; }),
+        // Solid fill with a surface-coloured ring: at 195 points the cloud
+        // overlaps heavily, and the ring is what keeps individual bakeries
+        // legible instead of merging into a single mass.
+        backgroundColor: chartData.map(function (b) { return colorMap[b[bandKey]] + 'D9'; }),
+        borderColor: '#FFFFFF',
+        borderWidth: 1.5,
+        pointRadius: 5,
+        pointHitRadius: 12,
+        pointHoverRadius: 8,
+        pointHoverBorderColor: '#FFFFFF',
+        pointHoverBorderWidth: 2
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      interaction: { mode: 'nearest', intersect: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { title: function (items) { return chartData[items[0].dataIndex].b; }, label: function (ctx) { var b = chartData[ctx.dataIndex]; return [metricLabel + ': ' + b[valueKey] + ' (' + b[bandKey] + ')', 'Company rank: ' + (b.companyRank ? b.companyRank + ' of ' + b.companyCohortSize : 'Not ranked'), 'NPS (D+M): ' + b.n, 'Vol: ' + b.v + ' (' + b.co + ' confidence)']; } } }
+      },
+      scales: {
+        x: {
+          min: 0, max: 100,
+          title: { display: true, text: metricLabel, font: { size: 10.5, weight: '600' }, color: G.CHART_INK.muted },
+          // Ticks sit on the band cut-offs rather than at round tens, so the
+          // colour of a point and its position tell the same story as the band
+          // split card above: left of 60 is Below Standard, past 90 Exceeding.
+          afterBuildTicks: function (axis) {
+            axis.ticks = [0, 60, 75, 90, 100].map(function (v) { return { value: v }; });
+          },
+          ticks: { font: { size: 10, weight: '600' }, color: G.CHART_INK.muted, autoSkip: false },
+          grid: {
+            color: function (ctx) { return BAND_CUTS.indexOf(ctx.tick.value) >= 0 ? 'rgba(34, 31, 26, 0.16)' : G.CHART_INK.grid; }
+          },
+          border: { display: false }
+        },
+        y: {
+          min: -15, max: 105,
+          title: { display: true, text: 'NPS (D+M)', font: { size: 10.5, weight: '600' }, color: G.CHART_INK.muted },
+          // Explicit ticks: the -15 to 105 range makes Chart.js pick uneven
+          // stops (-15, 0, 50, 105) that are hard to read a value against.
+          afterBuildTicks: function (axis) {
+            axis.ticks = [0, 25, 50, 75, 100].map(function (v) { return { value: v }; });
+          },
+          ticks: { font: { size: 10, weight: '600' }, color: G.CHART_INK.muted, autoSkip: false },
+          grid: { color: G.CHART_INK.grid },
+          border: { display: false }
+        }
+      }
+    }
+  });
 
   // Component drag by selected CEI lens
   var dragTitle = document.getElementById('overviewDragTitle');
@@ -158,37 +229,120 @@ window.GAILS.renderOverviewCharts = function (data) {
   var atRows = chartData.filter(function (b) { return typeof b.at === 'number' && !isNaN(b.at); });
   var rawAvgAt = atRows.length ? atRows.reduce(function (a, r) { return a + r.at; }, 0) / atRows.length : null;
 
+  var W = G.CEI_WEIGHTS;
   var componentAvgs = [
-      { name: 'Drink + Meal NPS', avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.n, G.BENCHMARKS.nps, G.BENCHMARK_FLOORS.nps); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'n') },
-      { name: 'Overall Efficiency', avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.ef, G.BENCHMARKS.ef, G.BENCHMARK_FLOORS.ef); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'ef') },
-      { name: 'Drink Quality', avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.dr, G.BENCHMARKS.dr, G.BENCHMARK_FLOORS.dr); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'dr') },
-      { name: 'Friendliness', avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.fr, G.BENCHMARKS.fr, G.BENCHMARK_FLOORS.fr); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'fr') },
-      { name: 'Coffee Efficiency', avg: chartData.map(function (b) { return b.ats; }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'ts') },
-      { name: 'Avg Wait Time', avg: chartData.map(function (b) { return (b.a_at !== undefined && b.a_at !== null) ? b.a_at : 100; }).reduce(function (a, v) { return a + v; }, 0) / n, raw: rawAvgAt }
+      { name: 'Drink + Meal NPS', weight: W.nps, avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.n, G.BENCHMARKS.nps, G.BENCHMARK_FLOORS.nps); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'n') },
+      { name: 'Overall Efficiency', weight: W.ef, avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.ef, G.BENCHMARKS.ef, G.BENCHMARK_FLOORS.ef); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'ef') },
+      { name: 'Drink Quality', weight: W.dr, avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.dr, G.BENCHMARKS.dr, G.BENCHMARK_FLOORS.dr); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'dr') },
+      { name: 'Friendliness', weight: W.fr, avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.fr, G.BENCHMARKS.fr, G.BENCHMARK_FLOORS.fr); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'fr') },
+      { name: 'Coffee Efficiency', weight: W.time, avg: chartData.map(function (b) { return b.ats; }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'ts') },
+      { name: 'Avg Wait Time', weight: W.at, avg: chartData.map(function (b) { return (b.a_at !== undefined && b.a_at !== null) ? b.a_at : 100; }).reduce(function (a, v) { return a + v; }, 0) / n, raw: rawAvgAt }
     ];
-  componentAvgs.sort(function (a, b) { return a.avg - b.avg; });
+
+  // Bars are benchmark points lost, not points scored. The index is a weighted
+  // mean of these components, so weight x (100 - component) is literally the
+  // number of points that component costs the score, and the six sum to the gap
+  // between 100 and the estate's raw index. Plotting the score instead made the
+  // worst component the *shortest* bar, which read backwards against the title,
+  // and gave a 5%-weighted miss the same visual size as a 25%-weighted one.
+  componentAvgs.forEach(function (c) { c.lost = Math.max(0, (100 - c.avg) * c.weight); });
+  componentAvgs.sort(function (a, b) { return b.lost - a.lost; });
+  var dragTone = function (v) { return v >= 90 ? '#1D9E5C' : v >= 60 ? '#C97F12' : '#B22A24'; };
+  var dragValues = componentAvgs.map(function (c) { return Math.round(c.lost * 10) / 10; });
+  var dragTotal = componentAvgs.reduce(function (a, c) { return a + c.lost; }, 0);
+  // Headroom so the longest bar stops short of the label column.
+  var dragMax = Math.max(1, Math.ceil(Math.max.apply(null, dragValues) * 1.15));
+
+  // Labels sit in a column just outside the plot rather than trailing each bar,
+  // so the numbers line up the way the band split's counts do.
+  var dragValueLabels = {
+    id: 'dragValueLabels',
+    afterDatasetsDraw: function (chart) {
+      var meta = chart.getDatasetMeta(1);
+      if (!meta || meta.hidden) return;
+      var ctx = chart.ctx;
+      ctx.save();
+      ctx.font = '800 13px Inter, system-ui, sans-serif';
+      ctx.fillStyle = G.CHART_INK.strong;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      meta.data.forEach(function (bar, i) {
+        ctx.fillText('−' + dragValues[i].toFixed(1), chart.chartArea.right + 10, bar.y);
+      });
+      ctx.restore();
+    }
+  };
+
   G.makeChart('absComponentDrag', {
     type: 'bar',
-    data: { labels: componentAvgs.map(function (c) { return c.name; }), datasets: [{ label: 'Avg Benchmark Score', data: componentAvgs.map(function (c) { return Math.round(c.avg * 10) / 10; }), backgroundColor: componentAvgs.map(function (c) { return c.avg >= 90 ? 'rgba(29, 158, 92,0.55)' : c.avg >= 60 ? 'rgba(201, 127, 18,0.55)' : 'rgba(178, 42, 36,0.55)'; }), borderColor: componentAvgs.map(function (c) { return c.avg >= 90 ? '#1D9E5C' : c.avg >= 60 ? '#C97F12' : '#B22A24'; }), borderWidth: 2, borderRadius: 6, maxBarThickness: 26 }] },
-    options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { var c = componentAvgs[ctx.dataIndex]; var rawStr = c.name === 'Avg Wait Time' ? G.formatSecs(c.raw) : c.name === 'Drink + Meal NPS' ? (c.raw ? c.raw.toFixed(1) : '—') : (c.raw ? c.raw.toFixed(1) + '%' : '—'); return 'Benchmark score: ' + ctx.raw + ' (raw avg: ' + rawStr + ')'; } } } }, scales: { x: { min: 0, max: 100, title: { display: true, text: 'Benchmark Component Score (100 = at target)' }, grid: { color: function (ctx) { return ctx.tick.value === 100 ? 'rgba(29, 158, 92,0.3)' : 'rgba(34, 31, 26,0.06)'; } } }, y: { ticks: { font: { size: 12, weight: 'bold' } } } } }
+    data: {
+      labels: componentAvgs.map(function (c) { return c.name; }),
+      datasets: [
+        {
+          label: 'Track',
+          data: componentAvgs.map(function () { return dragMax; }),
+          backgroundColor: G.CHART_INK.track,
+          borderWidth: 0,
+          borderRadius: 999,
+          maxBarThickness: 20,
+          grouped: false
+        },
+        {
+          // Solid tone rather than a wash — the bars are what the eye should
+          // land on, so the weight lives here and the axis furniture stays quiet.
+          // Length is points lost, colour is that component's own health, so a
+          // long amber bar reads as "middling but heavily weighted".
+          label: 'Benchmark points lost',
+          data: dragValues,
+          backgroundColor: componentAvgs.map(function (c) { return dragTone(c.avg); }),
+          hoverBackgroundColor: componentAvgs.map(function (c) { return dragTone(c.avg); }),
+          borderWidth: 0,
+          borderRadius: 999,
+          maxBarThickness: 20,
+          grouped: false
+        }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      maintainAspectRatio: false,
+      // Room at the right for the value label column outside the plot area:
+      // 10px offset + ~44px for a bold 13px "−10.0".
+      layout: { padding: { right: 56 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          filter: function (item) { return item.datasetIndex === 1; },
+          callbacks: {
+            label: function (ctx) {
+              var c = componentAvgs[ctx.dataIndex];
+              var rawStr = c.name === 'Avg Wait Time' ? G.formatSecs(c.raw) : c.name === 'Drink + Meal NPS' ? (c.raw ? c.raw.toFixed(1) : '—') : (c.raw ? c.raw.toFixed(1) + '%' : '—');
+              return [
+                'Costing ' + ctx.raw + ' benchmark points',
+                'Component score: ' + (Math.round(c.avg * 10) / 10) + ' of 100 (raw avg: ' + rawStr + ')',
+                'Weight in the score: ' + Math.round(c.weight * 100) + '%'
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          min: 0, max: dragMax,
+          title: { display: true, text: 'Benchmark points lost — ' + (Math.round(dragTotal * 10) / 10) + ' in total', font: { size: 10.5, weight: '600' }, color: G.CHART_INK.muted },
+          ticks: { display: false },
+          grid: { display: false },
+          border: { display: false }
+        },
+        y: {
+          ticks: { font: { size: 11.5, weight: '700' }, color: G.CHART_INK.body },
+          grid: { display: false },
+          border: { display: false }
+        }
+      }
+    },
+    plugins: [dragValueLabels]
   });
-
-  // Top 10 & Bottom 10
-  var rankingData = [].concat(chartData).sort(function (a, b) {
-    if (a.companyRank && b.companyRank) return a.companyRank - b.companyRank;
-    return b[valueKey] - a[valueKey];
-  });
-  var top10 = rankingData.slice(0, 10);
-  var bot10 = rankingData.slice(-10).reverse();
-  var topTitle = document.getElementById('top10Title');
-  var botTitle = document.getElementById('bot10Title');
-  if (topTitle) topTitle.textContent = 'Top 10 Bakeries by ' + metricLabel;
-  if (botTitle) botTitle.textContent = 'Bottom 10 Bakeries by ' + metricLabel;
-  var tbOpts = function (items) {
-    return { type: 'bar', data: { labels: items.map(function (b) { return b.b; }), datasets: [{ data: items.map(function (b) { return b[valueKey]; }), backgroundColor: items.map(function (b) { return colorMap[b[bandKey]]; }), borderRadius: 4 }] }, options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return metricLabel + ': ' + ctx.raw; } } } }, scales: { x: { min: 0, max: 100, title: { display: true, text: metricLabel } }, y: { ticks: { font: { size: 11, weight: '500' }, autoSkip: false } } } } };
-  };
-  G.makeChart('top10Chart', tbOpts(top10));
-  G.makeChart('bot10Chart', tbOpts(bot10));
 };
 
 // ========== RENDER TREND CHARTS ==========
@@ -232,12 +386,9 @@ window.GAILS.renderTrendCharts = function (data) {
 
   // Update h2 titles
   var el;
-  el = document.getElementById('trendNPSTitle'); if (el) el.textContent = trendTitle('Average NPS (Drink + Meal) by Month');
   el = document.getElementById('trendCXTitle'); if (el) el.textContent = trendTitle('Average CX Scores by Month');
   el = document.getElementById('trendAbsBandsTitle'); if (el) el.textContent = trendTitle('Benchmark Score Bands by Month');
-  el = document.getElementById('trendTimelinessTitle'); if (el) el.textContent = trendTitle('Average Coffee Efficiency by Month');
-  el = document.getElementById('trendSpeedTitle'); if (el) el.textContent = trendTitle('Average Speed Metrics by Month');
-  el = document.getElementById('trendNpsSplitTitle'); if (el) el.textContent = trendTitle('NPS Split by Month');
+  el = document.getElementById('trendNpsSplitTitle'); if (el) el.textContent = trendTitle('Average NPS by Month');
   el = document.getElementById('trendWaitPressureTitle'); if (el) el.textContent = trendTitle('Coffee Timing Mix by Month');
 
   function rowsForMonth(month) {
@@ -255,11 +406,12 @@ window.GAILS.renderTrendCharts = function (data) {
     return value === null || value === undefined || isNaN(value) ? null : Math.round(value * 10) / 10;
   }
 
+  // Headline NPS by month — drawn as the bold "Drink + Meal" series of the NPS
+  // split chart below, and returned here for callers that want the raw series.
   var trendNPS = RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.reduce(function (a, r) { return a + r.n; }, 0) / mr.length : null; });
-  G.makeChart('trendNPS', { type: 'line', data: { labels: RM, datasets: [{ data: trendNPS, borderColor: G.COL['Top Performance'], backgroundColor: G.COL['Top Performance'] + '22', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Avg NPS (D+M)' } } } } });
 
   var trendKeys = [{ k: 'dr', l: 'Quality', c: '#1E70C4' }, { k: 'ef', l: 'Overall Efficiency', c: '#1D9E5C' }, { k: 'fr', l: 'Friendliness', c: '#C97F12' }, { k: 'ov', l: 'Overall', c: '#6B4FA8' }];
-  G.makeChart('trendCX', { type: 'line', data: { labels: RM, datasets: trendKeys.map(function (tk) { return { label: tk.l, data: RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.reduce(function (a, r) { return a + r[tk.k]; }, 0) / mr.length : null; }), borderColor: tk.c, tension: 0.3, pointRadius: 3, borderWidth: 2 }; }) }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Score %' } } } } });
+  G.makeChart('trendCX', { type: 'line', data: { labels: RM, datasets: trendKeys.map(function (tk) { return { label: tk.l, data: RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.reduce(function (a, r) { return a + r[tk.k]; }, 0) / mr.length : null; }), borderColor: tk.c, tension: 0.3, pointRadius: 3, borderWidth: 2 }; }) }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Score %' } } } } });
 
   // NPS split trend: exposes the newer Coffee / Meal / All-response columns.
   var npsSplitKeys = [
@@ -289,6 +441,7 @@ window.GAILS.renderTrendCharts = function (data) {
       })
     },
     options: {
+      maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 10 } } },
         tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ': ' + (ctx.raw === null ? 'No data' : ctx.raw); } } }
@@ -326,10 +479,11 @@ window.GAILS.renderTrendCharts = function (data) {
         { label: '3-4 min', data: RM.map(function (m) { return timingBucketAvg(m, 'threeToFour'); }), backgroundColor: 'rgba(201, 127, 18,0.48)', borderColor: '#C97F12', borderWidth: 1, borderRadius: 3, stack: 'timing', yAxisID: 'y' },
         { label: '4-5 min', data: RM.map(function (m) { return timingBucketAvg(m, 'fourToFive'); }), backgroundColor: 'rgba(146, 137, 120,0.38)', borderColor: '#928978', borderWidth: 1, borderRadius: 3, stack: 'timing', yAxisID: 'y' },
         { label: '>5 min', data: RM.map(function (m) { return timingBucketAvg(m, 'overFive'); }), backgroundColor: 'rgba(178, 42, 36,0.65)', borderColor: '#B22A24', borderWidth: 1, borderRadius: 3, stack: 'timing', yAxisID: 'y' },
-        { type: 'line', label: 'Customer-Rated Efficiency', data: customerEfficiency, borderColor: '#221F1A', backgroundColor: 'rgba(34, 31, 26,0.12)', tension: 0.3, pointRadius: 4, borderWidth: 2.5, yAxisID: 'y1' }
+        { type: 'line', label: 'Overall Efficiency (customer-rated)', data: customerEfficiency, borderColor: '#221F1A', backgroundColor: 'rgba(34, 31, 26,0.12)', tension: 0.3, pointRadius: 4, borderWidth: 2.5, yAxisID: 'y1' }
       ]
     },
     options: {
+      maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 10 } } },
@@ -351,7 +505,7 @@ window.GAILS.renderTrendCharts = function (data) {
           max: 100
         },
         y1: {
-          title: { display: true, text: 'Customer-Rated Efficiency %' },
+          title: { display: true, text: 'Overall Efficiency % (customer-rated)' },
           position: 'right',
           grid: { drawOnChartArea: false },
           min: 0,
@@ -363,21 +517,11 @@ window.GAILS.renderTrendCharts = function (data) {
 
   // Absolute CEI band distribution over time
   var absBandDs = G.ABS_BAND_NAMES.map(function (bn) { return { label: bn, data: RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.filter(function (r) { return r.acb === bn; }).length / mr.length * 100 : 0; }), backgroundColor: G.ABSCOL[bn] + 'cc', borderColor: G.ABSCOL[bn], borderWidth: 1 }; });
-  G.makeChart('trendAbsBands', { type: 'bar', data: { labels: RM, datasets: absBandDs }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: '% of Bakeries' }, max: 100 } } } });
+  G.makeChart('trendAbsBands', { type: 'bar', data: { labels: RM, datasets: absBandDs }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: '% of Bakeries' }, max: 100 } } } });
 
-  // Beverage delivery time trend
-  var trendTS = RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.reduce(function (a, r) { return a + r.ts; }, 0) / mr.length : null; });
-  G.makeChart('trendTimeliness', { type: 'line', data: { labels: RM, datasets: [{ label: 'Avg Coffee Efficiency', data: trendTS, borderColor: '#6B4FA8', backgroundColor: 'rgba(107, 79, 168,0.13)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2.5 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Coffee Efficiency (0-100)' }, min: 0, max: 100 } } } });
-
-  // Speed trend
-  G.makeChart('trendSpeed', {
-    type: 'line', data: {
-      labels: RM, datasets: [
-        { label: 'Avg Within 2 Min %', data: RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? avg(mr, 's2') : null; }), borderColor: '#1E70C4', tension: 0.3, pointRadius: 3, borderWidth: 2 },
-        { label: 'Avg Over 5 Min %', data: RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? avg(mr, 'o5') : null; }), borderColor: '#B22A24', tension: 0.3, pointRadius: 3, borderWidth: 2, yAxisID: 'y2' }
-      ]
-    }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Within 2 Min %' }, position: 'left' }, y2: { title: { display: true, text: 'Over 5 Min %' }, position: 'right', grid: { drawOnChartArea: false } } } }
-  });
+  // Coffee Efficiency (ts === s2) and the Over 5 Min % series are not charted
+  // separately here — both are already shown as bands of the Coffee Timing Mix
+  // chart above, which also covers the 2-3, 3-4 and 4-5 minute middle.
 
   // Bakery tracker
   (function renderBakeryTracker() {
@@ -516,7 +660,7 @@ window.GAILS.renderTrendCharts = function (data) {
         ].concat(selectedBakeries.length ? [
           { label: 'All Bakeries Avg NPS (D+M)', data: benchmarkNps, borderColor: 'rgba(146, 137, 120,0.5)', borderDash: [5, 5], tension: 0.3, pointRadius: 0, borderWidth: 1.5 }
         ] : [])
-      }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: 'Score' }, min: 0, max: 110 } } }
+      }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { title: { display: true, text: 'Score' }, min: 0, max: 110 } } }
     });
   }());
 
@@ -528,6 +672,8 @@ window.GAILS.renderSpeedCharts = function (data) {
   var G = GAILS;
   var avg = G.avg;
   var n = data.length;
+
+  document.getElementById('speedSampleVal').textContent = n;
 
   // Shared rich tooltip for the scatter charts: bakery name + connected stats for that site.
   // (Chart.js v4 passes the context as the callback's first argument.)
@@ -568,7 +714,7 @@ window.GAILS.renderSpeedCharts = function (data) {
         { data: data.map(function (b) { return { x: b.s2, y: b.n }; }), backgroundColor: 'rgba(178, 42, 36,0.35)', borderColor: 'rgba(178, 42, 36,0.2)', pointRadius: 3.5, borderWidth: 1 },
         { type: 'line', data: [{ x: 35, y: sSlope * 35 + sInt }, { x: 95, y: sSlope * 95 + sInt }], borderColor: '#B22A24', borderWidth: 2.5, borderDash: [6, 4], pointRadius: 0 }
       ]
-    }, options: { plugins: { legend: { display: false }, tooltip: scatterTip }, scales: { x: { title: { display: true, text: 'Coffee Speed (% within 2 min)', font: { weight: 'bold' } }, min: 35, max: 95 }, y: { title: { display: true, text: 'NPS (D+M)', font: { weight: 'bold' } }, min: -15, max: 105 } } }
+    }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: scatterTip }, scales: { x: { title: { display: true, text: 'Coffee Speed (% within 2 min)', font: { weight: 'bold' } }, min: 35, max: 95 }, y: { title: { display: true, text: 'NPS (D+M)', font: { weight: 'bold' } }, min: -15, max: 105 } } }
   });
 
   var xEm = avg(data, 'ef');
@@ -577,10 +723,10 @@ window.GAILS.renderSpeedCharts = function (data) {
   G.makeChart('effVsNps', {
     type: 'scatter', data: {
       datasets: [
-        { data: data.map(function (b) { return { x: b.ef, y: b.n }; }), backgroundColor: 'rgba(29, 158, 92,0.3)', borderColor: 'rgba(29, 158, 92,0.15)', pointRadius: 3.5, borderWidth: 1 },
-        { type: 'line', data: [{ x: 35, y: eSlope * 35 + eInt }, { x: 102, y: eSlope * 102 + eInt }], borderColor: '#1D9E5C', borderWidth: 2.5, pointRadius: 0 }
+        { data: data.map(function (b) { return { x: b.ef, y: b.n }; }), backgroundColor: 'rgba(26, 123, 104,0.3)', borderColor: 'rgba(26, 123, 104,0.15)', pointRadius: 3.5, borderWidth: 1 },
+        { type: 'line', data: [{ x: 35, y: eSlope * 35 + eInt }, { x: 102, y: eSlope * 102 + eInt }], borderColor: '#1A7B68', borderWidth: 2.5, pointRadius: 0 }
       ]
-    }, options: { plugins: { legend: { display: false }, tooltip: scatterTip }, scales: { x: { title: { display: true, text: 'Customer-Rated Overall Efficiency %', font: { weight: 'bold' } }, min: 35, max: 102 }, y: { title: { display: true, text: 'NPS (D+M)', font: { weight: 'bold' } }, min: -15, max: 105 } } }
+    }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: scatterTip }, scales: { x: { title: { display: true, text: 'Customer-Rated Overall Efficiency %', font: { weight: 'bold' } }, min: 35, max: 102 }, y: { title: { display: true, text: 'NPS (D+M)', font: { weight: 'bold' } }, min: -15, max: 105 } } }
   });
 
   // Quartile compare
@@ -593,9 +739,9 @@ window.GAILS.renderSpeedCharts = function (data) {
     type: 'bar', data: {
       labels: ['Lowest 25%', 'Below Avg', 'Above Avg', 'Highest 25%'], datasets: [
         { label: 'By Coffee Speed', data: sqNPS, backgroundColor: 'rgba(178, 42, 36,0.28)', borderColor: '#B22A24', borderWidth: 2, borderRadius: 6 },
-        { label: 'By Cust. Efficiency', data: eqNPS, backgroundColor: 'rgba(29, 158, 92,0.28)', borderColor: '#1D9E5C', borderWidth: 2, borderRadius: 6 }
+        { label: 'By Customer-Rated Efficiency', data: eqNPS, backgroundColor: 'rgba(26, 123, 104,0.28)', borderColor: '#1A7B68', borderWidth: 2, borderRadius: 6 }
       ]
-    }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11, weight: 'bold' } } } }, scales: { y: { title: { display: true, text: 'Avg NPS (D+M)', font: { weight: 'bold' } }, min: 0, max: 90 }, x: { title: { display: true, text: 'Quartile (worst \u2192 best)', font: { weight: 'bold' } } } } }
+    }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 11, weight: 'bold' } } } }, scales: { y: { title: { display: true, text: 'Avg NPS (D+M)', font: { weight: 'bold' } }, suggestedMin: 0, suggestedMax: 90 }, x: { title: { display: true, text: 'Quartile (worst \u2192 best)', font: { weight: 'bold' } } } } }
   });
 
   document.getElementById('speedGapVal').textContent = Math.round(Math.abs(sqNPS[3] - sqNPS[0])) + ' pts';
@@ -603,6 +749,9 @@ window.GAILS.renderSpeedCharts = function (data) {
 
   // R² comparison
   var corr = function (k) { var xm = avg(data, k), ym = avg(data, 'n'); var num = 0, xd = 0, yd = 0; data.forEach(function (b) { num += (b[k] - xm) * (b.n - ym); xd += (b[k] - xm) ** 2; yd += (b.n - ym) ** 2; }); return xd && yd ? (num * num) / (xd * yd) * 100 : 0; };
+  var formatR2 = function (value) { return (Math.round(value * 10) / 10).toFixed(1) + '%'; };
+  document.getElementById('speedR2Val').textContent = formatR2(corr('s2'));
+  document.getElementById('effR2Val').textContent = formatR2(corr('ef'));
   var metrics = [
     { name: 'Within 2 min', r2: corr('s2'), t: 'speed' }, { name: 'Within 3 min', r2: corr('s3'), t: 'speed' },
     { name: 'Over 5 min', r2: corr('o5'), t: 'speed' },
@@ -610,5 +759,5 @@ window.GAILS.renderSpeedCharts = function (data) {
     { name: 'Overall Efficiency', r2: corr('ef'), t: 'cx' }, { name: 'Overall CX', r2: corr('ov'), t: 'cx' }
   ];
   metrics.sort(function (a, b) { return a.r2 - b.r2; });
-  G.makeChart('corrCompare', { type: 'bar', data: { labels: metrics.map(function (m) { return m.name; }), datasets: [{ data: metrics.map(function (m) { return Math.round(m.r2 * 10) / 10; }), backgroundColor: metrics.map(function (m) { return m.t === 'speed' ? 'rgba(178, 42, 36,0.42)' : 'rgba(29, 158, 92,0.42)'; }), borderColor: metrics.map(function (m) { return m.t === 'speed' ? '#B22A24' : '#1D9E5C'; }), borderWidth: 2, borderRadius: 5 }] }, options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return c.raw + '% of NPS (D+M) explained'; } } } }, scales: { x: { title: { display: true, text: '% of NPS (D+M) Variance Explained (R\u00B2)', font: { weight: 'bold' } }, min: 0 }, y: { ticks: { font: { size: 11, weight: 'bold' } } } } } });
+  G.makeChart('corrCompare', { type: 'bar', data: { labels: metrics.map(function (m) { return m.name; }), datasets: [{ data: metrics.map(function (m) { return Math.round(m.r2 * 10) / 10; }), backgroundColor: metrics.map(function (m) { return m.t === 'speed' ? 'rgba(178, 42, 36,0.42)' : 'rgba(26, 123, 104,0.42)'; }), borderColor: metrics.map(function (m) { return m.t === 'speed' ? '#B22A24' : '#1A7B68'; }), borderWidth: 2, borderRadius: 5 }] }, options: { maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return c.raw + '% of NPS (D+M) explained'; } } } }, scales: { x: { title: { display: true, text: '% of NPS (D+M) Variance Explained (R\u00B2)', font: { weight: 'bold' } }, min: 0 }, y: { ticks: { font: { size: 11, weight: 'bold' } } } } } });
 };

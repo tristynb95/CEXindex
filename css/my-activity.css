@@ -1253,7 +1253,19 @@ body.my-activity-modal-open {
 .my-activity-main {
   width: min(1240px, calc(100% - 48px));
   padding: 26px 0 56px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+}
+
+/* A tab panel is a grid item. Without an explicit zero-minimum track, wider
+   controls in a hidden panel (notably the Actions toolbar) can become the
+   grid's min-content width when that tab opens and push the whole page beyond
+   the mobile viewport. Keep every top-level section inside the page track;
+   the components themselves still decide where their own content wraps. */
+.my-activity-main > *,
+[data-activity-panel] {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .my-activity-overview {
@@ -3045,6 +3057,27 @@ body.my-activity-modal-open {
   .my-activity-card__actions {
     width: 100%;
     justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  #section-actions .my-activity-card__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  #section-actions .my-activity-card__actions .my-activity-pill {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  #section-actions .my-activity-card__actions .btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    padding-right: 8px;
+    padding-left: 8px;
   }
 
   .my-activity-action {
@@ -3090,6 +3123,16 @@ body.my-activity-modal-open {
     flex: 0 0 34px;
     width: 34px;
     min-width: 34px;
+  }
+}
+
+@media (max-width: 360px) {
+  #section-actions .my-activity-card__actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #section-actions .my-activity-card__actions .my-activity-pill {
+    grid-column: auto;
   }
 }
 

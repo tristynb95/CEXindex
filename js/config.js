@@ -694,6 +694,17 @@ window.GAILS.ABSCOL = { 'Exceeding': '#1E70C4', 'Meeting': '#1D9E5C', 'Approachi
 window.GAILS.BAND_NAMES = ['Top Performance', 'Above Average', 'Below Average', 'Low Performance', 'Incomplete', 'No Data'];
 window.GAILS.ABS_BAND_NAMES = ['Exceeding', 'Meeting', 'Approaching', 'Below Standard', 'Incomplete', 'No Data'];
 
+// Display labels for the Benchmark Score range behind each band. These are for
+// showing users where the cut-offs fall — the authoritative banding is the
+// threshold ladder in GAILS.ensureBands (js/cei.js); keep the two in step.
+window.GAILS.ABS_BAND_RANGES = {
+  'Exceeding': 'Benchmark Score 90–100',
+  'Meeting': 'Benchmark Score 75–89',
+  'Approaching': 'Benchmark Score 60–74',
+  'Below Standard': 'Benchmark Score under 60',
+  'Not Scored': 'No Benchmark Score for this period'
+};
+
 // ========== CEI WEIGHTS & BENCHMARKS ==========
 window.GAILS.CEI_WEIGHTS = { nps: 0.15, ef: 0.25, dr: 0.25, fr: 0.25, time: 0.05, at: 0.05 };
 window.GAILS.BENCHMARKS = { nps: 55, ef: 90, dr: 90, fr: 90, time: 70, at: 120 };
