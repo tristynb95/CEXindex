@@ -29,27 +29,30 @@ window.GAILS.initUpload = function(initDashboard) {
     localStorage.removeItem('gails_excel_name');
   };
 
-  // Auto-load from localStorage
+  // Auto-load from localStorage. SheetJS is only fetched when there is actually
+  // a saved workbook to decode — on the usual path the dashboard is served from
+  // Firebase and the parser is never needed, so it is never downloaded.
   var saved = localStorage.getItem('gails_excel_data');
   var savedName = localStorage.getItem('gails_excel_name');
   if (saved) {
-    try {
-      var binary = atob(saved);
-      var bytes = new Uint8Array(binary.length);
-      for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      var result = G.parseExcelFile(bytes);
-      if (result.records.length > 0) {
-        G.state.dataLastUpdated = result.lastUpdated || null;
-        uploadStatus.textContent = 'Restored ' + result.records.length + ' records from session (' + (savedName || 'saved file') + ')';
-        uploadStatus.className = 'status success';
-        setTimeout(function() { initDashboard(result.records, result.months); }, 200);
-        return;
+    G.ensureXLSX().then(function() {
+      try {
+        var binary = atob(saved);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        var result = G.parseExcelFile(bytes);
+        if (result.records.length > 0) {
+          G.state.dataLastUpdated = result.lastUpdated || null;
+          uploadStatus.textContent = 'Restored ' + result.records.length + ' records from session (' + (savedName || 'saved file') + ')';
+          uploadStatus.className = 'status success';
+          setTimeout(function() { initDashboard(result.records, result.months); }, 200);
+        }
+      } catch (e) {
+        console.warn('Could not restore session data:', e);
+        localStorage.removeItem('gails_excel_data');
+        localStorage.removeItem('gails_excel_name');
       }
-    } catch (e) {
-      console.warn('Could not restore session data:', e);
-      localStorage.removeItem('gails_excel_data');
-      localStorage.removeItem('gails_excel_name');
-    }
+    });
   }
 
   function handleFile(file) {
@@ -63,6 +66,12 @@ window.GAILS.initUpload = function(initDashboard) {
 
     var reader = new FileReader();
     reader.onload = function(e) {
+      // Fetch the parser alongside reading the file rather than at page load.
+      G.ensureXLSX().then(function() { parseAndLoad(e); });
+    };
+    reader.readAsArrayBuffer(file);
+
+    function parseAndLoad(e) {
       try {
         var data = new Uint8Array(e.target.result);
         var result = G.parseExcelFile(data);
@@ -92,7 +101,6 @@ window.GAILS.initUpload = function(initDashboard) {
         uploadStatus.className = 'status error';
         console.error(err);
       }
-    };
-    reader.readAsArrayBuffer(file);
+    }
   }
 };

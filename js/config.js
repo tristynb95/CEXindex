@@ -279,19 +279,39 @@ var _BAKERY_EXTRA_ALIASES = {
 };
 
 window.GAILS.normalizeBakeryLookupName = _normalizeBakeryLookupName;
+
+// Resolution runs seven regexes over the name and is the innermost call in every
+// region/ops filter, so the dashboard reaches it a few times per record per
+// pass. The answer only depends on the name and the alias lookups, and those are
+// rebuilt in exactly one place, so cache it and clear the cache there.
+var _bakeryMetaKeyCache = Object.create(null);
+
 window.GAILS.resolveBakeryMetaKey = function (name) {
   var trimmed = String(name == null ? '' : name).trim();
   if (!trimmed) return '';
-  if (window.GAILS.BAKERY_META && window.GAILS.BAKERY_META[trimmed]) return trimmed;
-  if (window.GAILS.DEFAULT_BAKERY_META && window.GAILS.DEFAULT_BAKERY_META[trimmed]) return trimmed;
 
-  var normalized = _normalizeBakeryLookupName(trimmed);
-  var direct = _BAKERY_EXTRA_ALIASES[normalized] ||
-    _bakeryMetaAliasLookup[normalized] || _defaultBakeryAliasLookup[normalized];
-  if (direct) return direct;
+  var cached = _bakeryMetaKeyCache[trimmed];
+  if (cached !== undefined) return cached;
 
-  var collapsed = normalized.replace(/\s+/g, '');
-  return _bakeryMetaCollapsedAliasLookup[collapsed] || _defaultBakeryCollapsedAliasLookup[collapsed] || trimmed;
+  var resolved;
+  if ((window.GAILS.BAKERY_META && window.GAILS.BAKERY_META[trimmed]) ||
+      (window.GAILS.DEFAULT_BAKERY_META && window.GAILS.DEFAULT_BAKERY_META[trimmed])) {
+    resolved = trimmed;
+  } else {
+    var normalized = _normalizeBakeryLookupName(trimmed);
+    var direct = _BAKERY_EXTRA_ALIASES[normalized] ||
+      _bakeryMetaAliasLookup[normalized] || _defaultBakeryAliasLookup[normalized];
+    if (direct) {
+      resolved = direct;
+    } else {
+      var collapsed = normalized.replace(/\s+/g, '');
+      resolved = _bakeryMetaCollapsedAliasLookup[collapsed] ||
+        _defaultBakeryCollapsedAliasLookup[collapsed] || trimmed;
+    }
+  }
+
+  _bakeryMetaKeyCache[trimmed] = resolved;
+  return resolved;
 };
 
 window.GAILS.getBakeryMeta = function (name) {
@@ -351,6 +371,9 @@ window.GAILS.setBakeryMeta = function (meta) {
   window.GAILS.BAKERY_META = window.GAILS.cloneBakeryMeta(meta && Object.keys(meta).length ? meta : fallback);
   _bakeryMetaAliasLookup = _buildBakeryAliasLookup(fallback, window.GAILS.BAKERY_META);
   _bakeryMetaCollapsedAliasLookup = _buildBakeryCollapsedAliasLookup(fallback, window.GAILS.BAKERY_META);
+  // Cleared last, not first: cloneBakeryMeta above resolves names itself, against
+  // the outgoing directory, so anything it cached has to be thrown away too.
+  _bakeryMetaKeyCache = Object.create(null);
   if (typeof window.GAILS.onBakeryMetaChanged === 'function') {
     window.GAILS.onBakeryMetaChanged(window.GAILS.BAKERY_META);
   }

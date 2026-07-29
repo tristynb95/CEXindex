@@ -138,6 +138,9 @@ let patchMapLegend = null;
 let patchMapResizeObserver = null;
 let patchMapPoints = [];
 let patchMapLayoutFrame = null;
+// Leaflet arrives on demand: 'idle' before it is asked for, 'loading' while the
+// fetch is in flight, 'settled' once it has either landed or failed.
+let leafletState = 'idle';
 let taskModalReturnFocus = null;
 
 // ---------- small shared helpers ----------
@@ -1591,6 +1594,20 @@ function renderPatchMap() {
   }
 
   if (!window.L) {
+    // Leaflet is fetched on demand rather than at page load. While it is in
+    // flight the panel is left alone and this re-runs when it lands; only a
+    // failed fetch falls through to the unavailable state, as before. The
+    // coverage totals above have already been written either way.
+    if (leafletState === 'idle') {
+      leafletState = 'loading';
+      G.ensureLeaflet().then(function () {
+        leafletState = 'settled';
+        renderPatchMap();
+      });
+      return;
+    }
+    if (leafletState === 'loading') return;
+
     patchMapEl.classList.add('is-empty');
     patchMapEl.innerHTML = '<div class="my-activity-patch-map__empty"><strong>Map unavailable</strong>' +
       '<span>Your coverage totals are still shown below.</span></div>';
@@ -1933,6 +1950,13 @@ function closeConfirmModal() {
 // produced, so a download can never contain rows the user isn't looking at.
 function requestExport(data) {
   if (!data || !data.rows.length) return;
+  // SheetJS is fetched on demand, so settle whether this is an Excel or a CSV
+  // export before the confirmation names the file — the modal has to promise
+  // the format the download actually produces.
+  G.ensureXLSX().then(function () { confirmExport(data); });
+}
+
+function confirmExport(data) {
   var isExcel = !!window.XLSX;
   var filename = isExcel ? data.filename : data.filename.replace(/\.xlsx$/, '.csv');
 

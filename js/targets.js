@@ -1489,7 +1489,19 @@ document.addEventListener('keydown', function (event) {
   function ensureMap(mapKey) {
     var cfg = MAPS[mapKey];
     var el = document.getElementById(cfg.elId);
-    if (!el || typeof L === 'undefined') return;
+    if (!el) return;
+
+    // Leaflet is fetched on demand — this runs when a map tab is first opened,
+    // so re-enter once it lands. If the fetch fails, `L` stays undefined and the
+    // panel is left as it was, exactly as when the CDN was unreachable before.
+    if (typeof L === 'undefined') {
+      if (window.GAILS && window.GAILS.ensureLeaflet) {
+        window.GAILS.ensureLeaflet().then(function (lib) {
+          if (lib) ensureMap(mapKey);
+        });
+      }
+      return;
+    }
 
     if (cfg.instance) {
       cfg.instance.invalidateSize();

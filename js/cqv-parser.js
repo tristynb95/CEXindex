@@ -83,6 +83,11 @@ window.GAILS = window.GAILS || {};
 
   // ---------- pdf.js text extraction ----------
   async function extractPageLines(arrayBuffer) {
+    // pdf.js is fetched on demand rather than at page load, so wait for it here
+    // — this is the single entry point for every PDF read on the admin page.
+    if (typeof pdfjsLib === 'undefined' && window.GAILS && window.GAILS.ensurePdfJs) {
+      await window.GAILS.ensurePdfJs();
+    }
     if (typeof pdfjsLib === 'undefined') {
       throw new Error('PDF reader library did not load. Check your connection and try again.');
     }

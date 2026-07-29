@@ -487,8 +487,8 @@ test('the Coffee Partner field is the assignment control on both editors', () =>
   assert.match(adminScript, /var attributedPartners = selectedPartners\.length/);
 
   [indexHtml, adminHtml].forEach((page) => {
-    assert.match(page, /<script src="js\/mentions\.js"><\/script>/);
-    assert.match(page, /<script src="js\/mention-field\.js"><\/script>/);
+    assert.match(page, /<script defer src="js\/mentions\.js"><\/script>/);
+    assert.match(page, /<script defer src="js\/mention-field\.js"><\/script>/);
   });
 });
 

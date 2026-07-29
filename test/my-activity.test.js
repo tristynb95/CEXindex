@@ -14,6 +14,7 @@ const authScript = fs.readFileSync(path.join(root, 'js', 'auth.js'), 'utf8');
 const visitReportScript = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
 const eslintConfig = fs.readFileSync(path.join(root, 'eslint.config.mjs'), 'utf8');
 const mentionsSource = fs.readFileSync(path.join(root, 'js', 'mentions.js'), 'utf8');
+const lazyLibSource = fs.readFileSync(path.join(root, 'js', 'lazy-lib.js'), 'utf8');
 const attributionSource = fs.readFileSync(path.join(root, 'js', 'attribution.js'), 'utf8');
 
 // Ownership runs through the shared window.GAILS helpers, so the classic
@@ -252,9 +253,14 @@ test('action rows align with the compact visit-card density', () => {
 
 test('Visits uses the main Maps-page treatment and waits for a visible canvas', () => {
   assert.match(html, /id="myActivityPatchMap"/);
-  assert.match(html, /leaflet@1\.9\.4/);
-  assert.match(html, /href="https:\/\/unpkg\.com\/leaflet@1\.9\.4\/dist\/leaflet\.css">/);
-  assert.doesNotMatch(html, /Q8X0bK5JrQ4Y0/);
+  // Leaflet is no longer a blocking tag in the page — js/lazy-lib.js fetches the
+  // same pinned build and stylesheet when the map is first needed, and the page
+  // opts in by naming it in data-libs.
+  assert.match(html, /<script defer src="js\/lazy-lib\.js" data-libs="[^"]*\bleaflet\b/);
+  assert.match(lazyLibSource, /leaflet@1\.9\.4\/dist\/leaflet\.js/);
+  assert.match(lazyLibSource, /leaflet@1\.9\.4\/dist\/leaflet\.css/);
+  assert.doesNotMatch(lazyLibSource, /Q8X0bK5JrQ4Y0/);
+  assert.match(script, /G\.ensureLeaflet\(\)/);
   assert.match(html, /class="map-canvas-wrap my-activity-patch-map-wrap"/);
   assert.match(html, /class="target-map-status my-activity-patch-card__status"/);
   assert.match(styles, /\.my-activity-visits-workspace\s*\{[\s\S]*?grid-template-columns:[\s\S]*?1fr/);
@@ -388,7 +394,17 @@ test('the activity feed covers visits, notes, and tasks added, completed, and ed
 });
 
 test('no file is written until the download is confirmed', () => {
-  const start = script.indexOf('function requestExport(data)');
+  // requestExport waits for the on-demand SheetJS fetch so the dialog can name
+  // the format it will actually produce, then hands over to confirmExport —
+  // which is still the only thing that can reach a download.
+  const requestStart = script.indexOf('function requestExport(data)');
+  assert.ok(requestStart >= 0);
+  assert.match(
+    script.slice(requestStart, script.indexOf('\n}', requestStart)),
+    /G\.ensureXLSX\(\)\.then\(function \(\) \{ confirmExport\(data\); \}\)/
+  );
+
+  const start = script.indexOf('function confirmExport(data)');
   const handler = script.slice(start, script.indexOf('\n}', start));
 
   assert.ok(start >= 0);

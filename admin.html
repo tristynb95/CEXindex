@@ -14,13 +14,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script>
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-  </script>
+  <!-- SheetJS and pdf.js are both import-time only, and together weighed more
+       than the rest of this page combined. js/lazy-lib.js now fetches them when
+       an upload actually needs them (and sets pdf.js's worker URL on arrival). -->
   <link rel="stylesheet" href="css/styles.css?v=20260728-notification-centre-05-mobile-banners-03-notification-fit-04">
   <link rel="stylesheet" href="css/admin.css?v=20260727-admin-07">
 </head>
@@ -987,29 +983,31 @@
     </div>
   </div>
 
-  <script src="js/config.js"></script>
-  <script src="js/utils.js?v=20260728-notification-centre-05"></script>
-  <script src="js/cei.js"></script>
-  <script src="js/parser.js"></script>
-  <script src="js/tables.js"></script>
-  <script src="js/visit-schema.js"></script>
-  <script src="js/cqv-criticals.js"></script>
-  <script src="js/cqv-shared.js"></script>
-  <script src="js/cqv-parser.js"></script>
-  <script src="js/nbo-shared.js"></script>
-  <script src="js/patch.js"></script>
-  <script src="js/notifications.js"></script>
-  <script src="js/mentions.js"></script>
-  <script src="js/mention-field.js"></script>
-  <script src="js/attribution.js"></script>
-  <script src="js/region-assignments.js"></script>
-  <script src="js/ops-area-assignments.js"></script>
+  <!-- All deferred: downloaded in parallel, executed in this order after parse. -->
+  <script defer src="js/lazy-lib.js" data-libs="xlsx,pdfjs"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/utils.js?v=20260728-notification-centre-05"></script>
+  <script defer src="js/cei.js"></script>
+  <script defer src="js/parser.js"></script>
+  <script defer src="js/tables.js"></script>
+  <script defer src="js/visit-schema.js"></script>
+  <script defer src="js/cqv-criticals.js"></script>
+  <script defer src="js/cqv-shared.js"></script>
+  <script defer src="js/cqv-parser.js"></script>
+  <script defer src="js/nbo-shared.js"></script>
+  <script defer src="js/patch.js"></script>
+  <script defer src="js/notifications.js"></script>
+  <script defer src="js/mentions.js"></script>
+  <script defer src="js/mention-field.js"></script>
+  <script defer src="js/attribution.js"></script>
+  <script defer src="js/region-assignments.js"></script>
+  <script defer src="js/ops-area-assignments.js"></script>
   <!-- Reporting lines: who reports to whom, and therefore whose work a manager
        sees on My Team. Must load before js/admin-page.js reads GAILS.Team. -->
-  <script src="js/team.js"></script>
+  <script defer src="js/team.js"></script>
   <!-- Reuses the CQV parser's pdf.js text extraction and the NBO score helpers,
        so it must load after both. -->
-  <script src="js/nbo-parser.js"></script>
+  <script defer src="js/nbo-parser.js"></script>
   <script type="module" src="js/admin-page.js"></script>
 </body>
 

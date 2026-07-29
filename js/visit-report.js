@@ -1002,6 +1002,13 @@ window.GAILS = window.GAILS || {};
     var data = window.GAILS._visitLogExport;
     if (!data || !data.rows || !data.rows.length) return;
 
+    // SheetJS is fetched on demand, so settle whether this is an Excel or a CSV
+    // export before the confirmation names the file — the modal has to promise
+    // the format the download actually produces.
+    window.GAILS.ensureXLSX().then(function () { confirmVisitLogExport(data); });
+  }
+
+  function confirmVisitLogExport(data) {
     var isExcel = !!window.XLSX;
     var filename = isExcel ? data.filename : data.filename.replace(/\.xlsx$/, '.csv');
     var rowLabel = data.rows.length === 1 ? 'row' : 'rows';

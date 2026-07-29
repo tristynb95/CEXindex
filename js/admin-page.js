@@ -1122,6 +1122,9 @@ async function importSiteWorkbook(file) {
   if (siteImportBrowseBtn) siteImportBrowseBtn.disabled = true;
 
   try {
+    // SheetJS is fetched on demand rather than at page load; both awaits run
+    // while the user is still looking at the "Reading ..." message.
+    await window.GAILS.ensureXLSX();
     var data = await readFileAsBytes(file);
     var imported = parseSiteMetaWorkbook(data);
     var importInfo = {
@@ -1234,6 +1237,9 @@ async function importDatasetWorkbook(file) {
       throw new Error('Excel import is unavailable on this page.');
     }
 
+    // SheetJS is fetched on demand rather than at page load; both awaits run
+    // while the user is still looking at the "Reading ..." message.
+    await window.GAILS.ensureXLSX();
     var data = await readFileAsBytes(file);
     var parsed = window.GAILS.parseExcelFile(data);
 

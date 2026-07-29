@@ -14,13 +14,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="css/styles.css?v=20260728-notification-centre-05-mobile-banners-03-notification-fit-04">
   <link rel="stylesheet" href="css/my-activity.css?v=20260728-mobile-header-21">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <!-- Powers the section-score chart inside a CQV report. js/charts.js degrades
+  <!-- SheetJS (export) and Leaflet + its stylesheet (patch map) are fetched by
+       js/lazy-lib.js when they are first needed, so neither blocks first paint.
+       Powers the section-score chart inside a CQV report. js/charts.js degrades
        without it, so the report still opens if the CDN is unreachable. -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 
 <body class="my-activity-body">
@@ -549,29 +549,29 @@
     </div>
   </div>
 
-  <script src="js/utils.js?v=20260728-notification-centre-05"></script>
-  <script src="js/config.js"></script>
-  <script src="js/focus-data.js"></script>
+  <!-- All deferred: downloaded in parallel, executed in this order after parse. -->
+  <script defer src="js/lazy-lib.js" data-libs="xlsx,leaflet"></script>
+  <script defer src="js/utils.js?v=20260728-notification-centre-05"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/focus-data.js"></script>
   <!-- The routine visit schema names each section, which is what turns a
        routine visit's per-section comments into readable notes. -->
-  <script src="js/visit-schema.js"></script>
-  <script src="js/charts.js"></script>
+  <script defer src="js/visit-schema.js"></script>
+  <script defer src="js/charts.js"></script>
   <!-- js/visit-report.js reads GAILS.CQVShared at load time, and CQVShared
        calls CQVCriticals, so this order is load-bearing. -->
-  <script src="js/cqv-criticals.js"></script>
-  <script src="js/cqv-shared.js"></script>
-  <script src="js/nbo-shared.js"></script>
-  <script src="js/patch.js"></script>
-  <script src="js/notifications.js"></script>
-  <script src="js/mentions.js"></script>
-  <script src="js/attribution.js"></script>
+  <script defer src="js/cqv-criticals.js"></script>
+  <script defer src="js/cqv-shared.js"></script>
+  <script defer src="js/nbo-shared.js"></script>
+  <script defer src="js/patch.js"></script>
+  <script defer src="js/notifications.js"></script>
+  <script defer src="js/mentions.js"></script>
+  <script defer src="js/attribution.js"></script>
   <!-- Renders the report itself. It is the dashboard's own renderer, reused
        verbatim so a report reads identically on both pages — see the comment
        above openReportModal in js/my-activity.js for what this page feeds it. -->
-  <script src="js/visit-report.js?v=20260728-notification-centre-05"></script>
-  <script src="js/custom-selects.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script defer src="js/visit-report.js?v=20260728-notification-centre-05"></script>
+  <script defer src="js/custom-selects.js"></script>
   <script type="module" src="js/my-activity.js?v=20260728-notification-centre-05"></script>
 </body>
 
