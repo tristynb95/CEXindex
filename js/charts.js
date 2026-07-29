@@ -415,10 +415,10 @@ window.GAILS.renderTrendCharts = function (data) {
 
   // NPS split trend: exposes the newer Coffee / Meal / All-response columns.
   var npsSplitKeys = [
-    { k: 'n', l: 'Drink + Meal', c: G.COL['Top Performance'], dash: [] },
-    { k: 'nc', l: 'Coffee Only', c: '#1E70C4', dash: [5, 3] },
-    { k: 'nm', l: 'Meal Only', c: '#C97F12', dash: [2, 3] },
-    { k: 'na', l: 'All Responses', c: '#6B4FA8', dash: [7, 3] }
+    { k: 'n', l: 'Drink + Meal', c: '#315FA8', dash: [], pointStyle: 'circle', pointFill: '#315FA8', width: 2.75 },
+    { k: 'nc', l: 'Coffee Only', c: '#0E8074', dash: [7, 4], pointStyle: 'triangle', pointFill: '#FFFFFF', width: 2.25 },
+    { k: 'nm', l: 'Meal Only', c: '#C97F12', dash: [2, 4], pointStyle: 'rectRot', pointFill: '#FFFFFF', width: 2.25 },
+    { k: 'na', l: 'All Responses', c: '#6B4FA8', dash: [9, 3, 2, 3], pointStyle: 'rect', pointFill: '#FFFFFF', width: 1.75 }
   ];
   G.makeChart('trendNpsSplit', {
     type: 'line',
@@ -434,16 +434,26 @@ window.GAILS.renderTrendCharts = function (data) {
           borderColor: tk.c,
           backgroundColor: tk.c + '18',
           borderDash: tk.dash,
+          borderCapStyle: 'round',
           tension: 0.3,
-          pointRadius: 3,
-          borderWidth: tk.k === 'n' ? 2.5 : 2
+          pointStyle: tk.pointStyle,
+          pointBackgroundColor: tk.pointFill,
+          pointBorderColor: tk.c,
+          pointBorderWidth: 2,
+          pointRadius: 3.5,
+          pointHoverRadius: 5,
+          pointHitRadius: 8,
+          borderWidth: tk.width
         };
       })
     },
     options: {
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 10 } } },
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 10 }, padding: 14, pointStyleWidth: 14, usePointStyle: true }
+        },
         tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ': ' + (ctx.raw === null ? 'No data' : ctx.raw); } } }
       },
       scales: { y: { title: { display: true, text: 'Avg NPS' }, min: -15, max: 105 } }
@@ -458,28 +468,34 @@ window.GAILS.renderTrendCharts = function (data) {
       var s3 = typeof r.s3 === 'number' && !isNaN(r.s3) ? r.s3 : null;
       var s4 = typeof r.s4 === 'number' && !isNaN(r.s4) ? r.s4 : null;
       var o5 = typeof r.o5 === 'number' && !isNaN(r.o5) ? r.o5 : null;
-      if (s2 === null || s3 === null || s4 === null || o5 === null) return null;
-      if (bucket === 'under2') return Math.max(0, Math.min(100, s2));
-      if (bucket === 'twoToThree') return Math.max(0, s3 - s2);
-      if (bucket === 'threeToFour') return Math.max(0, s4 - s3);
-      if (bucket === 'fourToFive') return Math.max(0, 100 - s4 - o5);
-      if (bucket === 'overFive') return Math.max(0, o5);
+      if (bucket === 'under2') return s2 === null ? null : Math.max(0, Math.min(100, s2));
+      if (bucket === 'twoToThree') return s2 === null || s3 === null ? null : Math.max(0, Math.min(100, s3 - s2));
+      if (bucket === 'overThree') return s3 === null ? null : Math.max(0, Math.min(100, 100 - s3));
+      if (bucket === 'threeToFour') return s3 === null || s4 === null ? null : Math.max(0, Math.min(100, s4 - s3));
+      if (bucket === 'fourToFive') return s4 === null || o5 === null ? null : Math.max(0, Math.min(100, 100 - s4 - o5));
+      if (bucket === 'overFive') return o5 === null ? null : Math.max(0, Math.min(100, o5));
       return null;
     }).filter(function (v) { return typeof v === 'number' && !isNaN(v); });
     return vals.length ? round1OrNull(vals.reduce(function (a, v) { return a + v; }, 0) / vals.length) : null;
   }
-  var customerEfficiency = RM.map(function (m) { return round1OrNull(avgDefined(rowsForMonth(m), 'ef')); });
+  var under2Series = RM.map(function (m) { return timingBucketAvg(m, 'under2'); });
+  var twoToThreeSeries = RM.map(function (m) { return timingBucketAvg(m, 'twoToThree'); });
+  var overThreeSeries = RM.map(function (m) { return timingBucketAvg(m, 'overThree'); });
+  var slowDetailSeries = RM.map(function (m) {
+    return {
+      threeToFour: timingBucketAvg(m, 'threeToFour'),
+      fourToFive: timingBucketAvg(m, 'fourToFive'),
+      overFive: timingBucketAvg(m, 'overFive')
+    };
+  });
   G.makeChart('trendWaitPressure', {
     type: 'bar',
     data: {
       labels: RM,
       datasets: [
-        { label: '<2 min', data: RM.map(function (m) { return timingBucketAvg(m, 'under2'); }), backgroundColor: 'rgba(29, 158, 92,0.72)', borderColor: '#1D9E5C', borderWidth: 1, borderRadius: 3, stack: 'timing', yAxisID: 'y' },
-        { label: '2-3 min', data: RM.map(function (m) { return timingBucketAvg(m, 'twoToThree'); }), backgroundColor: 'rgba(30, 112, 196,0.42)', borderColor: '#1E70C4', borderWidth: 1, borderRadius: 3, stack: 'timing', yAxisID: 'y' },
-        { label: '3-4 min', data: RM.map(function (m) { return timingBucketAvg(m, 'threeToFour'); }), backgroundColor: 'rgba(201, 127, 18,0.48)', borderColor: '#C97F12', borderWidth: 1, borderRadius: 3, stack: 'timing', yAxisID: 'y' },
-        { label: '4-5 min', data: RM.map(function (m) { return timingBucketAvg(m, 'fourToFive'); }), backgroundColor: 'rgba(146, 137, 120,0.38)', borderColor: '#928978', borderWidth: 1, borderRadius: 3, stack: 'timing', yAxisID: 'y' },
-        { label: '>5 min', data: RM.map(function (m) { return timingBucketAvg(m, 'overFive'); }), backgroundColor: 'rgba(178, 42, 36,0.65)', borderColor: '#B22A24', borderWidth: 1, borderRadius: 3, stack: 'timing', yAxisID: 'y' },
-        { type: 'line', label: 'Overall Efficiency (customer-rated)', data: customerEfficiency, borderColor: '#221F1A', backgroundColor: 'rgba(34, 31, 26,0.12)', tension: 0.3, pointRadius: 4, borderWidth: 2.5, yAxisID: 'y1' }
+        { label: '<2 min', data: under2Series, backgroundColor: '#1D9E5Ccc', borderColor: '#1D9E5C', borderWidth: 1, stack: 'timing' },
+        { label: '2-3 min', data: twoToThreeSeries, backgroundColor: '#1E70C4cc', borderColor: '#1E70C4', borderWidth: 1, stack: 'timing' },
+        { label: '>3 min', data: overThreeSeries, backgroundColor: '#C97F12cc', borderColor: '#C97F12', borderWidth: 1, stack: 'timing' }
       ]
     },
     options: {
@@ -492,6 +508,19 @@ window.GAILS.renderTrendCharts = function (data) {
             label: function (ctx) {
               if (ctx.raw === null) return ctx.dataset.label + ': No data';
               return ctx.dataset.label + ': ' + round1OrNull(ctx.raw) + '%';
+            },
+            afterBody: function (items) {
+              if (!items || !items.length) return [];
+              var detail = slowDetailSeries[items[0].dataIndex];
+              if (!detail) return [];
+              function detailValue(value) { return value === null ? 'No data' : round1OrNull(value) + '%'; }
+              return [
+                '',
+                'Slow-drink detail',
+                '3-4 min: ' + detailValue(detail.threeToFour),
+                '4-5 min: ' + detailValue(detail.fourToFive),
+                '>5 min: ' + detailValue(detail.overFive)
+              ];
             }
           }
         }
@@ -500,15 +529,7 @@ window.GAILS.renderTrendCharts = function (data) {
         x: { stacked: true },
         y: {
           stacked: true,
-          title: { display: true, text: '% of Drinks by Timing Band' },
-          min: 0,
-          max: 100
-        },
-        y1: {
-          title: { display: true, text: 'Overall Efficiency % (customer-rated)' },
-          position: 'right',
-          grid: { drawOnChartArea: false },
-          min: 0,
+          title: { display: true, text: '% of Drinks' },
           max: 100
         }
       }
@@ -519,9 +540,8 @@ window.GAILS.renderTrendCharts = function (data) {
   var absBandDs = G.ABS_BAND_NAMES.map(function (bn) { return { label: bn, data: RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.filter(function (r) { return r.acb === bn; }).length / mr.length * 100 : 0; }), backgroundColor: G.ABSCOL[bn] + 'cc', borderColor: G.ABSCOL[bn], borderWidth: 1 }; });
   G.makeChart('trendAbsBands', { type: 'bar', data: { labels: RM, datasets: absBandDs }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: '% of Bakeries' }, max: 100 } } } });
 
-  // Coffee Efficiency (ts === s2) and the Over 5 Min % series are not charted
-  // separately here — both are already shown as bands of the Coffee Timing Mix
-  // chart above, which also covers the 2-3, 3-4 and 4-5 minute middle.
+  // Coffee Efficiency (ts === s2) is the first green band above. The slower
+  // bands are combined in the plot and preserved as a detailed tooltip split.
 
   // Bakery tracker
   (function renderBakeryTracker() {

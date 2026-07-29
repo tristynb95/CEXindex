@@ -610,7 +610,7 @@
               </div>
               <div class="section trend-card">
                 <h2 id="trendWaitPressureTitle">Coffee Timing Mix by Month</h2>
-                <p class="chart-caption">Drink timing bands with customer-rated Overall Efficiency overlaid for operational context.</p>
+                <p class="chart-caption">The monthly share of drinks served in &lt;2 min, 2&ndash;3 min and &gt;3 min.</p>
                 <div class="trend-chart"><canvas id="trendWaitPressure"></canvas></div>
               </div>
               <div class="section trend-card">
@@ -1539,6 +1539,15 @@
                               aria-pressed="false">Unvisited</button>
                           </div>
                         </div>
+                        <p class="target-hint map-legend-key" id="targetMapLegendHint"><span
+                            style="color:#B22A24;font-weight:600">&#9679; High</span>
+                          &nbsp;&middot;&nbsp;
+                          <span style="color:#E3A130;font-weight:600">&#9679; Medium</span>
+                          &nbsp;&middot;&nbsp;
+                          <span style="color:#78909C;font-weight:600">&#9679; Monitor</span>
+                          <span class="map-legend-key__note">Colour shows support priority, not performance band. Tap a
+                            pin for details.</span>
+                        </p>
                         <button type="button" class="fullscreen-toggle-btn map-fullscreen-btn"
                           data-map-fullscreen="target" aria-label="Open full screen map view" aria-pressed="false"
                           title="Open full screen">
@@ -1561,12 +1570,6 @@
                         </button>
                       </div>
                     </div>
-                    <p class="target-hint" id="targetMapLegendHint"><span style="color:#B22A24;font-weight:600">&#9679;
-                        High</span> &nbsp;&middot;&nbsp;
-                      <span style="color:#E3A130;font-weight:600">&#9679; Medium</span> &nbsp;&middot;&nbsp;
-                      <span style="color:#78909C;font-weight:600">&#9679; Monitor</span> &nbsp;&middot;&nbsp;
-                      Colour shows support priority, not performance band. Click a pin for details.
-                    </p>
                     <div class="map-body">
                       <div class="map-canvas-wrap">
                         <div id="targetMap"></div>
@@ -2074,20 +2077,25 @@
 
     <!-- DRILL-DOWN MODAL -->
     <!-- FOCUS BAKERY DEEP-DIVE MODAL -->
-    <div id="focusDetailModal" class="drill-modal" style="display:none;"
+    <div id="focusDetailModal" class="drill-modal drill-modal--focus" role="dialog" aria-modal="true"
+      aria-labelledby="focusDetailTitle" aria-describedby="focusDetailSubtitle" style="display:none;"
       onclick="if(event.target===this)GAILS.closeFocusDetail()">
       <div class="drillInner focus-detail-inner">
         <div class="drill-modal-header">
-          <div>
-            <h3 id="focusDetailTitle" class="drill-modal-title"></h3>
+          <div class="drill-modal-heading">
+            <span class="drill-modal-eyebrow">Focus bakery</span>
+            <div class="drill-modal-title-row">
+              <h3 id="focusDetailTitle" class="drill-modal-title"></h3>
+              <span id="focusDetailBadges"></span>
+            </div>
             <p id="focusDetailSubtitle" class="drill-modal-subtitle"></p>
           </div>
-          <div class="focus-detail__headright">
-            <span id="focusDetailBadges"></span>
-            <div class="focus-detail-nav" id="focusDetailNav" style="display:none">
+          <div class="focus-detail__headright drill-modal-actions">
+            <div class="focus-detail-nav" id="focusDetailNav" role="group" aria-label="Focus bakery queue"
+              style="display:none">
               <button type="button" class="focus-detail-nav__btn" id="focusDetailPrev"
                 onclick="GAILS.stepFocusDetail(-1)" aria-label="Previous bakery in the queue">&#8249;</button>
-              <span class="focus-detail-nav__pos" id="focusDetailPos"></span>
+              <span class="focus-detail-nav__pos" id="focusDetailPos" aria-live="polite"></span>
               <button type="button" class="focus-detail-nav__btn" id="focusDetailNext"
                 onclick="GAILS.stepFocusDetail(1)" aria-label="Next bakery in the queue">&#8250;</button>
             </div>
@@ -2099,28 +2107,40 @@
       </div>
     </div>
 
-    <div id="drillModal" class="drill-modal" style="display:none;"
+    <div id="drillModal" class="drill-modal drill-modal--overview" role="dialog" aria-modal="true"
+      aria-labelledby="drillTitle" aria-describedby="drillSubtitle" style="display:none;"
       onclick="if(event.target===this)GAILS.closeDrillDown()">
       <div class="drillInner overview-drill-inner">
-        <div id="drillHeader">
-          <div>
-            <h3 id="drillTitle"></h3>
-            <p id="drillSubtitle"></p>
+        <div id="drillHeader" class="drill-modal-header">
+          <div class="drill-modal-heading">
+            <span id="drillEyebrow" class="drill-modal-eyebrow">Overview insight</span>
+            <div class="drill-modal-title-row">
+              <h3 id="drillTitle" class="drill-modal-title"></h3>
+              <span id="drillHeaderCount" class="drill-modal-badge"></span>
+            </div>
+            <p id="drillSubtitle" class="drill-modal-subtitle"></p>
           </div>
-          <button type="button" class="modal-close-btn" onclick="GAILS.closeDrillDown()"
-            aria-label="Close report details" title="Close">&#10005;</button>
+          <div class="drill-modal-actions">
+            <button type="button" class="modal-close-btn" onclick="GAILS.closeDrillDown()"
+              aria-label="Close overview details" title="Close">&#10005;</button>
+          </div>
         </div>
         <div id="drillBody"></div>
       </div>
     </div>
 
     <!-- VISIT REPORT MODAL -->
-    <div id="visitReportModal" class="drill-modal" style="display:none;"
+    <div id="visitReportModal" class="drill-modal drill-modal--visit-report" role="dialog" aria-modal="true"
+      aria-labelledby="visitReportTitle" aria-describedby="visitReportSubtitle" style="display:none;"
       onclick="if(event.target===this)GAILS.closeVisitReport()">
-      <div class="drillInner">
+      <div class="drillInner visit-report-inner">
         <div class="drill-modal-header">
-          <div>
-            <h3 class="drill-modal-title" id="visitReportTitle"></h3>
+          <div class="drill-modal-heading">
+            <span id="visitReportEyebrow" class="drill-modal-eyebrow">Bakery report</span>
+            <div class="drill-modal-title-row">
+              <h3 class="drill-modal-title" id="visitReportTitle"></h3>
+              <span id="visitReportTypeBadge" class="drill-modal-badge"></span>
+            </div>
             <p class="drill-modal-subtitle" id="visitReportSubtitle"></p>
           </div>
           <div class="visit-report-header-actions">

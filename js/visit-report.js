@@ -8,6 +8,7 @@ window.GAILS = window.GAILS || {};
   var CHART_ID = 'visitReportScoreChart';
   var WAIT_TIME_TARGET_SECONDS = 120;
   var saveConfirmReturnFocus = null;
+  var visitReportReturnFocus = null;
 
   var escapeHtml = GAILS.escapeHtml;
 
@@ -80,13 +81,120 @@ window.GAILS = window.GAILS || {};
   // (dashboard, My Activity, My Team, Bakery Profile) therefore prints the
   // same way, and a plain Ctrl+P with no report open still prints the page.
   function showVisitReportModal(modal) {
+    var wasHidden = modal.style.display === 'none';
+    if (wasHidden && document.activeElement && document.activeElement !== document.body) {
+      visitReportReturnFocus = document.activeElement;
+    }
     modal.style.display = 'flex';
     document.body.classList.add('visit-report-open');
+    if (wasHidden && modal.querySelector) {
+      var closeButton = modal.querySelector('.modal-close-btn');
+      if (closeButton && closeButton.focus) closeButton.focus();
+    }
   }
 
   function hideVisitReportModal(modal) {
     modal.style.display = 'none';
     document.body.classList.remove('visit-report-open');
+    if (visitReportReturnFocus && visitReportReturnFocus.focus) visitReportReturnFocus.focus();
+    visitReportReturnFocus = null;
+  }
+
+  function setVisitReportPresentation(kind, record) {
+    var modal = document.getElementById('visitReportModal');
+    var eyebrow = document.getElementById('visitReportEyebrow');
+    var badge = document.getElementById('visitReportTypeBadge');
+    var inner = modal && modal.querySelector ? modal.querySelector('.drillInner') : null;
+    var presentations = {
+      routine: { eyebrow: 'Bakery report', badge: 'Routine visit', accent: '#0E8074', maxWidth: 1180 },
+      cqv: { eyebrow: 'Quality assurance', badge: record && record.isFollowUp ? 'CQV follow-up' : 'CQV', accent: '#6F52A2', maxWidth: 1180 },
+      nbo: { eyebrow: 'Opening support', badge: 'NBO coffee visit', accent: '#C57B28', maxWidth: 1060 },
+      checkin: { eyebrow: 'Bakery report', badge: 'Check-in', accent: '#2878A5', maxWidth: 820 },
+      opening: { eyebrow: 'Opening support', badge: 'NBO opening', accent: '#C57B28', maxWidth: 900 },
+      empty: { eyebrow: 'Bakery report', badge: 'No visit yet', accent: '#928978', maxWidth: 640 },
+      error: { eyebrow: 'Bakery report', badge: 'Unavailable', accent: '#B22A24', maxWidth: 640 }
+    };
+    var presentation = presentations[kind] || presentations.routine;
+    if (eyebrow) eyebrow.textContent = presentation.eyebrow;
+    if (badge) badge.textContent = presentation.badge;
+    if (inner && inner.style) {
+      inner.style.setProperty('--drill-accent', presentation.accent);
+      inner.style.setProperty('--visit-report-max-width', presentation.maxWidth + 'px');
+    }
+    if (modal && modal.dataset) modal.dataset.reportType = kind;
+  }
+
+  function visitReportHeadingLabel(heading) {
+    if (!heading) return '';
+    var directText = '';
+    if (heading.childNodes) {
+      Array.prototype.forEach.call(heading.childNodes, function(node) {
+        if (node.nodeType === 3) directText += ' ' + node.textContent;
+      });
+    }
+    // Direct text deliberately excludes status tags nested inside the h4,
+    // such as the second “Health & Safety” shown on that report section.
+    return (directText || heading.textContent || '').replace(/\s+/g, ' ').trim().replace(/\s*\(.*\)$/, '');
+  }
+
+  function enhanceVisitReportBody(bodyEl) {
+    if (!bodyEl || !bodyEl.querySelectorAll || !document.createElement) return;
+    if (bodyEl.classList) bodyEl.classList.add('visit-report-body--enhanced');
+    var wrappers = Array.prototype.slice.call(bodyEl.querySelectorAll('.visit-report-section-wrapper'));
+    var sections = [];
+
+    wrappers.forEach(function(wrapper, index) {
+      var heading = wrapper.querySelector ? wrapper.querySelector('h4') : null;
+      var label = visitReportHeadingLabel(heading);
+      var isWide = !!(wrapper.querySelector && wrapper.querySelector(
+        '.visit-report-chart-wrap, .visit-report-hs-banner, .visit-report-pdf-btn, .visit-report-section--comments'
+      ));
+      if (/^(summary|action plan|coaching notes)/i.test(label)) isWide = true;
+      if (isWide && wrapper.classList) wrapper.classList.add('visit-report-section-wrapper--wide');
+      if (!heading || !label) return;
+      heading.id = 'visitReportSection' + (index + 1);
+      sections.push({ id: heading.id, label: label });
+    });
+
+    if (sections.length < 2 || !bodyEl.insertBefore) return;
+    var nav = document.createElement('nav');
+    nav.className = 'visit-report-toc';
+    nav.setAttribute('aria-label', 'Report sections');
+    nav.innerHTML = '<span>Jump to</span><div>' + sections.map(function(section) {
+      return '<a href="#' + escapeHtml(section.id) + '">' + escapeHtml(section.label) + '</a>';
+    }).join('') + '</div>';
+    var firstWrapper = wrappers[0];
+    var summary = bodyEl.querySelector ? bodyEl.querySelector('.drill-summary') : null;
+    if (summary && summary.parentNode === bodyEl && bodyEl.insertBefore) {
+      // Keep summary and section navigation in one normal-flow stack. This
+      // prevents grid/sticky cascade rules from ever placing the nav over the
+      // stat strip while the report body scrolls.
+      var overview = document.createElement('div');
+      overview.className = 'visit-report-overview-stack';
+      bodyEl.insertBefore(overview, summary);
+      overview.appendChild(summary);
+      overview.appendChild(nav);
+    } else if (firstWrapper) {
+      bodyEl.insertBefore(nav, firstWrapper);
+    }
+  }
+
+  function trapVisitReportFocus(event, modal) {
+    if (event.key !== 'Tab' || !modal.querySelectorAll) return false;
+    var focusable = Array.prototype.slice.call(modal.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    )).filter(function(element) { return !element.hidden && element.offsetParent !== null; });
+    if (!focusable.length) return false;
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
+    return true;
   }
 
   function formatVisitDate(isoDate) {
@@ -255,7 +363,10 @@ window.GAILS = window.GAILS || {};
 
     var hasSectionScores = record.sectionScores && Object.keys(record.sectionScores).length > 0;
     var chartHtml = hasSectionScores
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-chart-wrap"><canvas id="' + CHART_ID + '"></canvas></div></div>'
+      ? '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--chart">' +
+        '<div class="visit-report-section-heading"><div><span>Score profile</span><h4>Performance by section</h4></div>' +
+        '<p>Earned points compared with the available score.</p></div>' +
+        '<div class="visit-report-chart-wrap"><canvas id="' + CHART_ID + '"></canvas></div></div></div>'
       : '<p class="visit-report-note">Section-by-section score breakdown isn’t available for this visit (it was recorded before scoring breakdown was added).</p>';
 
     return buildHeaderStatsHtml(record) +
@@ -358,37 +469,39 @@ window.GAILS = window.GAILS || {};
 
       var priorityColor = cqvPriorityColor(a.priority);
       var criticalTag = cqvCriticalTag(label);
-      var metaHtml = '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; text-align:right;">' +
+      var metaHtml = '<div class="visit-action-meta">' +
         (criticalTag
-          ? '<span style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px; color:#fff; background:#B22A24; white-space:nowrap;">&#9888; ' + escapeHtml(criticalTag) + '</span>'
+          ? '<span class="visit-action-tag visit-action-tag--critical">&#9888; ' + escapeHtml(criticalTag) + '</span>'
           : '') +
         (a.priority
-          ? '<span style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px;' +
-          (priorityColor ? ' color:' + priorityColor + '; background:' + priorityColor + '26;' : ' color:var(--muted-l); background:rgba(34, 31, 26,0.06);') +
-          '">' + escapeHtml(a.priority) + '</span>'
+          ? '<span class="visit-action-tag"' + (priorityColor ? ' style="--action-color:' + priorityColor + '"' : '') + '>' +
+            escapeHtml(a.priority) + '</span>'
           : '') +
-        '<span style="font-size:0.75rem; color:var(--muted-l); white-space:nowrap;">Due ' + escapeHtml(dueDate || '—') + '</span>' +
+        '<span class="visit-action-due">Due ' + escapeHtml(dueDate || '—') + '</span>' +
         '</div>';
 
-      return '<div class="visit-report-row-wrap" style="padding:14px 0; border-bottom:1px solid var(--card-border);' + (criticalTag ? ' border-left:3px solid #B22A24; padding-left:12px;' : '') + '">' +
-        '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">' +
-        '<div style="min-width:0; flex:1;">' +
-        '<div style="font-weight:700; color:var(--text); font-size:0.9rem;">' + escapeHtml(label) + '</div>' +
-        (cleanSection ? '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(cleanSection) + '</div>' : '') +
-        (a.findings ? '<p style="font-size:0.85rem; color:var(--text-2); margin:8px 0 0;">' + escapeHtml(a.findings) + '</p>' : '') +
-        (a.actionRequired ? '<div style="font-size:0.85rem; color:var(--text); margin-top:8px; padding:6px 10px; background:var(--accent-light); border-left:3px solid var(--accent); border-radius:4px; line-height:1.4;">' +
-          '<strong style="color:var(--accent);">Action required:</strong> ' + escapeHtml(a.actionRequired) + '</div>' : '') +
+      return '<article class="visit-action-item' + (criticalTag ? ' visit-action-item--critical' : '') + '">' +
+        '<div class="visit-action-layout">' +
+        '<div class="visit-action-copy">' +
+        '<div class="visit-action-title">' + escapeHtml(label) + '</div>' +
+        (cleanSection ? '<div class="visit-action-section">' + escapeHtml(cleanSection) + '</div>' : '') +
+        (a.findings ? '<p class="visit-action-finding">' + escapeHtml(a.findings) + '</p>' : '') +
+        (a.actionRequired ? '<div class="visit-action-required">' +
+          '<strong>Action required:</strong> ' + escapeHtml(a.actionRequired) + '</div>' : '') +
         '</div>' +
         metaHtml +
         '</div>' +
-        '</div>';
+        '</article>';
     }).join('');
   }
 
   function buildCqvReportHtml(record) {
     var hasSectionScores = record.sectionScores && Object.keys(record.sectionScores).length > 0;
     var chartHtml = hasSectionScores
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-chart-wrap"><canvas id="' + CQV_CHART_ID + '"></canvas></div></div>'
+      ? '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--chart">' +
+        '<div class="visit-report-section-heading"><div><span>Score profile</span><h4>Performance by section</h4></div>' +
+        '<p>Earned points compared with the available score.</p></div>' +
+        '<div class="visit-report-chart-wrap"><canvas id="' + CQV_CHART_ID + '"></canvas></div></div></div>'
       : '';
 
     var pdfHtml = record.pdfUrl
@@ -456,19 +569,18 @@ window.GAILS = window.GAILS || {};
 
   function buildNboQuestionRowHtml(q) {
     var isNo = q.response === 'NO';
-    var pillColor = isNo ? '#B22A24' : (q.response === 'YES' ? '#1D9E5C' : 'var(--muted-l)');
-    return '<div class="visit-report-row-wrap" style="padding:12px 0; border-bottom:1px solid var(--card-border);">' +
-      '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">' +
-      '<div style="min-width:0; flex:1;">' +
-      '<div style="font-weight:' + (isNo ? '700' : '600') + '; color:var(--text); font-size:0.9rem;">' +
+    var responseClass = q.response === 'YES' ? 'yes' : (isNo ? 'no' : 'unknown');
+    return '<div class="visit-question' + (isNo ? ' visit-question--attention' : '') + '">' +
+      '<div class="visit-question-layout">' +
+      '<div class="visit-question-copy">' +
+      '<div class="visit-question-title">' +
       escapeHtml((q.qNum ? q.qNum + '. ' : '') + (q.label || 'Question')) + '</div>' +
       (q.note
-        ? '<p style="font-size:0.85rem; color:var(--text-2); margin:8px 0 0; padding:6px 10px; background:var(--accent-light); border-radius:4px; line-height:1.4;">' +
+        ? '<p class="visit-question-note">' +
           escapeHtml(q.note) + '</p>'
         : '') +
       '</div>' +
-      '<span style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:99px; white-space:nowrap; flex-shrink:0;' +
-      ' color:' + pillColor + '; background:' + pillColor + '26;">' + escapeHtml(q.response || '—') + '</span>' +
+      '<span class="visit-response-pill visit-response-pill--' + responseClass + '">' + escapeHtml(q.response || '—') + '</span>' +
       '</div></div>';
   }
 
@@ -503,7 +615,8 @@ window.GAILS = window.GAILS || {};
       var items = bySection[name];
       var noCount = items.filter(function (q) { return q.response === 'NO'; }).length;
       return '<div class="visit-report-section-wrapper"><div class="visit-report-section">' +
-        '<h4>' + escapeHtml(name) + (noCount ? ' <span style="color:#B22A24; font-weight:700;">(' + noCount + ' to work on)</span>' : '') + '</h4>' +
+        '<div class="visit-report-section-title-row"><h4>' + escapeHtml(name) + '</h4>' +
+        (noCount ? '<span class="visit-section-attention">' + noCount + ' to work on</span>' : '') + '</div>' +
         items.map(buildNboQuestionRowHtml).join('') +
         '</div></div>';
     }).join('');
@@ -644,7 +757,11 @@ window.GAILS = window.GAILS || {};
 
     titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(bakeryName) : bakeryName;
     subtitleEl.textContent = 'No routine visit has been logged for this bakery yet.';
-    bodyEl.innerHTML = '';
+    bodyEl.innerHTML = '<div class="visit-report-empty">' +
+      '<span aria-hidden="true">&#9745;</span><h4>No report to show yet</h4>' +
+      '<p>Once a routine coffee visit is logged, its score, observations and actions will appear here.</p>' +
+      '</div>';
+    setVisitReportPresentation('empty');
 
     window.GAILS._activeVisitReportId = null;
     renderVisitReportActions(null, null);
@@ -710,6 +827,12 @@ window.GAILS = window.GAILS || {};
           first.focus();
         }
       }
+      return;
+    }
+
+    var activeReportModal = document.getElementById('visitReportModal');
+    if (event.key === 'Tab' && activeReportModal && activeReportModal.style.display !== 'none') {
+      trapVisitReportFocus(event, activeReportModal);
       return;
     }
 
@@ -1763,7 +1886,11 @@ window.GAILS = window.GAILS || {};
       window.GAILS._activeVisitReportId = null;
       titleEl.textContent = 'Error';
       subtitleEl.textContent = 'Visit record not found.';
-      bodyEl.innerHTML = '';
+      bodyEl.innerHTML = '<div class="visit-report-empty visit-report-empty--error">' +
+        '<span aria-hidden="true">!</span><h4>This report is unavailable</h4>' +
+        '<p>The visit may have been removed or the link may no longer be valid.</p>' +
+        '</div>';
+      setVisitReportPresentation('error');
       renderVisitReportActions(null, null);
       showVisitReportModal(modal);
       bodyEl.scrollTop = 0;
@@ -1782,6 +1909,8 @@ window.GAILS = window.GAILS || {};
       titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
       subtitleEl.textContent = 'Coffee Quality Visit on ' + formatVisitDate(record.date) + (record.title ? ' — ' + record.title : '');
       bodyEl.innerHTML = buildCqvReportHtml(record);
+      setVisitReportPresentation('cqv', record);
+      enhanceVisitReportBody(bodyEl);
 
       showVisitReportModal(modal);
       bodyEl.scrollTop = 0;
@@ -1795,6 +1924,8 @@ window.GAILS = window.GAILS || {};
       subtitleEl.textContent = 'NBO Coffee Visit ' + (record.visitNumber || 1) + ' on ' + formatVisitDate(record.date)
         + (record.auditorName ? ' — ' + record.auditorName : '');
       bodyEl.innerHTML = buildNboReportHtml(record);
+      setVisitReportPresentation('nbo', record);
+      enhanceVisitReportBody(bodyEl);
 
       showVisitReportModal(modal);
       bodyEl.scrollTop = 0;
@@ -1831,6 +1962,9 @@ window.GAILS = window.GAILS || {};
         '</div>' +
         '</div>';
 
+      setVisitReportPresentation(record.visitKind && record.visitKind !== 'checkin' ? 'opening' : 'checkin', record);
+      enhanceVisitReportBody(bodyEl);
+
       showVisitReportModal(modal);
       bodyEl.scrollTop = 0;
       if (!modalWasOpen) lockBackgroundScroll();
@@ -1840,6 +1974,8 @@ window.GAILS = window.GAILS || {};
     titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
     subtitleEl.textContent = 'Visited ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
     bodyEl.innerHTML = buildReportHtml(record);
+    setVisitReportPresentation('routine', record);
+    enhanceVisitReportBody(bodyEl);
 
     showVisitReportModal(modal);
     bodyEl.scrollTop = 0;

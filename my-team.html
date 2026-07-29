@@ -310,12 +310,17 @@
 
   <!-- Reuse the dashboard report renderer in-place so managers keep their
        selected person, period and filters while reviewing a visit. -->
-  <div id="visitReportModal" class="drill-modal" style="display:none;"
+  <div id="visitReportModal" class="drill-modal drill-modal--visit-report" role="dialog" aria-modal="true"
+    aria-labelledby="visitReportTitle" aria-describedby="visitReportSubtitle" style="display:none;"
     onclick="if(event.target===this)GAILS.closeVisitReport()">
-    <div class="drillInner">
+    <div class="drillInner visit-report-inner">
       <div class="drill-modal-header">
-        <div>
-          <h3 class="drill-modal-title" id="visitReportTitle"></h3>
+        <div class="drill-modal-heading">
+          <span id="visitReportEyebrow" class="drill-modal-eyebrow">Bakery report</span>
+          <div class="drill-modal-title-row">
+            <h3 class="drill-modal-title" id="visitReportTitle"></h3>
+            <span id="visitReportTypeBadge" class="drill-modal-badge"></span>
+          </div>
           <p class="drill-modal-subtitle" id="visitReportSubtitle"></p>
         </div>
         <div class="visit-report-header-actions">

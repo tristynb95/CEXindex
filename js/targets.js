@@ -1187,16 +1187,21 @@ function _updateDetailNav(name) {
   _detailNav = { names: names, idx: idx };
   navEl.style.display = '';
   var posEl = document.getElementById('focusDetailPos');
-  if (posEl) posEl.textContent = (idx + 1) + ' of ' + names.length;
+  if (posEl) {
+    posEl.textContent = (idx + 1) + ' of ' + names.length;
+    posEl.setAttribute('aria-label', 'Bakery ' + (idx + 1) + ' of ' + names.length);
+  }
   var prevBtn = document.getElementById('focusDetailPrev');
   var nextBtn = document.getElementById('focusDetailNext');
   if (prevBtn) {
     prevBtn.disabled = idx === 0;
     prevBtn.title = idx > 0 ? 'Previous: ' + names[idx - 1] : '';
+    prevBtn.setAttribute('aria-label', idx > 0 ? 'Previous bakery: ' + names[idx - 1] : 'No previous bakery');
   }
   if (nextBtn) {
     nextBtn.disabled = idx === names.length - 1;
     nextBtn.title = idx < names.length - 1 ? 'Next: ' + names[idx + 1] : '';
+    nextBtn.setAttribute('aria-label', idx < names.length - 1 ? 'Next bakery: ' + names[idx + 1] : 'No next bakery');
   }
 }
 
@@ -1304,7 +1309,7 @@ document.addEventListener('keydown', function (event) {
     { label: 'Medium', color: '#E3A130' },
     { label: 'Monitor', color: '#78909C' }
   ];
-  var TARGET_PRIORITY_HINT = '<span style="color:#B22A24;font-weight:600">&#9679; High</span> &nbsp;&middot;&nbsp; <span style="color:#E3A130;font-weight:600">&#9679; Medium</span> &nbsp;&middot;&nbsp; <span style="color:#78909C;font-weight:600">&#9679; Monitor</span> &nbsp;&middot;&nbsp; Colour shows support priority, not performance band. Click a pin for details.';
+  var TARGET_PRIORITY_HINT = '<span style="color:#B22A24;font-weight:600">&#9679; High</span> &nbsp;&middot;&nbsp; <span style="color:#E3A130;font-weight:600">&#9679; Medium</span> &nbsp;&middot;&nbsp; <span style="color:#78909C;font-weight:600">&#9679; Monitor</span> <span class="map-legend-key__note">Colour shows support priority, not performance band. Tap a pin for details.</span>';
 
   var _networkMapAreaState = 'off';
   var _targetMapAreaState = 'off';
@@ -2149,7 +2154,11 @@ document.addEventListener('keydown', function (event) {
     });
 
     if (bounds.length > 1) {
-      cfg.instance.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+      var compactMap = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
+      cfg.instance.fitBounds(bounds, {
+        padding: compactMap ? [24, 24] : [50, 50],
+        maxZoom: compactMap ? 12 : 13
+      });
     } else if (bounds.length === 1) {
       cfg.instance.setView(bounds[0], 14);
     } else {
