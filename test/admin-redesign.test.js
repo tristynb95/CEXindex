@@ -62,6 +62,11 @@ test('every admin modal has a consistent accessible frame', () => {
   assert.match(css, /\.admin-body \.admin-dialog\s*\{/);
 });
 
+test('the Manage Access body scrolls without collapsing its lower controls', () => {
+  assert.match(css, /\.admin-body \.access-modal__body\s*\{[\s\S]*?min-height:\s*0/);
+  assert.match(css, /#userAccessModal \.access-modal__body > \*\s*\{\s*flex-shrink:\s*0/);
+});
+
 test('panel context and dialog dismissal stay synchronized in JavaScript', () => {
   assert.match(script, /btn\.setAttribute\('aria-current', isActive \? 'page' : 'false'\)/);
   assert.match(script, /panel\.setAttribute\('aria-hidden', String\(!isActive\)\)/);

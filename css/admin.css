@@ -1414,8 +1414,13 @@
 }
 
 .admin-body .access-modal__body {
+  min-height: 0;
   gap: 10px;
   padding: 12px 18px 14px;
+}
+
+.admin-body #userAccessModal .access-modal__body > * {
+  flex-shrink: 0;
 }
 
 .admin-body .access-modal__fields {
