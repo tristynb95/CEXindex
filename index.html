@@ -581,16 +581,21 @@
               <h2 id="npsScatterTitle">NPS (Drink + Meal) vs Benchmark Score</h2>
               <div class="overview-chart"><canvas id="npsVsCei"></canvas></div>
             </div>
-            <div class="grid-2 overview-supporting-charts">
+            <div class="overview-supporting-charts">
               <div class="section overview-card overview-card--bands">
                 <h2 id="overviewBandSplitTitle">Index Band Split (Benchmark Score)</h2>
+                <p class="chart-caption">Bakeries by Benchmark Score band. Hover a bar for its score range.</p>
                 <div class="band-split" id="bandSplit"></div>
               </div>
               <div class="section overview-card overview-card--drags">
                 <h2 id="overviewDragTitle">Biggest Drags on Benchmark Score</h2>
-                <p class="chart-caption">How many benchmark points each part of the customer experience is costing,
-                  after weighting. Longer bars are the biggest drags — fix these first.</p>
+                <p class="chart-caption">Weighted points lost per category. Longer bars are the biggest drags.</p>
                 <div class="overview-chart"><canvas id="absComponentDrag"></canvas></div>
+              </div>
+              <div class="section overview-card overview-card--score">
+                <h2 id="overviewScoreTitle">Category Scoring</h2>
+                <p class="chart-caption">Raw score per category, 0–100. Shortest bars need attention.</p>
+                <div class="overview-chart"><canvas id="absComponentScore"></canvas></div>
               </div>
             </div>
           </div>
@@ -788,8 +793,8 @@
                       <span>fixed company standards</span>
                     </div>
                     <div class="method-hero__split">
-                      <div><strong>90%</strong><span>customer feedback</span></div>
-                      <div><strong>10%</strong><span>coffee timing</span></div>
+                      <div><strong>80%</strong><span>customer feedback</span></div>
+                      <div><strong>20%</strong><span>KVLink Reporting</span></div>
                     </div>
                   </div>
                 </header>
@@ -826,8 +831,8 @@
                   <div class="method-weight-map__segment method-weight-map__segment--efficiency"><strong>20%</strong><span>Efficiency</span></div>
                   <div class="method-weight-map__segment method-weight-map__segment--friendly"><strong>20%</strong><span>Friendliness</span></div>
                   <div class="method-weight-map__segment method-weight-map__segment--nps"><strong>20%</strong><span>NPS</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--timing"><strong>10%</strong><span>Coffee<br>timing</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--wait"><strong>10%</strong><span>Wait</span></div>
+                  <div class="method-weight-map__segment method-weight-map__segment--timing"><strong>10%</strong><span>Coffee<br>Efficiency</span></div>
+                  <div class="method-weight-map__segment method-weight-map__segment--wait"><strong>10%</strong><span>Avg Wait<br>Time</span></div>
                 </div>
                 <div class="method-table-wrap" tabindex="0" role="region"
                   aria-label="Score inputs and weights; scroll horizontally if needed">
@@ -939,30 +944,29 @@
                         <tbody>
                           <tr>
                             <th scope="row">Orders within 2 minutes</th>
-                            <td>50%</td>
+                            <td>25%</td>
                             <td>70% or higher</td>
-                            <td>50% or lower</td>
+                            <td>under 70%</td>
                           </tr>
                           <tr>
                             <th scope="row">Orders within 3 minutes</th>
-                            <td>30%</td>
+                            <td>25%</td>
                             <td>90% or higher</td>
-                            <td>70% or lower</td>
+                            <td>under 90%</td>
                           </tr>
                           <tr>
                             <th scope="row">Orders over 5 minutes</th>
-                            <td>20%</td>
+                            <td>50%</td>
                             <td>1% or lower</td>
-                            <td>2.5% or higher</td>
+                            <td>over 1%</td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
-                    <div class="formula">coffee efficiency points = (2-minute points &times; 0.50) + (3-minute points &times;
-                      0.30) + (over-5-minute points &times; 0.20)</div>
-                    <p>The three tests use straight-line scoring between their limits. There is also a slow-order
-                      guardrail: at 1.5% or more over 5 minutes, the component cannot exceed 50 points; at 2.5% or more,
-                      it is 0.</p>
+                    <div class="formula">coffee efficiency points = (2-minute points &times; 0.25) + (3-minute points &times;
+                      0.25) + (over-5-minute points &times; 0.50)</div>
+                    <p>Each test is pass/fail: it earns full points if it clears its target and zero points if it
+                      doesn&rsquo;t. There is no partial credit within a test.</p>
                   </section>
                 </div>
 
@@ -985,14 +989,16 @@
 
                         </div>
 
-                <div class="method-example" data-example-score="70.2">
+                <div class="method-example" data-example-score="62">
                   <h4>Worked example</h4>
                   <p>A bakery has at least 15 responses, so no low-volume adjustment applies. Its source results are:
                     NPS 50; quality 88%; customer-rated efficiency 85%; friendliness 92%; 65% within 2 minutes; 88%
                     within 3 minutes; 1.2% over 5 minutes; and a 122-second average wait.</p>
-                  <p>These convert to component points of 50, 80, 50, 100, 81.8 and 60 respectively.</p>
-                  <p><strong>(50 &times; 0.2) + (80 &times; 0.2) + (50 &times; 0.2) + (100 &times; 0.2) + (81.8 &times; 0.1) + (60 &times;
-                      0.1) = 70.2.</strong></p>
+                  <p>These convert to component points of 50, 80, 50, 100, 0 and 60 respectively. The coffee efficiency
+                    tests all fall just short of their targets (65% &lt; 70%, 88% &lt; 90%, 1.2% &gt; 1%), so that
+                    component scores 0 under the pass/fail rule.</p>
+                  <p><strong>(50 &times; 0.2) + (80 &times; 0.2) + (50 &times; 0.2) + (100 &times; 0.2) + (0 &times; 0.1) + (60 &times;
+                      0.1) = 62.0.</strong></p>
                 </div>
                       </div>
                     </section>

@@ -157,35 +157,22 @@ window.GAILS.computeAbsoluteWaitComponent = function(seconds) {
 };
 
 // Coffee Efficiency absolute score reflects the three company benchmarks:
-//   • 70% of drinks served within 2 minutes  (headline speed target)
-//   • 90% of drinks served within 3 minutes  (safety-net target)
-//   • under 1% of orders over 5 minutes       (slow-order guardrail)
-// Each benchmark earns a sub-score — full marks at target, straight-line down
-// to a floor — and the three blend 50/30/20. The over-5-min tail also applies
-// a hard cap so a bakery with too many very slow orders can't score well on
-// the faster bands alone. (s4/% within 4 min is no longer part of the standard
-// but is kept in the signature for call-site compatibility.)
+//   • 70% of drinks served within 2 minutes  (headline speed target, 25% share)
+//   • 90% of drinks served within 3 minutes  (safety-net target, 25% share)
+//   • 1% or fewer orders over 5 minutes       (slow-order target, 50% share)
+// Each benchmark is pass/fail — full marks at/beyond target, 0 otherwise —
+// with no partial credit within a test. (s4/% within 4 min is no longer part
+// of the standard but is kept in the signature for call-site compatibility.)
 window.GAILS.computeCoffeeEfficiencyComponent = function(s2, s3, s4, o5) {
   var s2Val = s2 || 0;
   var s3Val = s3 || 0;
   var o5Val = o5 || 0;
 
-  function attainment(value, floor, target) {
-    if (value >= target) return 100;
-    if (value <= floor) return 0;
-    return ((value - floor) / (target - floor)) * 100;
-  }
+  var within2 = s2Val >= 70 ? 100 : 0;
+  var within3 = s3Val >= 90 ? 100 : 0;
+  var tail = o5Val <= 1 ? 100 : 0;
 
-  var within2 = attainment(s2Val, 50, 70);   // 70% target, 0 at 50%
-  var within3 = attainment(s3Val, 70, 90);   // 90% target, 0 at 70%
-  // Fewer slow orders is better, so invert: full marks at/under 1%, 0 at/over 2.5%.
-  var tail = attainment(2.5 - o5Val, 0, 1.5); // 1% target (2.5-1), 0 at 2.5%
-
-  var score = within2 * 0.5 + within3 * 0.3 + tail * 0.2;
-
-  // Hard guardrail on the >5 min tail, anchored on the <1% benchmark.
-  if (o5Val >= 2.5) return 0;
-  if (o5Val >= 1.5) score = Math.min(score, 50);
+  var score = within2 * 0.25 + within3 * 0.25 + tail * 0.5;
 
   return Math.max(0, Math.min(100, Math.round(score * 10) / 10));
 };

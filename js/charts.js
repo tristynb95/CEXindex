@@ -84,7 +84,7 @@ window.GAILS.renderOverviewCharts = function (data) {
   var chartData = data.filter(function (r) { return r && !r.noData; });
   var n = chartData.length;
   if (!n) {
-    ['npsVsCei', 'absComponentDrag'].forEach(G.destroyChart);
+    ['npsVsCei', 'absComponentDrag', 'absComponentScore'].forEach(G.destroyChart);
     var emptySplit = document.getElementById('bandSplit');
     if (emptySplit) emptySplit.innerHTML = '';
     return;
@@ -223,9 +223,11 @@ window.GAILS.renderOverviewCharts = function (data) {
     }
   });
 
-  // Component drag by selected CEI lens
-  var dragTitle = document.getElementById('overviewDragTitle');
-  if (dragTitle) dragTitle.textContent = 'Biggest Drags on ' + metricLabel;
+  // Component drag / scoring by selected CEI lens
+  var dragTitleEl = document.getElementById('overviewDragTitle');
+  if (dragTitleEl) dragTitleEl.textContent = 'Biggest Drags on ' + metricLabel;
+  var scoreTitleEl = document.getElementById('overviewScoreTitle');
+  if (scoreTitleEl) scoreTitleEl.textContent = 'Category Scoring';
   var atRows = chartData.filter(function (b) { return typeof b.at === 'number' && !isNaN(b.at); });
   var rawAvgAt = atRows.length ? atRows.reduce(function (a, r) { return a + r.at; }, 0) / atRows.length : null;
 
@@ -239,110 +241,128 @@ window.GAILS.renderOverviewCharts = function (data) {
       { name: 'Avg Wait Time', weight: W.at, avg: chartData.map(function (b) { return (b.a_at !== undefined && b.a_at !== null) ? b.a_at : 100; }).reduce(function (a, v) { return a + v; }, 0) / n, raw: rawAvgAt }
     ];
 
-  // Bars are benchmark points lost, not points scored. The index is a weighted
-  // mean of these components, so weight x (100 - component) is literally the
-  // number of points that component costs the score, and the six sum to the gap
-  // between 100 and the estate's raw index. Plotting the score instead made the
-  // worst component the *shortest* bar, which read backwards against the title,
-  // and gave a 5%-weighted miss the same visual size as a 25%-weighted one.
+  // "Drag" bars are benchmark points lost, not points scored. The index is a
+  // weighted mean of these components, so weight x (100 - component) is
+  // literally the number of points that component costs the score, and the six
+  // sum to the gap between 100 and the estate's raw index. Plotting the score
+  // instead made the worst component the *shortest* bar, which read backwards
+  // against the title, and gave a 5%-weighted miss the same visual size as a
+  // 25%-weighted one. The scoring chart is the other half of that same
+  // trade-off: raw 0-100 health per category, unweighted, for "how good is
+  // this category on its own" rather than "how much is it costing the score".
   componentAvgs.forEach(function (c) { c.lost = Math.max(0, (100 - c.avg) * c.weight); });
-  componentAvgs.sort(function (a, b) { return b.lost - a.lost; });
   var dragTone = function (v) { return v >= 90 ? '#1D9E5C' : v >= 60 ? '#C97F12' : '#B22A24'; };
-  var dragValues = componentAvgs.map(function (c) { return Math.round(c.lost * 10) / 10; });
-  var dragTotal = componentAvgs.reduce(function (a, c) { return a + c.lost; }, 0);
-  // Headroom so the longest bar stops short of the label column.
-  var dragMax = Math.max(1, Math.ceil(Math.max.apply(null, dragValues) * 1.15));
 
-  // Labels sit in a column just outside the plot rather than trailing each bar,
-  // so the numbers line up the way the band split's counts do.
-  var dragValueLabels = {
-    id: 'dragValueLabels',
-    afterDatasetsDraw: function (chart) {
-      var meta = chart.getDatasetMeta(1);
-      if (!meta || meta.hidden) return;
-      var ctx = chart.ctx;
-      ctx.save();
-      ctx.font = '800 13px Inter, system-ui, sans-serif';
-      ctx.fillStyle = G.CHART_INK.strong;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      meta.data.forEach(function (bar, i) {
-        ctx.fillText('−' + dragValues[i].toFixed(1), chart.chartArea.right + 10, bar.y);
-      });
-      ctx.restore();
-    }
-  };
+  // Shared renderer for the two bar charts: drag ranks by weighted points
+  // lost (fix the biggest score impact first), score ranks by raw category
+  // health (fix the weakest category first) — both read worst-first, top to
+  // bottom, and share the same track/bar/label styling as one chart family.
+  var renderComponentChart = function (canvasId, mode) {
+    var orderedAvgs = componentAvgs.slice().sort(mode === 'score'
+      ? function (a, b) { return a.avg - b.avg; }
+      : function (a, b) { return b.lost - a.lost; });
+    var dragValues = orderedAvgs.map(function (c) { return Math.round(c.lost * 10) / 10; });
+    var scoreValues = orderedAvgs.map(function (c) { return Math.round(c.avg * 10) / 10; });
+    var barValues = mode === 'score' ? scoreValues : dragValues;
+    // Headroom so the longest bar stops short of the label column; the score
+    // chart's axis is a fixed 0-100 since bars are already a percentage.
+    var axisMax = mode === 'score' ? 100 : Math.max(1, Math.ceil(Math.max.apply(null, dragValues) * 1.15));
 
-  G.makeChart('absComponentDrag', {
-    type: 'bar',
-    data: {
-      labels: componentAvgs.map(function (c) { return c.name; }),
-      datasets: [
-        {
-          label: 'Track',
-          data: componentAvgs.map(function () { return dragMax; }),
-          backgroundColor: G.CHART_INK.track,
-          borderWidth: 0,
-          borderRadius: 999,
-          maxBarThickness: 20,
-          grouped: false
-        },
-        {
-          // Solid tone rather than a wash — the bars are what the eye should
-          // land on, so the weight lives here and the axis furniture stays quiet.
-          // Length is points lost, colour is that component's own health, so a
-          // long amber bar reads as "middling but heavily weighted".
-          label: 'Benchmark points lost',
-          data: dragValues,
-          backgroundColor: componentAvgs.map(function (c) { return dragTone(c.avg); }),
-          hoverBackgroundColor: componentAvgs.map(function (c) { return dragTone(c.avg); }),
-          borderWidth: 0,
-          borderRadius: 999,
-          maxBarThickness: 20,
-          grouped: false
-        }
-      ]
-    },
-    options: {
-      indexAxis: 'y',
-      maintainAspectRatio: false,
-      // Room at the right for the value label column outside the plot area:
-      // 10px offset + ~44px for a bold 13px "−10.0".
-      layout: { padding: { right: 56 } },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          filter: function (item) { return item.datasetIndex === 1; },
-          callbacks: {
-            label: function (ctx) {
-              var c = componentAvgs[ctx.dataIndex];
-              var rawStr = c.name === 'Avg Wait Time' ? G.formatSecs(c.raw) : c.name === 'Drink + Meal NPS' ? (c.raw ? c.raw.toFixed(1) : '—') : (c.raw ? c.raw.toFixed(1) + '%' : '—');
-              return [
-                'Costing ' + ctx.raw + ' benchmark points',
-                'Component score: ' + (Math.round(c.avg * 10) / 10) + ' of 100 (raw avg: ' + rawStr + ')',
-                'Weight in the score: ' + Math.round(c.weight * 100) + '%'
-              ];
+    // Labels sit in a column just outside the plot rather than trailing each
+    // bar, so the numbers line up the way the band split's counts do.
+    var valueLabels = {
+      id: canvasId + 'ValueLabels',
+      afterDatasetsDraw: function (chart) {
+        var meta = chart.getDatasetMeta(1);
+        if (!meta || meta.hidden) return;
+        var ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '800 13px Inter, system-ui, sans-serif';
+        ctx.fillStyle = G.CHART_INK.strong;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        meta.data.forEach(function (bar, i) {
+          var label = mode === 'score' ? (barValues[i].toFixed(0) + '%') : ('−' + barValues[i].toFixed(1));
+          ctx.fillText(label, chart.chartArea.right + 10, bar.y);
+        });
+        ctx.restore();
+      }
+    };
+
+    G.makeChart(canvasId, {
+      type: 'bar',
+      data: {
+        labels: orderedAvgs.map(function (c) { return c.name; }),
+        datasets: [
+          {
+            label: 'Track',
+            data: orderedAvgs.map(function () { return axisMax; }),
+            backgroundColor: G.CHART_INK.track,
+            borderWidth: 0,
+            borderRadius: 999,
+            maxBarThickness: 13,
+            grouped: false
+          },
+          {
+            // Solid tone rather than a wash — the bars are what the eye should
+            // land on, so the weight lives here and the axis furniture stays quiet.
+            // Length is points lost, colour is that component's own health, so a
+            // long amber bar reads as "middling but heavily weighted".
+            label: mode === 'score' ? 'Category score' : 'Benchmark points lost',
+            data: barValues,
+            backgroundColor: orderedAvgs.map(function (c) { return dragTone(c.avg); }),
+            hoverBackgroundColor: orderedAvgs.map(function (c) { return dragTone(c.avg); }),
+            borderWidth: 0,
+            borderRadius: 999,
+            maxBarThickness: 13,
+            grouped: false
+          }
+        ]
+      },
+      options: {
+        indexAxis: 'y',
+        maintainAspectRatio: false,
+        // Room at the right for the value label column outside the plot area:
+        // 10px offset + ~44px for a bold 13px "−10.0".
+        layout: { padding: { right: 56 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            filter: function (item) { return item.datasetIndex === 1; },
+            callbacks: {
+              label: function (ctx) {
+                var c = orderedAvgs[ctx.dataIndex];
+                var rawStr = c.name === 'Avg Wait Time' ? G.formatSecs(c.raw) : c.name === 'Drink + Meal NPS' ? (c.raw ? c.raw.toFixed(1) : '—') : (c.raw ? c.raw.toFixed(1) + '%' : '—');
+                var lines = mode === 'score'
+                  ? ['Component score: ' + (Math.round(c.avg * 10) / 10) + ' of 100 (raw avg: ' + rawStr + ')']
+                  : ['Costing ' + ctx.raw + ' benchmark points', 'Component score: ' + (Math.round(c.avg * 10) / 10) + ' of 100 (raw avg: ' + rawStr + ')'];
+                lines.push('Weight in the score: ' + Math.round(c.weight * 100) + '%');
+                return lines;
+              }
             }
+          }
+        },
+        scales: {
+          x: {
+            min: 0, max: axisMax,
+            title: { display: false },
+            ticks: { display: false },
+            grid: { display: false },
+            border: { display: false }
+          },
+          y: {
+            ticks: { font: { size: 11.5, weight: '700' }, color: G.CHART_INK.body },
+            grid: { display: false },
+            border: { display: false }
           }
         }
       },
-      scales: {
-        x: {
-          min: 0, max: dragMax,
-          title: { display: true, text: 'Benchmark points lost — ' + (Math.round(dragTotal * 10) / 10) + ' in total', font: { size: 10.5, weight: '600' }, color: G.CHART_INK.muted },
-          ticks: { display: false },
-          grid: { display: false },
-          border: { display: false }
-        },
-        y: {
-          ticks: { font: { size: 11.5, weight: '700' }, color: G.CHART_INK.body },
-          grid: { display: false },
-          border: { display: false }
-        }
-      }
-    },
-    plugins: [dragValueLabels]
-  });
+      plugins: [valueLabels]
+    });
+  };
+
+  renderComponentChart('absComponentDrag', 'drag');
+  renderComponentChart('absComponentScore', 'score');
 };
 
 // ========== RENDER TREND CHARTS ==========

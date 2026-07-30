@@ -54,7 +54,7 @@ test('worked example reproduces the score shown on the page', () => {
     GAILS.computeAbsoluteWaitComponent(122)
   ];
 
-  assert.deepEqual(components, [50, 80, 50, 100, 81.8, 60]);
+  assert.deepEqual(components, [50, 80, 50, 100, 0, 60]);
   const raw = Math.round((
     components[0] * weights.nps +
     components[1] * weights.dr +
@@ -64,7 +64,7 @@ test('worked example reproduces the score shown on the page', () => {
     components[5] * weights.at
   ) * 10) / 10;
 
-  assert.equal(raw, 70.2);
+  assert.equal(raw, 62);
   assert.match(html, new RegExp(`data-example-score="${raw}"`));
 });
 

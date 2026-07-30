@@ -1224,9 +1224,16 @@ h4 {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  /* Stretches 5 rows across the same height the neighbouring bar charts fill
+     with 6 categories, so the first row's top and last row's bottom both
+     line up with the chart bars beside it — gap is a floor, space-between
+     hands out whatever height is left over. */
   justify-content: space-between;
-  gap: 4px;
+  gap: 10px;
   min-height: 0;
+  /* Chart.js reserves space above its first bar (category-scale offset) that
+     a plain DOM row doesn't get for free — nudge down to match. */
+  padding-top: 14px;
 }
 
 .band-split__row {
@@ -2022,6 +2029,28 @@ h4 {
 
 canvas {
   max-height: 260px;
+}
+
+.overview-supporting-charts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.overview-supporting-charts>* {
+  min-width: 0;
+}
+
+@media (max-width: 1180px) {
+  .overview-supporting-charts {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .overview-supporting-charts {
+    grid-template-columns: 1fr;
+  }
 }
 
 .overview-rankings-toolbar {
