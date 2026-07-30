@@ -228,8 +228,8 @@ window.GAILS = window.GAILS || {};
     var comments = '';
     var photos = '';
 
-    section.fields.forEach(function (field) {
-      var value = data[field.key];
+    window.visibleSectionFields(section, data).forEach(function (field) {
+      var value = window.getFieldValue(data, field);
       if (field.type === 'ynna') {
         var failed = value === 'No';
         if (isHs && failed) hsIssues.push(field.label);
@@ -358,7 +358,7 @@ window.GAILS = window.GAILS || {};
     var schema = window.GAILS_VISIT_SCHEMA;
     var hsIssues = [];
     var sectionsHtml = schema.sections.map(function (section) {
-      return renderSection(section, record[section.key] || {}, hsIssues);
+      return renderSection(section, window.getVisitSectionData(record, section), hsIssues);
     }).join('');
 
     var hasSectionScores = record.sectionScores && Object.keys(record.sectionScores).length > 0;
@@ -380,8 +380,8 @@ window.GAILS = window.GAILS || {};
     if (!record.sectionScores || typeof G.makeChart !== 'function') return;
     var schema = window.GAILS_VISIT_SCHEMA;
     var labels = schema.sections.map(function (s) { return s.title; });
-    var earned = schema.sections.map(function (s) { return (record.sectionScores[s.key] || {}).earned || 0; });
-    var max = schema.sections.map(function (s) { return (record.sectionScores[s.key] || {}).max || 0; });
+    var earned = schema.sections.map(function (s) { return (window.getVisitSectionScores(record, s) || {}).earned || 0; });
+    var max = schema.sections.map(function (s) { return (window.getVisitSectionScores(record, s) || {}).max || 0; });
 
     G.makeChart(CHART_ID, {
       type: 'bar',
@@ -951,7 +951,7 @@ window.GAILS = window.GAILS || {};
     var fullHtml = '';
     if (schema && schema.sections) {
       schema.sections.forEach(function (sec) {
-        var secData = v[sec.key] || {};
+        var secData = window.getVisitSectionData(v, sec);
         var comment = secData.comments;
         if (comment && comment.trim()) {
           if (text) text += ' | ';

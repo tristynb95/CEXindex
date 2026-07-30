@@ -503,7 +503,7 @@ function visitNotesText(visit) {
   var sections = (schema && schema.sections) || [];
   var parts = [];
   sections.forEach(function (section) {
-    var comment = (visit[section.key] || {}).comments;
+    var comment = window.getVisitSectionData(visit, section).comments;
     if (comment && comment.trim()) parts.push(section.title + ': ' + comment.trim());
   });
   if (!parts.length && visit.comments) parts.push(String(visit.comments).trim());
@@ -2479,13 +2479,8 @@ function renderFieldBrief() {
       var state = !brief.latest || overdue.length || (brief.performance && brief.performance.score < 60)
         ? 'urgent'
         : (brief.daysSinceVisit >= 45 || soon.length || falling || lowPerformance ? 'watch' : 'standard');
-      var badge = !brief.latest
-        ? 'Not visited'
-        : (overdue.length
-          ? plural(overdue.length, 'overdue')
-          : (brief.daysSinceVisit >= 45
-            ? brief.daysSinceVisit + ' days ago'
-            : (falling ? 'Declining' : (lowPerformance ? Math.round(brief.performance.score) + '%' : 'Keep warm'))));
+      var badge = brief.latest ? 'Visited' : 'Not visited';
+      var badgeClass = 'my-activity-priority__badge' + (brief.latest ? ' my-activity-priority__badge--visited' : '');
       var reason = '';
       if (!brief.latest && brief.colleagueLatest) {
         reason = 'Colleague covered; your field view is still needed';
@@ -2529,7 +2524,7 @@ function renderFieldBrief() {
         '<div class="my-activity-priority__head"><a href="' +
         escapeHtml(bakeryProfileHref(brief.bakery, 'section-brief')) + '">' +
         escapeHtml(bakerySiteName(brief.bakery)) + '</a>' +
-        '<span class="my-activity-priority__badge">' + escapeHtml(badge) + '</span></div>' +
+        '<span class="' + badgeClass + '">' + escapeHtml(badge) + '</span></div>' +
         '<p class="my-activity-priority__reason">' + escapeHtml(reason) + '</p>' +
         '<div class="my-activity-priority__meta">' +
         '<span title="Ops Area: ' + escapeHtml(opsArea) + '"><b>Ops area</b>' + escapeHtml(opsArea) + '</span>' +

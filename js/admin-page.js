@@ -3045,9 +3045,9 @@ function buildVisitDetailHtml(visit) {
     }).join('');
 
     var sectionsHtml = VISIT_SECTIONS.map(function(section) {
-      var sectionData = visit[section.key] || {};
-      var fieldsHtml = section.fields.map(function(field) {
-        return fieldInputHtml(section.key, field, sectionData[field.key]);
+      var sectionData = window.getVisitSectionData(visit, section);
+      var fieldsHtml = window.visibleSectionFields(section, sectionData).map(function(field) {
+        return fieldInputHtml(section.key, field, window.getFieldValue(sectionData, field));
       }).join('');
       return '<div class="visit-detail-section">'
         + '  <h4>' + escapeHtml(section.title) + '</h4>'

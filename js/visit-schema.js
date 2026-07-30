@@ -61,7 +61,10 @@ window.GAILS_VISIT_SCHEMA = {
       ]
     },
     {
-      key: 'drinkQuality', title: 'Drink Quality', fields: [
+      // Renamed from 'coffeeQuality' when Maintenance was split out into its
+      // own section — see legacyKeys below and the "evolving this schema"
+      // note at the end of this file.
+      key: 'drinkQuality', legacyKeys: ['coffeeQuality'], title: 'Drink Quality', fields: [
         { key: 'houseBlendRecipe', label: 'House Blend is prepared to recipe', type: 'ynna' },
         { key: 'filterBalancedShelfLife', label: 'Filter is balanced and within 2hr shelf life', type: 'ynna' },
         { key: 'coffeeNotPreGround', label: 'Coffee is not pre-ground', type: 'ynna' },
@@ -70,6 +73,12 @@ window.GAILS_VISIT_SCHEMA = {
         { key: 'latteArt', label: 'Drinks have latte art', type: 'ynna' },
         { key: 'presentationToStandard', label: 'Drink presentation to standard', type: 'ynna' },
         { key: 'drinkPresentation', label: 'Drink Presentation (scale: Poor – Exceptional)', type: 'scale' },
+        // Retired from the form; kept so visits recorded before the change
+        // still show the answers they collected. Hidden automatically (see
+        // the `legacy` filtering in visit-report.js/admin-page.js) whenever a
+        // visit has no value for them, so they never appear on new visits.
+        { key: 'espressoTaste', label: 'Espresso Taste (1-10)', type: 'scale', legacy: true },
+        { key: 'milkQuality', label: 'Milk Quality (1-10)', type: 'scale', legacy: true },
         { key: 'comments', label: 'Quality comments', type: 'textarea' },
         { key: 'photos', label: 'Coffee quality photos', type: 'photos' }
       ]
@@ -104,4 +113,84 @@ window.GAILS_VISIT_SCHEMA = {
       ]
     }
   ]
+};
+
+// ========== EVOLVING THIS SCHEMA SAFELY ==========
+// The Google Form will keep changing over time — questions get reworded,
+// sections get split or renamed, questions get retired. Every visit ever
+// recorded under an older shape of the form must keep rendering correctly in
+// admin.html and index.html. Three tools below make each kind of change
+// backward-compatible; don't delete old data or special-case it by date —
+// just follow the matching recipe:
+//
+// 1. Renaming a section (key and/or title change, e.g. coffeeQuality ->
+//    drinkQuality): keep the new key/title, and add the old key to that
+//    section's `legacyKeys: [...]` array. Do this every time a section is
+//    renamed — the array can hold more than one past key if it's renamed
+//    more than once.
+//
+// 2. Retiring a question (removed from the form, not replaced by anything):
+//    leave its field entry in the schema — never delete it — and add
+//    `legacy: true`. It then only renders on visits that actually have a
+//    value for it, never as a blank row on visits recorded after removal.
+//    Also drop (or leave — harmless either way) its entry in apps-script/
+//    RoutineVisitSync.gs's QUESTION_MAP.
+//
+// 3. Renaming a question's underlying field key while it stays the same
+//    question (rare — usually only needed if a field is renamed without a
+//    section-level change): add `legacyKeys: [...]` to that field, same
+//    pattern as #1.
+//
+// Adding a brand-new question needs no special handling — old visits simply
+// show "—" for it, which is correct (they were never asked it).
+//
+// Whenever a question's title changes on the live Google Form (regardless of
+// whether the stored field key changes), also update apps-script/
+// RoutineVisitSync.gs's QUESTION_MAP — that's what decides which stored key
+// each Form answer lands in going forward.
+
+// Returns the answers for a section, falling back through legacyKeys (oldest
+// schema shape last) for visits recorded before a rename.
+window.getVisitSectionData = function (record, section) {
+  if (!record) return {};
+  if (record[section.key]) return record[section.key];
+  var legacyKeys = section.legacyKeys || [];
+  for (var i = 0; i < legacyKeys.length; i++) {
+    if (record[legacyKeys[i]]) return record[legacyKeys[i]];
+  }
+  return {};
+};
+
+// Same fallback as getVisitSectionData, for the sectionScores breakdown.
+window.getVisitSectionScores = function (record, section) {
+  var scores = (record && record.sectionScores) || {};
+  if (scores[section.key]) return scores[section.key];
+  var legacyKeys = section.legacyKeys || [];
+  for (var i = 0; i < legacyKeys.length; i++) {
+    if (scores[legacyKeys[i]]) return scores[legacyKeys[i]];
+  }
+  return null;
+};
+
+// Reads one field's value out of a section's (already-resolved) data,
+// falling back through the field's own legacyKeys if its key was renamed.
+window.getFieldValue = function (data, field) {
+  if (!data) return undefined;
+  if (data[field.key] !== undefined) return data[field.key];
+  var legacyKeys = field.legacyKeys || [];
+  for (var i = 0; i < legacyKeys.length; i++) {
+    if (data[legacyKeys[i]] !== undefined) return data[legacyKeys[i]];
+  }
+  return undefined;
+};
+
+// A `legacy` field (a retired question) should only ever be shown for visits
+// that actually recorded an answer to it — never as a blank row on visits
+// completed after the question was removed from the form.
+window.visibleSectionFields = function (section, data) {
+  return section.fields.filter(function (field) {
+    if (!field.legacy) return true;
+    var value = window.getFieldValue(data, field);
+    return value != null && value !== '';
+  });
 };

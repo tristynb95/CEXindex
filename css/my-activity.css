@@ -1789,6 +1789,11 @@ body.my-activity-modal-open {
   color: #a86910;
 }
 
+.my-activity-priority__badge.my-activity-priority__badge--visited {
+  background: var(--green-d);
+  color: var(--green);
+}
+
 .my-activity-priority__reason {
   margin: 0;
   overflow: hidden;
