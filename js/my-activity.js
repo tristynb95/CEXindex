@@ -2480,7 +2480,8 @@ function renderFieldBrief() {
         ? 'urgent'
         : (brief.daysSinceVisit >= 45 || soon.length || falling || lowPerformance ? 'watch' : 'standard');
       var badge = brief.latest ? 'Visited' : 'Not visited';
-      var badgeClass = 'my-activity-priority__badge' + (brief.latest ? ' my-activity-priority__badge--visited' : '');
+      var badgeClass = 'my-activity-priority__badge' +
+        (brief.latest ? ' my-activity-priority__badge--visited' : ' my-activity-priority__badge--unvisited');
       var reason = '';
       if (!brief.latest && brief.colleagueLatest) {
         reason = 'Colleague covered; your field view is still needed';
