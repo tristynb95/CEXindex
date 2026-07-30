@@ -7,30 +7,42 @@
 // file in admin.html).
 //
 // The important difference from a CQV: an NBO visit has NO score of any kind.
-// There's no percentage, no points, no band, no action plan — every question
-// is a bare YES/NO and the value of the report is the coaching note printed
-// under each NO. So this parser produces questions + notes only, and every
-// surface that renders an NBO record must avoid implying a score exists.
+// There's no percentage, no points and no band — every question is a bare
+// YES/NO and the value of the report is the coaching note printed under each
+// NO. So this parser produces questions + notes (plus the summary paragraph
+// and the closing action plan, both of which an NBO export does carry), and
+// every surface that renders an NBO record must avoid implying a score exists.
 //
 // Layout, as reconstructed by extractPageLines:
+//   S U M M A R Y                 <- the auditor's write-up of the visit
+//   Very positive coffee visit ...
 //   Visit 1                       <- the visit-number heading
 //   Efficiency                    <- section heading
 //   Q# QUESTION RESPONSE          <- column header that always follows one
 //   1. Is bar set up to Barista Routine phase 1? YES
-//   3. Are the coffee positions on the shift planner in line with Barista NO
-//   Routine phase 2?              <- the question text wraps BELOW its response
+//   Are the coffee positions on the shift planner in line with Barista
+//   Routine phase 2?              <- wrapped question text ...
+//   3. NO                         <- ... with its number/response cell below
 //   Having a coffee standby can elevate the experience when needed. Also
 //   allows karolina to read ...   <- the coaching note for question 3
+//   ...
+//   C O M M E N T S & A C T I O N P L A N   <- closing action plan, one block
+//   Visit 1 >> Efficiency                      per "No", with its own
+//   (GA100000) Are the coffee positions ...    FINDINGS / ACTION REQUIRED
+//   FINDINGS 'No' - Deployment can be ...      and a Priority/Due Date/
+//   ACTION REQUIRED Please review ...          Assignee sidebar
 //
-// The wrap is what makes this fiddly. GoAudits vertically centers the RESPONSE
-// cell against the (often multi-line) question text, so the response token
-// lands at the end of whichever reconstructed line happens to sit level with
-// it — usually the first, but not by contract. The question's remaining text
-// then continues on the following lines, and only AFTER that does the coaching
-// note start. Nothing marks the boundary between "rest of the question" and
-// "start of the note" except that a question always contains its "?" and a
-// note never does. So a question is accumulated until it has both a response
-// and a "?", and everything after that belongs to the note.
+// The wrap is what makes this fiddly. GoAudits vertically centers the Q# and
+// RESPONSE cells against the whole question cell — its text plus any photo
+// printed under it — so where they land varies with how tall that cell is:
+// level with the question's first line on a short one ("3. ... Barista NO",
+// the text continuing on the following rows), or below the entire cell on a
+// tall one, leaving a bare "3. NO" row after the question's own words.
+// Nothing marks the boundary between "rest of the question" and "start of the
+// note" except that a question always contains its "?" and a note never does.
+// So a question is accumulated until it has both a response and a "?",
+// everything after that belongs to the note, and a bare numbered row reclaims
+// its text back out of that note buffer (see claimLabelFromBuffer).
 //
 // As with the CQV parser this is best-effort, not a strict grammar.
 // Under-parsing is safe (the original PDF is stored alongside the record and
@@ -57,6 +69,14 @@ window.GAILS = window.GAILS || {};
   var RE_Q_START = /^(\d+)\s*\.\s*(.*)$/;
   // The response cell as it lands at the end of a row: "... phase 1? YES".
   var RE_RESPONSE_TAIL = /^(.*?)\s*\b(YES|NO|N\/A)$/i;
+
+  // Both headings print letter-spaced, so they reconstruct with a space
+  // between every character — matched against the de-spaced line.
+  var RE_SUMMARY_HEADING = /^SUMMARY$/i;
+  // The action plan's block header names the visit and the section it came
+  // from ("Visit 1 >> Efficiency"). The CQV equivalent has no digits in its
+  // left half, so this needs its own pattern.
+  var RE_ACTION_BLOCK_HEADER = /^([A-Za-z][A-Za-z0-9 &]*?)\s*>>\s*([A-Za-z][A-Za-z \/&]+)$/;
 
   var RE_PAGE_FOOTER = /^Page\s+\d+\s+of\s+\d+/i;
   var RE_POWERED_BY = /^Powered\s*By$/i;
@@ -158,7 +178,9 @@ window.GAILS = window.GAILS || {};
       auditorName: '',
       ref: '',
       address: '',
-      questions: []
+      summary: '',
+      questions: [],
+      actionPlan: []
     };
     var warnings = [];
 
@@ -213,7 +235,29 @@ window.GAILS = window.GAILS || {};
       return '';
     }
 
+    // A short title-case line is only a section heading ("Efficiency",
+    // "Quality", "Safety", "Service", "Equipment") if the next content row is
+    // the Q#/QUESTION/RESPONSE column header that always follows one —
+    // otherwise it's a coaching note or a summary sentence that happens to
+    // look like a heading.
+    function isSectionHeading(text, idx) {
+      return /^[A-Z][A-Za-z /&']*$/.test(text) && text.length < 48
+        && RE_QCOL_HEADER.test(nextContentLine(idx));
+    }
+
+    // The closing Comments & Action Plan block is laid out exactly as the CQV's
+    // is, so it's collected by the shared helper in js/cqv-parser.js rather
+    // than parsed again here.
+    var actionPlan = window.GAILS.CQV.createActionPlanCollector({
+      bakery: record.bakery,
+      siteNameFragmentRe: window.GAILS.CQV.buildSiteNameFragmentRe(record.bakery),
+      blockHeaderRe: RE_ACTION_BLOCK_HEADER
+    });
+    record.actionPlan = actionPlan.items;
+
     var section = '';
+    var inSummary = false;
+    var inActionPlan = false;
     var noteLines = [];  // lines trailing a completed question — its coaching note
     var pending = null;  // question still accumulating its wrapped text and/or response
 
@@ -262,6 +306,32 @@ window.GAILS = window.GAILS || {};
       flushNote();
     }
 
+    // GoAudits centres the Q# and RESPONSE cells against the whole question
+    // cell — its text plus any photo embedded under it. When that cell is tall
+    // the pair lands BELOW the question's text instead of level with its first
+    // line, so the row reads as a bare "3. NO" and the question's own words
+    // have already gone into the trailing-line buffer. Take them back from
+    // there before the buffer is flushed as the previous question's note.
+    function claimLabelFromBuffer() {
+      var end = -1;
+      for (var k = noteLines.length - 1; k >= 0; k--) {
+        if (noteLines[k].indexOf('?') !== -1) { end = k; break; }
+      }
+      if (end === -1) return ''; // no question text in the buffer — leave it as a note
+      // Walk back over the rest of the wrapped question: its lines never close
+      // a sentence and it always opens with a capital, so a preceding line
+      // that ends in .!? or starts lowercase is the previous question's note.
+      var start = end;
+      while (start > 0 && (end - start + 1) < MAX_LABEL_WRAP_LINES
+          && !/[.!?]$/.test(noteLines[start - 1])
+          && /^[A-Z]/.test(noteLines[start - 1])) {
+        start--;
+      }
+      var label = cleanLine(noteLines.slice(start, end + 1).join(' '));
+      noteLines = noteLines.slice(0, start);
+      return label;
+    }
+
     // Adds a line to the question in progress, pulling the response token off
     // the end if this is the row the RESPONSE cell landed on.
     function appendToPending(text) {
@@ -282,11 +352,26 @@ window.GAILS = window.GAILS || {};
 
       // DECLARATION is the signature block that closes every report — nothing
       // after it (auditor name, embedded map labels) is content.
-      if (RE_DECLARATION_HEADING.test(line)) { closeCurrent(); break; }
+      if (RE_DECLARATION_HEADING.test(line)) { closeCurrent(); actionPlan.flush(); break; }
+
+      // Everything from here to the declaration is the action plan. Without
+      // this the whole block reads as untitled trailing text and lands in the
+      // last question's coaching note.
+      if (window.GAILS.CQV.isActionPlanHeading(line)) {
+        closeCurrent();
+        inSummary = false;
+        inActionPlan = true;
+        continue;
+      }
+      if (isRunningHeader(line)) continue;
+      // The action-plan collector does its own header stripping — the
+      // trailing-header strip below would eat "DUE DATE 02 Aug 26".
+      if (inActionPlan) { actionPlan.handleLine(line); continue; }
 
       var vm = line.match(RE_VISIT_HEADING);
       if (vm) {
         closeCurrent();
+        inSummary = false;
         if (record.visitNumber == null) record.visitNumber = parseInt(vm[1], 10);
         continue;
       }
@@ -300,7 +385,6 @@ window.GAILS = window.GAILS || {};
         continue;
       }
 
-      if (isRunningHeader(line)) continue;
       if (RE_QCOL_HEADER.test(line)) continue;
 
       // Strip a running header that merged onto the end of a real line.
@@ -309,23 +393,44 @@ window.GAILS = window.GAILS || {};
         if (!line) continue;
       }
 
-      // A short title-case line is only a section heading ("Efficiency",
-      // "Quality", "Safety", "Service", "Equipment") if the next content row
-      // is the Q#/QUESTION/RESPONSE column header that always follows one —
-      // otherwise it's a coaching note that happens to look like a heading.
-      if (/^[A-Z][A-Za-z /&']*$/.test(line) && line.length < 48
-          && RE_QCOL_HEADER.test(nextContentLine(i))) {
+      // The SUMMARY paragraph opens the first content page, above "Visit 1".
+      // It's the auditor's write-up of the whole visit, so it belongs on the
+      // record rather than being dropped as unattachable text.
+      if (RE_SUMMARY_HEADING.test(line.replace(/\s+/g, ''))) {
+        closeCurrent();
+        inSummary = true;
+        continue;
+      }
+      if (inSummary) {
+        // Normally closed by the "Visit 1" heading above; these are the
+        // belt-and-braces exits in case an export omits it.
+        if (!RE_Q_START.test(line) && !isSectionHeading(line, i)) {
+          record.summary += (record.summary ? ' ' : '') + line;
+          continue;
+        }
+        inSummary = false;
+      }
+
+      if (isSectionHeading(line, i)) {
         closeCurrent();
         section = line;
         continue;
       }
 
-      // "1. <question text> [RESPONSE]" — starts a new question.
+      // "1. <question text> [RESPONSE]" — starts a new question. The text is
+      // absent on the tall-cell layout described at claimLabelFromBuffer().
       var qStart = line.match(RE_Q_START);
       if (qStart) {
+        var startText = cleanLine(qStart[2]);
+        var startResponse = '';
+        var startTail = startText.match(RE_RESPONSE_TAIL);
+        if (startTail) {
+          startResponse = startTail[2].toUpperCase();
+          startText = cleanLine(startTail[1]);
+        }
+        if (!startText) startText = claimLabelFromBuffer();
         closeCurrent();
-        pending = { qNum: parseInt(qStart[1], 10), section: section, label: '', response: '', wraps: 0 };
-        appendToPending(qStart[2]);
+        pending = { qNum: parseInt(qStart[1], 10), section: section, label: startText, response: startResponse, wraps: 0 };
         if (pendingIsComplete()) commitPending(false);
         continue;
       }
@@ -343,6 +448,8 @@ window.GAILS = window.GAILS || {};
       noteLines.push(line);
     }
     closeCurrent();
+    actionPlan.flush();
+    record.summary = cleanLine(record.summary);
 
     var counts = { yes: 0, no: 0, na: 0 };
     record.questions.forEach(function(q) {

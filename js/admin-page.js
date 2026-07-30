@@ -2445,6 +2445,11 @@ function nboSummaryHtml(record, warnings) {
     + '<span style="color:#B22A24; font-weight:700;">' + (counts.no || 0) + ' No</span>'
     + (counts.na ? ', ' + counts.na + ' N/A' : '') + '.');
   lines.push(coachingCount + ' coaching note' + (coachingCount === 1 ? '' : 's') + ' captured.');
+  var actionCount = (record.actionPlan || []).length;
+  lines.push(actionCount + ' action item' + (actionCount === 1 ? '' : 's') + ' read from the action plan.');
+  if (record.summary) {
+    lines.push('Summary paragraph captured.');
+  }
   if (warnings && warnings.length) {
     lines.push('<span style="color:var(--gold);">' + warnings.length + ' item' + (warnings.length === 1 ? '' : 's')
       + ' couldn\'t be fully parsed &mdash; the original PDF stays attached as the source of truth.</span>');
@@ -2794,35 +2799,14 @@ function cqvPriorityColor(priority){ return window.GAILS.CQVShared.priorityColor
 function cqvCriticalTag(label)     { return window.GAILS.CQVShared.criticalTag(label); }
 function cqvLostPointItems(visit)  { return window.GAILS.CQVShared.lostPointItems(visit); }
 
-function buildCqvDetailHtml(visit) {
-  var sectionRows = Object.keys(visit.sectionScores || {}).map(function(name) {
-    var s = visit.sectionScores[name];
-    var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
-    var failing = s.pct < 70 || (isCritical && s.actual < s.target);
-    return '<div class="visit-report-row' + (failing ? ' visit-report-row--flag' : '') + '">'
-      + '<span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
-      + '<span class="visit-report-row__value' + (failing ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">'
-      + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
-  }).join('');
-  var categoryRows = Object.keys(visit.categoryScores || {}).map(function(name) {
-    var s = visit.categoryScores[name];
-    var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
-    var failing = s.pct < 70 || (isCritical && s.actual < s.target);
-    return '<div class="visit-report-row' + (failing ? ' visit-report-row--flag' : '') + '">'
-      + '<span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
-      + '<span class="visit-report-row__value' + (failing ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">'
-      + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
-  }).join('');
-  var actionPlanItems = visit.actionPlan;
-  var actionPlanIsDerived = false;
-  if ((!actionPlanItems || !actionPlanItems.length) && visit.isFollowUp) {
-    actionPlanItems = cqvLostPointItems(visit);
-    actionPlanIsDerived = actionPlanItems.length > 0;
-  }
-  var actionItemsHtml = (actionPlanItems || []).map(function(a) {
+// One action-plan item as the admin visit detail renders it. GoAudits prints
+// the same block on a CQV and an NBO Coffee Visit export (see the shared
+// collector in js/cqv-parser.js), so both detail views share this.
+function visitActionItemsHtml(actionPlanItems) {
+  return (actionPlanItems || []).map(function(a) {
     var label = a.questionLabel || a.sectionPath || 'Action item';
     var dueDate = a.dueDate;
-    
+
     // Clean up embedded due date in label if found
     var dueMatch = label.match(/\s*DUE\s*DATE\s+(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4})\b/i);
     if (dueMatch) {
@@ -2863,6 +2847,34 @@ function buildCqvDetailHtml(visit) {
       + '</div>'
       + '</div>';
   }).join('') || '<p class="visit-report-note">No action items were flagged on this visit.</p>';
+}
+
+function buildCqvDetailHtml(visit) {
+  var sectionRows = Object.keys(visit.sectionScores || {}).map(function(name) {
+    var s = visit.sectionScores[name];
+    var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
+    var failing = s.pct < 70 || (isCritical && s.actual < s.target);
+    return '<div class="visit-report-row' + (failing ? ' visit-report-row--flag' : '') + '">'
+      + '<span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
+      + '<span class="visit-report-row__value' + (failing ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">'
+      + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
+  }).join('');
+  var categoryRows = Object.keys(visit.categoryScores || {}).map(function(name) {
+    var s = visit.categoryScores[name];
+    var isCritical = (s.code === 'CRTCL' || s.code === 'ALRG') || /^(critical|allergen)\b/i.test(name);
+    var failing = s.pct < 70 || (isCritical && s.actual < s.target);
+    return '<div class="visit-report-row' + (failing ? ' visit-report-row--flag' : '') + '">'
+      + '<span class="visit-report-row__label">' + escapeHtml(name) + '</span>'
+      + '<span class="visit-report-row__value' + (failing ? ' visit-report-row__value--flag' : ' visit-report-row__value--ok') + '">'
+      + escapeHtml(s.actual) + ' / ' + escapeHtml(s.target) + ' (' + escapeHtml(s.pct) + '%)</span></div>';
+  }).join('');
+  var actionPlanItems = visit.actionPlan;
+  var actionPlanIsDerived = false;
+  if ((!actionPlanItems || !actionPlanItems.length) && visit.isFollowUp) {
+    actionPlanItems = cqvLostPointItems(visit);
+    actionPlanIsDerived = actionPlanItems.length > 0;
+  }
+  var actionItemsHtml = visitActionItemsHtml(actionPlanItems);
 
   var basicFields = [
     { key: 'bakery', label: 'Bakery', type: 'text' },
@@ -2956,13 +2968,26 @@ function buildNboDetailHtml(visit) {
     ? '<a class="btn" href="' + escapeHtml(visit.pdfUrl) + '" target="_blank" rel="noopener" style="text-decoration:none; display:inline-block;">View Original NBO PDF &#8599;</a>'
     : '<p class="visit-report-note">No PDF is attached to this record.</p>';
 
+  // Summary and Action Plan come from the PDF (see js/nbo-parser.js) and are
+  // only shown when it had them — imports predating that parsing carry
+  // neither, and an empty card there would read as "the visit had none".
+  var summaryHtml = visit.summary
+    ? '<div class="visit-detail-section"><h4>Summary</h4><p class="visit-report-comment">' + escapeHtml(visit.summary) + '</p></div>'
+    : '';
+  var actionPlanHtml = (visit.actionPlan && visit.actionPlan.length)
+    ? '<div class="visit-detail-section"><h4>Action Plan (' + visit.actionPlan.length + ')</h4>'
+      + visitActionItemsHtml(visit.actionPlan) + '</div>'
+    : '';
+
   return '<div class="visit-detail-section"><h4>Details</h4><div class="visit-detail-grid">' + basicHtml + '</div></div>'
     + '<div class="visit-detail-section"><h4>Derived Result</h4>'
     + '<p style="font-size:1.4rem; font-weight:800; color:var(--text);">' + escapeHtml(window.GAILS.NBOShared.pctText(visit)) + '</p>'
     + '<p class="visit-report-note">' + escapeHtml((counts.yes || 0) + ' Yes, ' + (counts.no || 0) + ' No'
       + (counts.na ? ', ' + counts.na + ' N/A' : '')) + '. This percentage is derived from the responses; the NBO PDF has no score of its own.</p>'
     + '</div>'
+    + summaryHtml
     + sectionsHtml
+    + actionPlanHtml
     + '<div class="visit-detail-section"><h4>Original Report</h4>' + pdfLinkHtml + '</div>'
     + (canEdit('visits')
         ? '<div class="visit-detail-actions">'

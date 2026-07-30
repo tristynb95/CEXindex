@@ -227,6 +227,16 @@ window.GAILS = window.GAILS || {};
     return d.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
   }
 
+  // Follow-up cards pack their due pill and footnotes onto single dense rows,
+  // so they use the short date form My Activity and My Team already use. The
+  // long weekday form above stays for visit dates, where the day of the week
+  // is part of what you are reading for.
+  function formatFollowUpDate(iso) {
+    var d = new Date(String(iso || '').slice(0, 10) + 'T00:00:00');
+    if (isNaN(d.getTime())) return String(iso || '');
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
   function ynnaPill(value, flag) {
     var v = value || '—';
     var cls = 'visit-pill';
@@ -621,6 +631,21 @@ window.GAILS = window.GAILS || {};
       ? '<div class="visit-report-section-wrapper"><a class="visit-report-pdf-btn" href="' + escapeHtml(record.pdfUrl) + '" target="_blank" rel="noopener">&#128196; View Original NBO PDF &#8599;</a></div>'
       : '';
 
+    // Summary and Action Plan both come straight from the PDF (see
+    // js/nbo-parser.js). Records imported before those were parsed simply
+    // don't carry them, hence the empty-string fallbacks rather than an
+    // "unavailable" placeholder.
+    var summaryHtml = record.summary
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Summary</h4><p class="visit-report-comment">' + escapeHtml(record.summary) + '</p></div></div>'
+      : '';
+
+    var actionPlanHtml = (record.actionPlan && record.actionPlan.length)
+      ? '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section">' +
+        '<h4>Action Plan (' + record.actionPlan.length + ')</h4>' +
+        buildCqvActionPlanHtml(record.actionPlan) +
+        '</div></div>'
+      : '';
+
     // Coaching notes are the point of the report, so they're lifted out of the
     // full question list into their own section at the top.
     var coachingItems = questions.filter(function (q) { return q.note; });
@@ -658,7 +683,7 @@ window.GAILS = window.GAILS || {};
       sectionsHtml = '<div class="visit-report-section-wrapper"><p class="visit-report-note">No questions could be read from this PDF — open the original above.</p></div>';
     }
 
-    return buildNboHeaderStatsHtml(record) + pdfHtml + coachingHtml + sectionsHtml;
+    return buildNboHeaderStatsHtml(record) + pdfHtml + summaryHtml + coachingHtml + actionPlanHtml + sectionsHtml;
   }
 
   function drawCqvScoreChart(record) {
@@ -960,17 +985,24 @@ window.GAILS = window.GAILS || {};
   // `labelSections` is set — the row preview is too short to spend space on
   // labels, but an exported cell is unreadable without them.
   function buildVisitNotes(v, schema, labelSections) {
-    // An NBO visit has no summary paragraph — its notes ARE the per-question
-    // coaching notes, so they're joined here labelled by question.
+    // An NBO visit leads with the auditor's summary paragraph where the PDF
+    // had one (imports predating js/nbo-parser.js reading it don't), then the
+    // per-question coaching notes that carry the rest of the report.
     if (v.type === 'nbo') {
       var coaching = (v.questions || []).filter(function (q) { return q.note; });
+      var nboSummary = v.summary || '';
       return {
-        text: coaching.map(function (q) { return q.label + ': ' + q.note; }).join(' | '),
-        fullHtml: coaching.map(function (q) {
-          return '<p class="visit-log-row__note-item">' +
-            '<span class="visit-log-row__note-label">' + escapeHtml(q.label) + '</span>' +
-            escapeHtml(q.note) + '</p>';
-        }).join('')
+        text: (nboSummary ? [nboSummary] : []).concat(coaching.map(function (q) {
+          return q.label + ': ' + q.note;
+        })).join(' | '),
+        fullHtml: (nboSummary
+          ? '<p class="visit-log-row__note-item">' + escapeHtml(nboSummary) + '</p>'
+          : '') +
+          coaching.map(function (q) {
+            return '<p class="visit-log-row__note-item">' +
+              '<span class="visit-log-row__note-label">' + escapeHtml(q.label) + '</span>' +
+              escapeHtml(q.note) + '</p>';
+          }).join('')
       };
     }
     if (v.type === 'siteVisit' || v.type === 'cqv') {
@@ -1183,9 +1215,10 @@ window.GAILS = window.GAILS || {};
   // Comparator behind the "Sort By" filter, shared by the rendered groups and
   // the export so a downloaded file lists visits in the same order as the view.
   function visitLogSorter(sortVal) {
-    var G = window.GAILS;
     function bakeryLabel(v) {
-      return (G.getBakeryMapLabel ? G.getBakeryMapLabel(v.bakery) : v.bakery) || '';
+      // Same display label as the rows (no "GAIL's" prefix), so an A-Z sort
+      // matches what is on screen.
+      return getDirectoryBakeryLabel(v.bakery) || '';
     }
     return function (a, b) {
       if (sortVal === 'nameAsc') return bakeryLabel(a).localeCompare(bakeryLabel(b));
@@ -1446,7 +1479,7 @@ window.GAILS = window.GAILS || {};
     if (days < 0) return { state: 'overdue', label: Math.abs(days) + ' day' + (Math.abs(days) === 1 ? '' : 's') + ' overdue', days: days };
     if (days === 0) return { state: 'today', label: 'Due today', days: 0 };
     if (days <= 7) return { state: 'soon', label: 'Due in ' + days + ' day' + (days === 1 ? '' : 's'), days: days };
-    return { state: 'future', label: 'Due ' + formatVisitDate(iso), days: days };
+    return { state: 'future', label: 'Due ' + formatFollowUpDate(iso), days: days };
   }
 
   // Unprioritised tasks sort last among ties. 'none' is also what tasks
@@ -1551,8 +1584,8 @@ window.GAILS = window.GAILS || {};
 
   function followUpTaskBakeryHtml(task, groupVal) {
     if (groupVal === 'bakery') return '';
-    return '<div class="follow-up-item__bakery">' +
-      escapeHtml(followUpBakeryLabel(task) || 'Unknown bakery') + '</div>';
+    return '<span class="follow-up-item__bakery">' +
+      escapeHtml(followUpBakeryLabel(task) || 'Unknown bakery') + '</span>';
   }
 
   // Keep the card's supporting location context useful without repeating the
@@ -3812,7 +3845,7 @@ window.GAILS = window.GAILS || {};
 
           var dateLabel = formatVisitDate(v.date);
           var shortDate = dateLabel.split(', ')[1] || dateLabel;
-          var bakeryLabel = G.getBakeryMapLabel ? G.getBakeryMapLabel(v.bakery) : v.bakery;
+          var bakeryLabel = getDirectoryBakeryLabel(v.bakery);
           var isAuditedType = v.type === 'cqv' || v.type === 'nbo';
           var partnerColText = isAuditedType ? (v.auditorName || '—') : (partnerText(v.coffeePartner) || '—');
           var partnerColHtml = isAuditedType ? escapeHtml(partnerColText) : partnerHtml(v.coffeePartner);
@@ -4000,7 +4033,7 @@ window.GAILS = window.GAILS || {};
           var reg = G.getBakeryRegion ? G.getBakeryRegion(bName) : '—';
           return '<div class="unvisited-bakery-item">' +
             '<div class="unvisited-bakery-item__info">' +
-            '<div style="font-weight:700; color:var(--text);">' + escapeHtml(bName) + '</div>' +
+            '<div style="font-weight:700; color:var(--text);">' + escapeHtml(getDirectoryBakeryLabel(bName)) + '</div>' +
             '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(reg) + '</div>' +
             '<div class="unvisited-bakery-item__last">' + escapeHtml(lastVisitedLabel(bName)) + '</div>' +
             '</div>' +
@@ -4151,22 +4184,30 @@ window.GAILS = window.GAILS || {};
 
           var metaBits = [];
           var attributionLabel = followUpAttributionLabel(t);
-          var assigneeHtml = '<div class="follow-up-item__assignee"><strong>Assigned to:</strong> ' +
-            escapeHtml(attributionLabel || 'Unassigned') + '</div>';
-          if (t.createdAt) metaBits.push('Added ' + formatVisitDate(t.createdAt.slice(0, 10)).split(', ').slice(1).join(', '));
-          if (done && t.completedAt) metaBits.push('Completed ' + formatVisitDate(t.completedAt.slice(0, 10)).split(', ').slice(1).join(', '));
+          var assigneeHtml = '<span class="follow-up-item__assignee"><strong>Assigned to:</strong> ' +
+            escapeHtml(attributionLabel || 'Unassigned') + '</span>';
+          if (t.createdAt) metaBits.push('Added ' + formatFollowUpDate(t.createdAt));
+          if (done && t.completedAt) metaBits.push('Completed ' + formatFollowUpDate(t.completedAt));
 
+          // Two rows: bakery + action on the headline, everything else on a
+          // single footnote line. Both wrap, so a long action or a narrow
+          // window simply spills to another line instead of forcing every
+          // card to reserve the height.
           return '<div class="follow-up-item' + (done ? ' follow-up-item--done' : '') + '" data-task-id="' + escapeHtml(t.id) + '">' +
             '<button type="button" class="follow-up-item__check' + (done ? ' checked' : '') + '" role="checkbox" aria-checked="' + done + '"' +
             ' data-followup-toggle="' + escapeHtml(t.id) + '" title="' + (done ? 'Mark as open' : 'Mark as done') + '">' +
             (done ? '&#10003;' : '') + '</button>' +
             '<div class="follow-up-item__body">' +
+            '<div class="follow-up-item__headline">' +
             followUpTaskBakeryHtml(t, followUpGroupVal) +
-            '<div class="follow-up-item__title">' + escapeHtml(t.title || 'Untitled task') + '</div>' +
+            '<span class="follow-up-item__title">' + escapeHtml(t.title || 'Untitled task') + '</span>' +
+            '</div>' +
+            (t.detail ? '<div class="follow-up-item__detail">' + escapeHtml(t.detail) + '</div>' : '') +
+            '<div class="follow-up-item__footnotes">' +
             followUpTaskContextHtml(t, followUpGroupVal) +
             assigneeHtml +
-            (t.detail ? '<div class="follow-up-item__detail">' + escapeHtml(t.detail) + '</div>' : '') +
-            (metaBits.length ? '<div class="follow-up-item__meta">' + escapeHtml(metaBits.join(' · ')) + '</div>' : '') +
+            (metaBits.length ? '<span class="follow-up-item__meta">' + escapeHtml(metaBits.join(' · ')) + '</span>' : '') +
+            '</div>' +
             '</div>' +
             '<div class="follow-up-item__side">' +
             priorityTagHtml(t) +

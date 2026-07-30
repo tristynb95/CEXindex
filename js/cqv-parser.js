@@ -228,6 +228,145 @@ window.GAILS = window.GAILS || {};
     { re: /['’]\s*(?:Yes|No|N\/A)\s*['’]?\s*-\s*/i, phase: 'findings' }
   ];
 
+  // ---------- Comments & Action Plan collector ----------
+  // Shared with js/nbo-parser.js. GoAudits renders this block identically in a
+  // CQV and an NBO Coffee Visit export: same FINDINGS / ACTION REQUIRED
+  // captions, same right-hand Assignee/Priority/Due Date sidebar, same
+  // vertical-centering quirks that merge several logical fields onto one
+  // reconstructed row. Only the block header differs ("Service >>
+  // Standards/Shine" on a CQV, "Visit 1 >> Efficiency" on an NBO), hence
+  // blockHeaderRe. Feed it every line after the heading; call flush() at the
+  // declaration or end of report.
+  function createActionPlanCollector(options) {
+    options = options || {};
+    var blockHeaderRe = options.blockHeaderRe || RE_ACTION_BLOCK_HEADER;
+    var bakery = options.bakery || '';
+    var siteNameFragmentRe = options.siteNameFragmentRe || null;
+    var siteHeaderRe = bakery
+      ? new RegExp('\\b' + escapeRegExp(bakery) + '\\s+\\d{1,2}\\s+[A-Z]{3}\\s+\\d{2,4}\\b', 'i')
+      : null;
+
+    var items = [];
+    var currentBlock = null;
+    var blockPhase = ''; // '', 'label', 'findings', 'action'
+    var expectActionSidebarControl = false;
+
+    function flush() {
+      if (currentBlock) {
+        currentBlock.questionLabel = cleanLine(currentBlock.questionLabel);
+        currentBlock.findings = cleanLine(currentBlock.findings);
+        currentBlock.actionRequired = cleanLine(currentBlock.actionRequired);
+        items.push(currentBlock);
+      }
+      currentBlock = null;
+      blockPhase = '';
+      expectActionSidebarControl = false;
+    }
+
+    function handleLine(line) {
+      var hdr = line.match(blockHeaderRe);
+      if (hdr) {
+        flush();
+        // Assignee is pre-seeded with the bakery itself — in this layout
+        // it always is ("ASSIGNEE Welwyn Garden City") — so a sidebar
+        // parse miss doesn't lose it.
+        currentBlock = { sectionPath: cleanLine(hdr[1]) + ' >> ' + cleanLine(hdr[2]), questionRef: '', questionLabel: '', findings: '', actionRequired: '', assignee: bakery, priority: '', dueDate: '' };
+        blockPhase = '';
+        expectActionSidebarControl = false;
+        return;
+      }
+      if (!currentBlock) return; // stray line before first block header
+
+      // Pull the sidebar values out first, wherever they landed. DUE DATE
+      // must be extracted before any header stripping — "DUE DATE 16 Jul
+      // 26" ends in exactly the caps-words-plus-date shape the stripper
+      // would otherwise eat.
+      var cleaned = line;
+      var dueMatch = cleaned.match(RE_DUE_DATE_EMBED);
+      if (dueMatch) { if (!currentBlock.dueDate) currentBlock.dueDate = dueMatch[1]; cleaned = cleanLine(cleaned.replace(dueMatch[0], ' ')); }
+      var priMatch = cleaned.match(RE_PRIORITY_EMBED);
+      if (priMatch) { if (!currentBlock.priority) currentBlock.priority = priMatch[1]; cleaned = cleanLine(cleaned.replace(priMatch[0], ' ')); }
+      var assMatch = cleaned.match(RE_ASSIGNEE_EMBED);
+      if (assMatch) {
+        if (!currentBlock.assignee && cleanLine(assMatch[1])) currentBlock.assignee = cleanLine(assMatch[1]);
+        cleaned = cleanLine(cleaned.slice(0, assMatch.index));
+        expectActionSidebarControl = true;
+      }
+      // A keyword/value pair that split across rows leaves a bare keyword
+      // or bare value behind.
+      if (RE_ORPHAN_SIDEBAR_KEYWORD.test(cleaned)) return;
+      if (RE_ORPHAN_DUE_DATE.test(cleaned)) { if (!currentBlock.dueDate) currentBlock.dueDate = cleaned; return; }
+      if (RE_ORPHAN_PRIORITY.test(cleaned)) { if (!currentBlock.priority) currentBlock.priority = cleaned; return; }
+      // Now strip whatever's left of the running page header / bare
+      // site-name fragments merged into the row.
+      if (siteHeaderRe) cleaned = cleanLine(cleaned.replace(siteHeaderRe, ' '));
+      cleaned = cleanLine(cleaned.replace(RE_TRAILING_RUNNING_HEADER, ''));
+      if (siteNameFragmentRe) cleaned = cleanLine(cleaned.replace(siteNameFragmentRe, ' '));
+      // Defensive fallback for callers that pass already-reconstructed
+      // page lines instead of using extractPageLines(). In GoAudits the
+      // sidebar's Change control follows ASSIGNEE and is vertically aligned
+      // with the first quoted findings row.
+      if (expectActionSidebarControl && /['’]\s*(?:Yes|No|N\/A)\s*['’]?\s*-\s*/i.test(cleaned)) {
+        cleaned = cleanLine(cleaned.replace(RE_TRAILING_ACTION_SIDEBAR_CONTROL, ''));
+        expectActionSidebarControl = false;
+      }
+      if (!cleaned) return; // line was pure sidebar/header noise
+
+      // Walk the row left to right, splitting at whichever marker comes
+      // first, and route each piece to whatever field is active when we
+      // reach it — a single merged row can span several fields (see
+      // ACTION_PLAN_MARKERS above).
+      var remaining = cleaned;
+      var guard = 0;
+      while (remaining && guard++ < 20) {
+        var next = null;
+        for (var m = 0; m < ACTION_PLAN_MARKERS.length; m++) {
+          var mm = ACTION_PLAN_MARKERS[m].re.exec(remaining);
+          if (mm && (!next || mm.index < next.index)) {
+            next = { index: mm.index, len: mm[0].length, phase: ACTION_PLAN_MARKERS[m].phase, ref: ACTION_PLAN_MARKERS[m].ref ? mm[1] : null };
+          }
+        }
+        var before = cleanLine(next ? remaining.slice(0, next.index) : remaining);
+        if (before) {
+          if (blockPhase === 'label') currentBlock.questionLabel += before + ' ';
+          else if (blockPhase === 'findings') currentBlock.findings += before + ' ';
+          else if (blockPhase === 'action') currentBlock.actionRequired += before + ' ';
+          // blockPhase === '': text before any field marker has appeared
+          // isn't attachable to anything — dropped.
+        }
+        if (!next) break;
+        if (next.ref) currentBlock.questionRef = 'GA' + next.ref;
+        blockPhase = next.phase;
+        remaining = remaining.slice(next.index + next.len);
+      }
+    }
+
+    return { items: items, handleLine: handleLine, flush: flush };
+  }
+
+  // The Comments & Action Plan running header sometimes reprints only the
+  // tail of the bakery name (e.g. "Garden City" for "Welwyn Garden City"),
+  // merged into a label/findings row without a date attached, so the
+  // full-name+date match alone misses it. Match the full name and any of
+  // its trailing multi-word substrings — skipping any single trailing
+  // word, since on its own that's too generic (e.g. just "City") to
+  // safely strip out of real content. This can theoretically remove a
+  // genuine mention of the bakery from findings prose, but sidebar
+  // leakage is far more common than self-reference.
+  function buildSiteNameFragmentRe(bakery) {
+    if (!bakery) return null;
+    var bakeryWords = String(bakery).trim().split(/\s+/).filter(Boolean);
+    var fragments = [];
+    for (var wIdx = 0; wIdx < bakeryWords.length - 1; wIdx++) {
+      fragments.push(escapeRegExp(bakeryWords.slice(wIdx).join(' ')));
+    }
+    if (bakeryWords.length === 1 && bakeryWords[0].length >= 5) {
+      fragments.push(escapeRegExp(bakeryWords[0]));
+    }
+    if (!fragments.length) return null;
+    return new RegExp('\\b(?:' + fragments.join('|') + ')\\b', 'gi');
+  }
+
   var RE_PAGE_FOOTER = /^Page\s+\d+\s+of\s+\d+/i;
   var RE_COLOR_KEY = /^0%[\-–]69\.99%/;
   // Photo captions print a timestamp under each embedded photo — one per
@@ -392,29 +531,11 @@ window.GAILS = window.GAILS || {};
     // so this is worth surfacing as its own status rather than just a title.
     record.isFollowUp = /follow[\s-]*up/i.test(record.title);
 
-    // The Comments & Action Plan running header sometimes reprints only the
-    // tail of the bakery name (e.g. "Garden City" for "Welwyn Garden City"),
-    // merged into a label/findings row without a date attached, so the
-    // full-name+date match alone misses it. Match the full name and any of
-    // its trailing multi-word substrings — skipping any single trailing
-    // word, since on its own that's too generic (e.g. just "City") to
-    // safely strip out of real content. This can theoretically remove a
-    // genuine mention of the bakery from findings prose, but sidebar
-    // leakage is far more common than self-reference.
-    var siteNameFragmentRe = null;
-    if (record.bakery) {
-      var bakeryWords = record.bakery.trim().split(/\s+/).filter(Boolean);
-      var fragments = [];
-      for (var wIdx = 0; wIdx < bakeryWords.length - 1; wIdx++) {
-        fragments.push(escapeRegExp(bakeryWords.slice(wIdx).join(' ')));
-      }
-      if (bakeryWords.length === 1 && bakeryWords[0].length >= 5) {
-        fragments.push(escapeRegExp(bakeryWords[0]));
-      }
-      if (fragments.length) {
-        siteNameFragmentRe = new RegExp('\\b(?:' + fragments.join('|') + ')\\b', 'gi');
-      }
-    }
+    var actionPlan = createActionPlanCollector({
+      bakery: record.bakery,
+      siteNameFragmentRe: buildSiteNameFragmentRe(record.bakery)
+    });
+    record.actionPlan = actionPlan.items;
 
     // ---- scan every remaining line once, driving a small state machine ----
     var section = { name: '', earned: null, max: null, pct: null };
@@ -422,22 +543,7 @@ window.GAILS = window.GAILS || {};
     var floatingText = []; // un-numbered lines awaiting resolution — either a wrapped question's label (if a score line later claims them) or a finding/action note for the previous question (if nothing ever claims them)
     var lastQuestion = null; // for attaching trailing red "findings" note lines
     var inActionPlan = false;
-    var currentBlock = null; // action plan block being built
-    var blockPhase = ''; // '', 'label', 'findings', 'action'
     var expectPrevResponse = false; // a score row ended with a PREVIOUS-column date; its response follows on the next row
-    var expectActionSidebarControl = false;
-
-    function flushBlock() {
-      if (currentBlock) {
-        currentBlock.questionLabel = cleanLine(currentBlock.questionLabel);
-        currentBlock.findings = cleanLine(currentBlock.findings);
-        currentBlock.actionRequired = cleanLine(currentBlock.actionRequired);
-        record.actionPlan.push(currentBlock);
-      }
-      currentBlock = null;
-      blockPhase = '';
-      expectActionSidebarControl = false;
-    }
 
     // Called whenever a new event starts (a new question, a new subsection/
     // section, or the action-plan block) that would otherwise silently
@@ -530,89 +636,9 @@ window.GAILS = window.GAILS || {};
       if (RE_ACTION_PLAN_HEADING.test(line.replace(/\s+/g, ''))) { inActionPlan = true; reconcileFloatingText(); continue; }
       // DECLARATION is the signature block that closes every report —
       // nothing after it (auditor name, embedded map labels) is content.
-      if (RE_DECLARATION_HEADING.test(line)) { reconcileFloatingText(); flushBlock(); break; }
+      if (RE_DECLARATION_HEADING.test(line)) { reconcileFloatingText(); actionPlan.flush(); break; }
 
-      if (inActionPlan) {
-        var hdr = line.match(RE_ACTION_BLOCK_HEADER);
-        if (hdr) {
-          flushBlock();
-          // Assignee is pre-seeded with the bakery itself — in this layout
-          // it always is ("ASSIGNEE Welwyn Garden City") — so a sidebar
-          // parse miss doesn't lose it.
-          currentBlock = { sectionPath: cleanLine(hdr[1]) + ' >> ' + cleanLine(hdr[2]), questionRef: '', questionLabel: '', findings: '', actionRequired: '', assignee: record.bakery || '', priority: '', dueDate: '' };
-          blockPhase = '';
-          expectActionSidebarControl = false;
-          continue;
-        }
-        if (!currentBlock) continue; // stray line before first block header
-
-        // Pull the sidebar values out first, wherever they landed. DUE DATE
-        // must be extracted before any header stripping — "DUE DATE 16 Jul
-        // 26" ends in exactly the caps-words-plus-date shape the stripper
-        // would otherwise eat.
-        var cleaned = line;
-        var dueMatch = cleaned.match(RE_DUE_DATE_EMBED);
-        if (dueMatch) { if (!currentBlock.dueDate) currentBlock.dueDate = dueMatch[1]; cleaned = cleanLine(cleaned.replace(dueMatch[0], ' ')); }
-        var priMatch = cleaned.match(RE_PRIORITY_EMBED);
-        if (priMatch) { if (!currentBlock.priority) currentBlock.priority = priMatch[1]; cleaned = cleanLine(cleaned.replace(priMatch[0], ' ')); }
-        var assMatch = cleaned.match(RE_ASSIGNEE_EMBED);
-        if (assMatch) {
-          if (!currentBlock.assignee && cleanLine(assMatch[1])) currentBlock.assignee = cleanLine(assMatch[1]);
-          cleaned = cleanLine(cleaned.slice(0, assMatch.index));
-          expectActionSidebarControl = true;
-        }
-        // A keyword/value pair that split across rows leaves a bare keyword
-        // or bare value behind.
-        if (RE_ORPHAN_SIDEBAR_KEYWORD.test(cleaned)) continue;
-        if (RE_ORPHAN_DUE_DATE.test(cleaned)) { if (!currentBlock.dueDate) currentBlock.dueDate = cleaned; continue; }
-        if (RE_ORPHAN_PRIORITY.test(cleaned)) { if (!currentBlock.priority) currentBlock.priority = cleaned; continue; }
-        // Now strip whatever's left of the running page header / bare
-        // site-name fragments merged into the row.
-        if (record.bakery) {
-          var headerRe = new RegExp('\\b' + escapeRegExp(record.bakery) + '\\s+\\d{1,2}\\s+[A-Z]{3}\\s+\\d{2,4}\\b', 'i');
-          cleaned = cleanLine(cleaned.replace(headerRe, ' '));
-        }
-        cleaned = cleanLine(cleaned.replace(RE_TRAILING_RUNNING_HEADER, ''));
-        if (siteNameFragmentRe) cleaned = cleanLine(cleaned.replace(siteNameFragmentRe, ' '));
-        // Defensive fallback for callers that pass already-reconstructed
-        // page lines instead of using extractPageLines(). In GoAudits the
-        // sidebar's Change control follows ASSIGNEE and is vertically aligned
-        // with the first quoted findings row.
-        if (expectActionSidebarControl && /['â€™]\s*(?:Yes|No|N\/A)\s*['â€™]?\s*-\s*/i.test(cleaned)) {
-          cleaned = cleanLine(cleaned.replace(RE_TRAILING_ACTION_SIDEBAR_CONTROL, ''));
-          expectActionSidebarControl = false;
-        }
-        if (!cleaned) continue; // line was pure sidebar/header noise
-
-        // Walk the row left to right, splitting at whichever marker comes
-        // first, and route each piece to whatever field is active when we
-        // reach it — a single merged row can span several fields (see
-        // ACTION_PLAN_MARKERS above).
-        var remaining = cleaned;
-        var guard = 0;
-        while (remaining && guard++ < 20) {
-          var next = null;
-          for (var m = 0; m < ACTION_PLAN_MARKERS.length; m++) {
-            var mm = ACTION_PLAN_MARKERS[m].re.exec(remaining);
-            if (mm && (!next || mm.index < next.index)) {
-              next = { index: mm.index, len: mm[0].length, phase: ACTION_PLAN_MARKERS[m].phase, ref: ACTION_PLAN_MARKERS[m].ref ? mm[1] : null };
-            }
-          }
-          var before = cleanLine(next ? remaining.slice(0, next.index) : remaining);
-          if (before) {
-            if (blockPhase === 'label') currentBlock.questionLabel += before + ' ';
-            else if (blockPhase === 'findings') currentBlock.findings += before + ' ';
-            else if (blockPhase === 'action') currentBlock.actionRequired += before + ' ';
-            // blockPhase === '': text before any field marker has appeared
-            // isn't attachable to anything — dropped.
-          }
-          if (!next) break;
-          if (next.ref) currentBlock.questionRef = 'GA' + next.ref;
-          blockPhase = next.phase;
-          remaining = remaining.slice(next.index + next.len);
-        }
-        continue;
-      }
+      if (inActionPlan) { actionPlan.handleLine(line); continue; }
 
       // ---- overall score block (page with the big % / band / fraction) ----
       var pctm = line.match(RE_PCT_ONLY);
@@ -776,7 +802,7 @@ window.GAILS = window.GAILS || {};
       floatingText.push(line);
     }
     reconcileFloatingText();
-    flushBlock();
+    actionPlan.flush();
 
     record.summary = cleanLine(record.summary);
     delete record._inSummary;
@@ -807,6 +833,10 @@ window.GAILS = window.GAILS || {};
   window.GAILS.CQV = {
     extractPageLines: extractPageLines,
     parsePages: parsePages,
+    // Shared with js/nbo-parser.js — see createActionPlanCollector above.
+    createActionPlanCollector: createActionPlanCollector,
+    buildSiteNameFragmentRe: buildSiteNameFragmentRe,
+    isActionPlanHeading: function(line) { return RE_ACTION_PLAN_HEADING.test(String(line).replace(/\s+/g, '')); },
     buildRecordFromPdf: async function(arrayBuffer) {
       var pages = await extractPageLines(arrayBuffer);
       var result = parsePages(pages);

@@ -14478,19 +14478,22 @@ body.visit-log-filter-open .mobile-bottom-nav {
   text-decoration: underline;
 }
 
-/* Follow-ups view: the task list. */
+/* Follow-ups view: the task list. Tasks are scanned in bulk, so the card runs
+   tight: small type steps, minimal gaps between the metadata lines, and the
+   card is two rows — "bakery · action" over one footnote line of context —
+   with priority, the due pill and the actions sharing the row opposite. */
 .follow-up-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .follow-up-item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 14px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
   align-items: start;
-  padding: 14px 16px;
+  padding: 9px 12px;
   border: 1px solid var(--card-border);
   border-radius: 10px;
   background: var(--card);
@@ -14515,8 +14518,8 @@ body.visit-log-filter-open .mobile-bottom-nav {
 
 .follow-up-item__check {
   margin-top: 1px;
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
   border-radius: 50%;
   border: 2px solid var(--card-border-h, var(--muted-l));
   background: var(--card);
@@ -14544,86 +14547,140 @@ body.visit-log-filter-open .mobile-bottom-nav {
   min-width: 0;
 }
 
+/* Bakery and action share the headline: the bakery is the anchor you scan
+   down the column, the action is what you read across. Wrapping is allowed,
+   so a long action drops to its own line rather than being truncated. */
+.follow-up-item__headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
+  line-height: 1.45;
+}
+
 .follow-up-item__bakery {
-  margin-bottom: 3px;
   color: var(--text);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  line-height: 1.3;
 }
 
 .follow-up-item__title {
-  font-size: 0.92rem;
-  font-weight: 700;
+  font-size: 0.89rem;
+  font-weight: 500;
   color: var(--text);
-  line-height: 1.35;
+}
+
+/* The separator hangs off the bakery rather than leading the action, so a
+   headline that wraps breaks after the dot instead of starting a line with
+   one. It disappears with the bakery when the list is grouped by bakery. */
+.follow-up-item__bakery::after {
+  content: '·';
+  margin-left: 6px;
+  color: var(--muted-l);
+}
+
+/* One footnote line: location context, who owns it, when it was raised —
+   all dot-separated so the card costs a single extra line of height. The
+   values carry the contrast; the labels below step back out of the way. */
+.follow-up-item__footnotes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  margin-top: 1px;
+  color: var(--text-2);
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
 .follow-up-item__context {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-top: 4px;
-  color: var(--muted-l);
-  font-size: 0.7rem;
-  line-height: 1.35;
+  gap: 0 8px;
 }
 
 .follow-up-item__context-item {
   color: inherit;
 }
 
-.follow-up-item__context-item strong {
+/* "Region:" / "Assigned to:" are scaffolding for the value that follows, so
+   they read lighter than it rather than heavier — the old bold-label,
+   grey-value pairing had the hierarchy the wrong way round. */
+.follow-up-item__context-item strong,
+.follow-up-item__assignee strong {
+  font-weight: 400;
+  color: var(--muted-l);
+}
+
+/* Who owns the task is the most-scanned footnote, so its value sits at full
+   text contrast while the rest of the line stays a step back. */
+.follow-up-item__assignee {
+  color: var(--text);
   font-weight: 500;
 }
 
-.follow-up-item__assignee {
-  margin-top: 7px;
-  color: var(--text-2);
-  font-size: 0.78rem;
-  line-height: 1.35;
-}
-
-.follow-up-item__assignee strong {
-  color: var(--text);
-  font-weight: 700;
+/* Dot separators trail their own item and stop at the last one, so the line
+   wraps cleanly however many context bits a task happens to have. */
+.follow-up-item__footnotes > *:not(:last-child)::after,
+.follow-up-item__context > *:not(:last-child)::after {
+  content: '·';
+  margin-left: 8px;
+  color: var(--muted-l);
+  font-weight: 400;
+  opacity: 0.55;
 }
 
 .follow-up-item__detail {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--text-2);
-  margin-top: 4px;
+  margin-top: 2px;
   line-height: 1.45;
   white-space: pre-wrap;
 }
 
 .follow-up-item__meta {
-  font-size: 0.72rem;
   color: var(--muted-l);
-  margin-top: 6px;
 }
 
+/* Priority, due pill and actions all sit on one row level with the headline,
+   so the side costs a single line. It still wraps if the window is narrow. */
 .follow-up-item__side {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px 8px;
   flex-shrink: 0;
+  padding-top: 1px;
+}
+
+/* The pill and priority tag are sized for the Log Visit checklist, where they
+   sit against short lines. On a task row they carry real information at a
+   glance, so they step up to match the footnote line's size. */
+.follow-up-item .follow-up-pill,
+.follow-up-item .follow-up-priority {
+  font-size: 0.69rem;
+}
+
+.follow-up-item .follow-up-pill {
+  padding: 3px 10px;
 }
 
 .follow-up-item__actions {
   display: flex;
-  gap: 8px;
+  gap: 2px;
 }
 
+/* Ghost buttons: the labels stay legible but carry no border weight until
+   hovered, so nine stacked cards don't read as eighteen buttons. */
 .follow-up-item__action {
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-2);
-  border: 1px solid var(--card-border);
-  background: var(--card);
-  padding: 7px 16px;
-  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 3px 9px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -14649,17 +14706,20 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 
   .follow-up-item {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
+  /* Too narrow for a side column, so the row moves under the body: priority
+     and due pill lead, the actions stay pinned to the right edge. */
   .follow-up-item__side {
     grid-column: 2 / 3;
-    align-items: flex-start;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: space-between;
+    justify-content: flex-start;
     width: 100%;
-    margin-top: 4px;
+    margin-top: 5px;
+  }
+
+  .follow-up-item__actions {
+    margin-left: auto;
   }
 }
 
