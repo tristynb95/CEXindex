@@ -106,11 +106,15 @@ window.GAILS = window.GAILS || {};
     var badge = document.getElementById('visitReportTypeBadge');
     var inner = modal && modal.querySelector ? modal.querySelector('.drillInner') : null;
     var presentations = {
-      routine: { eyebrow: 'Bakery report', badge: 'Routine visit', accent: '#0E8074', maxWidth: 1180 },
-      cqv: { eyebrow: 'Quality assurance', badge: record && record.isFollowUp ? 'CQV follow-up' : 'CQV', accent: '#6F52A2', maxWidth: 1180 },
-      nbo: { eyebrow: 'Opening support', badge: 'NBO coffee visit', accent: '#C57B28', maxWidth: 1060 },
-      checkin: { eyebrow: 'Bakery report', badge: 'Check-in', accent: '#2878A5', maxWidth: 820 },
-      opening: { eyebrow: 'Opening support', badge: 'NBO opening', accent: '#C57B28', maxWidth: 900 },
+      // Accents match the same visit-type badge colours used in the admin
+      // visit log (.admin-badge--*/.admin-table-badge--*): gold for routine,
+      // red for CQV, purple for NBO, blue for ad-hoc site visits (check-in
+      // and NBO: Opening share one badge there, so they share one accent).
+      routine: { eyebrow: 'Bakery report', badge: 'Routine visit', accent: '#C97F12', maxWidth: 1180 },
+      cqv: { eyebrow: 'Quality assurance', badge: record && record.isFollowUp ? 'CQV follow-up' : 'CQV', accent: '#B22A24', maxWidth: 1180 },
+      nbo: { eyebrow: 'Opening support', badge: 'NBO coffee visit', accent: '#6B4FA8', maxWidth: 1060 },
+      checkin: { eyebrow: 'Bakery report', badge: 'Check-in', accent: '#0D7CA0', maxWidth: 820 },
+      opening: { eyebrow: 'Opening support', badge: 'NBO opening', accent: '#0D7CA0', maxWidth: 900 },
       empty: { eyebrow: 'Bakery report', badge: 'No visit yet', accent: '#928978', maxWidth: 640 },
       error: { eyebrow: 'Bakery report', badge: 'Unavailable', accent: '#B22A24', maxWidth: 640 }
     };
@@ -140,14 +144,23 @@ window.GAILS = window.GAILS || {};
   function enhanceVisitReportBody(bodyEl) {
     if (!bodyEl || !bodyEl.querySelectorAll || !document.createElement) return;
     if (bodyEl.classList) bodyEl.classList.add('visit-report-body--enhanced');
-    var wrappers = Array.prototype.slice.call(bodyEl.querySelectorAll('.visit-report-section-wrapper'));
+
+    // The source-PDF link (CQV, CQV follow-up, NBO) starts out as its own
+    // near-empty card. Below, once a Jump To bar exists, that link is moved
+    // into it and its now-empty carrier wrapper is dropped — so it's excluded
+    // from the section/nav bookkeeping here.
+    var pdfLink = bodyEl.querySelector ? bodyEl.querySelector('.visit-report-pdf-btn') : null;
+    var pdfWrapper = pdfLink && pdfLink.parentNode ? pdfLink.parentNode : null;
+
+    var wrappers = Array.prototype.slice.call(bodyEl.querySelectorAll('.visit-report-section-wrapper'))
+      .filter(function(wrapper) { return wrapper !== pdfWrapper; });
     var sections = [];
 
     wrappers.forEach(function(wrapper, index) {
       var heading = wrapper.querySelector ? wrapper.querySelector('h4') : null;
       var label = visitReportHeadingLabel(heading);
       var isWide = !!(wrapper.querySelector && wrapper.querySelector(
-        '.visit-report-chart-wrap, .visit-report-hs-banner, .visit-report-pdf-btn, .visit-report-section--comments'
+        '.visit-report-chart-wrap, .visit-report-hs-banner, .visit-report-section--comments'
       ));
       if (/^(summary|action plan|coaching notes)/i.test(label)) isWide = true;
       if (isWide && wrapper.classList) wrapper.classList.add('visit-report-section-wrapper--wide');
@@ -156,13 +169,21 @@ window.GAILS = window.GAILS || {};
       sections.push({ id: heading.id, label: label });
     });
 
-    if (sections.length < 2 || !bodyEl.insertBefore) return;
-    var nav = document.createElement('nav');
-    nav.className = 'visit-report-toc';
-    nav.setAttribute('aria-label', 'Report sections');
-    nav.innerHTML = '<span>Jump to</span><div>' + sections.map(function(section) {
-      return '<a href="#' + escapeHtml(section.id) + '">' + escapeHtml(section.label) + '</a>';
-    }).join('') + '</div>';
+    var nav = null;
+    if (sections.length >= 2 && bodyEl.insertBefore) {
+      nav = document.createElement('nav');
+      nav.className = 'visit-report-toc';
+      nav.setAttribute('aria-label', 'Report sections');
+      nav.innerHTML = '<span>Jump to</span><div>' + sections.map(function(section) {
+        return '<a href="#' + escapeHtml(section.id) + '">' + escapeHtml(section.label) + '</a>';
+      }).join('') + '</div>';
+      if (pdfLink && pdfWrapper) {
+        nav.appendChild(pdfLink);
+        if (pdfWrapper.parentNode) pdfWrapper.parentNode.removeChild(pdfWrapper);
+      }
+    }
+    if (!nav) return;
+
     var firstWrapper = wrappers[0];
     var summary = bodyEl.querySelector ? bodyEl.querySelector('.drill-summary') : null;
     if (summary && summary.parentNode === bodyEl && bodyEl.insertBefore) {
@@ -176,6 +197,8 @@ window.GAILS = window.GAILS || {};
       overview.appendChild(nav);
     } else if (firstWrapper) {
       bodyEl.insertBefore(nav, firstWrapper);
+    } else if (bodyEl.appendChild) {
+      bodyEl.appendChild(nav);
     }
   }
 
@@ -504,6 +527,9 @@ window.GAILS = window.GAILS || {};
         '<div class="visit-report-chart-wrap"><canvas id="' + CQV_CHART_ID + '"></canvas></div></div></div>'
       : '';
 
+    // The PDF link is relocated into the Jump To bar by enhanceVisitReportBody
+    // (it hunts for .visit-report-pdf-btn), so this wrapper is just a carrier —
+    // it never stays in the body once a nav bar exists.
     var pdfHtml = record.pdfUrl
       ? '<div class="visit-report-section-wrapper"><a class="visit-report-pdf-btn" href="' + escapeHtml(record.pdfUrl) + '" target="_blank" rel="noopener">&#128196; View Original CQV PDF &#8599;</a></div>'
       : '';
@@ -533,13 +559,17 @@ window.GAILS = window.GAILS || {};
       actionPlanIsDerived = actionPlanItems.length > 0;
     }
 
-    var actionPlanHtml = '<div class="visit-report-section-wrapper"><div class="visit-report-section">' +
+    var actionPlanHtml = '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section">' +
       '<h4>Action Plan (' + ((actionPlanItems || []).length) + ')</h4>' +
       (actionPlanIsDerived ? '<p class="visit-report-note" style="margin-bottom:10px;">This follow-up report didn’t include a written action plan — showing the questions that lost points instead.</p>' : '') +
       buildCqvActionPlanHtml(actionPlanItems) +
       '</div></div>';
 
-    return buildCqvHeaderStatsHtml(record) + criticalFailHtml + pdfHtml + summaryHtml + chartHtml + sectionHtml + categoryHtml + actionPlanHtml;
+    // Category and Section are both compact score tables of comparable
+    // height, so they're kept adjacent (and non-wide) to pair up side by
+    // side — rather than one of them landing alone next to a much taller or
+    // shorter neighbour.
+    return buildCqvHeaderStatsHtml(record) + criticalFailHtml + pdfHtml + summaryHtml + chartHtml + categoryHtml + sectionHtml + actionPlanHtml;
   }
 
   // ── NBO Coffee Visit ──
@@ -611,10 +641,13 @@ window.GAILS = window.GAILS || {};
       bySection[key].push(q);
     });
 
+    // Full width rather than paired half-width: question counts vary a lot
+    // between sections (Efficiency vs. Safety, say), and pairing two
+    // uneven sections stretches the shorter one to match the taller.
     var sectionsHtml = sectionOrder.map(function (name) {
       var items = bySection[name];
       var noCount = items.filter(function (q) { return q.response === 'NO'; }).length;
-      return '<div class="visit-report-section-wrapper"><div class="visit-report-section">' +
+      return '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section">' +
         '<div class="visit-report-section-title-row"><h4>' + escapeHtml(name) + '</h4>' +
         (noCount ? '<span class="visit-section-attention">' + noCount + ' to work on</span>' : '') + '</div>' +
         items.map(buildNboQuestionRowHtml).join('') +

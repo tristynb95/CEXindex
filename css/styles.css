@@ -21915,8 +21915,17 @@ body[data-dash-tab="cei"] .methodology {
 .drill-modal--visit-report #visitReportBody > .drill-summary,
 .drill-modal--visit-report #visitReportBody > .visit-report-overview-stack,
 .drill-modal--visit-report #visitReportBody > .visit-report-toc,
-.drill-modal--visit-report #visitReportBody > .visit-report-note,
-.drill-modal--visit-report .visit-report-section-wrapper--wide {
+.drill-modal--visit-report #visitReportBody > .visit-report-note {
+  grid-column: 1 / -1;
+}
+
+/* .visit-report-section-wrapper is display:contents (see below), so it never
+   becomes a grid item itself — grid-column has to land on whichever of its
+   children actually does. Without this, a "wide" wrapper silently has no
+   effect and its card gets squeezed into a half-width column instead. */
+.drill-modal--visit-report .visit-report-section-wrapper--wide > .visit-report-section,
+.drill-modal--visit-report .visit-report-section-wrapper--wide > .visit-report-hs-banner,
+.drill-modal--visit-report .visit-report-section-wrapper--wide > .visit-report-pdf-btn {
   grid-column: 1 / -1;
 }
 
@@ -22032,6 +22041,16 @@ body[data-dash-tab="cei"] .methodology {
   white-space: nowrap;
 }
 
+/* enhanceVisitReportBody relocates the source-PDF link (CQV, CQV follow-up,
+   NBO) into this bar so it doesn't sit as its own near-empty card — pinned to
+   the far end, outside the scrollable jump-to list. */
+.visit-report-toc .visit-report-pdf-btn {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0 14px;
+  min-height: 31px;
+}
+
 .visit-report-toc a:hover,
 .visit-report-toc a:focus-visible {
   border-color: color-mix(in srgb, var(--drill-accent, var(--accent)) 36%, transparent);
@@ -22048,7 +22067,7 @@ body[data-dash-tab="cei"] .methodology {
 .drill-modal--visit-report .visit-report-section {
   height: 100%;
   margin: 0;
-  padding: 18px;
+  padding: 18px 20px 24px;
   border: 1px solid rgba(146, 137, 120, 0.21);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.94);
@@ -22406,6 +22425,14 @@ body[data-dash-tab="cei"] .methodology {
   .visit-report-toc {
     margin-inline: 0;
     padding: 9px 10px;
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .visit-report-toc .visit-report-pdf-btn {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
   }
 
   .visit-report-overview-stack {
@@ -22413,7 +22440,7 @@ body[data-dash-tab="cei"] .methodology {
   }
 
   .drill-modal--visit-report .visit-report-section {
-    padding: 15px;
+    padding: 15px 15px 20px;
   }
 
   .visit-report-section-heading {
