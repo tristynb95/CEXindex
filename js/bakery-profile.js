@@ -263,7 +263,7 @@ function formatDate(value, includeTime) {
 function formatVisitType(visit) {
   if (!visit) return 'Bakery visit';
   if (visit.type === 'siteVisit') {
-    return visit.visitKind === 'nboOpening' ? 'NBO: Opening' : 'Routine visit';
+    return (visit.visitKind && visit.visitKind !== 'checkin') ? 'NBO: Opening' : 'Check-in';
   }
   if (visit.type === 'cqv') return visit.isFollowUp ? 'CQV follow-up' : 'Coffee Quality Visit';
   if (visit.type === 'nbo') {
@@ -272,6 +272,44 @@ function formatVisitType(visit) {
       : 'NBO: Coffee Visit ' + (visit.visitNumber || 1);
   }
   return 'Bakery visit';
+}
+
+// Same tone language as the visit-type tags on My Activity / My Team, so a
+// visit reads the same colour everywhere it appears.
+function visitTypeTone(visit) {
+  if (!visit) return 'teal';
+  if (visit.type === 'cqv') return 'red';
+  if (visit.type === 'nbo') return 'purple';
+  if (visit.type === 'siteVisit') return (visit.visitKind && visit.visitKind !== 'checkin') ? 'purple' : 'teal';
+  return 'gold';
+}
+
+function cqvBandTone(bandName) {
+  if (bandName === 'Green') return 'green';
+  if (bandName === 'Yellow') return 'gold';
+  if (bandName === 'Red') return 'red';
+  return 'muted';
+}
+
+// CQVs (and their follow-ups) show the same overall percentage as the report
+// itself, coloured to the report's own RAG band rather than a raw score-out-of.
+// Every other visit type keeps its plain score/scoreMax, e.g. a check-in's
+// section count.
+function visitScoreChip(visit) {
+  if (!visit) return null;
+  if (visit.type === 'cqv') {
+    if (visit.overallPct === null || visit.overallPct === undefined || isNaN(Number(visit.overallPct))) return null;
+    var band = G.CQVShared ? G.CQVShared.band(visit) : (visit.band || '');
+    var pct = Math.round(Number(visit.overallPct) * 10) / 10;
+    return { text: pct + '%', tone: cqvBandTone(band) };
+  }
+  if (visit.type === 'nbo') {
+    var nboPct = G.NBOShared ? G.NBOShared.overallPct(visit) : null;
+    if (nboPct === null || nboPct === undefined || isNaN(Number(nboPct))) return null;
+    return { text: (Math.round(Number(nboPct) * 10) / 10) + '%', tone: 'muted' };
+  }
+  if (visit.score === null || visit.score === undefined) return null;
+  return { text: String(visit.score) + (visit.scoreMax ? '/' + visit.scoreMax : ''), tone: 'muted' };
 }
 
 function metricValue(value, suffix) {
@@ -1064,9 +1102,8 @@ function renderVisits() {
   }
 
   container.innerHTML = bakeryVisits.map(function(visit) {
-    var score = visit.score !== null && visit.score !== undefined
-      ? String(visit.score) + (visit.scoreMax ? '/' + visit.scoreMax : '')
-      : '';
+    var tone = visitTypeTone(visit);
+    var scoreChip = visitScoreChip(visit);
     // An assigned visit names its assignee as "@Name"; the stored "@" is never
     // rendered, just the plain-text name (see js/mentions.js).
     var visitorHtml = visit.coffeePartner && G.Mentions
@@ -1074,11 +1111,14 @@ function renderVisits() {
       : escapeHtml(visit.coffeePartner || (visit.meta && (visit.meta.createdBy || visit.meta.updatedBy)) || '');
     var reportLabel = 'View ' + formatVisitType(visit) + ' report from ' + formatDate(visit.date, false);
     return '<article class="bakery-activity-row">' +
-      '<div class="bakery-activity-row__marker" aria-hidden="true"></div>' +
+      '<div class="bakery-activity-row__marker bakery-activity-row__marker--' + tone + '" aria-hidden="true"></div>' +
       '<div class="bakery-activity-row__body">' +
-      '<div class="bakery-activity-row__top"><strong>' + escapeHtml(formatVisitType(visit)) + '</strong>' +
+      '<div class="bakery-activity-row__top">' +
+      '<span class="bakery-activity-row__type bakery-activity-row__type--' + tone + '">' +
+      escapeHtml(formatVisitType(visit)) + '</span>' +
       '<span class="bakery-activity-row__actions">' +
-      (score ? '<span class="bakery-profile-tag">' + escapeHtml(score) + '</span>' : '') +
+      (scoreChip ? '<span class="bakery-profile-tag bakery-profile-tag--' + scoreChip.tone + '">' +
+        escapeHtml(scoreChip.text) + '</span>' : '') +
       '<button type="button" class="bakery-activity-row__report" data-bakery-visit-report="' +
       escapeHtml(visit.id) + '" aria-label="' + escapeHtml(reportLabel) + '">View report</button>' +
       '</span></div>' +

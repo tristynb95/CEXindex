@@ -54,7 +54,7 @@ test('bakery profile labels NBO imports and opening check-ins accurately', () =>
   );
   assert.equal(
     context.result({ type: 'siteVisit', visitKind: 'checkin' }),
-    'Routine visit'
+    'Check-in'
   );
 
   const sharedHelperPosition = html.indexOf('js/nbo-shared.js');

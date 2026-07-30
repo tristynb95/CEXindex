@@ -590,6 +590,10 @@
   background: rgba(34, 31, 26, 0.06);
 }
 
+.bakery-profile-tag--green { color: var(--green); background: var(--green-d); }
+.bakery-profile-tag--gold { color: #a96b11; background: var(--gold-d); }
+.bakery-profile-tag--red { color: var(--red); background: var(--red-d); }
+
 .bakery-profile-map {
   width: 100%;
   height: 390px;
@@ -844,6 +848,56 @@
   gap: 8px;
 }
 
+/* Visit log: tighter cards than the shared list default, and capped to
+   roughly six cards tall before it scrolls instead of pushing the page
+   layout down indefinitely. */
+#bakeryVisitLog {
+  gap: 6px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 3px;
+  scrollbar-color: var(--card-border-h) transparent;
+  scrollbar-width: thin;
+}
+
+#bakeryVisitLog::-webkit-scrollbar {
+  width: 5px;
+}
+
+#bakeryVisitLog::-webkit-scrollbar-thumb {
+  background: var(--card-border-h);
+  border-radius: 5px;
+}
+
+#bakeryVisitLog .bakery-activity-row {
+  padding: 9px 11px;
+}
+
+#bakeryVisitLog .bakery-activity-row__type {
+  padding: 2px 8px;
+  font-size: 0.62rem;
+}
+
+#bakeryVisitLog .bakery-profile-tag {
+  min-height: 22px;
+  padding: 0 8px;
+  font-size: 0.6rem;
+}
+
+#bakeryVisitLog .bakery-activity-row__report {
+  min-height: 26px;
+  padding: 0 9px;
+  font-size: 0.62rem;
+}
+
+#bakeryVisitLog .bakery-activity-row p {
+  margin-top: 2px;
+}
+
+#bakeryVisitLog .bakery-activity-row small {
+  margin-top: 2px;
+}
+
 .bakery-profile-empty {
   min-height: 170px;
   background: var(--card-2);
@@ -874,6 +928,12 @@
   background: var(--card-2);
   border: 1px solid var(--card-border);
   border-radius: 12px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.bakery-activity-row:hover {
+  border-color: var(--card-border-strong, var(--card-border));
+  box-shadow: 0 4px 14px rgba(34, 31, 26, 0.07);
 }
 
 .bakery-activity-row__marker {
@@ -886,6 +946,25 @@
   border-radius: 50%;
   box-shadow: 0 0 0 2px var(--accent-light);
 }
+
+.bakery-activity-row__marker--teal { background: var(--teal); box-shadow: 0 0 0 2px var(--teal-d); }
+.bakery-activity-row__marker--purple { background: var(--purple); box-shadow: 0 0 0 2px var(--purple-d); }
+.bakery-activity-row__marker--red { background: var(--red); box-shadow: 0 0 0 2px var(--red-d); }
+.bakery-activity-row__marker--gold { background: var(--gold); box-shadow: 0 0 0 2px var(--gold-d); }
+
+.bakery-activity-row__type {
+  padding: 3px 9px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+.bakery-activity-row__type--teal { color: var(--teal); background: var(--teal-d); }
+.bakery-activity-row__type--purple { color: var(--purple); background: var(--purple-d); }
+.bakery-activity-row__type--red { color: var(--red); background: var(--red-d); }
+.bakery-activity-row__type--gold { color: #a96b11; background: var(--gold-d); }
 
 .bakery-activity-row__body,
 .bakery-task-row__body {
@@ -930,7 +1009,6 @@
   outline-offset: 2px;
 }
 
-.bakery-activity-row strong,
 .bakery-task-row strong {
   font-size: 0.78rem;
 }
