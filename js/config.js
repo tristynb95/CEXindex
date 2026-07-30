@@ -706,7 +706,7 @@ window.GAILS.ABS_BAND_RANGES = {
 };
 
 // ========== CEI WEIGHTS & BENCHMARKS ==========
-window.GAILS.CEI_WEIGHTS = { nps: 0.15, ef: 0.25, dr: 0.25, fr: 0.25, time: 0.05, at: 0.05 };
+window.GAILS.CEI_WEIGHTS = { nps: 0.20, ef: 0.20, dr: 0.20, fr: 0.20, time: 0.10, at: 0.10 };
 window.GAILS.BENCHMARKS = { nps: 55, ef: 90, dr: 90, fr: 90, time: 70, at: 120 };
 window.GAILS.BENCHMARK_FLOORS = { nps: 45, ef: 80, dr: 80, fr: 80, at: 125 };
 

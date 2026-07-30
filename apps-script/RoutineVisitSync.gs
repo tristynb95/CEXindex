@@ -79,17 +79,27 @@ var QUESTION_MAP = {
   'Barista routine in use. Baristas scaling to service needs.': { section: 'coffeeEfficiency', field: 'baristaRoutineScaling' },
   'Comments': { section: 'coffeeEfficiency', field: 'comments' },
 
-  'House Blend is prepared to recipe': { section: 'coffeeQuality', field: 'houseBlendRecipe' },
-  'Filter is balanced and within 2hr shelf life': { section: 'coffeeQuality', field: 'filterBalancedShelfLife' },
-  'Espresso tamping is even and there are no cracks or craters in coffee bed': { section: 'coffeeQuality', field: 'espressoTampingEven' },
-  'Espresso Taste': { section: 'coffeeQuality', field: 'espressoTaste', parse: Number },
-  'Milk steamed to standard': { section: 'coffeeQuality', field: 'milkSteamedStandard' },
-  'Milk Quality': { section: 'coffeeQuality', field: 'milkQuality', parse: Number },
-  'Coffee is not pre-ground': { section: 'coffeeQuality', field: 'coffeeNotPreGround' },
-  'Drinks have latte art': { section: 'coffeeQuality', field: 'latteArt' },
-  'Drink Presentation': { section: 'coffeeQuality', field: 'drinkPresentation', parse: Number },
-  'Quality Comments': { section: 'coffeeQuality', field: 'comments' },
-  'Upload Coffee Quality Photos': { section: 'coffeeQuality', field: 'photos', isFile: true },
+  'House Blend is prepared to recipe': { section: 'drinkQuality', field: 'houseBlendRecipe' },
+  'Filter is balanced and within 2hr shelf life': { section: 'drinkQuality', field: 'filterBalancedShelfLife' },
+  'Coffee is not pre-ground': { section: 'drinkQuality', field: 'coffeeNotPreGround' },
+  'Espresso tamping is even and there are no cracks or craters in coffee bed': { section: 'drinkQuality', field: 'espressoTampingEven' },
+  'Milk steamed to standard': { section: 'drinkQuality', field: 'milkSteamedStandard' },
+  'Drinks have latte art': { section: 'drinkQuality', field: 'latteArt' },
+  'Drink presentation to standard': { section: 'drinkQuality', field: 'presentationToStandard' },
+  'Drink Presentation': { section: 'drinkQuality', field: 'drinkPresentation', parse: Number },
+  'Quality Comments': { section: 'drinkQuality', field: 'comments' },
+  'Upload Coffee Quality Photos': { section: 'drinkQuality', field: 'photos', isFile: true },
+
+  'Grinders are clean and well maintained': { section: 'maintenance', field: 'grindersClean' },
+  'Espresso machines are clean and well maintained': { section: 'maintenance', field: 'espressoMachinesClean' },
+  'Steam wands are free of build up': { section: 'maintenance', field: 'steamWandsFreeBuildUp' },
+  'Scales available and in use': { section: 'maintenance', field: 'scalesAvailableInUse' },
+  'Barista maintenance box fully stocked': { section: 'maintenance', field: 'baristaMaintenanceBoxStocked' },
+  'Pitcher rinser clean and working': { section: 'maintenance', field: 'pitcherRinserCleanWorking' },
+  'Hot water boiler clean and working': { section: 'maintenance', field: 'hotWaterBoilerCleanWorking' },
+  'Ice machines clean and working': { section: 'maintenance', field: 'iceMachinesCleanWorking' },
+  'Maintenance Comments': { section: 'maintenance', field: 'comments' },
+  'Upload Maintenance Photos': { section: 'maintenance', field: 'photos', isFile: true },
 
   'Head Barista actively coaching team': { section: 'leadership', field: 'headBaristaCoaching' },
   'Lead barista actively communicating with till and coffee standby': { section: 'leadership', field: 'leadBaristaCommunicatingTillStandby' },
@@ -106,7 +116,7 @@ function onFormSubmit(e) {
     var response = e.response;
     var record = {
       service: {}, healthSafety: {}, coffeeEfficiency: {},
-      coffeeQuality: {}, leadership: {}, complianceTraining: {}
+      drinkQuality: {}, maintenance: {}, leadership: {}, complianceTraining: {}
     };
 
     // Section point totals are tallied here (not hardcoded anywhere) by reading
@@ -116,7 +126,8 @@ function onFormSubmit(e) {
     // ever changed in the Form.
     var sectionScores = {
       service: { earned: 0, max: 0 }, healthSafety: { earned: 0, max: 0 },
-      coffeeEfficiency: { earned: 0, max: 0 }, coffeeQuality: { earned: 0, max: 0 },
+      coffeeEfficiency: { earned: 0, max: 0 }, drinkQuality: { earned: 0, max: 0 },
+      maintenance: { earned: 0, max: 0 },
       leadership: { earned: 0, max: 0 }, complianceTraining: { earned: 0, max: 0 }
     };
 

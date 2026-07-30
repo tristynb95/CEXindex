@@ -48,18 +48,60 @@
     { label: 'Average wait time', weightKey: 'at' }
   ];
 
-  function benchmarkScoreInfoHtml() {
-    var weightRows = BENCHMARK_SCORE_PARTS.map(function (part) {
+  function benchmarkComponentScore(record, weightKey) {
+    if (!record) return null;
+    if (weightKey === 'time') {
+      return typeof record.ats === 'number' && !isNaN(record.ats)
+        ? record.ats
+        : G.computeCoffeeEfficiencyComponent(record.s2, record.s3, record.s4, record.o5);
+    }
+    if (weightKey === 'at') {
+      return typeof record.a_at === 'number' && !isNaN(record.a_at)
+        ? record.a_at
+        : G.computeAbsoluteWaitComponent(record.at);
+    }
+    var sourceKey = weightKey === 'nps' ? 'n' : weightKey;
+    return G.computeAbsoluteComponent(
+      record[sourceKey],
+      G.BENCHMARKS[weightKey],
+      G.BENCHMARK_FLOORS[weightKey]
+    );
+  }
+
+  function benchmarkScoreInfoHtml(records, publishedScore) {
+    var scoredRecords = Array.isArray(records) ? records : [];
+    var rawScore = 0;
+    var scoreRows = BENCHMARK_SCORE_PARTS.map(function (part) {
       var weight = G.CEI_WEIGHTS && G.CEI_WEIGHTS[part.weightKey];
       var percentage = typeof weight === 'number' ? Math.round(weight * 100) + '%' : '\u2014';
-      return '<li><span>' + part.label + '</span><strong>' + percentage + '</strong></li>';
+      var points = null;
+      if (scoredRecords.length && typeof weight === 'number') {
+        points = scoredRecords.reduce(function (sum, record) {
+          return sum + benchmarkComponentScore(record, part.weightKey) * weight;
+        }, 0) / scoredRecords.length;
+        rawScore += points;
+      }
+      var pointsText = points === null ? '\u2014' : points.toFixed(1);
+      return '<li><span class="kpi-info__measure">' + part.label + '</span>'
+        + '<span class="kpi-info__weight" aria-label="Weight ' + percentage + '">' + percentage + '</span>'
+        + '<span class="kpi-info__points" aria-label="Points earned ' + pointsText + '">' + pointsText + '</span></li>';
     }).join('');
+    var hasPublishedScore = typeof publishedScore === 'number' && !isNaN(publishedScore);
+    var volumeAdjustment = hasPublishedScore && scoredRecords.length ? publishedScore - rawScore : 0;
+    var adjustmentRow = Math.abs(volumeAdjustment) >= 0.05
+      ? '<li class="kpi-info__adjustment"><span>Volume adjustment</span><span aria-hidden="true">\u2014</span><span class="kpi-info__adjustment-value">'
+        + (volumeAdjustment > 0 ? '+' : '') + volumeAdjustment.toFixed(1) + '</span></li>'
+      : '';
     return '<details class="kpi-info">'
       + '<summary aria-label="How the Benchmark Score is calculated"><span aria-hidden="true">i</span></summary>'
       + '<div class="kpi-info__panel">'
       + '<strong>How the score works</strong>'
       + '<p>Six results make one score out of 100.</p>'
-      + '<ul class="kpi-info__weights">' + weightRows + '</ul>'
+      + '<div class="kpi-info__columns" aria-hidden="true"><span></span><span>Weight</span><span>Points</span></div>'
+      + '<ul class="kpi-info__weights" aria-label="Score weight and points breakdown">' + scoreRows + adjustmentRow
+      + '<li class="kpi-info__total"><span>Score</span><span aria-hidden="true"></span><strong>'
+      + (hasPublishedScore ? publishedScore.toFixed(1) : '\u2014') + '</strong></li>'
+      + '</ul>'
       + '<p class="kpi-info__target"><strong>' + BENCHMARK_MEETING_SCORE + '+</strong> means Meeting.</p>'
       + '<a class="kpi-info__link" href="#cei" data-benchmark-methodology>View the full methodology <span aria-hidden="true">\u2192</span></a>'
       + '</div>'
@@ -780,7 +822,7 @@
 
     dashboardKpiRow.innerHTML = cards.map(function (metric) {
       return '<article class="kpi ' + metric.tone + (metric.primary ? ' kpi--primary' : '') + (metric.info ? ' kpi--has-info' : '') + '">'
-        + (metric.info ? benchmarkScoreInfoHtml() : '')
+        + (metric.info ? benchmarkScoreInfoHtml(scoredData, acei) : '')
         + '<div class="kpi__top">'
         + '<span class="kpi__eyebrow">' + metric.eyebrow + '</span>'
         + '<span class="kpi__status">' + metric.status + '</span>'

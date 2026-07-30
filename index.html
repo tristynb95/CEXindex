@@ -821,13 +821,13 @@
                 <p>The source is the uploaded <strong>NPS + Coffee Data</strong> workbook. Each monthly sheet supplies
                   one row per bakery. Ratings and timing percentages are held on a 0&ndash;100 scale; average wait is
                   held in seconds.</p>
-                <div class="method-weight-map" aria-label="Score weights: quality 25%, customer-rated efficiency 25%, friendliness 25%, NPS 15%, coffee efficiency 5%, average wait 5%">
-                  <div class="method-weight-map__segment method-weight-map__segment--quality"><strong>25%</strong><span>Quality</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--efficiency"><strong>25%</strong><span>Efficiency</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--friendly"><strong>25%</strong><span>Friendliness</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--nps"><strong>15%</strong><span>NPS</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--timing"><strong>5%</strong><span>Coffee<br>timing</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--wait"><strong>5%</strong><span>Wait</span></div>
+                <div class="method-weight-map" aria-label="Score weights: quality 20%, customer-rated efficiency 20%, friendliness 20%, NPS 20%, coffee efficiency 10%, average wait 10%">
+                  <div class="method-weight-map__segment method-weight-map__segment--quality"><strong>20%</strong><span>Quality</span></div>
+                  <div class="method-weight-map__segment method-weight-map__segment--efficiency"><strong>20%</strong><span>Efficiency</span></div>
+                  <div class="method-weight-map__segment method-weight-map__segment--friendly"><strong>20%</strong><span>Friendliness</span></div>
+                  <div class="method-weight-map__segment method-weight-map__segment--nps"><strong>20%</strong><span>NPS</span></div>
+                  <div class="method-weight-map__segment method-weight-map__segment--timing"><strong>10%</strong><span>Coffee<br>timing</span></div>
+                  <div class="method-weight-map__segment method-weight-map__segment--wait"><strong>10%</strong><span>Wait</span></div>
                 </div>
                 <div class="method-table-wrap" tabindex="0" role="region"
                   aria-label="Score inputs and weights; scroll horizontally if needed">
@@ -843,44 +843,44 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr data-methodology-key="nps" data-weight="0.15" data-target="55" data-floor="45">
+                      <tr data-methodology-key="nps" data-weight="0.2" data-target="55" data-floor="45">
                         <th scope="row">Drink + Meal NPS</th>
                         <td>Recommendation score for drink and meal responses</td>
-                        <td><strong>15%</strong></td>
+                        <td><strong>20%</strong></td>
                         <td>55 or higher</td>
                         <td>45 or lower</td>
                       </tr>
-                      <tr data-methodology-key="dr" data-weight="0.25" data-target="90" data-floor="80">
+                      <tr data-methodology-key="dr" data-weight="0.2" data-target="90" data-floor="80">
                         <th scope="row">Drink quality</th>
                         <td>Customer rating</td>
-                        <td><strong>25%</strong></td>
+                        <td><strong>20%</strong></td>
                         <td>90% or higher</td>
                         <td>80% or lower</td>
                       </tr>
-                      <tr data-methodology-key="ef" data-weight="0.25" data-target="90" data-floor="80">
+                      <tr data-methodology-key="ef" data-weight="0.2" data-target="90" data-floor="80">
                         <th scope="row">Customer-rated efficiency</th>
                         <td>Customer rating</td>
-                        <td><strong>25%</strong></td>
+                        <td><strong>20%</strong></td>
                         <td>90% or higher</td>
                         <td>80% or lower</td>
                       </tr>
-                      <tr data-methodology-key="fr" data-weight="0.25" data-target="90" data-floor="80">
+                      <tr data-methodology-key="fr" data-weight="0.2" data-target="90" data-floor="80">
                         <th scope="row">Friendliness</th>
                         <td>Customer rating</td>
-                        <td><strong>25%</strong></td>
+                        <td><strong>20%</strong></td>
                         <td>90% or higher</td>
                         <td>80% or lower</td>
                       </tr>
-                      <tr data-methodology-key="time" data-weight="0.05">
+                      <tr data-methodology-key="time" data-weight="0.1">
                         <th scope="row">Coffee efficiency</th>
                         <td>Within 2 minutes, within 3 minutes and over 5 minutes</td>
-                        <td><strong>5%</strong></td>
+                        <td><strong>10%</strong></td>
                         <td colspan="2">Calculated from three timing tests below</td>
                       </tr>
-                      <tr data-methodology-key="at" data-weight="0.05" data-target="120" data-floor="125">
+                      <tr data-methodology-key="at" data-weight="0.1" data-target="120" data-floor="125">
                         <th scope="row">Average wait time</th>
                         <td>Mean drink wait in seconds</td>
-                        <td><strong>5%</strong></td>
+                        <td><strong>10%</strong></td>
                         <td>2:00 (120s) or less</td>
                         <td>125 seconds or more</td>
                       </tr>
@@ -978,21 +978,21 @@
                       </header>
                       <div class="method-score-build">
                         <div class="method-score-build__formula">
-                <div class="formula formula--score">raw score = (NPS &times; 0.15) + (quality &times; 0.25) + (customer efficiency &times;
-                  0.25) + (friendliness &times; 0.25) + (coffee efficiency &times; 0.05) + (average wait &times; 0.05)</div>
+                <div class="formula formula--score">raw score = (NPS &times; 0.2) + (quality &times; 0.2) + (customer efficiency &times;
+                  0.2) + (friendliness &times; 0.2) + (coffee efficiency &times; 0.1) + (average wait &times; 0.1)</div>
                 <p>The values in this formula are component points, not the original source results. The raw score is
                   rounded to one decimal place.</p>
 
                         </div>
 
-                <div class="method-example" data-example-score="72.1">
+                <div class="method-example" data-example-score="70.2">
                   <h4>Worked example</h4>
                   <p>A bakery has at least 15 responses, so no low-volume adjustment applies. Its source results are:
                     NPS 50; quality 88%; customer-rated efficiency 85%; friendliness 92%; 65% within 2 minutes; 88%
                     within 3 minutes; 1.2% over 5 minutes; and a 122-second average wait.</p>
                   <p>These convert to component points of 50, 80, 50, 100, 81.8 and 60 respectively.</p>
-                  <p><strong>(50 &times; 0.15) + (80 &times; 0.25) + (50 &times; 0.25) + (100 &times; 0.25) + (81.8 &times; 0.05) + (60 &times;
-                      0.05) = 72.1.</strong></p>
+                  <p><strong>(50 &times; 0.2) + (80 &times; 0.2) + (50 &times; 0.2) + (100 &times; 0.2) + (81.8 &times; 0.1) + (60 &times;
+                      0.1) = 70.2.</strong></p>
                 </div>
                       </div>
                     </section>
@@ -1120,7 +1120,7 @@
                     <p>For a monthly result, each of the same six measures is converted to a percentile within the
                       scored company cohort. The lowest result receives 0 and the highest receives 100; lower wait time
                       is better. Ties use the average tied position. A one-bakery cohort receives 50. The six
-                      percentiles use the same 15%, 25%, 25%, 25%, 5% and 5% weights, followed by the same
+                      percentiles use the same 20%, 20%, 20%, 20%, 10% and 10% weights, followed by the same
                       response-volume adjustment.</p>
                     <p>For a multi-month result, the quality, customer-efficiency and friendliness peer components are
                       averages of their monthly percentiles. NPS, within-2-minute performance and average-wait

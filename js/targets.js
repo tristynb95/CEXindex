@@ -164,7 +164,7 @@ var _TIER_LABEL = { critical: 'High', high: 'Medium', watch: 'Monitor' };
 
 var _DRIVER_ACTIONS = {
   dr: 'Run a drink-standards calibration with the coffee lead — check espresso dial-in, milk texturing and presentation against spec.',
-  ef: 'Review peak-hour deployment and the barista rota. Customer-rated efficiency carries 25% of the experience index, so gains here have a meaningful impact.',
+  ef: 'Review peak-hour deployment and the barista rota. Customer-rated efficiency carries 20% of the experience index, so gains here have a meaningful impact.',
   fr: 'Coach the team on warm greetings and handover moments — observe service interactions during the next routine visit.',
   n: 'Read this bakery’s recent customer comments in the Comment Cloud tab and agree one specific service fix with the BM.',
   ts: 'Track drink delivery times at peak — the standard is 70% of drinks served within 2 minutes (and 90% within 3).',

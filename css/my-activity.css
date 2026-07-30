@@ -2620,6 +2620,8 @@ body.my-activity-modal-open {
 }
 
 .my-activity-patch-map-wrap {
+  position: relative;
+  z-index: 0;
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--card-border);

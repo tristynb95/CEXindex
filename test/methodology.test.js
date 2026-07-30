@@ -64,7 +64,7 @@ test('worked example reproduces the score shown on the page', () => {
     components[5] * weights.at
   ) * 10) / 10;
 
-  assert.equal(raw, 72.1);
+  assert.equal(raw, 70.2);
   assert.match(html, new RegExp(`data-example-score="${raw}"`));
 });
 

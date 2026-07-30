@@ -77,9 +77,13 @@ test('the landing brief separates assigned-patch priorities from follow-up work'
   ].forEach((id) => assert.match(html, new RegExp('id="' + id + '"')));
 
   assert.match(script, /function renderFieldBrief\(\)/);
-  assert.match(script, /var patch = assignedPatchBakeries\(\)/);
+  assert.match(script, /var assignedPatch = assignedPatchBakeries\(\)/);
+  assert.match(script, /var patch = assignedFocusBakeries\(focusContext\)/);
   assert.match(script, /var priorities = patch\.map\(function \(bakery\)/);
   assert.match(script, /\}\)\.slice\(0, 10\)/);
+  assert.match(script, /lowest score first/);
+  assert.match(script, /No focus bakeries in your patch/);
+  assert.doesNotMatch(script, /var urgency =/);
   assert.match(script, /Colleague covered; your field view is still needed/);
   assert.match(script, /class="my-activity-priority__reason"/);
   assert.match(script, /<b>Ops area<\/b>/);
@@ -1042,4 +1046,27 @@ test('the access modal reads a person back, including a missing flag', () => {
     notificationScope: '',
     myActivity: false
   });
+});
+
+test('the landing brief uses the dashboard Focus Bakery membership and order inside the assigned patch', () => {
+  const context = extract(
+    ['canonicalBakeryName', 'bakerySiteName', 'assignedFocusBakeries'],
+    {
+      assignedPatchBakeries: () => ['Balham', 'Dulwich', 'Soho'],
+      G: {
+        resolveBakeryMetaKey: (name) => String(name).replace(/^GAIL'?s\s+/i, '')
+      }
+    }
+  );
+  const focusContext = {
+    data: [
+      { b: 'Balham', ac: 82, acb: 'Meeting' },
+      { b: 'Soho', ac: 68, acb: 'Approaching' },
+      { b: 'Dulwich', ac: 52, acb: 'Below Standard' },
+      { b: 'Mayfair', ac: 24, acb: 'Below Standard' },
+      { b: 'Kensal Rise', ac: 91, acb: 'Exceeding' }
+    ]
+  };
+
+  assert.deepEqual(Array.from(context.assignedFocusBakeries(focusContext)), ['Dulwich', 'Soho']);
 });

@@ -768,21 +768,48 @@ function performanceRowsForBakery(bakery) {
   });
 }
 
+function activityFocusDataset() {
+  if (typeof G.buildFocusDataset !== 'function' || !performanceRecords.length) return null;
+  return G.buildFocusDataset({
+    records: performanceRecords,
+    referenceDate: new Date(),
+    isAbsolute: true,
+    ignoreBandFilter: true,
+    state: { regionFilter: [], opsFilter: [], searchBakery: [], bandFilter: '' }
+  });
+}
+
+// The brief is a patch-scoped reading of the dashboard's Focus Bakeries list,
+// not a separate recommendation model. Use the same eligibility, completed-
+// month weighting and Benchmark Score bands, then keep only this person's
+// assigned bakeries and the same lowest-score-first order.
+function assignedFocusBakeries(focusContext) {
+  var assigned = new Set(assignedPatchBakeries().map(canonicalBakeryName));
+  var focus = focusContext || activityFocusDataset();
+  if (!assigned.size || !focus) return [];
+  return (focus.data || []).filter(function (snapshot) {
+    var name = canonicalBakeryName(snapshot.b);
+    return assigned.has(name) &&
+      (snapshot.acb === 'Below Standard' || snapshot.acb === 'Approaching');
+  }).sort(function (a, b) {
+    var scoreA = typeof a.ac === 'number' && !isNaN(a.ac) ? a.ac : Infinity;
+    var scoreB = typeof b.ac === 'number' && !isNaN(b.ac) ? b.ac : Infinity;
+    return scoreA - scoreB ||
+      bakerySiteName(canonicalBakeryName(a.b)).localeCompare(bakerySiteName(canonicalBakeryName(b.b)));
+  }).map(function (snapshot) {
+    return canonicalBakeryName(snapshot.b);
+  });
+}
+
 // One comparable performance record per bakery. The weighted Focus Bakery
 // snapshot is preferred because it reflects sustained performance; the latest
 // usable month is the resilient fallback. Month-on-month delta always uses the
 // latest two observed closed months so "improved" and "declined" stay literal.
-function patchPerformance() {
+function patchPerformance(focusContext) {
   var patch = assignedPatchBakeries();
   var snapshots = {};
-  if (typeof G.buildFocusDataset === 'function' && performanceRecords.length) {
-    var focus = G.buildFocusDataset({
-      records: performanceRecords,
-      referenceDate: new Date(),
-      isAbsolute: true,
-      ignoreBandFilter: true,
-      state: { regionFilter: [], opsFilter: [], searchBakery: [], bandFilter: '' }
-    });
+  var focus = focusContext || activityFocusDataset();
+  if (focus) {
     (focus.allSnapshots || []).forEach(function (snapshot) {
       snapshots[canonicalBakeryName(snapshot.b)] = snapshot;
     });
@@ -2387,9 +2414,11 @@ function renderFieldBrief() {
   var openTasks = myTasks().filter(function (task) {
     return !taskIsDone(task) && task.bakery;
   });
-  var patch = assignedPatchBakeries();
+  var focusContext = activityFocusDataset();
+  var assignedPatch = assignedPatchBakeries();
+  var patch = assignedFocusBakeries(focusContext);
   var patchPerformanceByBakery = {};
-  patchPerformance().forEach(function (item) {
+  patchPerformance(focusContext).forEach(function (item) {
     patchPerformanceByBakery[canonicalBakeryName(item.bakery)] = item;
   });
   var estateVisits = allVisits().slice().sort(function (a, b) {
@@ -2412,44 +2441,35 @@ function renderFieldBrief() {
     var daysSinceVisit = latest
       ? Math.max(0, Math.floor((Date.now() - visitOccurredAt(latest)) / 86400000))
       : null;
-    var urgency = latest ? (daysSinceVisit >= 90 ? 72 : daysSinceVisit >= 60 ? 52 : daysSinceVisit >= 30 ? 28 : 4) : 120;
-    if (!latest && colleagues.length) urgency += 18;
-    tasks.forEach(function (task) {
-      if (taskIsOverdue(task)) urgency += 35;
-      else if (taskIsDueSoon(task)) urgency += 18;
-      else if (normalizePriority(task.priority) === 'high') urgency += 10;
-    });
-    if (performance && performance.score != null) {
-      if (performance.score < 60) urgency += 42;
-      else if (performance.score < 75) urgency += 24;
-      if (performance.delta != null && performance.delta <= -5) urgency += 22;
-    }
     return {
       bakery: bakery,
       latest: latest,
       colleagueLatest: colleagues[0] || null,
       tasks: tasks,
       performance: performance,
-      daysSinceVisit: daysSinceVisit,
-      urgency: urgency
+      daysSinceVisit: daysSinceVisit
     };
-  }).sort(function (a, b) {
-    return b.urgency - a.urgency ||
-      (a.daysSinceVisit == null ? -1 : b.daysSinceVisit == null ? 1 : b.daysSinceVisit - a.daysSinceVisit) ||
-      bakerySiteName(a.bakery).localeCompare(bakerySiteName(b.bakery));
   }).slice(0, 10);
 
   if (patchHintEl) {
-    patchHintEl.textContent = patch.length
-      ? priorities.length + ' shown of ' + plural(patch.length, 'assigned bakery', 'assigned bakeries') +
-        ' · highest need first'
+    patchHintEl.textContent = assignedPatch.length
+      ? (patch.length
+        ? priorities.length + ' shown of ' + plural(patch.length, 'focus bakery', 'focus bakeries') +
+          ' in ' + plural(assignedPatch.length, 'assigned bakery', 'assigned bakeries') +
+          ' · lowest score first'
+        : 'No focus bakeries in ' + plural(assignedPatch.length, 'assigned bakery', 'assigned bakeries'))
       : 'Waiting for a region or ops-area assignment';
   }
 
   if (!priorities.length) {
     prioritiesEl.innerHTML = '<div class="my-activity-brief-empty">' +
-      '<span aria-hidden="true">⌖</span><div><strong>No assigned patch found</strong>' +
-      '<p>Ask an administrator to check your Coffee Partner or Area Head Barista assignment.</p></div></div>';
+      '<span aria-hidden="true">⌖</span><div><strong>' +
+      (assignedPatch.length ? 'No focus bakeries in your patch' : 'No assigned patch found') +
+      '</strong><p>' +
+      (assignedPatch.length
+        ? 'Every eligible assigned bakery is currently Meeting or Exceeding.'
+        : 'Ask an administrator to check your Coffee Partner or Area Head Barista assignment.') +
+      '</p></div></div>';
   } else {
     prioritiesEl.innerHTML = priorities.map(function (brief, index) {
       var overdue = brief.tasks.filter(taskIsOverdue);

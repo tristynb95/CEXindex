@@ -61,18 +61,31 @@ window.GAILS_VISIT_SCHEMA = {
       ]
     },
     {
-      key: 'coffeeQuality', title: 'Coffee Quality', fields: [
+      key: 'drinkQuality', title: 'Drink Quality', fields: [
         { key: 'houseBlendRecipe', label: 'House Blend is prepared to recipe', type: 'ynna' },
         { key: 'filterBalancedShelfLife', label: 'Filter is balanced and within 2hr shelf life', type: 'ynna' },
-        { key: 'espressoTampingEven', label: 'Espresso tamping is even and there are no cracks or craters in coffee bed', type: 'ynna' },
-        { key: 'espressoTaste', label: 'Espresso Taste (1-10)', type: 'scale' },
-        { key: 'milkSteamedStandard', label: 'Milk steamed to standard', type: 'ynna' },
-        { key: 'milkQuality', label: 'Milk Quality (1-10)', type: 'scale' },
         { key: 'coffeeNotPreGround', label: 'Coffee is not pre-ground', type: 'ynna' },
+        { key: 'espressoTampingEven', label: 'Espresso tamping is even and there are no cracks or craters in coffee bed', type: 'ynna' },
+        { key: 'milkSteamedStandard', label: 'Milk steamed to standard', type: 'ynna' },
         { key: 'latteArt', label: 'Drinks have latte art', type: 'ynna' },
-        { key: 'drinkPresentation', label: 'Drink Presentation (1-10)', type: 'scale' },
+        { key: 'presentationToStandard', label: 'Drink presentation to standard', type: 'ynna' },
+        { key: 'drinkPresentation', label: 'Drink Presentation (scale: Poor – Exceptional)', type: 'scale' },
         { key: 'comments', label: 'Quality comments', type: 'textarea' },
         { key: 'photos', label: 'Coffee quality photos', type: 'photos' }
+      ]
+    },
+    {
+      key: 'maintenance', title: 'Maintenance', fields: [
+        { key: 'grindersClean', label: 'Grinders are clean and well maintained', type: 'ynna' },
+        { key: 'espressoMachinesClean', label: 'Espresso machines are clean and well maintained', type: 'ynna' },
+        { key: 'steamWandsFreeBuildUp', label: 'Steam wands are free of build up', type: 'ynna' },
+        { key: 'scalesAvailableInUse', label: 'Scales available and in use', type: 'ynna' },
+        { key: 'baristaMaintenanceBoxStocked', label: 'Barista maintenance box fully stocked', type: 'ynna' },
+        { key: 'pitcherRinserCleanWorking', label: 'Pitcher rinser clean and working', type: 'ynna' },
+        { key: 'hotWaterBoilerCleanWorking', label: 'Hot water boiler clean and working', type: 'ynna' },
+        { key: 'iceMachinesCleanWorking', label: 'Ice machines clean and working', type: 'ynna' },
+        { key: 'comments', label: 'Maintenance comments', type: 'textarea' },
+        { key: 'photos', label: 'Maintenance photos', type: 'photos' }
       ]
     },
     {
