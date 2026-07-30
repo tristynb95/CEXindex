@@ -848,11 +848,10 @@
   gap: 8px;
 }
 
-/* Visit log: tighter cards than the shared list default, and capped to
-   roughly six cards tall before it scrolls instead of pushing the page
-   layout down indefinitely. */
-#bakeryVisitLog {
-  gap: 6px;
+/* Visit log and follow-up tasks: both cap at roughly six cards tall before
+   scrolling, instead of pushing the page layout down indefinitely. */
+#bakeryVisitLog,
+#bakeryTaskList {
   max-height: 500px;
   overflow-y: auto;
   padding-right: 3px;
@@ -860,13 +859,19 @@
   scrollbar-width: thin;
 }
 
-#bakeryVisitLog::-webkit-scrollbar {
+#bakeryVisitLog::-webkit-scrollbar,
+#bakeryTaskList::-webkit-scrollbar {
   width: 5px;
 }
 
-#bakeryVisitLog::-webkit-scrollbar-thumb {
+#bakeryVisitLog::-webkit-scrollbar-thumb,
+#bakeryTaskList::-webkit-scrollbar-thumb {
   background: var(--card-border-h);
   border-radius: 5px;
+}
+
+#bakeryVisitLog {
+  gap: 6px;
 }
 
 #bakeryVisitLog .bakery-activity-row {
