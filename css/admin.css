@@ -648,6 +648,16 @@
   gap: 6px;
 }
 
+.admin-body .admin-table__coords {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-body .admin-table__coords input {
+  width: 90px;
+  min-width: 0;
+}
+
 /* Cards and overview */
 .admin-body .admin-overview-grid,
 .admin-body .admin-data-grid,

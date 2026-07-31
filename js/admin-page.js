@@ -127,6 +127,7 @@ const datasetImportLoadedHint = document.getElementById('datasetImportLoadedHint
 const portalUploadBtn = document.getElementById('portalUploadBtn');
 const clearDatasetBtn = document.getElementById('clearDatasetBtn');
 const restoreMetaBtn  = document.getElementById('restoreMetadataBtn');
+const syncCoordinatesBtn = document.getElementById('syncCoordinatesBtn');
 const compactSidebarMedia = window.matchMedia('(max-width: 980px)');
 const activityLogList     = document.getElementById('activityLogList');
 const visitSearchInput    = document.getElementById('visitSearchInput');
@@ -1068,6 +1069,18 @@ function parseSiteMetaWorkbook(data) {
 
     if (meta[name]) duplicateCount += 1;
     meta[name] = { r: region, o: ops };
+
+    // This workbook only carries region/ops columns. Coordinates are set by
+    // hand in the Site Directory, so carry forward whatever is already saved
+    // for a matching bakery rather than letting the missing value fall back
+    // to the built-in default on every import.
+    var existingKey = window.GAILS && typeof window.GAILS.resolveBakeryMetaKey === 'function'
+      ? window.GAILS.resolveBakeryMetaKey(name)
+      : name;
+    var existingEntry = state.siteMetaDraft && state.siteMetaDraft[existingKey];
+    if (existingEntry && Array.isArray(existingEntry.ll)) {
+      meta[name].ll = existingEntry.ll;
+    }
   }
 
   var normalizedMeta = window.GAILS && typeof window.GAILS.cloneBakeryMeta === 'function'
@@ -2224,7 +2237,7 @@ function renderSites() {
   renderDatalists();
   updateSiteTableMeta(rows.length);
   if (!rows.length) {
-    siteList.innerHTML = '<tr><td colspan="4" class="admin-empty">No sites match the current search.</td></tr>';
+    siteList.innerHTML = '<tr><td colspan="5" class="admin-empty">No sites match the current search.</td></tr>';
     return;
   }
   var sitesEditable = canEdit('sites');
@@ -2237,6 +2250,10 @@ function renderSites() {
       }) + '</div></td>'
       + '<td><input type="text" value="' + escapeHtml(row.entry.r || '') + '" list="adminRegionList"  data-site="' + escapeHtml(row.name) + '" data-field="r" placeholder="Region"' + siteInputDis + '></td>'
       + '<td><input type="text" value="' + escapeHtml(row.entry.o || '') + '" list="adminManagerList" data-site="' + escapeHtml(row.name) + '" data-field="o" placeholder="Ops area"' + siteInputDis + '></td>'
+      + '<td><div class="admin-table__coords">'
+      + '<input type="text" inputmode="decimal" value="' + escapeHtml(Array.isArray(row.entry.ll) ? row.entry.ll[0] : '') + '" data-site="' + escapeHtml(row.name) + '" data-coord="lat" placeholder="Latitude"' + siteInputDis + '>'
+      + '<input type="text" inputmode="decimal" value="' + escapeHtml(Array.isArray(row.entry.ll) ? row.entry.ll[1] : '') + '" data-site="' + escapeHtml(row.name) + '" data-coord="lon" placeholder="Longitude"' + siteInputDis + '>'
+      + '</div></td>'
       + '<td>' + (sitesEditable
           ? '<div class="admin-table__actions"><button type="button" class="admin-inline-danger" data-action="remove-site" data-site="' + escapeHtml(row.name) + '">Remove</button></div>'
           : '<div class="admin-status-note">View only</div>')
@@ -3644,6 +3661,35 @@ function updateSiteDraft(name, field, value) {
   renderDataControls();
 }
 
+// Both boxes write into the same [lat, lon] pair, so a coordinate is only
+// saved once both halves parse - typing just one half leaves ll untouched
+// rather than saving a broken single-number pin.
+function updateSiteCoordinateDraft(name, part, value) {
+  if (!state.siteMetaDraft[name]) state.siteMetaDraft[name] = { r: '', o: '' };
+  var entry = state.siteMetaDraft[name];
+  var current = Array.isArray(entry.ll) ? entry.ll : [null, null];
+  var lat = part === 'lat' ? value : (current[0] != null ? current[0] : '');
+  var lon = part === 'lon' ? value : (current[1] != null ? current[1] : '');
+  var latText = String(lat == null ? '' : lat).trim();
+  var lonText = String(lon == null ? '' : lon).trim();
+
+  if (!latText && !lonText) {
+    entry.ll = null;
+  } else {
+    var latNum = Number(latText);
+    var lonNum = Number(lonText);
+    if (latText && lonText && isFinite(latNum) && isFinite(lonNum) &&
+        latNum >= -90 && latNum <= 90 && lonNum >= -180 && lonNum <= 180) {
+      entry.ll = [latNum, lonNum];
+    }
+    // An incomplete or out-of-range pair is left as-is in the draft (not
+    // written to entry.ll) so a half-typed value can't be saved as a pin.
+  }
+  setDirty(true);
+  updateSiteTableMeta(getVisibleSiteMeta().length);
+  renderDataControls();
+}
+
 function updateRegionAssignmentDraft(region, field, value, userUid) {
   var next = regionAssignmentApi().updateAssignment(
     detectedSiteRegions(state.siteMetaDraft),
@@ -3980,7 +4026,8 @@ function applyAdminAccessUI() {
     dataset: [
       document.querySelector('[data-admin-panel-content="data"] .admin-dataset-upload'),
       clearDatasetBtn,
-      restoreMetaBtn
+      restoreMetaBtn,
+      syncCoordinatesBtn
     ],
     visits: [document.querySelector('[data-admin-panel-content="visits"] .admin-dataset-upload')]
   };
@@ -4667,7 +4714,12 @@ siteForm.addEventListener('input', updateSiteSaveControls);
 
 siteList.addEventListener('input', function(e) {
   var input = e.target;
-  if (!input.dataset.site || !input.dataset.field) return;
+  if (!input.dataset.site) return;
+  if (input.dataset.coord) {
+    updateSiteCoordinateDraft(input.dataset.site, input.dataset.coord, input.value);
+    return;
+  }
+  if (!input.dataset.field) return;
   updateSiteDraft(input.dataset.site, input.dataset.field, input.value);
 });
 
@@ -5006,6 +5058,36 @@ restoreMetaBtn.addEventListener('click', async function() {
   } finally {
     restoreMetaBtn.disabled = false;
   }
+});
+
+// Coordinates only, unlike Restore Default Site Map: region/ops area
+// assignments (and any bakeries only present live, not in the built-in
+// directory) are left untouched. Stages the change into the draft rather
+// than saving immediately, so the admin can review the Sites tab first.
+syncCoordinatesBtn.addEventListener('click', function() {
+  var defaults = window.GAILS && window.GAILS.DEFAULT_BAKERY_META ? window.GAILS.DEFAULT_BAKERY_META : {};
+  var updated = 0;
+  Object.keys(state.siteMetaDraft || {}).forEach(function(name) {
+    var key = window.GAILS && typeof window.GAILS.resolveBakeryMetaKey === 'function'
+      ? window.GAILS.resolveBakeryMetaKey(name)
+      : name;
+    var fallback = defaults[key] || defaults[name];
+    if (!fallback || !Array.isArray(fallback.ll)) return;
+    var entry = state.siteMetaDraft[name];
+    var current = Array.isArray(entry.ll) ? entry.ll : null;
+    if (current && Number(current[0]) === Number(fallback.ll[0]) && Number(current[1]) === Number(fallback.ll[1])) return;
+    entry.ll = fallback.ll.slice();
+    updated += 1;
+  });
+
+  if (!updated) {
+    setMessage(dataMsg, 'info', 'Coordinates already match the built-in directory - nothing to update.');
+    return;
+  }
+  setDirty(true);
+  renderSites();
+  renderDataControls();
+  setMessage(dataMsg, 'success', 'Updated coordinates for ' + updated + ' site' + (updated === 1 ? '' : 's') + ' in the Sites tab. Review them there, then Save to publish.');
 });
 
 // ── CQV import zone + confirm modal ──
