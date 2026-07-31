@@ -125,3 +125,25 @@ test('a deferred panel draws the same data its own refresh would have', () => {
   assert.match(noData, /target: function \(\) \{ G\.renderTargets\(scoredData\); \}/);
   assert.match(normal, /target: function \(\) \{ G\.renderTargets\(data\); \}/);
 });
+
+test('a postponed render is still drawn while its panel is cheap to draw', () => {
+  const app = withoutComments(read('js/app.js'));
+
+  // Deferring on its own moves the cost the wrong way: a hidden panel renders
+  // cheaply because the browser skips layout for display:none, so leaving the
+  // render for the click that reveals it trades a fast filter change for a slow
+  // tab click. The warm is what keeps both fast — remove it and you get the
+  // trade, not the win.
+  const batch = app.slice(app.indexOf('function renderOrDeferPanels'));
+  assert.match(batch.slice(0, batch.indexOf('\n  }')), /warmPendingPanels\(\);/);
+
+  const warm = app.slice(app.indexOf('function warmPendingPanels'));
+  const body = warm.slice(0, warm.indexOf('\n  }\n'));
+  assert.match(body, /requestIdleCallback/, 'the warm must wait for an idle moment');
+  // Superseded warms have to abandon: filters changed in quick succession
+  // should leave only the last one to draw.
+  assert.match(body, /var token = \+\+warmToken;/);
+  assert.match(body, /if \(token !== warmToken\) return;/);
+  // Cleared before drawing, so a panel opened mid-warm is not drawn twice.
+  assert.match(body, /delete pendingPanelRenders\[name\];[\s\S]*?render\(\);/);
+});

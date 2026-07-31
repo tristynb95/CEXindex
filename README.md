@@ -444,18 +444,36 @@ Two rules keep these honest, and `test/refresh-caching.test.js` pins both:
 
 ## Which panels a refresh draws
 
-Overview aside, only one panel is on screen at a time, and four of them are
-expensive because each builds Chart.js instances — the Focus panel alone builds
-four named charts plus a sparkline per focus bakery. A refresh used to draw all
-of them, so changing a filter while looking at the Overview paid for Trends,
-Speed vs NPS, the League Table and Focus Bakeries as well.
+`refresh()` runs on every filter, period and tab change. It used to draw every
+panel, and four of them are expensive because each builds Chart.js instances —
+the Focus panel alone builds four named charts plus a sparkline per focus
+bakery. Measured on the bundled directory (198 bakeries x 30 months), a filter
+change on the Overview cost **~157 ms**, nearly all of it panels nobody was
+looking at.
 
-`refresh()` now draws the panel you are looking at and keeps the rest as a
-closure over the data they would have drawn (`renderOrDeferPanels` in
-`js/app.js`); `activateDashboardTab` draws one from that closure when you open
-it. This generalises what the Trends panel already did on its own.
+It now draws the panel you are looking at and keeps the rest as a closure over
+the data they would have drawn (`renderOrDeferPanels` in `js/app.js`).
 
-Two things make it safe, and `test/deferred-panel-renders.test.js` pins both:
+**Deferring alone is not the win, and on its own it is a regression.** A hidden
+panel renders cheaply because the browser skips layout for `display:none`; the
+same render against a visible panel costs several times more. Left to be drawn
+on the click that reveals it, Focus made a filter change instant and a tab click
+a half-second stall:
+
+| | filter change on Overview | opening Focus |
+| --- | --- | --- |
+| Drawing every panel every time | ~157 ms | ~45 ms |
+| Deferring only | ~9 ms | **~560 ms** |
+| Deferring **and** warming | ~9 ms | ~39 ms |
+
+So the postponed renders are also drawn during the first idle moment after the
+refresh, while they are still hidden and still cheap (`warmPendingPanels`). Same
+idea as the library warming in `js/lazy-lib.js`. The only case that pays the
+full price is clicking into Focus in the same instant as changing a filter,
+before an idle moment has come round.
+
+Three things make this safe, and `test/deferred-panel-renders.test.js` pins all
+three:
 
 - **Nothing outside a panel reads what its render produces.** The one exception
   is the header's bakery count, which reads the `G._focusDataContext` that
@@ -467,6 +485,9 @@ Two things make it safe, and `test/deferred-panel-renders.test.js` pins both:
 - **A postponed render draws what its own refresh would have.** The no-data path
   draws Focus from the scored rows and the normal path from all of them; the
   closures are what keep that difference once the render is postponed.
+- **A superseded warm abandons.** Filters changed in quick succession leave only
+  the last one to draw, so this does less work than the unconditional render it
+  replaced, not more.
 
 The Map tab is unaffected: `storeDashboardMapData` feeds it directly from
 `refresh()`, and only the Focus map is fed from `renderTargets`.

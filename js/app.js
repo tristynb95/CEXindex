@@ -395,6 +395,11 @@
     document.querySelectorAll('.tab-content').forEach(function (panel) {
       panel.classList.toggle('active', panel === activePanel);
     });
+    // As soon as the panel is on screen and before anything reads what its
+    // render publishes — the sub-tab reset below picks a panel to size, and
+    // renderHeaderSummary() further down takes the Focus bakery count off
+    // G._focusDataContext.
+    var flushedPanel = flushPendingPanel(name);
     if (name === 'target' && previousName && previousName !== 'target') {
       activateTargetSubtab('summary', { scrollNav: false });
     }
@@ -455,15 +460,11 @@
       return activePanel;
     }
 
-    if (name === 'trends' && G._trendsNeedRender) {
-      G._trendsNeedRender = false;
-      requestAnimationFrame(function () {
-        if (G._lastData) G.renderTrendCharts(G._lastData.filter(function (r) { return r && !r.noData; }));
-      });
-      return activePanel;
-    }
-
-    resizeChartsSoon(activePanel);
+    // A panel drawn from a pending render builds its charts at the size they
+    // already have, so resizing them in the same breath is wasted work. Trends
+    // skipped this line for that reason back when it was the only panel that
+    // deferred; every deferred panel now skips it on the same grounds.
+    if (!flushedPanel) resizeChartsSoon(activePanel);
     if (name === 'target') {
       var activeSubtab = activePanel.querySelector('.target-subtab-panel.active');
       if (activeSubtab && activeSubtab.dataset.targetSubtabPanel === 'map') {
@@ -566,6 +567,83 @@
     window.addEventListener('resize', fitKpiValues);
   }
 
+  // ========== DEFERRED PANEL RENDERS ==========
+  // Overview aside, only one panel is ever on screen, but a refresh used to
+  // render all of them — and these four are the expensive ones, because each
+  // builds Chart.js instances (the Focus panel alone builds four named charts
+  // plus a sparkline per focus bakery). Changing a filter while looking at the
+  // Overview paid for every one of them.
+  //
+  // So a refresh renders the panel you are looking at and remembers the rest as
+  // a closure over the data it would have drawn; opening one of those panels
+  // draws it from that closure. Nothing outside a panel reads what its render
+  // produces, with one exception noted on flushPendingPanel below.
+  var pendingPanelRenders = {};
+
+  // Takes { panelName: function () { ...render... } }. The closure form matters:
+  // the two refresh paths hand the Focus panel different arguments, and a
+  // deferred render has to draw what its own refresh would have drawn.
+  function renderOrDeferPanels(renderers) {
+    Object.keys(renderers).forEach(function (name) {
+      var panel = document.getElementById('tab-' + name);
+      delete pendingPanelRenders[name];
+      if (panel && panel.classList.contains('active')) renderers[name]();
+      else pendingPanelRenders[name] = renderers[name];
+    });
+    warmPendingPanels();
+  }
+
+  // Deferring alone would only move the cost, and move it the wrong way: a
+  // hidden panel renders cheaply because the browser skips layout for
+  // display:none, while the same render against a visible panel costs several
+  // times more. Left to be drawn on the click that reveals it, the Focus panel
+  // turns a filter change from slow into instant and a tab click into a stall.
+  //
+  // So the postponed renders are also drawn during the first idle moment after
+  // the refresh, while they are still hidden and still cheap. The interaction
+  // gets its frame back, the work still happens off the critical path, and
+  // opening the panel finds it already drawn. Same idea as the library warming
+  // in js/lazy-lib.js.
+  //
+  // The token is how a superseded warm is abandoned: filters changed in quick
+  // succession leave only the last one to draw, which is less work than the
+  // unconditional render this replaced, not more.
+  var warmToken = 0;
+
+  function warmPendingPanels() {
+    var token = ++warmToken;
+    var idle = window.requestIdleCallback || function (fn) { return window.setTimeout(fn, 200); };
+    idle(function () {
+      if (token !== warmToken) return;
+      Object.keys(pendingPanelRenders).forEach(function (name) {
+        var render = pendingPanelRenders[name];
+        // Cleared before drawing, so opening the panel mid-warm doesn't draw twice.
+        delete pendingPanelRenders[name];
+        render();
+      });
+    }, { timeout: 2000 });
+  }
+
+  // Focus is drawn on the spot rather than on the next frame because
+  // renderHeaderSummary(), a few lines further down activateDashboardTab, reads
+  // the bakery count off the G._focusDataContext that renderTargets publishes —
+  // and nothing would redraw the header afterwards. The invariant this keeps is
+  // that G._focusDataContext is current whenever the Focus panel is on screen.
+  //
+  // The rest go on the next frame, as the Trends panel always has: it lets the
+  // tab switch paint before the charts are built, and no other view reads
+  // anything they produce.
+  //
+  // Returns whether this panel had a render waiting for it.
+  function flushPendingPanel(name) {
+    var render = pendingPanelRenders[name];
+    if (!render) return false;
+    delete pendingPanelRenders[name];
+    if (name === 'target') render();
+    else requestAnimationFrame(render);
+    return true;
+  }
+
   // ========== REFRESH ==========
   function refresh() {
     if (state.ALL.length === 0) return;
@@ -607,16 +685,13 @@
       fitKpiValues();
       G.renderOverviewCharts(data);
       G._lastData = data;
-      var trendsPanelEmpty = document.getElementById('tab-trends');
-      if (trendsPanelEmpty && trendsPanelEmpty.classList.contains('active')) {
-        G.renderTrendCharts(scoredData);
-        G._trendsNeedRender = false;
-      } else {
-        G._trendsNeedRender = true;
-      }
-      G.renderSpeedCharts(scoredData);
-      G.renderLeagueTable(data);
-      G.renderTargets(scoredData);
+      renderOrDeferPanels({
+        trends: function () { G.renderTrendCharts(scoredData); },
+        speed: function () { G.renderSpeedCharts(scoredData); },
+        table: function () { G.renderLeagueTable(data); },
+        // The no-data path has always drawn Focus from the scored rows.
+        target: function () { G.renderTargets(scoredData); }
+      });
       renderHeaderSummary();
       return;
     }
@@ -839,16 +914,12 @@
 
     G.renderOverviewCharts(data);
     G._lastData = data;
-    var trendsPanel = document.getElementById('tab-trends');
-    if (trendsPanel && trendsPanel.classList.contains('active')) {
-      G.renderTrendCharts(scoredData);
-      G._trendsNeedRender = false;
-    } else {
-      G._trendsNeedRender = true;
-    }
-    G.renderSpeedCharts(scoredData);
-    G.renderLeagueTable(data);
-    G.renderTargets(data);
+    renderOrDeferPanels({
+      trends: function () { G.renderTrendCharts(scoredData); },
+      speed: function () { G.renderSpeedCharts(scoredData); },
+      table: function () { G.renderLeagueTable(data); },
+      target: function () { G.renderTargets(data); }
+    });
     renderHeaderSummary();
 
     // Word clouds — only call when their panel is visible; fetch functions handle cache
