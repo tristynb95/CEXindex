@@ -15,6 +15,18 @@ window.GAILS.getRollingMonths = function() {
 (function() {
   var G = window.GAILS;
 
+  // A multi-month period used to demand a scored row in *every* month it
+  // covered, so a bakery that opened part-way through — or lost a single
+  // month — fell out of the sample entirely. Over a long window such as "All"
+  // that excluded most of the newer estate. A bakery now only needs three
+  // scored months, provided its data still runs up to the end of the period,
+  // and it is scored on the months it actually has.
+  var MIN_SCORED_MONTHS = 3;
+
+  function isScoredRow(record) {
+    return G.hasScoredData ? G.hasScoredData(record) : !!record && !record.noData;
+  }
+
   function isRankable(record) {
     return !!record && !record.noData && !record.incompletePeriod &&
       record.ac !== null && record.ac !== undefined && !isNaN(record.ac);
@@ -49,16 +61,29 @@ window.GAILS.getRollingMonths = function() {
     var expectedPeriodMonths = selectedMonths.filter(function(month) {
       return monthsPresent.has(month);
     });
-    var expectedMonths = expectedPeriodMonths.length || selectedMonths.length;
+    var periodMonths = expectedPeriodMonths.length ? expectedPeriodMonths : selectedMonths;
+    var expectedMonths = periodMonths.length;
+    var requiredMonths = Math.min(MIN_SCORED_MONTHS, expectedMonths);
+    // Recent history means the bakery is still reporting at the end of the
+    // period, not that it reported in a fixed calendar window. The closing
+    // window is the same size as the floor, so a period of three months or
+    // fewer still asks for full coverage and behaves exactly as it did before.
+    var closingMonths = periodMonths.slice(-requiredMonths);
     var aggregated = [];
 
     Object.keys(grouped).forEach(function(bakery) {
       var rows = grouped[bakery];
+      var scoredRows = rows.filter(isScoredRow);
+      // Averages run over the months the bakery was actually scored in. An
+      // unscored month carries null scores and empty metrics, and now that
+      // partial coverage is allowed those months would otherwise be averaged
+      // in as zeroes and understate every site with a gap.
+      var statRows = scoredRows.length ? scoredRows : rows;
       var avg = function(key) {
-        return rows.reduce(function(total, record) { return total + record[key]; }, 0) / rows.length;
+        return statRows.reduce(function(total, record) { return total + record[key]; }, 0) / statRows.length;
       };
       var avgDefined = function(key) {
-        var values = rows
+        var values = statRows
           .map(function(record) { return record[key]; })
           .filter(function(value) { return typeof value === 'number' && !isNaN(value); });
         return values.length ? values.reduce(function(total, value) { return total + value; }, 0) / values.length : null;
@@ -67,22 +92,24 @@ window.GAILS.getRollingMonths = function() {
         return value === null ? null : Math.round(value * 10) / 10;
       };
       var sum = function(key) {
-        var values = rows
+        var values = statRows
           .map(function(record) { return record[key]; })
           .filter(function(value) { return typeof value === 'number' && !isNaN(value); });
         return values.length ? Math.round(values.reduce(function(total, value) { return total + value; }, 0)) : null;
       };
-      var totalVolume = Math.round(rows.reduce(function(total, record) { return total + record.v; }, 0));
-      var scoredMonthCount = new Set(rows
-        .filter(function(record) { return G.hasScoredData ? G.hasScoredData(record) : record && !record.noData; })
-        .map(function(record) { return record.m; })).size;
+      var totalVolume = Math.round(statRows.reduce(function(total, record) { return total + record.v; }, 0));
+      var scoredMonths = new Set(scoredRows.map(function(record) { return record.m; }));
+      var scoredMonthCount = scoredMonths.size;
+      var stillReporting = closingMonths.some(function(month) { return scoredMonths.has(month); });
 
       var aggregate = {
         b: bakery,
         m: selectedMonths.join(', '),
         monthsExpected: expectedMonths,
         monthsCovered: scoredMonthCount,
-        incompletePeriod: scoredMonthCount < expectedMonths,
+        monthsRequired: requiredMonths,
+        incompletePeriod: scoredMonthCount < requiredMonths || !stillReporting,
+        partialPeriod: scoredMonthCount >= requiredMonths && stillReporting && scoredMonthCount < expectedMonths,
         n: round1(avg('n')),
         v: totalVolume,
         s2: round1(avg('s2')),

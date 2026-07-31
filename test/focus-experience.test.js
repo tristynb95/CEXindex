@@ -112,7 +112,7 @@ test('groups unavailable main-map results under one Not Scored state', () => {
   assert.doesNotMatch(networkLegend, /label: '(?:Incomplete|No Data)'/);
   assert.match(networkHint, /Not Scored/);
   assert.match(targets, /var statusLabel = 'Not Scored'/);
-  assert.match(targets, /Some data is available, but not enough to calculate a score/);
+  assert.match(targets, /Fewer than three scored months in this period/);
   assert.match(targets, /No performance data is available for this period/);
   assert.match(targets, /site' \+ \(noDataCount === 1 \? '' : 's'\) \+ ' not scored this period\.'/);
 });

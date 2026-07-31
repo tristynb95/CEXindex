@@ -70,8 +70,10 @@ test('worked example reproduces the score shown on the page', () => {
 
 test('methodology records the implemented audit and adjustment rules', () => {
   assert.match(html, /data-methodology="auditable"/);
-  assert.match(html, /simple arithmetic mean of the available monthly values/);
-  assert.match(html, /it is not weighted by\s+monthly response volume/);
+  assert.match(html, /simple arithmetic mean of the bakery's scored monthly values/);
+  assert.match(html, /it is not weighted\s+by monthly response volume/);
+  assert.match(html, /months with no scored data are left out of the average rather than\s+counted as zero/);
+  assert.match(html, /scored for the period once it has three scored months and is still reporting/);
   assert.match(html, /blank\s+average wait remains missing; the current calculation gives it 100 benchmark component points/);
   assert.match(html, /75% raw \+ 25% cohort mean/);
   assert.match(html, /35% raw \+ 65% cohort mean/);

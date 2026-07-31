@@ -1072,10 +1072,13 @@
                 <div class="method-audit-grid">
                   <section>
                     <h4>More than one month selected</h4>
-                    <p>Each KPI is the simple arithmetic mean of the available monthly values; it is not weighted by
-                      monthly response volume. Response volume and drink counts are summed. A bakery must have scored
-                      data in every month present in the selected company period or its period result is marked
-                      incomplete and is not ranked.</p>
+                    <p>Each KPI is the simple arithmetic mean of the bakery's scored monthly values; it is not weighted
+                      by monthly response volume, and months with no scored data are left out of the average rather than
+                      counted as zero. Response volume and drink counts are summed over the same scored months. A bakery
+                      is scored for the period once it has three scored months and is still reporting &mdash; at least
+                      one of those months falls in the final three months present in the period. Below that floor, or
+                      where the data stops before the period closes, the result is marked incomplete and is not ranked.
+                      Periods of three months or fewer therefore still require every month present.</p>
                   </section>
                   <section>
                     <h4>Missing source values</h4>

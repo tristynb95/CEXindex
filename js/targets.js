@@ -1608,7 +1608,7 @@ document.addEventListener('keydown', function (event) {
     if (item.noData) {
       var statusLabel = 'Not Scored';
       var statusCopy = item.incompletePeriod
-        ? 'Some data is available, but not enough to calculate a score for this period'
+        ? 'Fewer than three scored months in this period, or the data stops before it closes'
         : 'No performance data is available for this period';
       var noDataVisitLine = lastVisit
         ? '<button type="button" class="map-popup__visit map-popup__visit--link" data-visit-report="' + escapeHtml(item.b) + '">' + escapeHtml(formatLastVisitDate(lastVisit)) + ' &rarr;</button>'

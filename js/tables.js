@@ -531,6 +531,11 @@ window.GAILS.renderLeagueTable = function (data) {
   var pctOrDash = function (v) { return hasVal(v) ? v + '%' : '—'; };
   document.getElementById('tableBody').innerHTML = sorted.map(function (b) {
     var rankEligible = !b.noData && !b.incompletePeriod;
+    // A scored bakery that only traded for part of the period is ranked like
+    // any other, so say plainly how many months are behind its figures.
+    var coverageNote = b.partialPeriod && b.monthsExpected > 1
+      ? ' title="Scored on ' + b.monthsCovered + ' of ' + b.monthsExpected + ' months in this period"'
+      : '';
     // Both position cells are filled in by renumberRankedTable below, which
     // keeps them true to whatever ordering the table is currently showing.
     return '<tr data-rank-eligible="' + rankEligible + '">' +
@@ -544,7 +549,7 @@ window.GAILS.renderLeagueTable = function (data) {
       '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(b.b) + '</td>' +
       '<td style="font-weight:600">' + numOrDash(b.ac) + '</td>' +
       '<td><span class="band ' + absBandClass(b.acb) + '">' + b.acb + '</span></td>' +
-      '<td><span class="conf ' + G.bc(b.co) + '">' + b.co + '</span></td>' +
+      '<td><span class="conf ' + G.bc(b.co) + '"' + coverageNote + '>' + b.co + '</span></td>' +
       '<td' + G.metricRagStyle('n', b.n) + '>' + b.n + '</td>' +
       '<td class="nps-split-col"' + G.metricRagStyle('nc', b.nc) + '>' + numOrDash(b.nc) + '</td>' +
       '<td class="nps-split-col"' + G.metricRagStyle('nm', b.nm) + '>' + numOrDash(b.nm) + '</td>' +
