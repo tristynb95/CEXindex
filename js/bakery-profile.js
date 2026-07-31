@@ -833,7 +833,7 @@ function competitionCategory(tags) {
 
 function fsaCompetitionCategory(name) {
   var normalised = normalisedPlaceName(name);
-  if (/greggs|bakery|patisserie|pastry/.test(normalised)) return 'Bakery';
+  if (/greggs|fegos|bakery|patisserie|pastry/.test(normalised)) return 'Bakery';
   if (/coffee|costa|starbucks|caffenero|timhortons|blacksheep/.test(normalised)) return 'Coffee shop';
   return 'Café';
 }
@@ -884,7 +884,7 @@ function normaliseCompetitionElements(elements, origin) {
 }
 
 function normaliseFsaCompetitionElements(establishments, origin) {
-  var namePattern = /bakery|cafe|coffee|patisserie|tearoom|greggs|costa|starbucks|caffenero|pretamanger|paul|oleandsteen|timhortons|blacksheep|coffee1/;
+  var namePattern = /bakery|cafe|coffee|patisserie|tearoom|greggs|fegos|costa|starbucks|caffenero|pretamanger|paul|oleandsteen|timhortons|blacksheep|coffee1/;
   var typePattern = /restaurant|cafe|canteen|takeaway|sandwich|retailer|catering/;
   return (Array.isArray(establishments) ? establishments : []).map(function(establishment) {
     var name = String(establishment && establishment.BusinessName || '').trim();
@@ -956,7 +956,7 @@ function competitionQuery(ll) {
     'nwr(around:' + COMPETITION_RADIUS_METRES + ',' + Number(ll[0]) + ',' + Number(ll[1]) +
       ')["amenity"="cafe"];' +
     'nwr(around:' + COMPETITION_RADIUS_METRES + ',' + Number(ll[0]) + ',' + Number(ll[1]) +
-      ')["name"~"Greggs","i"];' +
+      ')["name"~"Greggs|Fegos","i"];' +
     ');out center tags;';
 }
 
