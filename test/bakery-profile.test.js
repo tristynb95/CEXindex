@@ -261,6 +261,7 @@ test('nearby competition excludes GAILs, removes duplicates, and sorts by distan
     'normalisedPlaceName',
     'competitionCategory',
     'competitionAddress',
+    'isClosedCompetitionTags',
     'normaliseCompetitionElements'
   ];
   const source = functionNames.map((name) => {

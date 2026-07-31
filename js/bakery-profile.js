@@ -852,10 +852,20 @@ function fsaCompetitionAddress(establishment) {
   ].map(function(part) { return String(part || '').trim(); }).filter(Boolean).join(', ');
 }
 
+function isClosedCompetitionTags(tags) {
+  if (tags.disused === 'yes' || tags.disused === 'true') return true;
+  var closurePrefix = /^(disused|was|closed|abandoned|demolished|removed)[:_]/i;
+  if (Object.keys(tags).some(function(key) { return closurePrefix.test(key); })) return true;
+  if (/permanently closed|out of business/i.test(String(tags.note || ''))) return true;
+  if (/^closed$/i.test(String(tags.opening_hours || '').trim())) return true;
+  return false;
+}
+
 function normaliseCompetitionElements(elements, origin) {
   var seen = {};
   return (Array.isArray(elements) ? elements : []).map(function(element) {
     var tags = element && element.tags || {};
+    if (isClosedCompetitionTags(tags)) return null;
     var lat = Number(element && (element.lat != null ? element.lat : element.center && element.center.lat));
     var lon = Number(element && (element.lon != null ? element.lon : element.center && element.center.lon));
     var name = String(tags.name || tags.brand || tags.operator || '').trim();
@@ -893,8 +903,10 @@ function normaliseFsaCompetitionElements(establishments, origin) {
     var geocode = establishment && establishment.geocode || {};
     var lat = Number(geocode.latitude);
     var lon = Number(geocode.longitude);
+    var schemeType = String(establishment && establishment.SchemeType || '').toLowerCase();
     if (!name || !isFinite(lat) || !isFinite(lon) || !typePattern.test(type) ||
-        !namePattern.test(normalised) || normalised.indexOf('gails') !== -1) return null;
+        !namePattern.test(normalised) || normalised.indexOf('gails') !== -1 ||
+        schemeType.indexOf('closed') !== -1) return null;
     return {
       name: name.replace(/\s+(PLC|Ltd)$/i, ''),
       category: fsaCompetitionCategory(name),
