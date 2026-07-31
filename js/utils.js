@@ -82,11 +82,20 @@ window.GAILS.parseSheetMonth = function(name) {
   return GAILS.MONTH_SHORT[mi] + ' ' + yr;
 };
 
+// Memoised because it is called from sort comparators and from per-record
+// loops over the whole dataset, and it re-split the same handful of "MMM YY"
+// labels every time. The label-to-key mapping is fixed, and a dataset only ever
+// holds a few dozen distinct months, so the cache stays tiny and never needs
+// clearing. Null-prototype so a label can't collide with an inherited member.
+var _monthSortKeyCache = Object.create(null);
+
 window.GAILS.monthSortKey = function(label) {
+  var cached = _monthSortKeyCache[label];
+  if (cached !== undefined) return cached;
   var parts = label.split(' ');
   var mi = GAILS.MONTH_SHORT.indexOf(parts[0]);
   var yr = 2000 + parseInt(parts[1]);
-  return yr * 12 + mi;
+  return (_monthSortKeyCache[label] = yr * 12 + mi);
 };
 
 window.GAILS.getCurrentMonthLabel = function() {
@@ -201,13 +210,38 @@ window.GAILS.resolvePeriodMonths = function(rawValue, months, records) {
 };
 
 // ========== PERCENTILE RANK ==========
-window.GAILS.percentileRank = function(values, value, invert) {
+// Sorts a cohort once and returns a lookup for ranking values within it.
+//
+// Ranking a whole cohort means asking the same question of the same array once
+// per member, and percentileRank sorted a fresh copy every time it was asked —
+// so scoring 200 bakeries against 200 peers cost 200 sorts, per metric. The
+// index does the sort once; each lookup is then a map read.
+//
+// Ties keep the midpoint of the run they occupy, and a value that is not in the
+// cohort still lands at the -1 both ends of indexOf/lastIndexOf produced, so
+// the numbers are the ones the old two-scan version returned.
+window.GAILS.buildPercentileIndex = function(values, invert) {
   var sorted = [...values].sort((a, b) => invert ? b - a : a - b);
-  if (sorted.length <= 1) return 50;
-  var first = sorted.indexOf(value);
-  var last = sorted.lastIndexOf(value);
-  var avgRank = (first + last) / 2;
-  return (avgRank / (sorted.length - 1)) * 100;
+  var size = sorted.length;
+  var positions = new Map();
+  for (var i = 0; i < size; i++) {
+    var entry = positions.get(sorted[i]);
+    if (entry === undefined) positions.set(sorted[i], { first: i, last: i });
+    else entry.last = i;
+  }
+  return function(value) {
+    if (size <= 1) return 50;
+    // A Map would match NaN to a NaN key; indexOf never did, so a NaN has to
+    // stay unfound here too.
+    var found = (typeof value === 'number' && isNaN(value)) ? undefined : positions.get(value);
+    var first = found ? found.first : -1;
+    var last = found ? found.last : -1;
+    return (((first + last) / 2) / (size - 1)) * 100;
+  };
+};
+
+window.GAILS.percentileRank = function(values, value, invert) {
+  return window.GAILS.buildPercentileIndex(values, invert)(value);
 };
 
 // ========== GENERIC HELPERS ==========

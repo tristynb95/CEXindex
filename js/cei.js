@@ -63,11 +63,16 @@ window.GAILS.recomputeTimelinessRanks = function(records) {
     .map(function(r) { return r.at; })
     .filter(function(v) { return v !== null && v !== undefined && !isNaN(v); });
 
+  // One sort per cohort rather than one per bakery per metric.
+  var npsRank = G.buildPercentileIndex(npsVals, false);
+  var tsRank = G.buildPercentileIndex(tsVals, false);
+  var atRank = G.buildPercentileIndex(atVals, true);
+
   scored.forEach(function(r) {
-    r.np = Math.round(G.percentileRank(npsVals, r.n, false) * 10) / 10;
-    r.ap = Math.round(G.percentileRank(tsVals, r.ts, false) * 10) / 10;
+    r.np = Math.round(npsRank(r.n) * 10) / 10;
+    r.ap = Math.round(tsRank(r.ts) * 10) / 10;
     if (r.at !== null && r.at !== undefined && !isNaN(r.at)) {
-      r.atp = Math.round(G.percentileRank(atVals, r.at, true) * 10) / 10;
+      r.atp = Math.round(atRank(r.at) * 10) / 10;
     } else {
       r.atp = 50.0;
     }
@@ -199,14 +204,22 @@ window.GAILS.computeCEI = function(monthRecords) {
     .map(function(r) { return r.at; })
     .filter(function(v) { return v !== null && v !== undefined && !isNaN(v); });
 
+  // One sort per metric for the whole month, not one per record per metric.
+  var npsRank = G.buildPercentileIndex(npsVals, false);
+  var efRank = G.buildPercentileIndex(efVals, false);
+  var drRank = G.buildPercentileIndex(drVals, false);
+  var frRank = G.buildPercentileIndex(frVals, false);
+  var tsRank = G.buildPercentileIndex(tsVals, false);
+  var atRank = G.buildPercentileIndex(atVals, true);
+
   scoredRecords.forEach(function(r) {
-    r.np = Math.round(G.percentileRank(npsVals, r.n, false) * 10) / 10;
-    r.ep = Math.round(G.percentileRank(efVals, r.ef, false) * 10) / 10;
-    r.dp = Math.round(G.percentileRank(drVals, r.dr, false) * 10) / 10;
-    r.fp = Math.round(G.percentileRank(frVals, r.fr, false) * 10) / 10;
-    r.ap = Math.round(G.percentileRank(tsVals, r.ts, false) * 10) / 10;
+    r.np = Math.round(npsRank(r.n) * 10) / 10;
+    r.ep = Math.round(efRank(r.ef) * 10) / 10;
+    r.dp = Math.round(drRank(r.dr) * 10) / 10;
+    r.fp = Math.round(frRank(r.fr) * 10) / 10;
+    r.ap = Math.round(tsRank(r.ts) * 10) / 10;
     if (r.at !== null && r.at !== undefined && !isNaN(r.at)) {
-      r.atp = Math.round(G.percentileRank(atVals, r.at, true) * 10) / 10;
+      r.atp = Math.round(atRank(r.at) * 10) / 10;
     } else {
       r.atp = 50.0;
     }

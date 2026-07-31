@@ -82,20 +82,29 @@ window.GAILS.getRollingMonths = function() {
       var avg = function(key) {
         return statRows.reduce(function(total, record) { return total + record[key]; }, 0) / statRows.length;
       };
+      // avgDefined and sum are each asked for around twenty fields per bakery.
+      // Built out of map().filter().reduce() they walked the rows three times
+      // and allocated two throwaway arrays per field; one pass, no allocation.
       var avgDefined = function(key) {
-        var values = statRows
-          .map(function(record) { return record[key]; })
-          .filter(function(value) { return typeof value === 'number' && !isNaN(value); });
-        return values.length ? values.reduce(function(total, value) { return total + value; }, 0) / values.length : null;
+        var total = 0;
+        var count = 0;
+        for (var i = 0; i < statRows.length; i++) {
+          var value = statRows[i][key];
+          if (typeof value === 'number' && !isNaN(value)) { total += value; count++; }
+        }
+        return count ? total / count : null;
       };
       var round1 = function(value) {
         return value === null ? null : Math.round(value * 10) / 10;
       };
       var sum = function(key) {
-        var values = statRows
-          .map(function(record) { return record[key]; })
-          .filter(function(value) { return typeof value === 'number' && !isNaN(value); });
-        return values.length ? Math.round(values.reduce(function(total, value) { return total + value; }, 0)) : null;
+        var total = 0;
+        var count = 0;
+        for (var i = 0; i < statRows.length; i++) {
+          var value = statRows[i][key];
+          if (typeof value === 'number' && !isNaN(value)) { total += value; count++; }
+        }
+        return count ? Math.round(total) : null;
       };
       var totalVolume = Math.round(statRows.reduce(function(total, record) { return total + record.v; }, 0));
       var scoredMonths = new Set(scoredRows.map(function(record) { return record.m; }));
@@ -181,14 +190,60 @@ window.GAILS.getRollingMonths = function() {
     return records;
   }
 
-  function buildCompanyPeriodData() {
+  function computeCompanyPeriodData() {
     var state = G.state;
     var selectedMonths = [].concat(state.selectedMonths || []);
+    // Set membership rather than Array#includes: over a long period this test
+    // runs once per record per month, and "All" makes that the largest loop on
+    // the refresh path.
+    var wanted = new Set(selectedMonths);
     var records = state.ALL.filter(function(record) {
-      return selectedMonths.includes(record.m);
+      return wanted.has(record.m);
     });
     return assignCompanyRanking(aggregatePeriodRecords(records, selectedMonths));
   }
+
+  // The company-wide period aggregate — every bakery, ranked, before any
+  // dashboard filter narrows it. It is the most expensive step of a refresh and
+  // a single refresh asks for it more than once: updateBandFilterOptions() needs
+  // it to work out which bands exist, then getData() needs it again to render,
+  // and the word cloud asks a third time when the Feedback tab is open. The
+  // result depends on nothing but the loaded dataset and the selected period,
+  // so it is computed once per (dataset, period) and handed back after that.
+  //
+  // state.ALL is only ever replaced wholesale (js/app.js sets it when a dataset
+  // loads), so its identity is a sound staleness signal; the month list is
+  // compared by value because it is rebuilt on every period change.
+  // A control character, so it cannot occur inside a "MMM YY" label and two
+  // different month lists cannot produce the same key.
+  var MONTH_KEY_SEPARATOR = String.fromCharCode(1);
+
+  var _periodCacheAll = null;
+  var _periodCacheMonths = null;
+  var _periodCacheData = null;
+
+  function invalidateCompanyPeriodData() {
+    _periodCacheAll = null;
+    _periodCacheMonths = null;
+    _periodCacheData = null;
+  }
+
+  function buildCompanyPeriodData() {
+    var state = G.state;
+    var all = state.ALL;
+    var monthKey = (state.selectedMonths || []).join(MONTH_KEY_SEPARATOR);
+    if (_periodCacheData && _periodCacheAll === all && _periodCacheMonths === monthKey) {
+      // A copy of the list, not of the records: callers sort and filter what
+      // they are given, and no caller may reorder the cached list itself.
+      return _periodCacheData.slice();
+    }
+    _periodCacheData = computeCompanyPeriodData();
+    _periodCacheAll = all;
+    _periodCacheMonths = monthKey;
+    return _periodCacheData.slice();
+  }
+
+  G.invalidateCompanyPeriodData = invalidateCompanyPeriodData;
 
   function passesNonBandFilters(record) {
     var state = G.state;

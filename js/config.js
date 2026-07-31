@@ -374,6 +374,15 @@ window.GAILS.setBakeryMeta = function (meta) {
   // Cleared last, not first: cloneBakeryMeta above resolves names itself, against
   // the outgoing directory, so anything it cached has to be thrown away too.
   _bakeryMetaKeyCache = Object.create(null);
+  // Everything else that memoises a *resolved* bakery name is stale for the
+  // same reason. These are optional so pages that don't load those files (or
+  // load them after this one) still work.
+  if (typeof window.GAILS.invalidateVisitPeriodIndex === 'function') {
+    window.GAILS.invalidateVisitPeriodIndex();
+  }
+  if (typeof window.GAILS.invalidateFocusDataset === 'function') {
+    window.GAILS.invalidateFocusDataset();
+  }
   if (typeof window.GAILS.onBakeryMetaChanged === 'function') {
     window.GAILS.onBakeryMetaChanged(window.GAILS.BAKERY_META);
   }
@@ -669,21 +678,70 @@ function _isoDateToMonthLabel(dateStr) {
   return window.GAILS.MONTH_SHORT[mi] + ' ' + parts[0].slice(-2);
 }
 
+// Every routine visit, folded down to the only two things the visit filters
+// ask about: which bakery it belongs to, and which dashboard month it lands in.
+//
+// The maps below used to re-scan the whole routineVisits node once per bakery,
+// so drawing a map cost (bakeries x visits) key resolutions — around 200
+// bakeries against a node that grows by every visit ever logged. The answer
+// only changes when the node does, so it is folded once per snapshot and then
+// read as a lookup.
+//
+// Cached against the snapshot object itself: auth.js, bakery-profile.js and
+// admin-page.js all replace `_allVisitsObj` wholesale on every Firebase update,
+// so a new object is exactly the signal that the fold is stale. Anything that
+// starts editing the node in place must call GAILS.invalidateVisitPeriodIndex().
+var _visitPeriodIndexSource = null;
+var _visitPeriodIndex = null;
+
+window.GAILS.invalidateVisitPeriodIndex = function () {
+  _visitPeriodIndexSource = null;
+  _visitPeriodIndex = null;
+};
+
+function _buildVisitPeriodIndex(visits) {
+  // Null-prototype so a bakery or month label that happens to spell an
+  // Object.prototype member can't be mistaken for an entry.
+  var index = Object.create(null);
+  Object.keys(visits).forEach(function (id) {
+    var v = visits[id];
+    // Same guard the per-bakery scan used: a visit with no bakery or no date
+    // cannot match any period, and never counted as "visited at all" either.
+    if (!v || !v.bakery || !v.date) return;
+    var key = window.GAILS.resolveBakeryMetaKey(v.bakery) || v.bakery;
+    var entry = index[key];
+    if (!entry) {
+      entry = index[key] = { any: false, months: Object.create(null) };
+    }
+    entry.any = true;
+    var label = _isoDateToMonthLabel(v.date);
+    if (label) entry.months[label] = true;
+  });
+  return index;
+}
+
+function _getVisitPeriodIndex() {
+  var visits = window.GAILS._allVisitsObj || {};
+  if (_visitPeriodIndex && _visitPeriodIndexSource === visits) return _visitPeriodIndex;
+  _visitPeriodIndex = _buildVisitPeriodIndex(visits);
+  _visitPeriodIndexSource = visits;
+  return _visitPeriodIndex;
+}
+
 // Whether bakery b has a logged routine visit falling within the given list
 // of dashboard month labels (pass the current state.selectedMonths so map
-// toggles can filter markers by the selected period).
+// toggles can filter markers by the selected period). An empty month list
+// means "has ever been visited".
 window.GAILS.isBakeryVisitedInPeriod = function (b, months) {
   var key = window.GAILS.resolveBakeryMetaKey(b) || b;
-  var visits = window.GAILS._allVisitsObj || {};
+  var entry = _getVisitPeriodIndex()[key];
+  if (!entry) return false;
   var monthSet = months || [];
-  return Object.keys(visits).some(function (id) {
-    var v = visits[id];
-    if (!v || !v.bakery || !v.date) return false;
-    if ((window.GAILS.resolveBakeryMetaKey(v.bakery) || v.bakery) !== key) return false;
-    if (!monthSet.length) return true;
-    var label = _isoDateToMonthLabel(v.date);
-    return !!label && monthSet.indexOf(label) !== -1;
-  });
+  if (!monthSet.length) return entry.any;
+  for (var i = 0; i < monthSet.length; i++) {
+    if (entry.months[monthSet[i]] === true) return true;
+  }
+  return false;
 };
 
 // ========== COLOUR MAPS ==========

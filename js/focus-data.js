@@ -106,16 +106,26 @@ window.GAILS = window.GAILS || {};
     return weight ? Math.round((total / weight) * 10) / 10 : null;
   }
 
+  // Single pass, no intermediate arrays: these run once per summed field per
+  // eligible bakery, so the throwaway map/filter arrays added up.
   function summedValue(records, field) {
-    var values = records.map(function(record) { return record[field]; }).filter(isNumber);
-    return values.length ? Math.round(values.reduce(function(total, value) { return total + value; }, 0)) : null;
+    var total = 0;
+    var count = 0;
+    for (var i = 0; i < records.length; i++) {
+      var value = records[i][field];
+      if (isNumber(value)) { total += value; count++; }
+    }
+    return count ? Math.round(total) : null;
   }
 
   function averagePositiveValue(records, field) {
-    var values = records.map(function(record) { return record[field]; }).filter(function(value) {
-      return isNumber(value) && value > 0;
-    });
-    return values.length ? Math.round(values.reduce(function(total, value) { return total + value; }, 0) / values.length) : null;
+    var total = 0;
+    var count = 0;
+    for (var i = 0; i < records.length; i++) {
+      var value = records[i][field];
+      if (isNumber(value) && value > 0) { total += value; count++; }
+    }
+    return count ? Math.round(total / count) : null;
   }
 
   function assignBands(snapshot) {
@@ -179,12 +189,17 @@ window.GAILS = window.GAILS || {};
     return getAllClosedMonths(records || state.ALL || [], referenceDate);
   };
 
-  G.buildFocusDataset = function(options) {
-    options = options || {};
-    var state = options.state || G.state || {};
-    var records = options.records || state.ALL || [];
-    var referenceDate = options.referenceDate instanceof Date ? options.referenceDate : new Date();
-    var isAbsolute = options.isAbsolute !== undefined ? !!options.isAbsolute : true;
+  // Everything the Focus view derives from the dataset *before* the band filter
+  // is applied. Split out from buildFocusDataset because it is the expensive
+  // half — a pass over every record, then a weighted snapshot over ~30 fields
+  // for every eligible bakery — while the band filter is a single cheap pass
+  // over the finished snapshots.
+  //
+  // Splitting it also removes a duplicate: a refresh on the Focus tab used to
+  // build the whole dataset twice, once via getFocusAvailableBands (which asks
+  // for it with the band filter ignored) and once via renderTargets (which
+  // asks for it with the filter applied). Both want the same core.
+  function buildFocusCore(records, state, isAbsolute, referenceDate) {
     var scoreField = isAbsolute ? 'ac' : 'c';
     var recentMonths = getRecentClosedMonths(referenceDate);
     var closedMonths = getAllClosedMonths(records, referenceDate);
@@ -203,7 +218,6 @@ window.GAILS = window.GAILS || {};
       }
     });
 
-    var data = [];
     var onboarding = [];
     var dataReview = [];
     var allSnapshots = [];
@@ -282,17 +296,9 @@ window.GAILS = window.GAILS || {};
       }
 
       allSnapshots.push(snapshot);
-
-      var bandFilter = options.ignoreBandFilter ? '' : state.bandFilter;
-      if (bandFilter) {
-        if (bandFilter.indexOf('abs:') === 0 && snapshot.acb !== bandFilter.slice(4)) return;
-        if (bandFilter.indexOf('abs:') !== 0 && snapshot.cb !== bandFilter) return;
-      }
-      data.push(snapshot);
     });
 
     return {
-      data: data,
       allSnapshots: allSnapshots,
       onboarding: onboarding,
       dataReview: dataReview,
@@ -302,6 +308,93 @@ window.GAILS = window.GAILS || {};
       bakeryCount: Object.keys(grouped).length,
       eligibleCount: allSnapshots.length,
       isAbsolute: isAbsolute
+    };
+  }
+
+  // The core depends only on the dataset, the bakery filters, the score field
+  // and which month is current — none of which change between the two or three
+  // calls a single refresh makes. Held as one entry rather than a map because
+  // the callers within a refresh always agree on the inputs; a filter change
+  // simply replaces it.
+  var _core = null;
+
+  // Control characters, so no region, area or bakery name can contain one and
+  // (['a'], ['b']) cannot sign the same as (['ab'], []).
+  var BAKERY_FILTER_ITEM_SEPARATOR = String.fromCharCode(1);
+  var BAKERY_FILTER_GROUP_SEPARATOR = String.fromCharCode(2);
+
+  // The three bakery filters are everything the core reads off `state`, so
+  // signing them stands in for the whole object — and it has to be by value,
+  // because they are rebuilt as new arrays whenever they change and My Activity
+  // passes a freshly built state object on every call.
+  function bakeryFilterSignature(state) {
+    return [
+      (state.regionFilter || []).join(BAKERY_FILTER_ITEM_SEPARATOR),
+      (state.opsFilter || []).join(BAKERY_FILTER_ITEM_SEPARATOR),
+      (state.searchBakery || []).join(BAKERY_FILTER_ITEM_SEPARATOR)
+    ].join(BAKERY_FILTER_GROUP_SEPARATOR);
+  }
+
+  // Bakery names, regions and ops areas all resolve through the bakery
+  // directory, so a directory change invalidates every snapshot built from the
+  // old one. js/config.js calls this from setBakeryMeta.
+  G.invalidateFocusDataset = function() {
+    _core = null;
+  };
+
+  function getFocusCore(records, state, isAbsolute, referenceDate) {
+    var currentKey = currentMonthKey(referenceDate);
+    var filterKey = bakeryFilterSignature(state);
+    if (_core &&
+        _core.records === records &&
+        // Length as well as identity: a caller that appends to the dataset in
+        // place would otherwise keep the stale snapshots.
+        _core.recordCount === records.length &&
+        _core.isAbsolute === isAbsolute &&
+        _core.currentKey === currentKey &&
+        _core.filterKey === filterKey) {
+      return _core.value;
+    }
+    var value = buildFocusCore(records, state, isAbsolute, referenceDate);
+    _core = {
+      records: records,
+      recordCount: records.length,
+      isAbsolute: isAbsolute,
+      currentKey: currentKey,
+      filterKey: filterKey,
+      value: value
+    };
+    return value;
+  }
+
+  G.buildFocusDataset = function(options) {
+    options = options || {};
+    var state = options.state || G.state || {};
+    var records = options.records || state.ALL || [];
+    var referenceDate = options.referenceDate instanceof Date ? options.referenceDate : new Date();
+    var isAbsolute = options.isAbsolute !== undefined ? !!options.isAbsolute : true;
+    var core = getFocusCore(records, state, isAbsolute, referenceDate);
+
+    // `data` is the band-filtered view of the same snapshots, in the same
+    // order, and a fresh array on every call so callers can sort what they get.
+    var bandFilter = options.ignoreBandFilter ? '' : state.bandFilter;
+    var data = !bandFilter ? core.allSnapshots.slice() : core.allSnapshots.filter(function(snapshot) {
+      return bandFilter.indexOf('abs:') === 0
+        ? snapshot.acb === bandFilter.slice(4)
+        : snapshot.cb === bandFilter;
+    });
+
+    return {
+      data: data,
+      allSnapshots: core.allSnapshots,
+      onboarding: core.onboarding,
+      dataReview: core.dataReview,
+      closedMonths: core.closedMonths,
+      recentMonths: core.recentMonths,
+      latestClosedMonth: core.latestClosedMonth,
+      bakeryCount: core.bakeryCount,
+      eligibleCount: core.eligibleCount,
+      isAbsolute: core.isAbsolute
     };
   };
 

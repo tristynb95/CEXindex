@@ -417,6 +417,41 @@ already handles it.
 
 Images and fonts are cached hard for a week; a stale favicon isn't a correctness problem.
 
+## What a refresh recomputes, and what it doesn't
+
+`refresh()` is called for every filter, period and tab change, and it used to
+rebuild the same two datasets two or three times over — `updateBandFilterOptions()`
+needs one to know which bands exist, then the render needs the same one again.
+Both are now built once per set of inputs and cached in memory:
+
+| Cache | Built by | Depends on | Cleared by |
+| --- | --- | --- | --- |
+| Company period aggregate | `js/filters.js` | `state.ALL`, `state.selectedMonths` | `GAILS.invalidateCompanyPeriodData()` |
+| Focus dataset core | `js/focus-data.js` | the record set, the region/ops/bakery filters, the score field, the current month | `GAILS.invalidateFocusDataset()` |
+| Visits by bakery and month | `js/config.js` | `GAILS._allVisitsObj` | `GAILS.invalidateVisitPeriodIndex()` |
+
+Two rules keep these honest, and `test/refresh-caching.test.js` pins both:
+
+1. **Everything a cached answer depends on is either in its key or clears it.**
+   `setBakeryMeta` clears the last two because bakery names, regions and ops
+   areas all resolve through the directory. A dataset load clears the first.
+   If you make one of these read something new, key it or clear it.
+2. **A cached list is never handed out to be reordered.** Callers sort and
+   filter what they are given, so each call returns its own array over the same
+   records. The records themselves are shared — as they always were, since
+   `G._lastData` outlives a render — and nothing on the render path may write a
+   value to one that it did not derive from that record.
+
+Two related shapes to keep to elsewhere:
+
+- **Rank a cohort with `GAILS.buildPercentileIndex(values, invert)`**, not a
+  `percentileRank` per member. `percentileRank` sorts a fresh copy per call, so
+  ranking 200 bakeries against 200 peers cost 200 sorts per metric. It is still
+  there for one-off lookups.
+- **Sign-in reads that don't depend on each other go in one `Promise.all`.**
+  Every page blocks on its `admins/` and `users/` reads before it can render
+  anything; awaiting them in sequence spent two round trips for one.
+
 ## Security rules
 
 Rules are deployed **from this repo**, not pasted into the console:

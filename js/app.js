@@ -890,6 +890,10 @@
     if (records && G.ensureBands) {
       records.forEach(G.ensureBands);
     }
+    // A new dataset invalidates the cached period aggregate. Replacing
+    // state.ALL is already the signal the cache watches for; saying so here
+    // keeps that from being an implicit contract between two files.
+    if (G.invalidateCompanyPeriodData) G.invalidateCompanyPeriodData();
     state.ALL = records;
     state.MONTHS = months;
     state.BAKERIES = [...new Set(records.map(function (r) { return r.b; }))].sort();

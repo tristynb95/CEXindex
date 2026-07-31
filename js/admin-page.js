@@ -3999,8 +3999,14 @@ onAuthStateChanged(primaryAuth, async function(user) {
   }
 
   try {
-    var adminSnap = await get(ref(db, 'admins/' + user.uid));
-    var userSnap  = await get(ref(db, 'users/'  + user.uid));
+    // Independent reads, so one round trip rather than two before the portal
+    // can decide what to show.
+    var gateSnaps = await Promise.all([
+      get(ref(db, 'admins/' + user.uid)),
+      get(ref(db, 'users/'  + user.uid))
+    ]);
+    var adminSnap = gateSnaps[0];
+    var userSnap  = gateSnaps[1];
 
     var isAdmin = false;
     if (adminSnap.exists() && adminSnap.val() === true) isAdmin = true;

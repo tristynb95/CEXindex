@@ -840,8 +840,10 @@ onAuthStateChanged(auth, async (user) => {
     const adminRef = ref(db, `admins/${user.uid}`);
     const userRef = ref(db, `users/${user.uid}`);
     try {
-      const adminSnap = await get(adminRef);
-      const userSnap = await get(userRef);
+      // Neither read depends on the other, and nothing on the page renders
+      // until both have landed — awaiting them one after the other spent two
+      // round trips where one would do, at the very front of every visit.
+      const [adminSnap, userSnap] = await Promise.all([get(adminRef), get(userRef)]);
       let userProfile = userSnap.exists() ? userSnap.val() : null;
 
       let isAdmin = false;
@@ -905,19 +907,23 @@ onAuthStateChanged(auth, async (user) => {
         }
         const action = _freshLogin ? 'login' : 'session_resume';
         _freshLogin = false;
+        // Recorded, not waited on. Nothing below reads this row, and a failed
+        // write was already only a console warning — so awaiting it only put a
+        // write round trip in front of the dashboard load on every single
+        // visit. The cooldown marker is still set on success alone, exactly as
+        // it was.
         if (shouldLogActivity(user.uid, action)) {
-          try {
-            await push(ref(db, 'activityLog'), {
-              email: user.email || user.uid,
-              uid: user.uid,
-              role: roleId,
-              action: action,
-              timestamp: nowIso()
-            });
+          push(ref(db, 'activityLog'), {
+            email: user.email || user.uid,
+            uid: user.uid,
+            role: roleId,
+            action: action,
+            timestamp: nowIso()
+          }).then(function () {
             markActivityLogged(user.uid);
-          } catch (logErr) {
+          }).catch(function (logErr) {
             console.warn('Could not write login activity log:', logErr);
-          }
+          });
         }
         // Scopes Bakery Reports client-side: the user's assigned ops area, and
         // the master switch (live-synced), are read by js/visit-report.js.

@@ -234,8 +234,13 @@ onAuthStateChanged(auth, async function(user) {
 
   try {
     var userRef = ref(db, 'users/' + user.uid);
-    var userSnapshot = await get(userRef);
-    var adminSnapshot = await get(ref(db, 'admins/' + user.uid));
+    // Independent reads, so one round trip rather than two.
+    var gateSnapshots = await Promise.all([
+      get(userRef),
+      get(ref(db, 'admins/' + user.uid))
+    ]);
+    var userSnapshot = gateSnapshots[0];
+    var adminSnapshot = gateSnapshots[1];
     var isAdmin = adminSnapshot.exists() && adminSnapshot.val() === true;
 
     if (!userSnapshot.exists() && !isAdmin) {
