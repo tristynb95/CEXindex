@@ -75,6 +75,7 @@ const COMPETITION_CORRECTIONS = {
 
 let bakeryName = '';
 let bakeryMeta = null;
+let bakeryPinLl = null;
 let dashboardRecords = [];
 let visits = [];
 let tasks = [];
@@ -1058,7 +1059,7 @@ function renderCompetitionState(state, message) {
 
   var retryButton = competitionList.querySelector('[data-competition-retry]');
   if (retryButton) retryButton.addEventListener('click', function() {
-    var ll = bakeryMeta && Array.isArray(bakeryMeta.ll) ? bakeryMeta.ll : null;
+    var ll = bakeryPinLl || (bakeryMeta && Array.isArray(bakeryMeta.ll) ? bakeryMeta.ll : null);
     if (ll) loadNearbyCompetition(ll, true);
   });
 }
@@ -1080,8 +1081,9 @@ function renderCompetitionPlaces(places) {
     var coordinate = place.lat + ',' + place.lon;
     var mapQuery = [place.name, place.address, coordinate].filter(Boolean).join(', ');
     var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapQuery);
-    var directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' +
-      encodeURIComponent(mapQuery) + '&travelmode=walking';
+    var directionsUrl = 'https://www.google.com/maps/dir/?api=1' +
+      (bakeryPinLl ? '&origin=' + encodeURIComponent(bakeryPinLl[0] + ',' + bakeryPinLl[1]) : '') +
+      '&destination=' + encodeURIComponent(mapQuery) + '&travelmode=walking';
     var details = [place.address, place.openingHours].filter(Boolean);
     return '<article class="bakery-competition-item">' +
       '<span class="bakery-competition-item__rank" aria-hidden="true">' + (index + 1) + '</span>' +
@@ -1130,6 +1132,7 @@ async function renderMap() {
   status.textContent = 'Loading map...';
   var geocoded = await geocodeBakeryLocation(bakeryName);
   var pinLl = geocoded || [Number(ll[0]), Number(ll[1])];
+  bakeryPinLl = pinLl;
 
   var destination = pinLl[0] + ',' + pinLl[1];
   var iframe = document.createElement('iframe');
