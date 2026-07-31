@@ -1121,7 +1121,22 @@ async function renderMap() {
   var status = document.getElementById('bakeryProfileMapStatus');
   var ll = bakeryMeta && Array.isArray(bakeryMeta.ll) ? bakeryMeta.ll : null;
   var directionsLink = document.getElementById('bakeryDirectionsLink');
-  if (!ll || ll.length < 2) {
+  var pinLl = null;
+  var isEstimated = false;
+
+  if (ll && ll.length >= 2) {
+    // The Site Directory coordinate is curated by hand, so it must win over a
+    // live name search - a fuzzy text match on a nearby branch (e.g. "Euston"
+    // matching a "GAIL's, Euston Road" tag near King's Cross) would otherwise
+    // silently override a deliberately corrected pin on every page load.
+    pinLl = [Number(ll[0]), Number(ll[1])];
+  } else {
+    status.textContent = 'Loading map...';
+    pinLl = await geocodeBakeryLocation(bakeryName);
+    isEstimated = !!pinLl;
+  }
+
+  if (!pinLl) {
     mapElement.innerHTML = '<div class="bakery-profile-map__empty">No saved coordinates are available for this bakery.</div>';
     status.textContent = 'Add coordinates in the Site Directory to activate this map.';
     if (directionsLink) directionsLink.hidden = true;
@@ -1129,11 +1144,7 @@ async function renderMap() {
     return;
   }
 
-  status.textContent = 'Loading map...';
-  var geocoded = await geocodeBakeryLocation(bakeryName);
-  var pinLl = geocoded || [Number(ll[0]), Number(ll[1])];
   bakeryPinLl = pinLl;
-
   var destination = pinLl[0] + ',' + pinLl[1];
   var iframe = document.createElement('iframe');
   iframe.title = (G.getBakeryMapLabel ? G.getBakeryMapLabel(bakeryName) : bakeryName) + ' on Google Maps';
@@ -1148,7 +1159,9 @@ async function renderMap() {
       encodeURIComponent(destination) + '&travelmode=driving';
     directionsLink.hidden = false;
   }
-  status.textContent = 'Open Directions to route from your current location in Google Maps.';
+  status.textContent = isEstimated
+    ? 'Estimated from a name search - add exact coordinates in the Site Directory to fix this pin.'
+    : 'Open Directions to route from your current location in Google Maps.';
   loadNearbyCompetition(pinLl);
 }
 
