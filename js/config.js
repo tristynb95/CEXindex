@@ -165,7 +165,7 @@ window.GAILS.DEFAULT_BAKERY_META = {
   "High Street Kensington": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.5013, -0.1929] },
   "Kensington Arcade": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.5011, -0.1909] },
   "Kings Road": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.4876, -0.1742] },
-  "Orchard Place": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.497876, -0.133348] },
+  "Orchard Place": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.49829861158002, -0.13334950311318483] },
   "Pimlico": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.4898, -0.1352] },
   "Strand": { "r": "London Region", "o": "Magda Miszkiewicz", "ll": [51.5094, -0.1228] },
   "Cheapside": { "r": "London Region", "o": "George Austin", "ll": [51.5142, -0.0910] },
