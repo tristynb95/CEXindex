@@ -65,6 +65,8 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter'
 ];
+const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
+const GEOCODE_CACHE_TTL = 30 * 24 * 60 * 60 * 1000;
 const COMPETITION_CORRECTIONS = {
   'Banbury Gateway': {
     removeNames: ['starbucks']
@@ -750,6 +752,60 @@ function writeCompetitionCache(ll, places) {
   }
 }
 
+function geocodeCacheKey(name) {
+  return 'gails-bakery-geocode-v1:' + String(name || '').trim().toLowerCase();
+}
+
+function readGeocodeCache(name) {
+  try {
+    var cached = JSON.parse(localStorage.getItem(geocodeCacheKey(name)) || 'null');
+    if (!cached || Date.now() - Number(cached.savedAt || 0) > GEOCODE_CACHE_TTL) return null;
+    return cached;
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeGeocodeCache(name, ll) {
+  try {
+    localStorage.setItem(geocodeCacheKey(name), JSON.stringify({ savedAt: Date.now(), ll: ll }));
+  } catch (error) {
+    // The live result is still useful when storage is unavailable.
+  }
+}
+
+// The Site Directory only stores an approximate town-level coordinate per
+// bakery. Nominatim resolves the actual named GAIL's business listing, which
+// is what puts the pin on the shopfront rather than somewhere nearby - and
+// that precise coordinate is also what the competition search should centre
+// on, so both the map and the competition list share this result.
+async function geocodeBakeryLocation(name) {
+  var cached = readGeocodeCache(name);
+  if (cached) return cached.ll;
+
+  var label = G.getBakeryMapLabel ? G.getBakeryMapLabel(name) : "GAIL's " + name;
+  var url = GEOCODE_ENDPOINT + '?format=json&limit=1&countrycodes=gb&q=' +
+    encodeURIComponent(label + ', UK');
+  var controller = new AbortController();
+  var timeout = setTimeout(function() { controller.abort(); }, 8000);
+  try {
+    var response = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error('Geocoding returned ' + response.status);
+    var results = await response.json();
+    var match = Array.isArray(results) ? results[0] : null;
+    var ll = match ? [Number(match.lat), Number(match.lon)] : null;
+    writeGeocodeCache(name, ll);
+    return ll;
+  } catch (error) {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function distanceMetres(origin, target) {
   var earthRadius = 6371000;
   var toRadians = function(value) { return Number(value) * Math.PI / 180; };
@@ -1058,7 +1114,7 @@ async function loadNearbyCompetition(ll, forceRefresh) {
   }
 }
 
-function renderMap() {
+async function renderMap() {
   var mapElement = document.getElementById('bakeryProfileMap');
   var status = document.getElementById('bakeryProfileMapStatus');
   var ll = bakeryMeta && Array.isArray(bakeryMeta.ll) ? bakeryMeta.ll : null;
@@ -1071,13 +1127,17 @@ function renderMap() {
     return;
   }
 
-  var destination = Number(ll[0]) + ',' + Number(ll[1]);
+  status.textContent = 'Loading map...';
+  var geocoded = await geocodeBakeryLocation(bakeryName);
+  var pinLl = geocoded || [Number(ll[0]), Number(ll[1])];
+
+  var destination = pinLl[0] + ',' + pinLl[1];
   var iframe = document.createElement('iframe');
   iframe.title = (G.getBakeryMapLabel ? G.getBakeryMapLabel(bakeryName) : bakeryName) + ' on Google Maps';
   iframe.loading = 'lazy';
   iframe.referrerPolicy = 'strict-origin-when-cross-origin';
   iframe.allowFullscreen = true;
-  iframe.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(destination) + '&z=14&output=embed';
+  iframe.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(destination) + '&z=16&output=embed';
   mapElement.replaceChildren(iframe);
 
   if (directionsLink) {
@@ -1086,7 +1146,7 @@ function renderMap() {
     directionsLink.hidden = false;
   }
   status.textContent = 'Open Directions to route from your current location in Google Maps.';
-  loadNearbyCompetition([Number(ll[0]), Number(ll[1])]);
+  loadNearbyCompetition(pinLl);
 }
 
 function renderVisits() {
