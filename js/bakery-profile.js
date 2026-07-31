@@ -884,7 +884,7 @@ function normaliseCompetitionElements(elements, origin) {
 }
 
 function normaliseFsaCompetitionElements(establishments, origin) {
-  var namePattern = /bakery|cafe|coffee|patisserie|tearoom|greggs|fegos|costa|starbucks|caffenero|pretamanger|paul|oleandsteen|timhortons|blacksheep|coffee1/;
+  var namePattern = /bakery|cafe|coffee|patisserie|tearoom|greggs|fegos|mocmore|costa|starbucks|caffenero|pretamanger|paul|oleandsteen|timhortons|blacksheep|coffee1/;
   var typePattern = /restaurant|cafe|canteen|takeaway|sandwich|retailer|catering/;
   return (Array.isArray(establishments) ? establishments : []).map(function(establishment) {
     var name = String(establishment && establishment.BusinessName || '').trim();
@@ -956,7 +956,7 @@ function competitionQuery(ll) {
     'nwr(around:' + COMPETITION_RADIUS_METRES + ',' + Number(ll[0]) + ',' + Number(ll[1]) +
       ')["amenity"="cafe"];' +
     'nwr(around:' + COMPETITION_RADIUS_METRES + ',' + Number(ll[0]) + ',' + Number(ll[1]) +
-      ')["name"~"Greggs|Fegos","i"];' +
+      ')["name"~"Greggs|Fegos|Moc.{0,3}More","i"];' +
     ');out center tags;';
 }
 
