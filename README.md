@@ -442,6 +442,35 @@ Two rules keep these honest, and `test/refresh-caching.test.js` pins both:
    `G._lastData` outlives a render — and nothing on the render path may write a
    value to one that it did not derive from that record.
 
+## Which panels a refresh draws
+
+Overview aside, only one panel is on screen at a time, and four of them are
+expensive because each builds Chart.js instances — the Focus panel alone builds
+four named charts plus a sparkline per focus bakery. A refresh used to draw all
+of them, so changing a filter while looking at the Overview paid for Trends,
+Speed vs NPS, the League Table and Focus Bakeries as well.
+
+`refresh()` now draws the panel you are looking at and keeps the rest as a
+closure over the data they would have drawn (`renderOrDeferPanels` in
+`js/app.js`); `activateDashboardTab` draws one from that closure when you open
+it. This generalises what the Trends panel already did on its own.
+
+Two things make it safe, and `test/deferred-panel-renders.test.js` pins both:
+
+- **Nothing outside a panel reads what its render produces.** The one exception
+  is the header's bakery count, which reads the `G._focusDataContext` that
+  `renderTargets` publishes — so the Focus panel is flushed **synchronously**,
+  before `renderHeaderSummary()` in the same call, while the others are flushed
+  on the next frame. If you add a view that reads `G._focusDataContext`, it must
+  be inside the Focus panel, carry its own fallback, or be guarded on the Focus
+  tab being active.
+- **A postponed render draws what its own refresh would have.** The no-data path
+  draws Focus from the scored rows and the normal path from all of them; the
+  closures are what keep that difference once the render is postponed.
+
+The Map tab is unaffected: `storeDashboardMapData` feeds it directly from
+`refresh()`, and only the Focus map is fed from `renderTargets`.
+
 Two related shapes to keep to elsewhere:
 
 - **Rank a cohort with `GAILS.buildPercentileIndex(values, invert)`**, not a
