@@ -334,8 +334,7 @@ export function mountNotificationCentre(options) {
         render();
       },
       function (error) {
-        // Until the rules are deployed this read is refused. The bell simply
-        // stays empty rather than the header breaking.
+        // A refused read leaves the bell empty rather than breaking the header.
         console.warn('Could not load notifications:', error);
         events = {};
         render();

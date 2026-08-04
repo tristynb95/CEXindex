@@ -666,8 +666,8 @@ function startRoutineVisitsSync() {
 //
 // Self-maintaining: every user republishes their own entry at sign-in, so the
 // directory converges without anyone curating it. Both the read and the write
-// are best-effort — before the matching rules are deployed they simply fail, and
-// the picker falls back to names harvested from readable data.
+// are best-effort — a refused read or write simply fails, and the picker falls
+// back to names harvested from readable data.
 function publishDirectoryEntry(user, profile) {
   var email = user.email || (profile && profile.email) || '';
   var name = [profile && profile.firstName, profile && profile.lastName]

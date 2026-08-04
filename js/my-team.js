@@ -1496,8 +1496,8 @@ async function loadTeam(user) {
   }
 
   // teamDirectory carries the reporting lines; userDirectory sharpens how names
-  // resolve for attribution. Both are best-effort — an undeployed rules file
-  // must leave a readable page rather than a broken one.
+  // resolve for attribution. Both are best-effort — a refused read must leave a
+  // readable page rather than a broken one.
   var directorySnapshot = await get(ref(db, 'teamDirectory')).catch(function (error) {
     console.warn('Team directory unavailable:', error);
     return null;

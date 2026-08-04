@@ -95,12 +95,10 @@ to carry a `role` or `opsArea`. It is self-maintaining — everyone republishes
 their own entry at sign-in, the profile page keeps it in step with a rename, and
 the admin portal publishes the full user list and prunes revoked accounts.
 
-> **This needs a rules deploy**, as does the `myActivity` clause above. CI never
-> pushes rules — run `firebase deploy --only database`. Until then every read and
-> write of `userDirectory` fails harmlessly and the picker falls back to names
-> harvested from data everyone can already read: the regional coffee team, and
-> names already on past visits and notes. Harvested names carry no uid, so a real
-> directory entry always wins once it arrives.
+If the `userDirectory` read is ever refused, it fails harmlessly and the picker
+falls back to names harvested from data everyone can already read: the regional
+coffee team, and names already on past visits and notes. Harvested names carry
+no uid, so a real directory entry always wins over a harvested one.
 
 ## Who can see what, and who can edit what
 
@@ -182,10 +180,10 @@ someone who can edit access. Nobody can add themselves to a team, which is what
 makes the roster worth trusting. It is the same pattern as `userDirectory`
 above, and the admin portal publishes and prunes both together.
 
-> **This needs a rules deploy** (`firebase deploy --only database`), as does the
-> `managerUid` clause that stops someone reassigning their own manager. Until
-> then the roster read fails and My Team shows an empty team rather than
-> breaking.
+A refused roster read leaves My Team showing an empty team rather than breaking.
+An empty roster is therefore ambiguous from the outside: it looks the same
+whether the read was denied or the directory was simply never published. The
+browser console tells them apart — a denial logs `Team directory unavailable`.
 
 My Team reads `routineVisits` and `followUpActions` — the same records every
 signed-in user can already read — and only groups them by person, using
@@ -310,9 +308,9 @@ describes** (`js/notification-write.js`): a rejected write is logged and
 swallowed, because a colleague not hearing about a check-in is a smaller failure
 than the check-in not being saved.
 
-> **This needs a rules deploy** for `notificationEvents` and
-> `notificationReads` — run `firebase deploy --only database`. Until then the
-> feed read is refused, and the bell stays empty rather than the header breaking.
+A refused feed read leaves the bell empty rather than breaking the header. There
+is no backfill either, so the feed only ever contains events raised since the
+bell shipped — an empty panel is not by itself a fault.
 
 The panel shows the last 30 days, capped at 250 events server-side
 (`orderByChild('at')` + `limitToLast`), so a reader never pulls the whole history
@@ -513,14 +511,18 @@ Rules are deployed **from this repo**, not pasted into the console:
 firebase deploy --only database,storage
 ```
 
-> **Before the first rules deploy:** these files began life as reference copies that
-> were applied to the console by hand, so the live rules may have drifted from them.
-> Diff them against the console (Firebase Console → Realtime Database / Storage →
-> Rules) and reconcile **before** deploying, since deploying overwrites whatever is
-> live. After that, the repo is the source of truth.
+Both are live as of **2026-08-04**: `database.rules.json` was verified
+byte-for-byte against the console and matched exactly, and the Storage rules were
+confirmed in place. These files began life as reference copies applied to the
+console by hand, so the drift they used to warn about is closed — but a deploy
+still overwrites whatever is live, so diff first if the repo copy has sat unchanged
+while someone edited the console.
 
 Note that CI (`.github/workflows/`) deploys **Hosting only** — rules are never pushed
-automatically, so a rules change needs the command above.
+automatically, so a rules change needs the command above. A feature whose rules
+never got deployed looks exactly like a feature whose data was never published:
+both surface as an empty panel. Check the browser console for `PERMISSION_DENIED`
+before assuming either.
 
 The `apiKey` in `js/firebase-config.js` is public by design; Firebase web API keys are
 identifiers, not secrets. The rules above are what enforce access.
