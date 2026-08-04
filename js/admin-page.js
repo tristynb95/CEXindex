@@ -128,6 +128,7 @@ const portalUploadBtn = document.getElementById('portalUploadBtn');
 const clearDatasetBtn = document.getElementById('clearDatasetBtn');
 const restoreMetaBtn  = document.getElementById('restoreMetadataBtn');
 const syncCoordinatesBtn = document.getElementById('syncCoordinatesBtn');
+const exportSiteMetaBtn = document.getElementById('exportSiteMetaBtn');
 const compactSidebarMedia = window.matchMedia('(max-width: 980px)');
 const activityLogList     = document.getElementById('activityLogList');
 const visitSearchInput    = document.getElementById('visitSearchInput');
@@ -5088,6 +5089,23 @@ syncCoordinatesBtn.addEventListener('click', function() {
   renderSites();
   renderDataControls();
   setMessage(dataMsg, 'success', 'Updated coordinates for ' + updated + ' site' + (updated === 1 ? '' : 's') + ' in the Sites tab. Review them there, then Save to publish.');
+});
+
+// Read-only snapshot of the live site directory (region/ops area/coordinates)
+// for manual backups before bulk edits - e.g. a full coordinate correction
+// pass. Exports the saved data, not unsaved draft edits, so the file matches
+// what's actually published.
+exportSiteMetaBtn.addEventListener('click', function() {
+  var meta = cloneMeta(state.siteMetaSource || {});
+  var blob = new Blob([JSON.stringify(meta, null, 2)], { type: 'application/json' });
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'gails-site-directory-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
+  setMessage(dataMsg, 'success', 'Exported ' + Object.keys(meta).length + ' site' + (Object.keys(meta).length === 1 ? '' : 's') + ' to a JSON file.');
 });
 
 // ── CQV import zone + confirm modal ──
