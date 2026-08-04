@@ -1,0 +1,1589 @@
+{
+  "Abbeville": {
+    "ll": [
+      51.455098540017836,
+      -0.1395637702631726
+    ],
+    "o": "Corina Medina",
+    "r": "South Region"
+  },
+  "Altrincham": {
+    "ll": [
+      53.38719462971254,
+      -2.3506254941257176
+    ],
+    "o": "Chris Kral",
+    "r": "North Region"
+  },
+  "Archway": {
+    "ll": [
+      51.56518177564383,
+      -0.13510216075915102
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Askew Road": {
+    "ll": [
+      51.5027389825732,
+      -0.24325923126710347
+    ],
+    "o": "Florentina Olteanu",
+    "r": "London Region"
+  },
+  "Baker Street": {
+    "ll": [
+      51.521075965685284,
+      -0.1568630438715439
+    ],
+    "o": "Sandra Cano Cardona",
+    "r": "London Region"
+  },
+  "Balham": {
+    "ll": [
+      51.442689415190934,
+      -0.15322086361325388
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "Banbury Gateway": {
+    "ll": [
+      52.07639326740135,
+      -1.3175746067313914
+    ],
+    "o": "Bobby Holmes",
+    "r": "North Region"
+  },
+  "Barnes": {
+    "ll": [
+      51.47414611873159,
+      -0.24454394236076094
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "Barnet": {
+    "ll": [
+      51.65517804338021,
+      -0.2015827600532339
+    ],
+    "o": "Graeme Conroy",
+    "r": "North Region"
+  },
+  "Barons Court": {
+    "ll": [
+      51.49022689195171,
+      -0.2134302939851592
+    ],
+    "o": "Florentina Olteanu",
+    "r": "London Region"
+  },
+  "Battersea Square": {
+    "ll": [
+      51.47483444671627,
+      -0.17521823264885264
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "Beaconsfield": {
+    "ll": [
+      51.60933192586376,
+      -0.6449392473352553
+    ],
+    "o": "Bobby Holmes",
+    "r": "North Region"
+  },
+  "Beckenham": {
+    "ll": [
+      51.408583242881285,
+      -0.024918144147850554
+    ],
+    "o": "Elena Ilciuc",
+    "r": "South Region"
+  },
+  "Belsize Park": {
+    "ll": [
+      51.549921152507416,
+      -0.16446408867230936
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Berkhamsted": {
+    "ll": [
+      51.760583415030766,
+      -0.565566835501586
+    ],
+    "o": "Indre Mingailiene",
+    "r": "North Region"
+  },
+  "Bermondsey Street": {
+    "ll": [
+      51.498358579033486,
+      -0.08130161774857789
+    ],
+    "o": "Andrea D'Epifanio",
+    "r": "London Region"
+  },
+  "Billericay": {
+    "ll": [
+      51.624934532893676,
+      0.4172373418283557
+    ],
+    "o": "Magda Walczak",
+    "r": "London Region"
+  },
+  "Birmingham New Street": {
+    "ll": [
+      52.4793953188309,
+      -1.8988524183873545
+    ],
+    "o": "Kate Downes",
+    "r": "North Region"
+  },
+  "Blackfriars": {
+    "dn": "Black Friars",
+    "ll": [
+      51.50734238122867,
+      -0.1054107825650893
+    ],
+    "o": "Andrea D'Epifanio",
+    "r": "London Region"
+  },
+  "Blackheath": {
+    "ll": [
+      51.465752273117566,
+      0.0094083830178173
+    ],
+    "o": "Elena Ilciuc",
+    "r": "South Region"
+  },
+  "Bloomsbury": {
+    "ll": [
+      51.518819029347554,
+      -0.13199782935936785
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "Bracknell": {
+    "ll": [
+      51.417851833581025,
+      -0.7501108428732902
+    ],
+    "o": "Michelle Solomon",
+    "r": "South Region"
+  },
+  "Brentford": {
+    "ll": [
+      51.4829062628019,
+      -0.3076953877709427
+    ],
+    "o": "Elizabeta Zakolli",
+    "r": "South Region"
+  },
+  "Brentwood": {
+    "ll": [
+      51.62028539589499,
+      0.30181187034450363
+    ],
+    "o": "Magda Walczak",
+    "r": "London Region"
+  },
+  "Brighton": {
+    "ll": [
+      50.825626049734794,
+      -0.1383002059734457
+    ],
+    "o": "Holly Crawley",
+    "r": "South Region"
+  },
+  "Bristol College Green": {
+    "ll": [
+      51.453016464175846,
+      -2.6006319497651447
+    ],
+    "o": "Matt Church",
+    "r": "South Region"
+  },
+  "Bristol Whiteladies Road": {
+    "ll": [
+      51.463400543375116,
+      -2.609428476326731
+    ],
+    "o": "Matt Church",
+    "r": "South Region"
+  },
+  "Bromley": {
+    "ll": [
+      51.4027836935962,
+      0.015102273086335827
+    ],
+    "o": "Elena Ilciuc",
+    "r": "South Region"
+  },
+  "Brook Green": {
+    "ll": [
+      51.49940210744375,
+      -0.22228925958824391
+    ],
+    "o": "Florentina Olteanu",
+    "r": "London Region"
+  },
+  "Brunswick Centre": {
+    "ll": [
+      51.52452277817297,
+      -0.12417622252081052
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "Buckingham Palace Road": {
+    "ll": [
+      51.49758904106086,
+      -0.14437531469423392
+    ],
+    "o": "Magda Miszkiewicz",
+    "r": "London Region"
+  },
+  "Buxton": {
+    "ll": [
+      53.25974584592159,
+      -1.9138513522084237
+    ],
+    "o": "Kate Downes",
+    "r": "North Region"
+  },
+  "Cambridge": {
+    "ll": [
+      52.20668174369047,
+      0.13180859624516436
+    ],
+    "o": "Graeme Conroy",
+    "r": "North Region"
+  },
+  "Cambridge Market Hill": {
+    "ll": [
+      52.20564073596663,
+      0.11873375678989644
+    ],
+    "o": "Graeme Conroy",
+    "r": "North Region"
+  },
+  "Cambridge Station Square": {
+    "ll": [
+      52.19381540528008,
+      0.13636960364316772
+    ],
+    "o": "Graeme Conroy",
+    "r": "North Region"
+  },
+  "Camden": {
+    "ll": [
+      51.53828550441698,
+      -0.14409914791344652
+    ],
+    "o": "Erika Kulikova",
+    "r": "North Region"
+  },
+  "Camden Lock": {
+    "ll": [
+      51.542299354045845,
+      -0.14451618918322717
+    ],
+    "o": "Other",
+    "r": "Other"
+  },
+  "Canary Wharf": {
+    "ll": [
+      51.5045547760571,
+      -0.016144261202196305
+    ],
+    "o": "Elena Ilciuc",
+    "r": "South Region"
+  },
+  "Cheapside": {
+    "ll": [
+      51.514261900913745,
+      -0.09576135149314255
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "Chelmsford": {
+    "ll": [
+      51.73303898926621,
+      0.47362789246987186
+    ],
+    "o": "Magda Walczak",
+    "r": "London Region"
+  },
+  "Chelsea": {
+    "ll": [
+      51.48602632410144,
+      -0.18070529171326075
+    ],
+    "o": "Magda Miszkiewicz",
+    "r": "London Region"
+  },
+  "Cheltenham": {
+    "ll": [
+      51.8983491902436,
+      -2.077672396065621
+    ],
+    "o": "Matt Church",
+    "r": "South Region"
+  },
+  "Cheshire Oaks": {
+    "ll": [
+      53.26545157498177,
+      -2.881840133270738
+    ],
+    "o": "Chris Kral",
+    "r": "North Region"
+  },
+  "Chester": {
+    "ll": [
+      53.189800273166945,
+      -2.891575324310734
+    ],
+    "o": "Chris Kral",
+    "r": "North Region"
+  },
+  "Chiswick": {
+    "ll": [
+      51.492578286880885,
+      -0.25991020579202756
+    ],
+    "o": "Elizabeta Zakolli",
+    "r": "South Region"
+  },
+  "Clapham Old Town": {
+    "ll": [
+      51.46473851407401,
+      -0.141449864319243
+    ],
+    "o": "Corina Medina",
+    "r": "South Region"
+  },
+  "Clifton Road": {
+    "ll": [
+      51.52564139047763,
+      -0.17959952819715125
+    ],
+    "o": "Erika Kulikova",
+    "r": "North Region"
+  },
+  "Clifton Village": {
+    "ll": [
+      51.45409591301282,
+      -2.6179265133080065
+    ],
+    "o": "Matt Church",
+    "r": "South Region"
+  },
+  "Cobham": {
+    "ll": [
+      51.32880559493366,
+      -0.4110587694522964
+    ],
+    "o": "Lukas Rackauskas",
+    "r": "Other"
+  },
+  "Cowcross Street": {
+    "ll": [
+      51.520067452834766,
+      -0.10215198006689374
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "Cromwell Place": {
+    "ll": [
+      51.494281858193254,
+      -0.17488356807471586
+    ],
+    "o": "Magda Miszkiewicz",
+    "r": "London Region"
+  },
+  "Crossrail Place": {
+    "ll": [
+      51.50582838828036,
+      -0.016492159875097695
+    ],
+    "o": "Elena Ilciuc",
+    "r": "South Region"
+  },
+  "Crouch End": {
+    "ll": [
+      51.57971919550666,
+      -0.12336720484308854
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Crystal Palace": {
+    "ll": [
+      51.419599400611496,
+      -0.08034454886067219
+    ],
+    "o": "Elena Ilciuc",
+    "r": "South Region"
+  },
+  "Didsbury": {
+    "ll": [
+      53.41616929997928,
+      -2.231976623091339
+    ],
+    "o": "Chris Kral",
+    "r": "North Region"
+  },
+  "Dulwich": {
+    "ll": [
+      51.448924535685045,
+      -0.0850607870542506
+    ],
+    "o": "Elena Ilciuc",
+    "r": "South Region"
+  },
+  "Ealing": {
+    "ll": [
+      51.513231796740435,
+      -0.3057683300537533
+    ],
+    "o": "Erika Kulikova",
+    "r": "North Region"
+  },
+  "Earlsfield": {
+    "ll": [
+      51.441313528425454,
+      -0.18710287481956572
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "East Dulwich": {
+    "ll": [
+      51.46024274030229,
+      -0.07574061287209423
+    ],
+    "o": "Elena Ilciuc",
+    "r": "South Region"
+  },
+  "East Sheen": {
+    "ll": [
+      51.46481114950396,
+      -0.2669591660708845
+    ],
+    "o": "Elizabeta Zakolli",
+    "r": "South Region"
+  },
+  "Elephant Park": {
+    "ll": [
+      51.49283769986927,
+      -0.09729467779602703
+    ],
+    "o": "Andrea D'Epifanio",
+    "r": "London Region"
+  },
+  "Ely": {
+    "ll": [
+      52.3992674616137,
+      0.264133195706415
+    ],
+    "o": "Graeme Conroy",
+    "r": "North Region"
+  },
+  "Epping": {
+    "ll": [
+      51.6996508382815,
+      0.11176310970782852
+    ],
+    "o": "Magda Walczak",
+    "r": "London Region"
+  },
+  "Epsom": {
+    "ll": [
+      51.3330120434063,
+      -0.26781251072838946
+    ],
+    "o": "Lukas Rackauskas",
+    "r": "Other"
+  },
+  "Esher": {
+    "ll": [
+      51.37019636673383,
+      -0.36404108685838577
+    ],
+    "o": "Lukas Rackauskas",
+    "r": "Other"
+  },
+  "Euston": {
+    "ll": [
+      51.52862577087372,
+      -0.13187060256032646
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "Exmouth Market": {
+    "ll": [
+      51.52588788728071,
+      -0.10934529368612
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "Farnham": {
+    "ll": [
+      51.21517927092201,
+      -0.7993581578115284
+    ],
+    "o": "Michelle Solomon",
+    "r": "South Region"
+  },
+  "Finsbury Park": {
+    "ll": [
+      51.564646967789585,
+      -0.10723159819595462
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Fleet": {
+    "ll": [
+      51.281245835800235,
+      -0.8417172663510537
+    ],
+    "o": "Michelle Solomon",
+    "r": "South Region"
+  },
+  "Fulham Broadway": {
+    "ll": [
+      51.48046446090854,
+      -0.19695925387268998
+    ],
+    "o": "Florentina Olteanu",
+    "r": "London Region"
+  },
+  "Gatwick": {
+    "ll": [
+      51.15554932306551,
+      -0.16412159030872975
+    ],
+    "o": "Corina Medina",
+    "r": "South Region"
+  },
+  "Gerrards Cross": {
+    "ll": [
+      51.586816306146936,
+      -0.5549208494476505
+    ],
+    "o": "Bobby Holmes",
+    "r": "North Region"
+  },
+  "Gloucester Road": {
+    "ll": [
+      51.49391627142885,
+      -0.1820354410515043
+    ],
+    "o": "Magda Miszkiewicz",
+    "r": "London Region"
+  },
+  "Godalming": {
+    "ll": [
+      51.18555815367804,
+      -0.6149727459683617
+    ],
+    "o": "Michelle Solomon",
+    "r": "South Region"
+  },
+  "Golders Green": {
+    "ll": [
+      51.572057116858915,
+      -0.19569306194961583
+    ],
+    "o": "Graeme Conroy",
+    "r": "North Region"
+  },
+  "Great Portland Street": {
+    "ll": [
+      51.52020291659188,
+      -0.14291008342457281
+    ],
+    "o": "Sandra Cano Cardona",
+    "r": "London Region"
+  },
+  "Great Russell Street": {
+    "ll": [
+      51.51780574576789,
+      -0.12721208635849873
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "Greenwich": {
+    "ll": [
+      51.481066976217924,
+      -0.008171793979651364
+    ],
+    "o": "Andrea D'Epifanio",
+    "r": "London Region"
+  },
+  "Guildford": {
+    "ll": [
+      51.23516212511885,
+      -0.5720360661789146
+    ],
+    "o": "Michelle Solomon",
+    "r": "South Region"
+  },
+  "Hackney Castle": {
+    "ll": [
+      51.547757944847596,
+      -0.05471429469003856
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Hampstead": {
+    "ll": [
+      51.55610837079935,
+      -0.17794961857017932
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Harpenden": {
+    "ll": [
+      51.8153653940363,
+      -0.35519601660064043
+    ],
+    "o": "Indre Mingailiene",
+    "r": "North Region"
+  },
+  "Henley": {
+    "ll": [
+      51.53760062757,
+      -0.9058290883967628
+    ],
+    "o": "Bobby Holmes",
+    "r": "North Region"
+  },
+  "Herne Hill": {
+    "ll": [
+      51.45295841207164,
+      -0.10256508136470452
+    ],
+    "o": "Corina Medina",
+    "r": "South Region"
+  },
+  "High Street Kensington": {
+    "ll": [
+      51.498954634087916,
+      -0.1998437557712395
+    ],
+    "o": "Magda Miszkiewicz",
+    "r": "London Region"
+  },
+  "Highgate": {
+    "ll": [
+      51.57116317169384,
+      -0.1489625346377674
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Hitchin": {
+    "ll": [
+      51.949640207520964,
+      -0.27754781720686683
+    ],
+    "o": "Indre Mingailiene",
+    "r": "North Region"
+  },
+  "Holborn": {
+    "ll": [
+      51.5177721706795,
+      -0.11729061504600177
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "Holland Park": {
+    "ll": [
+      51.507280678836786,
+      -0.20575668940141054
+    ],
+    "o": "Sandra Cano Cardona",
+    "r": "London Region"
+  },
+  "Horsham": {
+    "ll": [
+      51.06291516327928,
+      -0.32790482393891046
+    ],
+    "o": "Holly Crawley",
+    "r": "South Region"
+  },
+  "Hove": {
+    "ll": [
+      50.8282838088934,
+      -0.1742839605310946
+    ],
+    "o": "Holly Crawley",
+    "r": "South Region"
+  },
+  "Islington": {
+    "ll": [
+      51.53802913982112,
+      -0.10235343479956696
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "Jericho": {
+    "ll": [
+      51.75832278359076,
+      -1.2625938814141686
+    ],
+    "o": "Bobby Holmes",
+    "r": "North Region"
+  },
+  "Kennington": {
+    "ll": [
+      51.4976675703382,
+      -0.11224720243135546
+    ],
+    "o": "Andrea D'Epifanio",
+    "r": "London Region"
+  },
+  "Kensal Rise": {
+    "ll": [
+      51.534246422942985,
+      -0.2193201837949367
+    ],
+    "o": "Erika Kulikova",
+    "r": "North Region"
+  },
+  "Kensington Arcade": {
+    "ll": [
+      51.50054982591571,
+      -0.1923835015031895
+    ],
+    "o": "Magda Miszkiewicz",
+    "r": "London Region"
+  },
+  "Kentish Town": {
+    "ll": [
+      51.54811075272975,
+      -0.14108788873501446
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Kew": {
+    "ll": [
+      51.47739009226651,
+      -0.28618890227739563
+    ],
+    "o": "Elizabeta Zakolli",
+    "r": "South Region"
+  },
+  "King Street": {
+    "ll": [
+      53.48118050983141,
+      -2.2469575410242366
+    ],
+    "o": "Chris Kral",
+    "r": "North Region"
+  },
+  "Kings Cross": {
+    "ll": [
+      51.53760443533955,
+      -0.12479225254224242
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "Kings Cross Station": {
+    "ll": [
+      51.53154106713771,
+      -0.12443271641010621
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "Kings Road": {
+    "ll": [
+      51.4869065756673,
+      -0.16986250106325043
+    ],
+    "o": "Magda Miszkiewicz",
+    "r": "London Region"
+  },
+  "Kingston": {
+    "ll": [
+      51.410178067056066,
+      -0.30557074104240095
+    ],
+    "o": "Lukas Rackauskas",
+    "r": "Other"
+  },
+  "Knutsford": {
+    "ll": [
+      53.304161524017864,
+      -2.3750867533422566
+    ],
+    "o": "Chris Kral",
+    "r": "North Region"
+  },
+  "Leamington Spa": {
+    "ll": [
+      52.290479025338094,
+      -1.5349122488600941
+    ],
+    "o": "Kate Downes",
+    "r": "North Region"
+  },
+  "Lewes": {
+    "ll": [
+      50.87398473128793,
+      0.01442631340413744
+    ],
+    "o": "Holly Crawley",
+    "r": "South Region"
+  },
+  "Liverpool Street Station": {
+    "ll": [
+      51.51770569508721,
+      -0.08138701664525817
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "London Bridge Station": {
+    "ll": [
+      51.504934428081995,
+      -0.08596932506745114
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "Long Acre": {
+    "ll": [
+      51.51389376824912,
+      -0.12292403760650128
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "Loughton": {
+    "ll": [
+      51.64611768279464,
+      0.053971571964628165
+    ],
+    "o": "Magda Walczak",
+    "r": "London Region"
+  },
+  "Macclesfield": {
+    "ll": [
+      53.26068882642148,
+      -2.125895182136529
+    ],
+    "o": "Kate Downes",
+    "r": "North Region"
+  },
+  "Maida Vale": {
+    "ll": [
+      51.53008441938973,
+      -0.18605114497911746
+    ],
+    "o": "Erika Kulikova",
+    "r": "North Region"
+  },
+  "Manchester Sale": {
+    "ll": [
+      53.424986616197565,
+      -2.3204553408558968
+    ],
+    "o": "Chris Kral",
+    "r": "North Region"
+  },
+  "Marlborough": {
+    "ll": [
+      51.4207104843386,
+      -1.7315046420368434
+    ],
+    "o": "Matt Church",
+    "r": "South Region"
+  },
+  "Marlow": {
+    "ll": [
+      51.57183647738681,
+      -0.776671505908394
+    ],
+    "o": "Bobby Holmes",
+    "r": "North Region"
+  },
+  "Marylebone Village": {
+    "ll": [
+      51.52128094379026,
+      -0.15202763431472552
+    ],
+    "o": "Sandra Cano Cardona",
+    "r": "London Region"
+  },
+  "Melcombe Street": {
+    "ll": [
+      51.522689089947285,
+      -0.15972894144038693
+    ],
+    "o": "Sandra Cano Cardona",
+    "r": "London Region"
+  },
+  "Mill Hill": {
+    "ll": [
+      51.61569632097369,
+      -0.24479703427206173
+    ],
+    "o": "Graeme Conroy",
+    "r": "North Region"
+  },
+  "Millennium Bridge": {
+    "ll": [
+      51.511393587867076,
+      -0.0983008298603007
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "Muswell Hill": {
+    "ll": [
+      51.59015647983546,
+      -0.14616444988532967
+    ],
+    "o": "Graeme Conroy",
+    "r": "North Region"
+  },
+  "Neo Bankside": {
+    "ll": [
+      51.50677525060145,
+      -0.10061996659514691
+    ],
+    "o": "Andrea D'Epifanio",
+    "r": "London Region"
+  },
+  "Newbury": {
+    "ll": [
+      51.40140690731378,
+      -1.3240009765626244
+    ],
+    "o": "Matt Church",
+    "r": "South Region"
+  },
+  "Northcote Road": {
+    "ll": [
+      51.45849824307275,
+      -0.16629026073265274
+    ],
+    "o": "Corina Medina",
+    "r": "South Region"
+  },
+  "Notting Hill": {
+    "ll": [
+      51.51452702653943,
+      -0.20408887356396707
+    ],
+    "o": "Sandra Cano Cardona",
+    "r": "London Region"
+  },
+  "Old Street": {
+    "ll": [
+      51.525034180354155,
+      -0.08729608529843245
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "Orchard Place": {
+    "ll": [
+      51.49829861158002,
+      -0.13334950311318483
+    ],
+    "o": "Magda Miszkiewicz",
+    "r": "London Region"
+  },
+  "Paddington": {
+    "ll": [
+      51.518451054243194,
+      -0.17710259665209746
+    ],
+    "o": "Sandra Cano Cardona",
+    "r": "London Region"
+  },
+  "Paddington Square": {
+    "ll": [
+      51.516365343775654,
+      -0.17523418883561662
+    ],
+    "o": "Sandra Cano Cardona",
+    "r": "London Region"
+  },
+  "Palmers Green": {
+    "ll": [
+      51.61797456365121,
+      -0.1091208798900104
+    ],
+    "o": "Graeme Conroy",
+    "r": "North Region"
+  },
+  "Parsons Green": {
+    "ll": [
+      51.47677824048656,
+      -0.20258339412809673
+    ],
+    "o": "Florentina Olteanu",
+    "r": "London Region"
+  },
+  "Pentonville Road Kings Cross": {
+    "ll": [
+      51.53098349575496,
+      -0.12150745646769896
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "Petersfield": {
+    "ll": [
+      51.004053621910295,
+      -0.9380737575947024
+    ],
+    "o": "Michelle Solomon",
+    "r": "South Region"
+  },
+  "Pimlico": {
+    "ll": [
+      51.49170097077672,
+      -0.13893803676059444
+    ],
+    "o": "Magda Miszkiewicz",
+    "r": "London Region"
+  },
+  "Prestwich": {
+    "ll": [
+      53.53275324202125,
+      -2.285432960689686
+    ],
+    "o": "Chris Kral",
+    "r": "North Region"
+  },
+  "Primrose Hill": {
+    "ll": [
+      51.54018254693267,
+      -0.1504621396785959
+    ],
+    "o": "Erika Kulikova",
+    "r": "North Region"
+  },
+  "Putney": {
+    "ll": [
+      51.4642206127693,
+      -0.2162115893117653
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "Queens Park": {
+    "ll": [
+      51.535433872118176,
+      -0.20499564882468738
+    ],
+    "o": "Erika Kulikova",
+    "r": "North Region"
+  },
+  "Radlett": {
+    "ll": [
+      51.683159430350585,
+      -0.3172339967702921
+    ],
+    "o": "Indre Mingailiene",
+    "r": "North Region"
+  },
+  "Reading": {
+    "ll": [
+      51.455063339534085,
+      -0.9704392916153918
+    ],
+    "o": "Bobby Holmes",
+    "r": "North Region"
+  },
+  "Reigate": {
+    "ll": [
+      51.23779313450142,
+      -0.2059431209413428
+    ],
+    "o": "Holly Crawley",
+    "r": "South Region"
+  },
+  "Richmond": {
+    "ll": [
+      51.46120191562146,
+      -0.3003668222004673
+    ],
+    "o": "Elizabeta Zakolli",
+    "r": "South Region"
+  },
+  "Ruislip": {
+    "ll": [
+      51.57465407721802,
+      -0.4245912971905429
+    ],
+    "o": "Indre Mingailiene",
+    "r": "North Region"
+  },
+  "Salisbury": {
+    "ll": [
+      51.06881651052493,
+      -1.7959108370240044
+    ],
+    "o": "Matt Church",
+    "r": "South Region"
+  },
+  "Seven Dials Brighton": {
+    "ll": [
+      50.831159877817214,
+      -0.14748047885828458
+    ],
+    "o": "Holly Crawley",
+    "r": "South Region"
+  },
+  "Sevenoaks": {
+    "ll": [
+      51.271719403228275,
+      0.19194310042680865
+    ],
+    "o": "Holly Crawley",
+    "r": "South Region"
+  },
+  "Seymour Place": {
+    "ll": [
+      51.51458057656062,
+      -0.16096911143670226
+    ],
+    "o": "Sandra Cano Cardona",
+    "r": "London Region"
+  },
+  "Shaftesbury Avenue": {
+    "ll": [
+      51.51211705336363,
+      -0.13193918183925007
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "Shoreditch": {
+    "ll": [
+      51.52370281882605,
+      -0.07424760740086751
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "Soho": {
+    "ll": [
+      51.51429326199018,
+      -0.13451623879348096
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "Solihull": {
+    "ll": [
+      52.41237665859408,
+      -1.7771817858445884
+    ],
+    "o": "Kate Downes",
+    "r": "North Region"
+  },
+  "South End Green": {
+    "ll": [
+      51.554098675318365,
+      -0.16570675965284284
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "South Lambeth": {
+    "ll": [
+      51.481880208966366,
+      -0.12481518169213832
+    ],
+    "o": "Andrea D'Epifanio",
+    "r": "London Region"
+  },
+  "South Woodford": {
+    "ll": [
+      51.594953518201734,
+      0.023400409999817715
+    ],
+    "o": "Magda Walczak",
+    "r": "London Region"
+  },
+  "Southbank": {
+    "ll": [
+      51.50290911206654,
+      -0.11639860895911575
+    ],
+    "o": "Andrea D'Epifanio",
+    "r": "London Region"
+  },
+  "Southfields": {
+    "ll": [
+      51.44471567291188,
+      -0.20679338374652068
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "Southwark": {
+    "dn": "The Fire Station, Southwark",
+    "ll": [
+      51.502037652393994,
+      -0.097893763838301
+    ],
+    "o": "Andrea D'Epifanio",
+    "r": "London Region"
+  },
+  "Spitalfields": {
+    "ll": [
+      51.52011181140701,
+      -0.07544582222408311
+    ],
+    "o": "George Austin",
+    "r": "London Region"
+  },
+  "St Albans": {
+    "ll": [
+      51.751354107752,
+      -0.3401049387369463
+    ],
+    "o": "Indre Mingailiene",
+    "r": "North Region"
+  },
+  "St Johns Wood": {
+    "ll": [
+      51.53371093561445,
+      -0.17163487949517706
+    ],
+    "o": "Erika Kulikova",
+    "r": "North Region"
+  },
+  "St Margarets": {
+    "ll": [
+      51.45537763087762,
+      -0.32035342383206994
+    ],
+    "o": "Elizabeta Zakolli",
+    "r": "South Region"
+  },
+  "St Pancras Station": {
+    "ll": [
+      51.53221885902303,
+      -0.12672090998750554
+    ],
+    "o": "Samuel Suris",
+    "r": "London Region"
+  },
+  "Stoke Newington": {
+    "ll": [
+      51.56225452687533,
+      -0.07643557212157928
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Strand": {
+    "ll": [
+      51.50920021832283,
+      -0.12470040217147513
+    ],
+    "o": "Magda Miszkiewicz",
+    "r": "London Region"
+  },
+  "Stratford-upon-Avon": {
+    "ll": [
+      52.19237731775021,
+      -1.7062315165479542
+    ],
+    "o": "Kate Downes",
+    "r": "North Region"
+  },
+  "Streatham Hill": {
+    "ll": [
+      51.440061002803354,
+      -0.1255364754769947
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "Summertown": {
+    "ll": [
+      51.77779152326802,
+      -1.2652724383728369
+    ],
+    "o": "Bobby Holmes",
+    "r": "North Region"
+  },
+  "Surbiton": {
+    "ll": [
+      51.39331784349233,
+      -0.304561661269156
+    ],
+    "o": "Lukas Rackauskas",
+    "r": "Other"
+  },
+  "Swains Lane": {
+    "ll": [
+      51.56206167711363,
+      -0.14956176078431976
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Teddington": {
+    "ll": [
+      51.42590869446496,
+      -0.33667070528701365
+    ],
+    "o": "Lukas Rackauskas",
+    "r": "Other"
+  },
+  "Temple Fortune": {
+    "ll": [
+      51.583473154690616,
+      -0.19986949763344952
+    ],
+    "o": "Graeme Conroy",
+    "r": "North Region"
+  },
+  "Thame": {
+    "ll": [
+      51.747220594153276,
+      -0.9777351982270953
+    ],
+    "o": "Bobby Holmes",
+    "r": "North Region"
+  },
+  "The Cut": {
+    "ll": [
+      51.502669569664924,
+      -0.108148114243105
+    ],
+    "o": "Andrea D'Epifanio",
+    "r": "London Region"
+  },
+  "Tooting Broadway": {
+    "ll": [
+      51.42571510553048,
+      -0.1648289199886173
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "Tunbridge Wells": {
+    "ll": [
+      51.12848630423259,
+      0.2622858610874406
+    ],
+    "o": "Holly Crawley",
+    "r": "South Region"
+  },
+  "Twickenham": {
+    "ll": [
+      51.44656945063237,
+      -0.32760226739442294
+    ],
+    "o": "Elizabeta Zakolli",
+    "r": "South Region"
+  },
+  "Union Street, Bath": {
+    "dn": "Union Street - Bath",
+    "ll": [
+      51.382575953332044,
+      -2.3605399749460303
+    ],
+    "o": "Matt Church",
+    "r": "South Region"
+  },
+  "Victoria Park": {
+    "ll": [
+      51.53782355171193,
+      -0.04458850202687031
+    ],
+    "o": "Connie Williamson",
+    "r": "North Region"
+  },
+  "Walthamstow Village": {
+    "ll": [
+      51.58279913185297,
+      -0.011667835851027116
+    ],
+    "o": "Magda Walczak",
+    "r": "London Region"
+  },
+  "Wandsworth": {
+    "ll": [
+      51.4600910004931,
+      -0.1888870898926554
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "Wanstead": {
+    "ll": [
+      51.578753811511405,
+      0.025832000209743657
+    ],
+    "o": "Magda Walczak",
+    "r": "London Region"
+  },
+  "Watford": {
+    "ll": [
+      51.65563921691276,
+      -0.3968490193954252
+    ],
+    "o": "Indre Mingailiene",
+    "r": "North Region"
+  },
+  "Welwyn Garden City": {
+    "ll": [
+      51.80174446270561,
+      -0.20536149891492209
+    ],
+    "o": "Indre Mingailiene",
+    "r": "North Region"
+  },
+  "West Hampstead": {
+    "ll": [
+      51.550518945764765,
+      -0.19122157598951742
+    ],
+    "o": "Erika Kulikova",
+    "r": "North Region"
+  },
+  "Westbourne Grove": {
+    "ll": [
+      51.51579946637268,
+      -0.18921704677948545
+    ],
+    "o": "Sandra Cano Cardona",
+    "r": "London Region"
+  },
+  "Westfield Stratford": {
+    "ll": [
+      51.543307917105125,
+      -0.008729717873339326
+    ],
+    "o": "Elena Ilciuc",
+    "r": "South Region"
+  },
+  "Weybridge": {
+    "ll": [
+      51.373322488608885,
+      -0.4567026852593155
+    ],
+    "o": "Lukas Rackauskas",
+    "r": "Other"
+  },
+  "Willesden Green": {
+    "ll": [
+      51.54849001094356,
+      -0.2216128641459458
+    ],
+    "o": "Erika Kulikova",
+    "r": "North Region"
+  },
+  "Wilmslow": {
+    "ll": [
+      53.32636655723529,
+      -2.23527196492951
+    ],
+    "o": "Chris Kral",
+    "r": "North Region"
+  },
+  "Wimbledon": {
+    "ll": [
+      51.42440398007473,
+      -0.21615106639006634
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "Wimbledon Broadway": {
+    "ll": [
+      51.42007134430719,
+      -0.20488596989327484
+    ],
+    "o": "Safa Aden",
+    "r": "South Region"
+  },
+  "Windsor": {
+    "ll": [
+      51.48113828534977,
+      -0.611400684501173
+    ],
+    "o": "Lukas Rackauskas",
+    "r": "Other"
+  },
+  "Windsor Castle": {
+    "ll": [
+      51.48228591716702,
+      -0.6076929872736829
+    ],
+    "o": "Lukas Rackauskas",
+    "r": "Other"
+  },
+  "Witney": {
+    "ll": [
+      51.784385460054935,
+      -1.4848814568025601
+    ],
+    "o": "Bobby Holmes",
+    "r": "North Region"
+  },
+  "Woking": {
+    "ll": [
+      51.31788256930293,
+      -0.5607934296592159
+    ],
+    "o": "Michelle Solomon",
+    "r": "South Region"
+  },
+  "Wokingham": {
+    "ll": [
+      51.41053700213229,
+      -0.8321664776702498
+    ],
+    "o": "Michelle Solomon",
+    "r": "South Region"
+  },
+  "Woolwich Station": {
+    "ll": [
+      51.49207955597294,
+      0.070516293935313
+    ],
+    "o": "Elena Ilciuc",
+    "r": "South Region"
+  },
+  "Worthing": {
+    "ll": [
+      50.81168589451133,
+      -0.36874108253065246
+    ],
+    "o": "Holly Crawley",
+    "r": "South Region"
+  }
+}
