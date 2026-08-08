@@ -33,8 +33,8 @@ test('uses one accessible close-button component across every modal surface', ()
   // Access dialogs, and the shared unsaved-changes decision.
   assert.equal(modalCloseButtons(admin).length, 7);
   assert.equal(modalCloseButtons(profile).length, 1);
-  // Visit report, note deletion, and add-task dialogs.
-  assert.equal(modalCloseButtons(bakeryProfile).length, 3);
+  // Visit report, note deletion, task deletion, and the add/edit task dialog.
+  assert.equal(modalCloseButtons(bakeryProfile).length, 4);
 
   staticButtons.forEach((button) => {
     assert.match(button, /type="button"/);

@@ -1036,7 +1036,9 @@
 .bakery-profile-small-btn,
 .bakery-profile-secondary-btn,
 .bakery-note-entry__edit,
-.bakery-note-entry__delete {
+.bakery-note-entry__delete,
+.bakery-task-row__edit,
+.bakery-task-row__delete {
   min-height: 30px;
   padding: 0 11px;
   color: var(--accent);
@@ -1170,6 +1172,45 @@
 .bakery-task-row__check--static:not(:empty) {
   background: var(--green);
   border-color: var(--green);
+}
+
+/* Sits beside the priority pill on the title line, so a task keeps its
+   compact two-line shape whether or not it can be edited. A long title then
+   pushes the controls onto their own line instead of squeezing them. */
+.bakery-task-row__body > div {
+  flex-wrap: wrap;
+}
+
+.bakery-task-row__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.bakery-task-row__edit,
+.bakery-task-row__delete {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 0.66rem;
+  background: transparent;
+}
+
+.bakery-task-row__edit:hover {
+  background: var(--accent-light);
+}
+
+.bakery-task-row__delete {
+  color: #A3372F;
+}
+
+.bakery-task-row__delete:hover {
+  background: var(--red-d);
+}
+
+.bakery-task-row__edit:focus-visible,
+.bakery-task-row__delete:focus-visible {
+  outline: 3px solid rgba(181, 49, 42, 0.22);
+  outline-offset: 2px;
 }
 
 .bakery-task-row.is-done {

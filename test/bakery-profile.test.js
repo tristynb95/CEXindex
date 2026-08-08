@@ -194,6 +194,50 @@ test('follow-up tasks are added through a dialog opened from the section', () =>
   assert.match(script, /data-task-add/);
 });
 
+test('a logged task can be revised through the same dialog that raised it', () => {
+  assert.match(script, /data-task-edit/);
+  assert.match(script, /taskForm\.setAttribute\('data-edit-id', task\.id\)/);
+  assert.match(script, /taskModalTitle\.textContent = editing \? 'Edit follow-up task' : 'Add follow-up task'/);
+  assert.match(script, /taskSubmit\.textContent = editing \? 'Save changes' : 'Add task'/);
+
+  // Editing rewrites the wording and dates only: the sign-off state and who
+  // raised the task have to survive a revision untouched.
+  const submit = script.slice(script.indexOf("taskForm.addEventListener('submit'"));
+  const editBranch = submit.slice(submit.indexOf('if (editId) {'), submit.indexOf('} else {'));
+  assert.match(editBranch, /update\(ref\(db, 'followUpActions\/' \+ editId\)/);
+  ['status', 'completedAt', 'completedBy', 'createdBy', 'createdAt'].forEach((field) => {
+    assert.doesNotMatch(editBranch, new RegExp('\\b' + field + ':'));
+  });
+  assert.match(editBranch, /'meta\/updatedBy': who/);
+});
+
+test('deleting a task is confirmed in a branded dialog, never a browser prompt', () => {
+  assert.match(html, /id="bakeryTaskDeleteModal"[\s\S]*?role="alertdialog"[\s\S]*?aria-modal="true"[\s\S]*?aria-labelledby="bakeryTaskDeleteTitle"[\s\S]*?hidden>/);
+  const modal = html.slice(html.indexOf('id="bakeryTaskDeleteModal"'), html.indexOf('id="bakeryTaskModal"'));
+  [
+    'bakeryTaskDeleteBackdrop',
+    'bakeryTaskDeleteClose',
+    'bakeryTaskDeletePreview',
+    'bakeryTaskDeleteMessage',
+    'bakeryTaskDeleteCancel',
+    'bakeryTaskDeleteConfirm'
+  ].forEach((id) => assert.match(modal, new RegExp('id="' + id + '"')));
+
+  assert.match(script, /data-task-delete/);
+  assert.match(script, /remove\(ref\(db, 'followUpActions\/' \+ id\)\)/);
+  // Destructive confirmations open on Cancel, and stay put while the delete runs.
+  assert.match(script, /setModalOpen\(taskDeleteModal, true\);\s*taskDeleteCancel\.focus\(\)/);
+  assert.match(script, /function dismissTaskDelete\(\) \{\s*if \(taskDeleting\) return;/);
+  assert.match(script, /\[taskDeleteCancel, taskDeleteClose, taskDeleteBackdrop\]/);
+  assert.doesNotMatch(script, /window\.confirm|[^.\w]confirm\(/);
+});
+
+test('a task removed by someone else closes the dialog standing over it', () => {
+  assert.match(script, /if \(editingId && !taskById\(editingId\) && !taskSaving\) closeTaskForm\(\)/);
+  assert.match(script, /if \(taskDeleteId && !taskById\(taskDeleteId\) && !taskDeleting\) closeTaskDelete\(\)/);
+  assert.match(script, /var editTask = taskById\(editButton\.getAttribute\('data-task-edit'\)\);\s*if \(editTask\) openTaskForm\(editTask\)/);
+});
+
 test('uses Google Maps with a no-key directions handoff', () => {
   assert.doesNotMatch(html, /leaflet/i);
   assert.match(html, /id="bakeryDirectionsLink"/);

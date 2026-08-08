@@ -37,7 +37,15 @@ const taskMessage = document.getElementById('bakeryTaskMessage');
 const taskModal = document.getElementById('bakeryTaskModal');
 const taskModalBackdrop = document.getElementById('bakeryTaskModalBackdrop');
 const taskModalClose = document.getElementById('bakeryTaskModalClose');
+const taskModalTitle = document.getElementById('bakeryTaskModalTitle');
 const taskModalBakery = document.getElementById('bakeryTaskModalBakery');
+const taskDeleteModal = document.getElementById('bakeryTaskDeleteModal');
+const taskDeleteBackdrop = document.getElementById('bakeryTaskDeleteBackdrop');
+const taskDeleteClose = document.getElementById('bakeryTaskDeleteClose');
+const taskDeleteCancel = document.getElementById('bakeryTaskDeleteCancel');
+const taskDeleteConfirm = document.getElementById('bakeryTaskDeleteConfirm');
+const taskDeletePreview = document.getElementById('bakeryTaskDeletePreview');
+const taskDeleteMessage = document.getElementById('bakeryTaskDeleteMessage');
 const noteForm = document.getElementById('bakeryNoteForm');
 const noteBody = document.getElementById('bakeryNoteBody');
 const noteSubmit = document.getElementById('bakeryNoteSubmit');
@@ -89,6 +97,9 @@ let visitsUnsubscribe = null;
 let tasksUnsubscribe = null;
 let taskSaving = false;
 let taskModalReturnFocus = null;
+let taskDeleteId = null;
+let taskDeleting = false;
+let taskDeleteReturnFocus = null;
 let isAdmin = false;
 let notePostingAsDefault = 'Posting as Coffee Team';
 let noteDeleteId = null;
@@ -1224,9 +1235,17 @@ function dueLabel(task) {
   return 'Due ' + formatDate(task.dueDate, false);
 }
 
+function taskById(id) {
+  return tasks.find(function(task) { return task && task.id === id; }) || null;
+}
+
 function renderTasks() {
   var container = document.getElementById('bakeryTaskList');
   var bakeryTasks = sortedBakeryTasks();
+  // Someone else may have removed the task being edited or confirmed for deletion.
+  var editingId = taskForm.getAttribute('data-edit-id');
+  if (editingId && !taskById(editingId) && !taskSaving) closeTaskForm();
+  if (taskDeleteId && !taskById(taskDeleteId) && !taskDeleting) closeTaskDelete();
   if (!bakeryTasks.length) {
     container.innerHTML = '<div class="bakery-profile-empty"><strong>No follow-up tasks.</strong>' +
       '<span>Add the next action for this bakery when one is agreed.</span>' +
@@ -1239,6 +1258,17 @@ function renderTasks() {
   container.innerHTML = bakeryTasks.map(function(task) {
     var done = (task.status || 'open') === 'done';
     var priority = ['low', 'medium', 'high'].indexOf(task.priority) !== -1 ? task.priority : '';
+    var title = task.title || 'Untitled task';
+    // The label repeats the task so a screen reader hears which of the listed
+    // tasks each pair of buttons belongs to.
+    var actions = canEdit
+      ? '<span class="bakery-task-row__actions">' +
+        '<button type="button" class="bakery-task-row__edit" data-task-edit="' + escapeHtml(task.id) +
+        '" aria-label="' + escapeHtml('Edit task: ' + title) + '">Edit</button>' +
+        '<button type="button" class="bakery-task-row__delete" data-task-delete="' + escapeHtml(task.id) +
+        '" aria-label="' + escapeHtml('Delete task: ' + title) + '">Delete</button>' +
+        '</span>'
+      : '';
     return '<article class="bakery-task-row' + (done ? ' is-done' : '') + '">' +
       (canEdit
         ? '<button type="button" class="bakery-task-row__check" data-task-toggle="' + escapeHtml(task.id) +
@@ -1246,8 +1276,9 @@ function renderTasks() {
           '" aria-pressed="' + done + '">' + (done ? '✓' : '') + '</button>'
         : '<span class="bakery-task-row__check bakery-task-row__check--static">' + (done ? '✓' : '') + '</span>') +
       '<div class="bakery-task-row__body">' +
-      '<div><strong>' + escapeHtml(task.title || 'Untitled task') + '</strong>' +
+      '<div><strong>' + escapeHtml(title) + '</strong>' +
       (priority ? '<span class="bakery-priority bakery-priority--' + priority + '">' + escapeHtml(priority) + '</span>' : '') +
+      actions +
       '</div>' +
       (task.detail ? '<p>' + escapeHtml(task.detail) + '</p>' : '') +
       '<small>' + escapeHtml(dueLabel(task) || (done ? 'Completed' : 'No due date')) + '</small>' +
@@ -1330,7 +1361,7 @@ function renderNotes() {
 function setModalOpen(modal, open) {
   modal.hidden = !open;
   document.body.classList.toggle('bakery-profile-modal-open',
-    !taskModal.hidden || !noteDeleteModal.hidden);
+    !taskModal.hidden || !noteDeleteModal.hidden || !taskDeleteModal.hidden);
 }
 
 function restoreFocus(returnTo, fallback) {
@@ -1356,14 +1387,36 @@ function trapModalFocus(modal, event) {
   }
 }
 
-function openTaskForm() {
+/* One dialog serves both jobs: adding is an empty form, editing is the same
+   form primed with the task, so only the wording and the save path differ. */
+function setTaskFormMode(editing) {
+  taskModalTitle.textContent = editing ? 'Edit follow-up task' : 'Add follow-up task';
+  taskSubmit.textContent = editing ? 'Save changes' : 'Add task';
+  taskModalClose.setAttribute('aria-label', editing ? 'Close edit follow-up task' : 'Close add follow-up task');
+  taskModalBackdrop.setAttribute('aria-label',
+    editing ? 'Cancel editing this follow-up task' : 'Cancel adding a follow-up task');
+}
+
+function openTaskForm(task) {
   if (!canEdit || !taskModal.hidden) return;
   taskForm.reset();
   setMessage(taskMessage, '', '');
   taskModalBakery.textContent = profileDisplayBakeryName(bakeryName) || 'this bakery';
+  if (task) {
+    taskForm.setAttribute('data-edit-id', task.id);
+    document.getElementById('bakeryTaskTitle').value = task.title || '';
+    document.getElementById('bakeryTaskDetail').value = task.detail || '';
+    document.getElementById('bakeryTaskDueDate').value = task.dueDate || '';
+    document.getElementById('bakeryTaskPriority').value =
+      ['low', 'medium', 'high'].indexOf(task.priority) !== -1 ? task.priority : 'none';
+  } else {
+    taskForm.removeAttribute('data-edit-id');
+  }
+  setTaskFormMode(!!task);
   taskModalReturnFocus = document.activeElement;
   setModalOpen(taskModal, true);
-  taskAddToggle.setAttribute('aria-expanded', 'true');
+  // Only the section's own button owns the dialog, so editing leaves it alone.
+  if (!task) taskAddToggle.setAttribute('aria-expanded', 'true');
   document.getElementById('bakeryTaskTitle').focus();
 }
 
@@ -1372,6 +1425,8 @@ function closeTaskForm() {
   setModalOpen(taskModal, false);
   taskAddToggle.setAttribute('aria-expanded', 'false');
   taskForm.reset();
+  taskForm.removeAttribute('data-edit-id');
+  setTaskFormMode(false);
   setMessage(taskMessage, '', '');
   var returnTo = taskModalReturnFocus;
   taskModalReturnFocus = null;
@@ -1382,6 +1437,32 @@ function closeTaskForm() {
 function dismissTaskForm() {
   if (taskSaving) return;
   closeTaskForm();
+}
+
+function openTaskDelete(id) {
+  var task = taskById(id);
+  if (!task || !canEdit || !taskDeleteModal.hidden) return;
+  taskDeleteId = id;
+  taskDeletePreview.textContent = task.title || 'Untitled task';
+  setMessage(taskDeleteMessage, '', '');
+  taskDeleteReturnFocus = document.activeElement;
+  setModalOpen(taskDeleteModal, true);
+  taskDeleteCancel.focus();
+}
+
+function closeTaskDelete() {
+  if (taskDeleteModal.hidden) return;
+  setModalOpen(taskDeleteModal, false);
+  taskDeleteId = null;
+  setMessage(taskDeleteMessage, '', '');
+  var returnTo = taskDeleteReturnFocus;
+  taskDeleteReturnFocus = null;
+  restoreFocus(returnTo, canEdit ? taskAddToggle : null);
+}
+
+function dismissTaskDelete() {
+  if (taskDeleting) return;
+  closeTaskDelete();
 }
 
 function openNoteDelete(id) {
@@ -1613,10 +1694,14 @@ document.getElementById('bakeryVisitLog').addEventListener('click', function(eve
   G.openVisitReportById(reportButton.getAttribute('data-bakery-visit-report'));
 });
 
-taskAddToggle.addEventListener('click', openTaskForm);
+taskAddToggle.addEventListener('click', function() { openTaskForm(null); });
 
 [taskCancel, taskModalClose, taskModalBackdrop].forEach(function(control) {
   control.addEventListener('click', dismissTaskForm);
+});
+
+[taskDeleteCancel, taskDeleteClose, taskDeleteBackdrop].forEach(function(control) {
+  control.addEventListener('click', dismissTaskDelete);
 });
 
 [noteDeleteCancel, noteDeleteClose, noteDeleteBackdrop].forEach(function(control) {
@@ -1624,10 +1709,12 @@ taskAddToggle.addEventListener('click', openTaskForm);
 });
 
 document.addEventListener('keydown', function(event) {
-  var openModal = !taskModal.hidden ? taskModal : (!noteDeleteModal.hidden ? noteDeleteModal : null);
+  var openModal = !taskModal.hidden ? taskModal
+    : (!taskDeleteModal.hidden ? taskDeleteModal : (!noteDeleteModal.hidden ? noteDeleteModal : null));
   if (!openModal) return;
   if (event.key === 'Escape') {
     if (openModal === taskModal) dismissTaskForm();
+    else if (openModal === taskDeleteModal) dismissTaskDelete();
     else dismissNoteDelete();
     return;
   }
@@ -1637,61 +1724,121 @@ document.addEventListener('keydown', function(event) {
 taskForm.addEventListener('submit', async function(event) {
   event.preventDefault();
   if (!currentUser || !canEdit) return;
+  var editId = taskForm.getAttribute('data-edit-id');
+  if (editId && !taskById(editId)) {
+    setMessage(taskMessage, 'error', 'This task is no longer available.');
+    return;
+  }
   var title = document.getElementById('bakeryTaskTitle').value.trim();
   if (!title) {
     setMessage(taskMessage, 'error', 'Enter a task before saving.');
     return;
   }
 
+  var detail = document.getElementById('bakeryTaskDetail').value.trim();
+  var dueDate = document.getElementById('bakeryTaskDueDate').value || null;
+  var priority = document.getElementById('bakeryTaskPriority').value || 'none';
+  var busyText = editId ? 'Saving…' : 'Adding…';
+  var readyText = editId ? 'Save changes' : 'Add task';
   taskSaving = true;
-  setBusy(taskSubmit, true, 'Adding…', 'Add task');
+  setBusy(taskSubmit, true, busyText, readyText);
   try {
     var who = currentUser.email || currentUser.uid;
-    var taskRef = push(ref(db, 'followUpActions'));
-    await set(taskRef, {
-      bakery: bakeryName,
-      title: title,
-      detail: document.getElementById('bakeryTaskDetail').value.trim(),
-      dueDate: document.getElementById('bakeryTaskDueDate').value || null,
-      priority: document.getElementById('bakeryTaskPriority').value || 'none',
-      status: 'open',
-      sourceVisitId: null,
-      completedAt: null,
-      completedBy: null,
-      createdAt: new Date().toISOString(),
-      createdBy: who,
-      createdByUid: currentUser.uid,
-      createdByName: currentUser.displayName || '',
-      meta: {
-        updatedAt: new Date().toISOString(),
-        updatedBy: who
-      }
-    });
-    // This form has no assignee picker, so the task belongs to whoever raised
-    // it. That leaves no personal targets — the bakery's own people still hear
-    // about it through their area.
-    recordNotification('task.assigned', {
-      bakery: bakeryName,
-      subject: title,
-      entityId: taskRef.key,
-      targetUids: []
-    });
-    if (typeof G.notifySuccess === 'function') G.notifySuccess('Task created');
+    if (editId) {
+      // A revision only touches the wording and the dates. Who raised it, its
+      // open/done state, and any sign-off stay exactly as they were.
+      await update(ref(db, 'followUpActions/' + editId), {
+        title: title,
+        detail: detail,
+        dueDate: dueDate,
+        priority: priority,
+        'meta/updatedAt': new Date().toISOString(),
+        'meta/updatedBy': who
+      });
+      if (typeof G.notifySuccess === 'function') G.notifySuccess('Task updated');
+    } else {
+      var taskRef = push(ref(db, 'followUpActions'));
+      await set(taskRef, {
+        bakery: bakeryName,
+        title: title,
+        detail: detail,
+        dueDate: dueDate,
+        priority: priority,
+        status: 'open',
+        sourceVisitId: null,
+        completedAt: null,
+        completedBy: null,
+        createdAt: new Date().toISOString(),
+        createdBy: who,
+        createdByUid: currentUser.uid,
+        createdByName: currentUser.displayName || '',
+        meta: {
+          updatedAt: new Date().toISOString(),
+          updatedBy: who
+        }
+      });
+      // This form has no assignee picker, so the task belongs to whoever raised
+      // it. That leaves no personal targets — the bakery's own people still hear
+      // about it through their area.
+      recordNotification('task.assigned', {
+        bakery: bakeryName,
+        subject: title,
+        entityId: taskRef.key,
+        targetUids: []
+      });
+      if (typeof G.notifySuccess === 'function') G.notifySuccess('Task created');
+    }
     closeTaskForm();
   } catch (error) {
-    console.error('Could not add task:', error);
-    setMessage(taskMessage, 'error', error.message || 'The task could not be added.');
+    console.error(editId ? 'Could not update task:' : 'Could not add task:', error);
+    setMessage(taskMessage, 'error', error.message ||
+      (editId ? 'The task could not be saved.' : 'The task could not be added.'));
   } finally {
     taskSaving = false;
-    setBusy(taskSubmit, false, 'Adding…', 'Add task');
+    setBusy(taskSubmit, false, busyText, readyText);
+  }
+});
+
+taskDeleteConfirm.addEventListener('click', async function() {
+  if (!taskDeleteId || !canEdit || taskDeleting) return;
+  var id = taskDeleteId;
+  taskDeleting = true;
+  setBusy(taskDeleteConfirm, true, 'Deleting…', 'Delete task');
+  try {
+    await remove(ref(db, 'followUpActions/' + id));
+    if (taskForm.getAttribute('data-edit-id') === id) closeTaskForm();
+    closeTaskDelete();
+    if (typeof G.notifySuccess === 'function') G.notifySuccess('Task deleted');
+  } catch (error) {
+    console.error('Could not delete task:', error);
+    setMessage(taskDeleteMessage, 'error', error.message || 'The task could not be deleted.');
+  } finally {
+    taskDeleting = false;
+    setBusy(taskDeleteConfirm, false, 'Deleting…', 'Delete task');
   }
 });
 
 document.getElementById('bakeryTaskList').addEventListener('click', async function(event) {
   if (event.target.closest('[data-task-add]')) {
-    openTaskForm();
+    openTaskForm(null);
     return;
   }
+
+  var editButton = event.target.closest('[data-task-edit]');
+  if (editButton) {
+    // A task removed by someone else must not fall through and open a blank
+    // add form under an "Edit" click.
+    var editTask = taskById(editButton.getAttribute('data-task-edit'));
+    if (editTask) openTaskForm(editTask);
+    return;
+  }
+
+  var deleteButton = event.target.closest('[data-task-delete]');
+  if (deleteButton) {
+    openTaskDelete(deleteButton.getAttribute('data-task-delete'));
+    return;
+  }
+
   var button = event.target.closest('[data-task-toggle]');
   if (!button || !currentUser || !canEdit) return;
   var task = tasks.find(function(item) { return item.id === button.getAttribute('data-task-toggle'); });

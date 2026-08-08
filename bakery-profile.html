@@ -403,6 +403,32 @@
     </section>
   </div>
 
+  <div id="bakeryTaskDeleteModal" class="bakery-profile-modal" role="alertdialog" aria-modal="true"
+    aria-labelledby="bakeryTaskDeleteTitle" aria-describedby="bakeryTaskDeleteCopy" hidden>
+    <button type="button" id="bakeryTaskDeleteBackdrop" class="bakery-profile-modal__backdrop"
+      aria-label="Cancel deleting this follow-up task"></button>
+    <section class="bakery-profile-modal__dialog">
+      <div class="bakery-profile-modal__head">
+        <div>
+          <p class="bakery-profile-eyebrow">Actions</p>
+          <h2 id="bakeryTaskDeleteTitle">Delete this follow-up task?</h2>
+          <p id="bakeryTaskDeleteCopy" class="bakery-profile-modal__copy">The task is removed for the whole
+            coffee team, everywhere it appears. This cannot be undone.</p>
+        </div>
+        <button type="button" id="bakeryTaskDeleteClose" class="modal-close-btn"
+          aria-label="Close delete follow-up task confirmation" title="Close">&#10005;</button>
+      </div>
+
+      <blockquote id="bakeryTaskDeletePreview" class="bakery-profile-modal__quote"></blockquote>
+      <div id="bakeryTaskDeleteMessage" class="bakery-profile-form-message" role="status" hidden></div>
+
+      <div class="bakery-profile-modal__actions">
+        <button type="button" id="bakeryTaskDeleteCancel" class="bakery-profile-secondary-btn">Cancel</button>
+        <button type="button" id="bakeryTaskDeleteConfirm" class="bakery-profile-danger-btn">Delete task</button>
+      </div>
+    </section>
+  </div>
+
   <div id="bakeryTaskModal" class="bakery-profile-modal" role="dialog" aria-modal="true"
     aria-labelledby="bakeryTaskModalTitle" hidden>
     <button type="button" id="bakeryTaskModalBackdrop" class="bakery-profile-modal__backdrop"
