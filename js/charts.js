@@ -66,6 +66,29 @@ window.GAILS.makeChart = function (id, config) {
   _charts[id] = new Chart(el, config);
 };
 
+// ── Scatter tooltip helpers ──
+// Chart.js's 'nearest' resolver keeps *every* element tied at the minimum
+// distance, so bakeries sharing an exact coordinate (score 90 / NPS 100 is a
+// crowded corner) all land in one tooltip: a single title over N bodies.
+// These two keep the tooltip to the one bakery it names, and say out loud how
+// many others are hidden underneath it.
+window.GAILS.firstPointOnly = function (item, index, array) {
+  if (item.datasetIndex !== 0) return false;         // trend lines never own a tooltip
+  for (var i = 0; i < index; i++) {
+    if (array[i].datasetIndex === 0) return false;
+  }
+  return true;
+};
+
+window.GAILS.coincidentNote = function (rows, row, xKey, yKey) {
+  if (!row) return '';
+  var shared = rows.filter(function (o) {
+    return o !== row && o[xKey] === row[xKey] && o[yKey] === row[yKey];
+  }).length;
+  if (!shared) return '';
+  return '+ ' + shared + ' more baker' + (shared === 1 ? 'y' : 'ies') + ' at this point';
+};
+
 window.GAILS.getChart = function (id) { return _charts[id]; };
 window.GAILS.destroyChart = function (id) { if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; } };
 window.GAILS.resizeChartsIn = function (container) {
@@ -121,9 +144,10 @@ window.GAILS.renderOverviewCharts = function (data) {
       count: data.filter(isUnscored).length
     }]);
     var splitTotal = splitRows.reduce(function (a, r) { return a + r.count; }, 0);
-    // Bars scale against the largest band, not the total: no band is ever close
-    // to the whole estate, so scaling to the total would leave every bar a stub.
-    var splitMax = splitRows.reduce(function (a, r) { return Math.max(a, r.count); }, 0) || 1;
+    // Bars scale against the total, so a bar's width *is* the percentage printed
+    // beside it. Scaling to the largest band instead made the two contradict each
+    // other — a 23% band drew almost as wide as a 33% one.
+    var splitDenom = splitTotal || 1;
 
     splitEl.innerHTML = splitRows.map(function (row) {
       var pct = splitTotal ? Math.round(row.count / splitTotal * 100) : 0;
@@ -140,7 +164,7 @@ window.GAILS.renderOverviewCharts = function (data) {
         + G.escapeHtml(row.label)
         + '</span>'
         + '<span class="band-split__track">'
-        + '<span class="band-split__fill" style="width:' + (row.count / splitMax * 100) + '%;'
+        + '<span class="band-split__fill" style="width:' + (row.count / splitDenom * 100) + '%;'
         + 'background:' + row.color + '"></span>'
         + '</span>'
         + '<span class="band-split__count">' + row.count + '</span>'
@@ -189,7 +213,14 @@ window.GAILS.renderOverviewCharts = function (data) {
       interaction: { mode: 'nearest', intersect: true },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { title: function (items) { return chartData[items[0].dataIndex].b; }, label: function (ctx) { var b = chartData[ctx.dataIndex]; return [metricLabel + ': ' + b[valueKey] + ' (' + b[bandKey] + ')', 'Company rank: ' + (b.companyRank ? b.companyRank + ' of ' + b.companyCohortSize : 'Not ranked'), 'NPS (D+M): ' + b.n, 'Vol: ' + b.v + ' (' + b.co + ' confidence)']; } } }
+        tooltip: {
+          filter: G.firstPointOnly,
+          callbacks: {
+            title: function (items) { return chartData[items[0].dataIndex].b; },
+            label: function (ctx) { var b = chartData[ctx.dataIndex]; return [metricLabel + ': ' + b[valueKey] + ' (' + b[bandKey] + ')', 'Company rank: ' + (b.companyRank ? b.companyRank + ' of ' + b.companyCohortSize : 'Not ranked'), 'NPS (D+M): ' + b.n, 'Vol: ' + b.v + ' (' + b.co + ' confidence)']; },
+            footer: function (items) { return G.coincidentNote(chartData, chartData[items[0].dataIndex], valueKey, 'n'); }
+          }
+        }
       },
       scales: {
         x: {
@@ -718,31 +749,36 @@ window.GAILS.renderSpeedCharts = function (data) {
   // Shared rich tooltip for the scatter charts: bakery name + connected stats for that site.
   // (Chart.js v4 passes the context as the callback's first argument.)
   var num = function (v) { return (v === undefined || v === null || isNaN(v)) ? '—' : v; };
-  var scatterTip = {
-    displayColors: false,
-    callbacks: {
-      title: function (items) {
-        var it = items && items[0];
-        if (!it || it.datasetIndex === 1) return '';
-        var b = data[it.dataIndex];
-        return b ? b.b : '';
-      },
-      label: function (ctx) {
-        if (ctx.datasetIndex === 1) return '';
-        var b = data[ctx.dataIndex];
-        if (!b) return '';
-        var lines = [
-          'NPS (D+M): ' + num(b.n),
-          'Coffee Efficiency (<2 min): ' + num(b.s2) + '%',
-          'Customer-Rated Efficiency: ' + num(b.ef) + '%',
-          'Friendliness: ' + num(b.fr) + '%',
-          'Drink Quality: ' + num(b.dr) + '%',
-          'Overall CX: ' + num(b.ov) + '%'
-        ];
-        if (b.v !== undefined && b.v !== null) lines.push('Reviews: ' + b.v);
-        return lines;
+  // Built per chart so the footer knows which metric is on the x axis, and so
+  // the trend line (dataset 1) can never claim a tooltip of its own.
+  var scatterTip = function (xKey) {
+    return {
+      displayColors: false,
+      filter: G.firstPointOnly,
+      callbacks: {
+        title: function (items) {
+          var b = data[items[0].dataIndex];
+          return b ? b.b : '';
+        },
+        footer: function (items) {
+          return G.coincidentNote(data, data[items[0].dataIndex], xKey, 'n');
+        },
+        label: function (ctx) {
+          var b = data[ctx.dataIndex];
+          if (!b) return '';
+          var lines = [
+            'NPS (D+M): ' + num(b.n),
+            'Coffee Efficiency (<2 min): ' + num(b.s2) + '%',
+            'Customer-Rated Efficiency: ' + num(b.ef) + '%',
+            'Friendliness: ' + num(b.fr) + '%',
+            'Drink Quality: ' + num(b.dr) + '%',
+            'Overall CX: ' + num(b.ov) + '%'
+          ];
+          if (b.v !== undefined && b.v !== null) lines.push('Reviews: ' + b.v);
+          return lines;
+        }
       }
-    }
+    };
   };
 
   var xSm = avg(data, 's2'), ySm = avg(data, 'n');
@@ -754,7 +790,7 @@ window.GAILS.renderSpeedCharts = function (data) {
         { data: data.map(function (b) { return { x: b.s2, y: b.n }; }), backgroundColor: 'rgba(178, 42, 36,0.35)', borderColor: 'rgba(178, 42, 36,0.2)', pointRadius: 3.5, borderWidth: 1 },
         { type: 'line', data: [{ x: 35, y: sSlope * 35 + sInt }, { x: 95, y: sSlope * 95 + sInt }], borderColor: '#B22A24', borderWidth: 2.5, borderDash: [6, 4], pointRadius: 0 }
       ]
-    }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: scatterTip }, scales: { x: { title: { display: true, text: 'Coffee Speed (% within 2 min)', font: { weight: 'bold' } }, min: 35, max: 95 }, y: { title: { display: true, text: 'NPS (D+M)', font: { weight: 'bold' } }, min: -15, max: 105 } } }
+    }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: scatterTip('s2') }, scales: { x: { title: { display: true, text: 'Coffee Speed (% within 2 min)', font: { weight: 'bold' } }, min: 35, max: 95 }, y: { title: { display: true, text: 'NPS (D+M)', font: { weight: 'bold' } }, min: -15, max: 105 } } }
   });
 
   var xEm = avg(data, 'ef');
@@ -766,7 +802,7 @@ window.GAILS.renderSpeedCharts = function (data) {
         { data: data.map(function (b) { return { x: b.ef, y: b.n }; }), backgroundColor: 'rgba(26, 123, 104,0.3)', borderColor: 'rgba(26, 123, 104,0.15)', pointRadius: 3.5, borderWidth: 1 },
         { type: 'line', data: [{ x: 35, y: eSlope * 35 + eInt }, { x: 102, y: eSlope * 102 + eInt }], borderColor: '#1A7B68', borderWidth: 2.5, pointRadius: 0 }
       ]
-    }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: scatterTip }, scales: { x: { title: { display: true, text: 'Customer-Rated Overall Efficiency %', font: { weight: 'bold' } }, min: 35, max: 102 }, y: { title: { display: true, text: 'NPS (D+M)', font: { weight: 'bold' } }, min: -15, max: 105 } } }
+    }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: scatterTip('ef') }, scales: { x: { title: { display: true, text: 'Customer-Rated Overall Efficiency %', font: { weight: 'bold' } }, min: 35, max: 102 }, y: { title: { display: true, text: 'NPS (D+M)', font: { weight: 'bold' } }, min: -15, max: 105 } } }
   });
 
   // Quartile compare

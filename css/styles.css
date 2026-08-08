@@ -1327,6 +1327,15 @@ h4 {
   height: 100%;
   border-radius: 999px;
   transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Widths are a share of the whole estate, so a one-bakery band lands under
+     1% and would render as nothing. Floor it at a dot so "present but rare"
+     still reads differently from "empty". */
+  min-width: 13px;
+}
+
+/* An empty band gets no dot — disabled is how a zero-count row is marked. */
+.band-split__row:disabled .band-split__fill {
+  min-width: 0;
 }
 
 .band-split__count {
