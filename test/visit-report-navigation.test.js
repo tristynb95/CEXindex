@@ -95,7 +95,7 @@ function navButtonIsDisabled(html, direction) {
   return /\sdisabled(?:\s|>)/.test(button[0]);
 }
 
-test('moves through one bakery history while numbering the newest report first', () => {
+test('moves through one bakery history while numbering the oldest report first', () => {
   const fixture = loadVisitReport();
   fixture.GAILS._allVisitsObj = {
     newest: { type: 'siteVisit', bakery: "GAIL'S The Cut", date: '2026-07-10', time: '10:02' },
@@ -114,14 +114,14 @@ test('moves through one bakery history while numbering the newest report first',
   fixture.context.pageYOffset = 0;
   fixture.GAILS.openAdjacentVisit('previous');
   assert.equal(fixture.GAILS._activeVisitReportId, 'oldest');
-  assert.match(fixture.actions.innerHTML, />3 of 3</);
+  assert.match(fixture.actions.innerHTML, />1 of 3</);
   assert.equal(navButtonIsDisabled(fixture.actions.innerHTML, 'previous'), true);
   assert.equal(navButtonIsDisabled(fixture.actions.innerHTML, 'next'), false);
 
   fixture.GAILS.openAdjacentVisit('next');
   fixture.GAILS.openAdjacentVisit('next');
   assert.equal(fixture.GAILS._activeVisitReportId, 'newest');
-  assert.match(fixture.actions.innerHTML, />1 of 3</);
+  assert.match(fixture.actions.innerHTML, />3 of 3</);
   assert.equal(navButtonIsDisabled(fixture.actions.innerHTML, 'previous'), false);
   assert.equal(navButtonIsDisabled(fixture.actions.innerHTML, 'next'), true);
 

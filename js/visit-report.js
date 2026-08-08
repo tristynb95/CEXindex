@@ -743,9 +743,11 @@ window.GAILS = window.GAILS || {};
     return {
       previous: currentIndex > 0 ? history[currentIndex - 1] : null,
       next: currentIndex !== -1 && currentIndex < history.length - 1 ? history[currentIndex + 1] : null,
-      // Number reports newest-first without changing the established arrow
-      // behavior: left still moves to an older visit and right to a newer one.
-      position: currentIndex === -1 ? 0 : history.length - currentIndex,
+      // Number reports oldest-first, so a site's first ever visit is 1 and the
+      // number grows with each new one. History is already sorted ascending, so
+      // this is just the index. Arrow behaviour is unchanged: left still moves
+      // to an older visit and right to a newer one.
+      position: currentIndex === -1 ? 0 : currentIndex + 1,
       total: history.length
     };
   }
