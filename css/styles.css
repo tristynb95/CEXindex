@@ -9682,9 +9682,9 @@ body.table-fullscreen-lock {
 }
 
 .visit-report-pdf-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(178, 42, 36, 0.08);
+  border-color: var(--drill-accent, var(--accent));
+  color: var(--drill-accent, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--drill-accent, var(--accent)) 8%, transparent);
 }
 
 #visitReportModal .visit-report-section--comments {
@@ -9744,14 +9744,17 @@ body.table-fullscreen-lock {
   white-space: nowrap;
 }
 
+/* Hover and focus follow the modal's own accent, not GAIL's red: the visit
+   report recolours itself per report type, so a hardcoded red ring showed
+   through on every non-red report. */
 .visit-report-nav-btn:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(178, 42, 36, 0.08);
+  border-color: var(--drill-accent, var(--accent));
+  color: var(--drill-accent, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--drill-accent, var(--accent)) 8%, transparent);
 }
 
 .visit-report-nav-btn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--drill-accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -9779,8 +9782,9 @@ body.table-fullscreen-lock {
 
 #visitReportModal .visit-report-header-actions .drill-close-btn:not(:disabled):hover {
   background: #f7f7f5;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(178, 42, 36, 0.12), 0 2px 6px rgba(34, 31, 26, 0.08);
+  border-color: var(--drill-accent, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--drill-accent, var(--accent)) 12%, transparent),
+    0 2px 6px rgba(34, 31, 26, 0.08);
 }
 
 #visitReportModal .visit-report-header-actions .drill-close-btn:disabled {
@@ -9794,7 +9798,7 @@ body.table-fullscreen-lock {
 }
 
 #visitReportModal .visit-report-header-actions .drill-close-btn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--drill-accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -21972,6 +21976,10 @@ body[data-dash-tab="cei"] .methodology {
 .drill-modal--visit-report .visit-report-nav-btn:not(:disabled):hover {
   color: var(--drill-accent, var(--accent));
   background: color-mix(in srgb, var(--drill-accent, var(--accent)) 8%, white);
+  /* Here the buttons sit flush inside one bordered track, so the standalone
+     ring has nowhere to go — the track's overflow:hidden clips it to a stray
+     strip beside the arrow. The background fill is the hover state instead. */
+  box-shadow: none;
 }
 
 .drill-modal--visit-report .visit-report-history-pos {
