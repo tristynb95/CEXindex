@@ -117,7 +117,7 @@
     return selectedMonths[0] + ' \u2013 ' + selectedMonths[count - 1];
   }
 
-  function setFocusPeriodControls(isFocus) {
+  function setFocusPeriodControls(isFocus, isFocusMap) {
     [
       { id: 'monthSelect', label: '\u2014 Select \u2014' },
       { id: 'rollingWindow', label: 'All Time' }
@@ -130,10 +130,67 @@
         select.title = 'Focus Bakeries uses all completed history and weights recent months most.';
       } else {
         delete select.dataset.lockedLabel;
-        select.removeAttribute('title');
+        // On the Focus map the controls are live but narrower in scope than
+        // anywhere else, so say what they actually move before anyone reads a
+        // changed period as a changed score.
+        if (isFocusMap) {
+          select.title = 'Sets which period the map counts as visited. Focus scores still use all completed history.';
+        } else {
+          select.removeAttribute('title');
+        }
       }
       if (G.syncCustomSelect) G.syncCustomSelect(select);
     });
+  }
+
+  // Which Focus sub-tab is showing. The period controls are locked across the
+  // Focus tab because its scoring always spans all completed history \u2014 except
+  // on the map, where the visited/unvisited overlay is the whole point and can
+  // only answer "who have we been to lately" if you can pick the window.
+  var activeTargetSubtab = 'summary';
+  // The dashboard's own period, parked while the Focus map borrows the
+  // controls, so leaving the map puts every other tab back on the period the
+  // user chose there. Null whenever the map is not holding them.
+  var focusMapPeriodMemo = null;
+
+  function applyPeriodSelection(month, rolling) {
+    var monthSelect = document.getElementById('monthSelect');
+    var rollingWindow = document.getElementById('rollingWindow');
+    if (!monthSelect || !rollingWindow) return;
+    monthSelect.value = month || '';
+    rollingWindow.value = rolling;
+    state.selectedMonths = month
+      ? [month]
+      : G.resolvePeriodMonths(rolling, state.MONTHS, state.ALL);
+    G.syncCustomSelect(monthSelect);
+    G.syncCustomSelect(rollingWindow);
+    refresh();
+  }
+
+  function syncFocusPeriodControls(tabName) {
+    var name = tabName;
+    if (!name) {
+      var activePanel = document.querySelector('.tab-content.active');
+      name = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
+    }
+    var onFocusMap = name === 'target' && activeTargetSubtab === 'map';
+    setFocusPeriodControls(name === 'target' && !onFocusMap, onFocusMap);
+
+    if (onFocusMap && !focusMapPeriodMemo) {
+      var monthSelect = document.getElementById('monthSelect');
+      var rollingWindow = document.getElementById('rollingWindow');
+      focusMapPeriodMemo = {
+        month: monthSelect ? monthSelect.value : '',
+        rolling: rollingWindow ? rollingWindow.value : '1'
+      };
+      // The map opens on the widest view \u2014 every month, no single month \u2014 so
+      // "visited" starts as "ever" and narrows only when asked.
+      applyPeriodSelection('', '0');
+    } else if (!onFocusMap && focusMapPeriodMemo) {
+      var memo = focusMapPeriodMemo;
+      focusMapPeriodMemo = null;
+      applyPeriodSelection(memo.month, memo.rolling);
+    }
   }
 
   var lastHeaderBakeryCount = 0;
@@ -340,6 +397,7 @@
     var workspace = document.getElementById('targetTabWorkspace');
     if (!workspace) return;
     var shouldScrollNav = !(options && options.scrollNav === false);
+    activeTargetSubtab = name;
     workspace.querySelectorAll('.target-subtab').forEach(function (btn) {
       var isActive = btn.dataset.targetSubtab === name;
       btn.classList.toggle('active', isActive);
@@ -354,6 +412,9 @@
     workspace.querySelectorAll('.target-subtab-panel').forEach(function (panel) {
       panel.classList.toggle('active', panel.dataset.targetSubtabPanel === name);
     });
+    // After the panel is on screen: entering or leaving the map re-renders
+    // through applyPeriodSelection, and only an active panel redraws markers.
+    syncFocusPeriodControls();
     if (name === 'map') {
       requestAnimationFrame(function () {
         requestAnimationFrame(function () { G.initTargetMap(); });
@@ -409,7 +470,7 @@
     }
     updateDashboardActiveView(name);
     syncDashboardKpis(name);
-    setFocusPeriodControls(name === 'target');
+    syncFocusPeriodControls(name);
     renderHeaderSummary();
     updateBandFilterOptions();
 

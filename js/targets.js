@@ -1843,10 +1843,13 @@ document.addEventListener('keydown', function (event) {
   // Months that count as "this period" for visit tracking, including the current
   // month when a rolling window is active. Shared by the visit filter and the
   // area coverage counts so both agree on what "visited in period" means.
-  function getPeriodMonths(mapKey) {
-    if (mapKey === 'target' && GAILS.getFocusRecentMonths) {
-      return GAILS.getFocusRecentMonths();
-    }
+  //
+  // Both maps read the same selected period. The Focus map used to answer from
+  // a fixed "visited in the last six months" rule instead, which meant a bakery
+  // stayed marked visited for half a year with no way to ask about a narrower
+  // window — the Focus period controls being locked left nothing to ask with.
+  // Unlocking them on that sub-tab (js/app.js) is what makes this read live.
+  function getPeriodMonths() {
     var months = (GAILS.state && GAILS.state.selectedMonths) || [];
     var rollingEl = document.getElementById('rollingWindow');
     if (rollingEl && rollingEl.value !== '0' && GAILS.getCurrentMonthLabel) {
@@ -1858,20 +1861,17 @@ document.addEventListener('keydown', function (event) {
     return months;
   }
 
-  function wasRecentlyVisited(name) {
-    var age = _monthsSinceVisit({ lastVisit: GAILS.getLastVisitDate ? GAILS.getLastVisitDate(name) : null });
-    return age !== null && age < _VISIT_DUE_MONTHS;
+  function isVisitedInPeriod(name, months) {
+    return GAILS.isBakeryVisitedInPeriod ? GAILS.isBakeryVisitedInPeriod(name, months) : false;
   }
 
   function getVisitFilteredItems(cfg, items) {
     var list = items || cfg.items;
     var filterState = (cfg.key === 'network' ? _networkMapVisitState : _targetMapVisitState) || 'all';
     if (filterState === 'all') return list;
-    var months = getPeriodMonths(cfg.key);
+    var months = getPeriodMonths();
     return list.filter(function (item) {
-      var visited = cfg.key === 'target'
-        ? wasRecentlyVisited(item.b)
-        : GAILS.isBakeryVisitedInPeriod ? GAILS.isBakeryVisitedInPeriod(item.b, months) : false;
+      var visited = isVisitedInPeriod(item.b, months);
       return filterState === 'visited' ? visited : !visited;
     });
   }
@@ -1992,16 +1992,13 @@ document.addEventListener('keydown', function (event) {
       // Coverage per area from the full source set (before the visit filter) so the
       // tooltip reports the true area size and how many were visited this period,
       // regardless of which visit filter is active.
-      var _periodMonths = getPeriodMonths(cfg.key);
+      var _periodMonths = getPeriodMonths();
       var areaTotals = {}, areaVisited = {};
       sourceItems.forEach(function (item) {
         var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
         if (areaTotals[ops] == null) { areaTotals[ops] = 0; areaVisited[ops] = 0; }
         areaTotals[ops]++;
-        var v = cfg.key === 'target'
-          ? wasRecentlyVisited(item.b)
-          : GAILS.isBakeryVisitedInPeriod ? GAILS.isBakeryVisitedInPeriod(item.b, _periodMonths) : false;
-        if (v) areaVisited[ops]++;
+        if (isVisitedInPeriod(item.b, _periodMonths)) areaVisited[ops]++;
       });
 
       Object.keys(managerGroups).forEach(function (mgr) {
@@ -2009,7 +2006,7 @@ document.addEventListener('keydown', function (event) {
         var group = managerGroups[mgr];
         var total = areaTotals[mgr] != null ? areaTotals[mgr] : group.items.length;
         var visited = areaVisited[mgr] != null ? areaVisited[mgr] : 0;
-        var visitLabel = cfg.key === 'target' ? 'visited recently' : 'visited this period';
+        var visitLabel = 'visited this period';
         // Priority map: colour the territory by focus density (share of the
         // area's bakeries currently in focus). Network map: keep the
         // performance-band colour. Both use the colour for stroke and fill.

@@ -13,12 +13,44 @@ const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 const customSelects = fs.readFileSync(path.join(root, 'js', 'custom-selects.js'), 'utf8');
 
 test('locks the Focus period controls to a clear All Time display without changing the saved period', () => {
-  assert.match(app, /setFocusPeriodControls\(name === 'target'\)/);
+  assert.match(app, /syncFocusPeriodControls\(name\)/);
+  assert.match(app, /setFocusPeriodControls\(name === 'target' && !onFocusMap, onFocusMap\)/);
   assert.match(app, /\{ id: 'rollingWindow', label: 'All Time' \}/);
   assert.match(app, /select\.dataset\.lockedLabel = config\.label/);
   assert.match(customSelects, /select\.dataset\.lockedLabel/);
   assert.ok(html.indexOf('js/focus-data.js') < html.indexOf('js/targets.js'));
   assert.doesNotMatch(html, /id="focusPeriodContext"/);
+});
+
+test('the Focus map unlocks the period controls, and only that sub-tab', () => {
+  assert.match(app, /var onFocusMap = name === 'target' && activeTargetSubtab === 'map'/);
+  // The sub-tab switch re-syncs, so stepping between Focus sub-tabs locks and
+  // unlocks without leaving the tab.
+  assert.match(app, /activeTargetSubtab = name;/);
+  assert.match(app, /panel\.classList\.toggle\('active', panel\.dataset\.targetSubtabPanel === name\);\s*\}\);[\s\S]{0,220}?syncFocusPeriodControls\(\);/);
+  // Unlocked, the controls say what they move: the map overlay, not the scores.
+  assert.match(app, /Sets which period the map counts as visited\. Focus scores still use all completed history\./);
+});
+
+test('the Focus map opens on all months and hands the period back when it is left', () => {
+  assert.match(app, /applyPeriodSelection\('', '0'\)/);
+  assert.match(app, /focusMapPeriodMemo = \{\s*month: monthSelect \? monthSelect\.value : '',\s*rolling: rollingWindow \? rollingWindow\.value : '1'\s*\}/);
+  // Leaving restores whatever the rest of the dashboard was set to, so
+  // borrowing the controls never rewrites the user's own period.
+  assert.match(app, /\} else if \(!onFocusMap && focusMapPeriodMemo\) \{[\s\S]*?applyPeriodSelection\(memo\.month, memo\.rolling\)/);
+  assert.match(app, /state\.selectedMonths = month\s*\?\s*\[month\]\s*:\s*G\.resolvePeriodMonths\(rolling, state\.MONTHS, state\.ALL\)/);
+});
+
+test('both maps read visited from the selected period, not a fixed six-month rule', () => {
+  assert.doesNotMatch(targets, /wasRecentlyVisited/);
+  assert.match(targets, /function getPeriodMonths\(\) \{/);
+  assert.doesNotMatch(targets, /getPeriodMonths\(cfg\.key\)|getPeriodMonths\(mapKey\)/);
+  // One helper answers for both maps, for the marker filter and the area
+  // coverage tooltip alike, so the two can never disagree.
+  assert.match(targets, /function isVisitedInPeriod\(name, months\) \{\s*return GAILS\.isBakeryVisitedInPeriod \? GAILS\.isBakeryVisitedInPeriod\(name, months\) : false;/);
+  assert.match(targets, /var visited = isVisitedInPeriod\(item\.b, months\)/);
+  assert.match(targets, /if \(isVisitedInPeriod\(item\.b, _periodMonths\)\) areaVisited\[ops\]\+\+/);
+  assert.match(targets, /var visitLabel = 'visited this period'/);
 });
 
 test('returns to the top Priorities view when Focus Bakeries is revisited', () => {
