@@ -225,6 +225,21 @@ test('resolves the known Bristol College Green and Union Bath aliases', () => {
   assert.equal(context.window.GAILS.resolveBakeryMetaKey('Union Bath'), 'Union Street, Bath');
 });
 
+test('maps the renamed London sites onto their site-directory keys', () => {
+  const context = { window: { GAILS: {} }, console };
+  vm.createContext(context);
+  vm.runInContext(configSource, context);
+  const G = context.window.GAILS;
+
+  assert.equal(G.resolveBakeryMetaKey("GAIL's Great Russel St"), 'Great Russell Street');
+  assert.equal(G.resolveBakeryMetaKey("GAIL's Marylebone High St"), 'Marylebone Village');
+  assert.equal(G.resolveBakeryMetaKey("GAIL's Pentonville Road"), 'Pentonville Road Kings Cross');
+
+  assert.ok(Array.isArray(G.getBakeryMeta("GAIL's Great Russel St").ll));
+  assert.ok(Array.isArray(G.getBakeryMeta("GAIL's Marylebone High St").ll));
+  assert.ok(Array.isArray(G.getBakeryMeta("GAIL's Pentonville Road").ll));
+});
+
 test('keeps built-in Westbourne Grove map metadata when the live directory omits it', () => {
   const context = { window: { GAILS: {} }, console };
   vm.createContext(context);
@@ -234,7 +249,10 @@ test('keeps built-in Westbourne Grove map metadata when the live directory omits
   G.setBakeryMeta({ Balham: G.DEFAULT_BAKERY_META.Balham });
 
   assert.equal(G.resolveBakeryMetaKey("GAIL's Westbourne Grove"), 'Westbourne Grove');
-  assert.deepEqual(Array.from(G.getBakeryMeta("GAIL's Westbourne Grove").ll), [51.5137, -0.1969]);
+  assert.deepEqual(
+    Array.from(G.getBakeryMeta("GAIL's Westbourne Grove").ll),
+    Array.from(G.DEFAULT_BAKERY_META['Westbourne Grove'].ll)
+  );
   assert.equal(G.getBakeryRegion("GAIL's Westbourne Grove"), 'London Region');
   assert.equal(G.getBakeryOps("GAIL's Westbourne Grove"), 'Sandra Cano Cardona');
 });

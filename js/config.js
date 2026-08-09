@@ -275,7 +275,16 @@ var _BAKERY_EXTRA_ALIASES = {
   "college green bristol": "Bristol College Green",
   "union bath": "Union Street, Bath",
   "south kensington": "Cromwell Place",
-  "south kinsington": "Cromwell Place"
+  "south kinsington": "Cromwell Place",
+  // Visit data still uses the older street names for these three; the site
+  // directory renamed them, which left them off the map.
+  "great russel st": "Great Russell Street",
+  "great russell st": "Great Russell Street",
+  "great russel street": "Great Russell Street",
+  "marylebone high st": "Marylebone Village",
+  "marylebone high street": "Marylebone Village",
+  "pentonville road": "Pentonville Road Kings Cross",
+  "pentonville rd": "Pentonville Road Kings Cross"
 };
 
 window.GAILS.normalizeBakeryLookupName = _normalizeBakeryLookupName;
