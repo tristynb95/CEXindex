@@ -1491,6 +1491,52 @@ document.addEventListener('keydown', function (event) {
     cfg.legendControl.addTo(cfg.instance);
   }
 
+  // Re-enters ensureMap as soon as the container has real dimensions. Only one
+  // watcher runs per map; it stops itself the moment the map is built.
+  function waitForMapLayout(mapKey, el) {
+    var cfg = MAPS[mapKey];
+    if (cfg._layoutWatcher) return;
+
+    var stop = function () {
+      if (!cfg._layoutWatcher) return;
+      cfg._layoutWatcher();
+      cfg._layoutWatcher = null;
+    };
+    var check = function () {
+      if (cfg.instance) { stop(); return; }
+      if (!el.offsetWidth || !el.offsetHeight) return;
+      stop();
+      ensureMap(mapKey);
+    };
+
+    if (typeof ResizeObserver === 'function') {
+      var ro = new ResizeObserver(check);
+      cfg._layoutWatcher = function () { ro.disconnect(); };
+      ro.observe(el);
+    } else {
+      var timer = setInterval(check, 250);
+      cfg._layoutWatcher = function () { clearInterval(timer); };
+    }
+    check();
+  }
+
+  // Keeps Leaflet's cached viewport in step with the container for every resize
+  // the explicit invalidateMapSize() calls don't cover — the sidebar collapsing,
+  // the window changing, or the panel being revealed after the map was built.
+  function watchMapResize(cfg, el) {
+    if (typeof ResizeObserver !== 'function' || cfg._resizeObserver) return;
+    var queued = false;
+    cfg._resizeObserver = new ResizeObserver(function () {
+      if (queued || !cfg.instance) return;
+      queued = true;
+      requestAnimationFrame(function () {
+        queued = false;
+        if (cfg.instance && el.offsetWidth && el.offsetHeight) cfg.instance.invalidateSize({ animate: false });
+      });
+    });
+    cfg._resizeObserver.observe(el);
+  }
+
   function ensureMap(mapKey) {
     var cfg = MAPS[mapKey];
     var el = document.getElementById(cfg.elId);
@@ -1512,6 +1558,16 @@ document.addEventListener('keydown', function (event) {
       cfg.instance.invalidateSize();
       renderLegend(cfg);
       placeMarkers(cfg);
+      return;
+    }
+
+    // Refreshing straight onto a map view runs this while the dashboard is still
+    // hidden behind the login/loading screen (js/auth.js only reveals it once the
+    // session resolves), so the container has no size yet. Building the map here
+    // would lock Leaflet to a 0x0 viewport — tiles for one corner and a fitBounds
+    // zoom computed against nothing. Wait for the container to be laid out first.
+    if (!el.offsetWidth || !el.offsetHeight) {
+      waitForMapLayout(mapKey, el);
       return;
     }
 
@@ -1546,6 +1602,7 @@ document.addEventListener('keydown', function (event) {
         cfg._hoveredArea = null;
       }
     });
+    watchMapResize(cfg, el);
     renderLegend(cfg);
     placeMarkers(cfg);
   }
