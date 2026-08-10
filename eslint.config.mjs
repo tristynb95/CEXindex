@@ -18,7 +18,9 @@ const ESM_FILES = [
   'js/permissions.js',
   'js/profile-menu.js',
   'js/profile-page.js',
-  'js/standalone-profile-menu.js'
+  'js/standalone-profile-menu.js',
+  'js/visit-feed.js',
+  'js/dataset-cache.js'
 ];
 
 // Third-party globals loaded from CDN <script> tags rather than npm.

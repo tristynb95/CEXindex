@@ -14,6 +14,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Nothing renders until the signed-in user's data arrives, and none of it
+       can even be requested until the Firebase SDK has loaded. That is a
+       waterfall: js/firebase-config.js imports firebase-app.js, which only then
+       reveals the four modules below, on an origin the browser has not yet
+       connected to. Warming the connection and declaring the modules up front
+       collapses those hops into the time the stylesheet is already taking.
+       The database origin is preconnected too, so the first query does not pay
+       for DNS, TCP and TLS once the SDK finally asks for it. -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cexindex-default-rtdb.firebaseio.com" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js" crossorigin>
   <!-- Chart.js is deferred rather than blocking: charts render from js/charts.js
        after parse, so nothing on screen needs it before the first paint.
        SheetJS and Leaflet are no longer loaded here at all — js/lazy-lib.js

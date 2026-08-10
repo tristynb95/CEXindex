@@ -17,6 +17,7 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 import { ref, get, onValue, update, remove, push, set } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
 import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
+import { subscribeVisits, defaultWindowStart } from './visit-feed.js';
 
 const G = window.GAILS || {};
 
@@ -115,6 +116,10 @@ let canEdit = false;
 let identity = { uid: '', emails: new Set(), names: new Set() };
 
 let visitsObj = {};
+// The live visit subscription, kept so a period that reaches past the rolling
+// window it carries can ask for the rest of the history.
+let visitFeed = null;
+let allTimeVisitsRequested = false;
 let tasksObj = {};
 let notesList = [];
 let performanceRecords = [];
@@ -832,6 +837,38 @@ function patchPerformance(focusContext) {
 }
 
 // ---------- filter persistence ----------
+
+// Whether the chosen period can see further back than the window the feed
+// subscribes to. "Last 12 Months" and every named preset stop inside it; only
+// All Time and a custom range starting before the window can reach past it.
+function periodNeedsFullHistory(filters) {
+  if (!filters) return false;
+  if (filters.period === 'custom') {
+    // No From date means the range is open at the start, so it reaches back
+    // as far as there is anything to find.
+    return !filters.from || filters.from < defaultWindowStart();
+  }
+  if (filters.period === 'currentMonth' || filters.period === 'thisQuarter' ||
+      filters.period === 'lastQuarter' || filters.period === 'thisYear' ||
+      filters.period === 'lastYear') {
+    return false;
+  }
+  var num = parseInt(filters.period, 10);
+  return isNaN(num) || num === 0;
+}
+
+// Pulls in the history behind the window, once, when a filter asks to see it.
+// The feed hands the widened set to the same callback the live subscription
+// uses, so the re-render happens on the way through.
+function ensureVisitHistoryFor(filters) {
+  if (allTimeVisitsRequested) return;
+  if (!visitFeed || !periodNeedsFullHistory(filters)) return;
+  allTimeVisitsRequested = true;
+  visitFeed.expandToAllTime().catch(function (error) {
+    allTimeVisitsRequested = false;
+    console.error('Could not load the full visit history:', error);
+  });
+}
 
 function readVisitFilters() {
   return {
@@ -1662,6 +1699,9 @@ function renderVisits() {
 
   var visits = filteredVisits();
   var filters = readVisitFilters();
+  // Checked on every render rather than on the control's change event, so a
+  // filter restored from localStorage on load widens the feed too.
+  ensureVisitHistoryFor(filters);
   syncVisitResetState(filters);
 
   if (visitsSummary) {
@@ -2718,15 +2758,22 @@ function openReportModal(visitId) {
 // ---------- live data ----------
 
 function startLiveData() {
-  onValue(ref(db, 'routineVisits'), function (snapshot) {
-    visitsObj = snapshot.exists() ? snapshot.val() : {};
-    if (G.Mentions) G.Mentions.addHarvested({ visits: visitsObj });
-    dataReady.visits = true;
-    renderAll();
-  }, function (error) {
-    console.error('Could not load visits:', error);
-    dataReady.visits = true;
-    renderAll();
+  // The Visits list defaults to "Last 12 Months", which sits inside the rolling
+  // window this subscribes to — so the page loads a bounded slice rather than
+  // every visit the company has ever logged. All Time and a custom range
+  // reaching further back widen it on demand; see ensureVisitHistoryFor below.
+  visitFeed = subscribeVisits({
+    onData: function (value) {
+      visitsObj = value;
+      if (G.Mentions) G.Mentions.addHarvested({ visits: visitsObj });
+      dataReady.visits = true;
+      renderAll();
+    },
+    onError: function (error) {
+      console.error('Could not load visits:', error);
+      dataReady.visits = true;
+      renderAll();
+    }
   });
 
   onValue(ref(db, 'followUpActions'), function (snapshot) {

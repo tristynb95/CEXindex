@@ -244,8 +244,16 @@ test('a non-admin cannot move themselves under a different manager', () => {
 });
 
 test('My Team groups records it already had access to, and adds none', () => {
-  // The same two nodes every signed-in user can already read.
-  assert.match(teamScript, /onValue\(ref\(db, 'routineVisits'\)/);
+  // The same two nodes every signed-in user can already read. Visits come
+  // through the shared scoped reader (js/visit-feed.js) rather than a raw
+  // whole-node listener, but it is the same node — narrowed by date, never
+  // widened to anything this page could not read before.
+  assert.match(teamScript, /subscribeVisits\(\{/);
+  assert.match(teamScript, /import \{ subscribeVisits \} from '\.\/visit-feed\.js'/);
+  const feed = read('js/visit-feed.js');
+  assert.match(feed, /opts\.path \|\| 'routineVisits'/);
+  // No caller may point the shared feed at a node of its own choosing.
+  assert.doesNotMatch(teamScript, /subscribeVisits\(\{[\s\S]{0,400}?path:/);
   assert.match(teamScript, /onValue\(ref\(db, 'followUpActions'\)/);
   // Read-only: a manager reviewing workload cannot close somebody else's task.
   assert.doesNotMatch(teamScript, /data-task-toggle/);

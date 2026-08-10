@@ -15,6 +15,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
+  <!-- Warms the Firebase origins and declares the SDK modules the page's own
+       module script will import, so the connection and the fetches are not
+       discovered one hop at a time. See index.html for the full reasoning. -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cexindex-default-rtdb.firebaseio.com" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js" crossorigin>
   <link rel="stylesheet" href="css/styles.css?v=20260728-notification-centre-05-mobile-banners-03-notification-fit-04">
   <link rel="stylesheet" href="css/bakery-profile.css?v=20260728-4">
   <!-- Keep the three authenticated header controls usable even when a mobile

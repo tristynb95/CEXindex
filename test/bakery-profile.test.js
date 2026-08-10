@@ -561,3 +561,144 @@ test('company rank counts each bakery once, not each stored row', () => {
   assert.equal(rank.topPercent, 67);
   assert.equal(context.companyRecordsForMonth('Jun 26').length, 3);
 });
+
+// Builds a runnable latestDashboardRecord() with the helpers it leans on.
+function latestRecordContext(records) {
+  const source = ['isScoredRecord', 'latestDashboardRecord']
+    .map((name) => script.match(new RegExp('function ' + name + '\\(.*?\\) \\{[\\s\\S]*?\\n\\}'))[0])
+    .join('\n');
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const context = {
+    bakeryName: 'Archway',
+    dashboardRecords: records,
+    sameBakery(value) { return String(value || '').trim() === 'Archway'; },
+    monthSortKey(label) {
+      const [name, year] = String(label || '').split(' ');
+      return Number(year) * 12 + MONTHS.indexOf(name);
+    },
+    Number, isNaN, String
+  };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  return context;
+}
+
+test('the headline figures report the newest month with results, not the newest row', () => {
+  // The month has started but nobody has been surveyed in it yet. The record
+  // exists and carries zeroes, which is not the same as a score of zero.
+  const context = latestRecordContext([
+    { b: 'Archway', m: 'Jun 26', ac: 72, n: 48, v: 30, dr: 88 },
+    { b: 'Archway', m: 'Jul 26', ac: 90, n: 61, v: 25, dr: 94 },
+    { b: 'Archway', m: 'Aug 26', ac: null, n: 0, v: 0, dr: 0, noData: true },
+    { b: 'Somewhere Else', m: 'Aug 26', ac: 81, n: 55, v: 40, dr: 90 }
+  ]);
+
+  const latest = context.latestDashboardRecord();
+  assert.equal(latest.m, 'Jul 26', 'should skip the month with nothing behind it');
+  // The four cards that were reading as a failing bakery rather than a gap.
+  assert.equal(latest.ac, 90);
+  assert.equal(latest.dr, 94);
+  assert.equal(latest.n, 61);
+  assert.equal(latest.v, 25);
+});
+
+test('an incomplete period does not count as results either', () => {
+  const context = latestRecordContext([
+    { b: 'Archway', m: 'Jun 26', ac: 72, v: 30 },
+    { b: 'Archway', m: 'Jul 26', ac: 55, v: 2, incompletePeriod: true }
+  ]);
+  assert.equal(context.latestDashboardRecord().m, 'Jun 26');
+});
+
+test('a bakery with no scored history still reports a period rather than blanking', () => {
+  const context = latestRecordContext([
+    { b: 'Archway', m: 'Jul 26', ac: null, v: 0, noData: true },
+    { b: 'Archway', m: 'Aug 26', ac: null, v: 0, noData: true }
+  ]);
+  const latest = context.latestDashboardRecord();
+  // Falls back to the newest row, so the card reads "No data" for Aug 26
+  // instead of losing the snapshot label entirely.
+  assert.ok(latest);
+  assert.equal(latest.m, 'Aug 26');
+});
+
+test('a bakery absent from the dataset returns null', () => {
+  const context = latestRecordContext([{ b: 'Somewhere Else', m: 'Aug 26', ac: 81, v: 40 }]);
+  assert.equal(context.latestDashboardRecord(), null);
+});
+
+// A UTF-8 file read back as CP1252 and re-saved as UTF-8 mangles every
+// non-ASCII character into a recognisable prefix. The company rank card on
+// the bakery profile shipped an em dash corrupted this way, rendering as
+// gibberish next to a perfectly good score.
+//
+// Both the pattern and its samples are written as escapes rather than pasted
+// characters - a detector spelled with the very bytes it hunts for would
+// itself be corrupted by the mis-save it exists to catch, and would then
+// quietly stop matching.
+//
+//   \u00e2\u20ac            a 3-byte UTF-8 sequence (em dash, curly quote,
+//                           ellipsis) decoded as CP1252
+//   \u00c3 + Latin-1        a 2-byte sequence (accented letter) decoded the
+//   \u00c2 + Latin-1        same way, or a non-breaking space
+const MOJIBAKE = new RegExp([
+  '\u00e2\u20ac',
+  '\u00c3[\u0080-\u00bf]',
+  '\u00c2[\u00a0-\u00bf]'
+].join('|'));
+
+test('the last visit card dates a visit to the year', () => {
+  const source = script.match(/function formatDate\(.*?\) \{[\s\S]*?\n\}/)[0];
+  const context = { Date, isNaN, String };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+
+  assert.equal(context.formatDate('2026-08-08', false), '8 Aug 2026');
+
+  // The card used to strip the year back off. A bakery can go a long time
+  // between visits, and "8 Aug" cannot tell last week from last year -
+  // which is the question the card exists to answer.
+  const card = script.match(/eyebrow: 'Last visit',[\s\S]*?\n    \}/)[0];
+  assert.match(card, /formatDate\(lastVisit\.date, false\)/);
+  assert.doesNotMatch(card, /replace\(/, 
+    'the last visit value should be shown as formatted, not trimmed');
+});
+
+test('the mojibake detector catches real double-encoding', () => {
+  // Guards the test below from passing vacuously - the first version of this
+  // regex matched none of these, so it would have missed the very bug it was
+  // written for. The samples are escape sequences rather than pasted
+  // characters: the subject here is byte-level corruption, and a literal
+  // would be at the mercy of however this test file itself gets saved.
+  [
+    ['em dash', '\u00e2\u20ac\u201d'],
+    ['curly apostrophe', 'GAIL\u00e2\u20ac\u2122s'],
+    ['e-acute', 'caf\u00c3\u00a9'],
+    ['non-breaking space', 'nbsp\u00c2\u00a0']
+  ].forEach(([label, sample]) => {
+    assert.match(sample, MOJIBAKE, 'should flag ' + label);
+  });
+
+  // And does not fire on correctly encoded text, all of which really does
+  // appear in this codebase.
+  [
+    ['curly apostrophe', 'GAIL\u2019s \u2014 Visit Log'],
+    ['e-acute', 'caf\u00e9'],
+    ['plain ascii', 'Coffee Experience Index'],
+    ['bare em dash', 'a\u2014b']
+  ].forEach(([label, sample]) => {
+    assert.doesNotMatch(sample, MOJIBAKE, 'should accept ' + label);
+  });
+});
+
+test('no shipped source file contains mis-encoded text', () => {
+  const files = []
+    .concat(fs.readdirSync(path.join(root, 'js')).map((f) => 'js/' + f))
+    .concat(fs.readdirSync(root).filter((f) => f.endsWith('.html')))
+    .concat(fs.readdirSync(path.join(root, 'css')).map((f) => 'css/' + f));
+  files.forEach((file) => {
+    const match = fs.readFileSync(path.join(root, file), 'utf8').match(MOJIBAKE);
+    assert.equal(match, null,
+      file + ' contains mis-encoded text: ' + (match && JSON.stringify(match[0])));
+  });
+});

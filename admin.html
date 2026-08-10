@@ -14,6 +14,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Warms the Firebase origins and declares the SDK modules the page's own
+       module script will import, so the connection and the fetches are not
+       discovered one hop at a time. See index.html for the full reasoning. -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cexindex-default-rtdb.firebaseio.com" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js" crossorigin>
   <!-- SheetJS and pdf.js are both import-time only, and together weighed more
        than the rest of this page combined. js/lazy-lib.js now fetches them when
        an upload actually needs them (and sets pdf.js's worker URL on arrival). -->

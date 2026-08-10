@@ -76,6 +76,7 @@
 
     "routineVisits": {
       ".read": "auth != null",
+      ".indexOn": ["date", "bakeryKey"],
       "$visitId": {
         ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('roles').child(root.child('users').child(auth.uid).child('role').val()).child('permissions').child('admin').child('visits').val() === 'edit' || (!data.exists() && (root.child('users').child(auth.uid).child('role').val() === 'viewer' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('roles').child(root.child('users').child(auth.uid).child('role').val()).child('permissions').child('actions').child('logVisits').val() === true)))"
       }
@@ -83,6 +84,7 @@
 
     "followUpActions": {
       ".read": "auth != null",
+      ".indexOn": ["bakeryKey", "status", "createdByUid"],
       "$taskId": {
         ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('roles').child(root.child('users').child(auth.uid).child('role').val()).child('permissions').child('admin').child('visits').val() === 'edit' || root.child('users').child(auth.uid).child('role').val() === 'viewer' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('roles').child(root.child('users').child(auth.uid).child('role').val()).child('permissions').child('actions').child('logVisits').val() === true)"
       }

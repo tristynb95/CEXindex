@@ -735,10 +735,27 @@ test('a visit deep link is honoured once and only once', () => {
   const handler = visitReportScript.slice(start, visitReportScript.indexOf('\n  };', start));
 
   assert.ok(start >= 0);
-  assert.match(handler, /if \(!visits\[pendingVisitDeepLinkId\]\) return;/);
+  // Cleared before the report opens, so a later snapshot cannot re-open it.
   assert.match(handler, /pendingVisitDeepLinkId = '';/);
   assert.match(authScript, /window\.GAILS\.openVisitFromDeepLink\(\);/);
   assert.match(script, /index\.html\?visit=' \+ encodeURIComponent/);
+});
+
+// The dashboard subscribes to a rolling window of visits rather than the whole
+// node (js/visit-feed.js), so a hub link can legitimately name a visit that is
+// not loaded. It used to be dropped on the floor by a bare existence check.
+test('a deep link to a visit older than the loaded window still opens', () => {
+  const start = visitReportScript.indexOf('window.GAILS.openVisitFromDeepLink');
+  const handler = visitReportScript.slice(start, visitReportScript.indexOf('\n  };', start));
+
+  assert.match(handler, /window\.GAILS\.fetchVisitById\(visitId\)/);
+  // Re-entrancy guard: the id stays pending until the fetch resolves, so a
+  // second call while it is in flight cannot open the report twice.
+  assert.match(handler, /pendingVisitDeepLinkId !== visitId/);
+  // The period fold caches on the snapshot object's identity, so an in-place
+  // insert has to invalidate it — see js/config.js.
+  assert.match(handler, /invalidateVisitPeriodIndex\(\)/);
+  assert.match(authScript, /window\.GAILS\.fetchVisitById = fetchVisit;/);
 });
 
 test('the hub is registered as an ES module for linting', () => {

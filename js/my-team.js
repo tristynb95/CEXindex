@@ -33,6 +33,7 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 import { ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { BUILTIN_ROLES, resolveRolePermissions, teamScopeOf } from './permissions.js';
 import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
+import { subscribeVisits } from './visit-feed.js';
 
 const G = window.GAILS || {};
 
@@ -97,6 +98,10 @@ let rosterRows = [];        // the same people in tree order: { person, depth, r
 let identities = {};        // uid -> { uid, emails:Set, names:Set } for attribution
 let hiddenMyTeamDepartments = {};
 let visitsObj = {};
+// The live visit subscription, kept so "All time" can ask for the history
+// behind the rolling window it carries.
+let visitFeed = null;
+let allTimeVisitsRequested = false;
 let tasksObj = {};
 let dataReady = { visits: false, tasks: false };
 
@@ -1217,11 +1222,27 @@ function setToggleActive(group, attribute, value) {
 
 // ---------- events ----------
 
+// "All time" (value "0") is the only period that reaches behind the window the
+// feed subscribes to; every other option is a bounded number of recent months.
+// Called on load as well as on change, so a period restored from localStorage
+// widens the feed too.
+function ensureVisitHistory() {
+  if (allTimeVisitsRequested || !visitFeed) return;
+  var num = parseInt(period, 10);
+  if (!(isNaN(num) || num === 0)) return;
+  allTimeVisitsRequested = true;
+  visitFeed.expandToAllTime().catch(function (error) {
+    allTimeVisitsRequested = false;
+    console.error('Could not load the full visit history:', error);
+  });
+}
+
 if (periodSelect) {
   periodSelect.addEventListener('change', function () {
     period = periodSelect.value;
     visitLimit = VISIT_CHUNK;
     saveFilters();
+    ensureVisitHistory();
     renderAll();
   });
 }
@@ -1413,16 +1434,22 @@ document.addEventListener('click', function (event) {
 // ---------- live data ----------
 
 function startLiveData() {
-  onValue(ref(db, 'routineVisits'), function (snapshot) {
-    visitsObj = snapshot.exists() ? snapshot.val() : {};
-    if (G.Mentions) G.Mentions.addHarvested({ visits: visitsObj });
-    dataReady.visits = true;
-    renderAll();
-  }, function (error) {
-    console.error('Could not load visits:', error);
-    dataReady.visits = true;
-    renderAll();
+  // Defaults to "Last 3 months", well inside the rolling window this
+  // subscribes to; "All time" widens it on demand. See js/visit-feed.js.
+  visitFeed = subscribeVisits({
+    onData: function (value) {
+      visitsObj = value;
+      if (G.Mentions) G.Mentions.addHarvested({ visits: visitsObj });
+      dataReady.visits = true;
+      renderAll();
+    },
+    onError: function (error) {
+      console.error('Could not load visits:', error);
+      dataReady.visits = true;
+      renderAll();
+    }
   });
+  ensureVisitHistory();
 
   onValue(ref(db, 'followUpActions'), function (snapshot) {
     tasksObj = snapshot.exists() ? snapshot.val() : {};

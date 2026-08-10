@@ -1185,12 +1185,41 @@ window.GAILS = window.GAILS || {};
     window.XLSX.writeFile(wb, data.filename);
   }
 
+  // An export spec whose rows are built on first read rather than on every
+  // render. Flattening the filtered visits into spreadsheet rows means a pass
+  // over the whole filtered set — not the ~150 rows actually on screen — and
+  // buildVisitNotes() renders every answer on every visit. Most sessions never
+  // export at all, so that was paid for constantly and used almost never.
+  //
+  // A memoised getter rather than a plain function so `data.rows` still reads
+  // as an array everywhere downstream: the row count in the confirmation
+  // dialog, the emptiness check, and the writer all keep working unchanged.
+  function withLazyRows(spec, buildRows) {
+    var cached = null;
+    Object.defineProperty(spec, 'rows', {
+      configurable: true,
+      enumerable: true,
+      get: function () {
+        if (!cached) cached = buildRows();
+        return cached;
+      }
+    });
+    return spec;
+  }
+
   // Every report export flows through this confirmation before the browser is
   // allowed to create a file. That keeps repeated or accidental clicks from
   // starting multiple downloads.
   function exportVisitLogFile() {
     var data = window.GAILS._visitLogExport;
-    if (!data || !data.rows || !data.rows.length) return;
+    if (!data) return;
+    // rowCount is the cheap count the render already knew, so an empty export
+    // is rejected without building any rows at all. Falls back to the rows
+    // themselves for any spec that predates it.
+    var count = typeof data.rowCount === 'number'
+      ? data.rowCount
+      : (data.rows ? data.rows.length : 0);
+    if (!count) return;
 
     // SheetJS is fetched on demand, so settle whether this is an Excel or a CSV
     // export before the confirmation names the file — the modal has to promise
@@ -1257,6 +1286,34 @@ window.GAILS = window.GAILS || {};
     var monthsSinceMarch = (month - 2 + 12) % 12;
     var quarterIndex = Math.floor(monthsSinceMarch / 3);
     return new Date(reportingYear, 2 + (quarterIndex * 3), 1);
+  }
+
+  // True for the one period option that can reach behind the rolling window the
+  // live feed subscribes to. Every other preset — including "Last Year" and
+  // "Last 12 Months" — stops inside it by construction, so only All Time has to
+  // pay for the rest of the history.
+  function periodNeedsFullHistory(n) {
+    if (n === 'currentMonth' || n === 'thisQuarter' || n === 'lastQuarter' ||
+        n === 'thisYear' || n === 'lastYear') {
+      return false;
+    }
+    var num = parseInt(n, 10);
+    return isNaN(num) || num === 0;
+  }
+
+  var allTimeVisitsRequested = false;
+
+  function ensureVisitHistoryFor(periodVal) {
+    if (!periodNeedsFullHistory(periodVal)) return;
+    if (allTimeVisitsRequested) return;
+    if (typeof window.GAILS.loadAllTimeVisits !== 'function') return;
+    allTimeVisitsRequested = true;
+    // No re-render here: the feed hands the widened set to the same callback
+    // the live subscription uses, which re-renders on the way through.
+    window.GAILS.loadAllTimeVisits().catch(function (error) {
+      allTimeVisitsRequested = false;
+      console.error('Could not load the full visit history:', error);
+    });
   }
 
   function isDateWithinMonths(dateStr, n) {
@@ -2069,10 +2126,31 @@ window.GAILS = window.GAILS || {};
   window.GAILS.openVisitFromDeepLink = function () {
     if (!pendingVisitDeepLinkId) return;
     var visits = window.GAILS._allVisitsObj || {};
-    if (!visits[pendingVisitDeepLinkId]) return;
     var visitId = pendingVisitDeepLinkId;
-    pendingVisitDeepLinkId = '';
-    window.GAILS.openVisitReportById(visitId);
+    if (visits[visitId]) {
+      pendingVisitDeepLinkId = '';
+      window.GAILS.openVisitReportById(visitId);
+      return;
+    }
+    // Older than the rolling window the feed carries (js/visit-feed.js), so it
+    // is fetched on its own and dropped into the same lookup the report reads.
+    // The id stays pending until it resolves, so a later snapshot can still
+    // open it if this fetch fails.
+    if (typeof window.GAILS.fetchVisitById !== 'function') return;
+    window.GAILS.fetchVisitById(visitId).then(function (record) {
+      if (!record || pendingVisitDeepLinkId !== visitId) return;
+      window.GAILS._allVisitsObj = window.GAILS._allVisitsObj || {};
+      window.GAILS._allVisitsObj[visitId] = record;
+      // The period fold in js/config.js caches against the snapshot object's
+      // identity, so editing it in place has to say so.
+      if (typeof window.GAILS.invalidateVisitPeriodIndex === 'function') {
+        window.GAILS.invalidateVisitPeriodIndex();
+      }
+      pendingVisitDeepLinkId = '';
+      window.GAILS.openVisitReportById(visitId);
+    }).catch(function (error) {
+      console.error('Could not load the linked visit:', error);
+    });
   };
 
   window.GAILS.deleteVisit = function (visitId) {
@@ -2821,7 +2899,7 @@ window.GAILS = window.GAILS || {};
       ['Grouped by', exportFilterLabel('visitLogDirectoryGroup', 'None')],
       ['Bakeries exported', orderedRows.length]
     ]);
-    window.GAILS._visitLogExport = {
+    window.GAILS._visitLogExport = withLazyRows({
       title: 'GAIL’s — Bakery Directory',
       sheetName: 'Bakery Directory',
       filename: buildExportFilename('Bakery Directory'),
@@ -2834,7 +2912,9 @@ window.GAILS = window.GAILS || {};
         { label: 'Coffee Trainer', type: 'text', width: 22 },
         { label: 'Area Head Barista', type: 'text', width: 22 }
       ],
-      rows: orderedRows.map(function (row) {
+      rowCount: orderedRows.length
+    }, function () {
+      return orderedRows.map(function (row) {
         return [
           row.bakery,
           row.ops,
@@ -2843,8 +2923,8 @@ window.GAILS = window.GAILS || {};
           row.coffeeTrainer,
           row.areaHeadBarista || '-'
         ];
-      })
-    };
+      });
+    });
     renderBakeryDirectorySummary(orderedRows.length, !!groupField);
 
     container.innerHTML =
@@ -3566,6 +3646,23 @@ window.GAILS = window.GAILS || {};
     // this data-led dropdown in sync after the static filters are initialized.
     populateFollowUpAssigneeOptions();
 
+    // Everything above is one-time setup and dropdown upkeep, which is cheap and
+    // has to stay current whether or not anyone is looking. Everything below
+    // filters, groups, sorts and rewrites the list — and that used to run on
+    // every visit and follow-up snapshot even while Bakery Reports was closed,
+    // which on the dashboard is almost always. It runs at least three times
+    // during boot alone (see the sync callbacks in js/auth.js).
+    //
+    // Deferred rather than dropped: the tab handler in js/app.js already calls
+    // this on activation, so the pending flag exists to make the skip visible
+    // and testable rather than to trigger the redraw.
+    var panelEl = document.getElementById('tab-visit-log');
+    if (panelEl && !panelEl.classList.contains('active')) {
+      window.GAILS._visitLogRenderPending = true;
+      return;
+    }
+    window.GAILS._visitLogRenderPending = false;
+
     var view = window.GAILS._activeVisitLogView || 'bakeries';
 
     // Lets CSS keep view-specific supporting UI in step with the selected
@@ -3595,6 +3692,13 @@ window.GAILS = window.GAILS || {};
       ? document.getElementById('visitLogPeriod').value
       : getVisitLogDefaultPeriod(view);
     var followUpStatus = window.GAILS._followUpStatusFilter || 'open';
+
+    // The live feed only carries a rolling window of visits (js/visit-feed.js).
+    // "All Time" is the one period that reaches past it, so it pulls the rest
+    // in on demand and re-renders once — every other preset is already covered.
+    // Checked here rather than on the period control's change event so it also
+    // covers a restored filter and a deep link, which set the value directly.
+    ensureVisitHistoryFor(periodVal);
 
     syncVisitLogMobileFilterButton();
 
@@ -3742,7 +3846,7 @@ window.GAILS = window.GAILS || {};
       // The export always mirrors the full filtered list, even when the
       // rendered rows are capped by the Show more pager, and repeats the
       // on-screen ordering so the file reads like the view it came from.
-      window.GAILS._visitLogExport = {
+      window.GAILS._visitLogExport = withLazyRows({
         title: 'GAIL’s — Visit Log',
         sheetName: 'Visits',
         filename: buildExportFilename('Visit Log'),
@@ -3768,7 +3872,9 @@ window.GAILS = window.GAILS || {};
           { label: 'Points Available', type: 'number', width: 15 },
           { label: 'Notes', type: 'text', width: 70 }
         ],
-        rows: groupsSorted.reduce(function (rows, groupName) {
+        rowCount: filtered.length
+      }, function () {
+        return groupsSorted.reduce(function (rows, groupName) {
           return rows.concat(grouped[groupName].slice().sort(visitLogSorter(sortVal)));
         }, []).map(function (v) {
           var pct = null;
@@ -3790,8 +3896,8 @@ window.GAILS = window.GAILS || {};
             isRoutine ? v.scoreMax : '',
             buildVisitNotes(v, schema, true).text
           ];
-        })
-      };
+        });
+      });
 
       var remaining = renderLimit;
 
@@ -3989,7 +4095,7 @@ window.GAILS = window.GAILS || {};
       window.GAILS._visitLogCurrentGroupNames = groupVal === 'none' ? [] : groupsSorted.slice();
       renderUnvisitedSummary(totalUnvisited, matchingSites, groupVal !== 'none');
 
-      window.GAILS._visitLogExport = {
+      window.GAILS._visitLogExport = withLazyRows({
         title: 'GAIL’s — Unvisited Sites',
         sheetName: 'Unvisited Sites',
         filename: buildExportFilename('Unvisited Sites'),
@@ -4010,7 +4116,9 @@ window.GAILS = window.GAILS || {};
           { label: 'Days Since', type: 'number', width: 11 },
           { label: 'Ever Visited', type: 'text', width: 12 }
         ],
-        rows: groupsSorted.reduce(function (rows, groupName) {
+        rowCount: totalUnvisited
+      }, function () {
+        return groupsSorted.reduce(function (rows, groupName) {
           unvisitedMap[groupName].slice().sort().forEach(function (bName) {
             var lastIso = lastVisitMap[bName] ? lastVisitMap[bName].split('T')[0] : '';
             rows.push([
@@ -4023,8 +4131,8 @@ window.GAILS = window.GAILS || {};
             ]);
           });
           return rows;
-        }, [])
-      };
+        }, []);
+      });
 
       var collapsedUnvisited = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
       var html = groupsSorted.map(function (groupName) {
@@ -4109,7 +4217,7 @@ window.GAILS = window.GAILS || {};
       });
       var taskGroupsSorted = Object.keys(taskGroups).sort(followUpGroupSorter(followUpGroupVal));
 
-      window.GAILS._visitLogExport = {
+      window.GAILS._visitLogExport = withLazyRows({
         title: 'GAIL’s — Follow-Up Actions',
         sheetName: 'Follow-Ups',
         filename: buildExportFilename('Follow-Up Actions'),
@@ -4136,9 +4244,11 @@ window.GAILS = window.GAILS || {};
           { label: 'Completed', type: 'date', width: 13 },
           { label: 'Assigned To', type: 'text', width: 24 }
         ],
-        // Bakery groups are ordered on screen; the export follows the same
-        // sequence so the two can be read side by side.
-        rows: taskGroupsSorted.reduce(function (rows, groupName) {
+        rowCount: filteredTasks.length
+      // Bakery groups are ordered on screen; the export follows the same
+      // sequence so the two can be read side by side.
+      }, function () {
+        return taskGroupsSorted.reduce(function (rows, groupName) {
           return rows.concat(taskGroups[groupName]);
         }, []).map(function (t) {
           var due = dueMeta(t.dueDate);
@@ -4156,8 +4266,8 @@ window.GAILS = window.GAILS || {};
             t.completedAt ? t.completedAt.slice(0, 10) : '',
             followUpAttributionLabel(t)
           ];
-        })
-      };
+        });
+      });
 
       if (filteredTasks.length === 0) {
         window.GAILS._visitLogCurrentGroupNames = [];

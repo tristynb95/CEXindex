@@ -338,10 +338,28 @@ function deriveBenchmarkBand(record) {
   return score >= 90 ? 'Exceeding' : score >= 75 ? 'Meeting' : score >= 60 ? 'Approaching' : 'Below Standard';
 }
 
+// The most recent month this bakery actually has results for.
+//
+// A month exists in the dataset before anyone has been surveyed in it — the
+// current one usually does, part-way through the reporting cycle — and simply
+// taking the newest row reported that empty month as the bakery's current
+// health. Because an unmeasured record carries zeroes rather than nulls, that
+// read as "0% coffee quality" and "0 NPS from 0 responses": not a gap, but a
+// failing bakery. The score card said "No data" in the same breath, and the
+// rank card had nothing to rank an unscored row against.
+//
+// The trend chart directly below these cards already plots scored months only,
+// so this keeps the two in step — the headline figures now describe the same
+// month the last point on the chart does.
+//
+// Falls back to the newest record of any kind, so a bakery with no scored
+// history at all still reports its period and reads "No data" rather than
+// going blank.
 function latestDashboardRecord() {
-  return dashboardRecords
+  var forThisBakery = dashboardRecords
     .filter(function(record) { return record && sameBakery(record.b); })
-    .sort(function(a, b) { return monthSortKey(b.m) - monthSortKey(a.m); })[0] || null;
+    .sort(function(a, b) { return monthSortKey(b.m) - monthSortKey(a.m); });
+  return forThisBakery.filter(isScoredRecord)[0] || forThisBakery[0] || null;
 }
 
 function isScoredRecord(record) {
@@ -549,7 +567,7 @@ function renderStats() {
     },
     {
       eyebrow: 'Company rank',
-      value: companyRank ? companyRank.rank + ' of ' + companyRank.total : 'â€”',
+      value: companyRank ? companyRank.rank + ' of ' + companyRank.total : '—',
       meta: companyRank ? 'Top ' + companyRank.topPercent + '% for ' + latest.m : 'No comparable company ranking',
       tone: 'purple'
     },
@@ -567,7 +585,11 @@ function renderStats() {
     },
     {
       eyebrow: 'Last visit',
-      value: lastVisit ? formatDate(lastVisit.date, false).replace(/\s\d{4}$/, '') : '—',
+      // The year is kept: a bakery can go a long time between visits, and
+      // "8 Aug" alone leaves you unable to tell last week from last year —
+      // which is the one thing this card exists to answer. Matches how the
+      // visit log below the fold has always dated the same records.
+      value: lastVisit ? formatDate(lastVisit.date, false) : '—',
       meta: lastVisit ? formatVisitType(lastVisit) : 'No visits logged yet',
       tone: 'purple'
     },

@@ -5,6 +5,8 @@ import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPa
 import { createProfileMenu } from './profile-menu.js';
 import { recordNotification, followUpTargets } from './notification-write.js';
 import { mountNotificationCentre } from './notification-centre.js';
+import { subscribeVisits, fetchVisit } from './visit-feed.js';
+import { readDatasetCache, writeDatasetCache, clearDatasetCache } from './dataset-cache.js';
 
 function nowIso() {
   return new Date().toISOString();
@@ -170,12 +172,11 @@ window.GAILS_Firebase = {
         ...meta
       });
       await set(ref(db, 'dashboardMeta'), meta);
-      try {
-        localStorage.setItem('gails_firebase_cache_ts', ts);
-        localStorage.setItem('gails_firebase_cache', JSON.stringify({ records: records, months: months, sourceLastUpdated: sourceLastUpdated || null }));
-      } catch (cacheErr) {
-        console.warn('Could not update local cache:', cacheErr);
-      }
+      writeDatasetCache(ts, {
+        records: records,
+        months: months,
+        sourceLastUpdated: sourceLastUpdated || null
+      });
       // A new workbook moves every bakery's numbers, so everybody hears about
       // it — see the estateWide flag in js/notifications.js.
       recordNotification('data.updated', {
@@ -193,8 +194,7 @@ window.GAILS_Firebase = {
   },
   clearDashboardData: async function() {
     await remove(ref(db, 'dashboardData'));
-    localStorage.removeItem('gails_firebase_cache_ts');
-    localStorage.removeItem('gails_firebase_cache');
+    await clearDatasetCache();
   },
   // A caller that does not pass the people assignments is only replacing the
   // site mapping, so the saved Coffee Team and Area Head Barista details are
@@ -646,11 +646,23 @@ function stopRoutineVisitsSync() {
 
 function startRoutineVisitsSync() {
   stopRoutineVisitsSync();
-  routineVisitsUnsubscribe = onValue(ref(db, 'routineVisits'), function(snapshot) {
-    applyLastVisitDates(snapshot.exists() ? snapshot.val() : {});
-  }, function(error) {
-    console.error('Failed to sync routine visits for map tooltips:', error);
+  // A rolling window rather than the whole node — see js/visit-feed.js for why,
+  // and for what "All Time" does about the rest.
+  var feed = subscribeVisits({
+    onData: applyLastVisitDates,
+    onError: function(error) {
+      console.error('Failed to sync routine visits for map tooltips:', error);
+    }
   });
+  routineVisitsUnsubscribe = feed.stop;
+  // Bakery Reports offers an All Time period. Selecting it is the only thing
+  // that needs history older than the window, so it pays for it at that point
+  // and only once — see js/visit-report.js.
+  window.GAILS.loadAllTimeVisits = feed.expandToAllTime;
+  window.GAILS.hasAllTimeVisits = feed.isAllTime;
+  // A link can name a visit older than the window, so opening one falls back to
+  // fetching just that record rather than giving up.
+  window.GAILS.fetchVisitById = fetchVisit;
   followUpActionsUnsubscribe = onValue(ref(db, 'followUpActions'), function(snapshot) {
     applyFollowUpActions(snapshot.exists() ? snapshot.val() : {});
   }, function(error) {
@@ -743,12 +755,19 @@ function clearLoginForm() {
 
 // canUpload: true for admins and roles with 'edit' on the shared dataset —
 // controls whether the upload zone is revealed when no shared data exists.
-async function loadSharedDashboardData(canUpload) {
+async function loadSharedDashboardData(canUpload, metaPromise) {
   try {
     var statusEl = document.getElementById('uploadStatus');
 
-    // Fetch lightweight metadata first to check if a download is actually needed
-    var metaSnap = await get(ref(db, 'dashboardMeta'));
+    // Lightweight metadata, which decides whether the full dataset needs
+    // downloading at all. The caller starts this read alongside the profile
+    // reads rather than after them — it depends on nothing they produce, and
+    // awaiting it in sequence put an avoidable round trip in front of every
+    // load. Falls back to fetching it here if no in-flight read was handed in.
+    // A handed-in read that failed resolves null rather than rejecting, so the
+    // retry here is what turns a transient blip into a second attempt instead
+    // of an empty dashboard.
+    var metaSnap = (metaPromise ? await metaPromise : null) || await get(ref(db, 'dashboardMeta'));
     if (!metaSnap.exists()) {
       if (canUpload) {
         var uploadZone = document.getElementById('uploadZone');
@@ -759,18 +778,14 @@ async function loadSharedDashboardData(canUpload) {
     }
 
     var meta = metaSnap.val();
-    var cachedTs = localStorage.getItem('gails_firebase_cache_ts');
     var data = null;
 
-    // Use the local cache if it matches the server's timestamp
-    if (cachedTs && cachedTs === meta.updatedAt) {
-      try {
-        var raw = localStorage.getItem('gails_firebase_cache');
-        if (raw) data = JSON.parse(raw);
-      } catch (e) {
-        data = null;
-      }
-    }
+    // Use the local cache if it matches the server's timestamp. Held in
+    // IndexedDB (js/dataset-cache.js) rather than localStorage, so a growing
+    // estate cannot quietly push it past a 5MB quota and turn every load into
+    // a full download.
+    var cached = await readDatasetCache();
+    if (cached && cached.ts === meta.updatedAt) data = cached;
 
     // Cache miss or stale — download the full dataset from Firebase
     if (!data) {
@@ -784,12 +799,7 @@ async function loadSharedDashboardData(canUpload) {
         return;
       }
       data = dbSnap.val();
-      try {
-        localStorage.setItem('gails_firebase_cache_ts', meta.updatedAt);
-        localStorage.setItem('gails_firebase_cache', JSON.stringify({ records: data.records || [], months: data.months || [], sourceLastUpdated: data.sourceLastUpdated || null }));
-      } catch (cacheErr) {
-        console.warn('Could not cache Firebase data locally:', cacheErr);
-      }
+      writeDatasetCache(meta.updatedAt, data);
     }
 
     if (window.GAILS && window.GAILS.state) {
@@ -807,10 +817,7 @@ async function loadSharedDashboardData(canUpload) {
       get(ref(db, 'dashboardData')).then(function(dbSnap) {
         if (!dbSnap.exists() || !window.GAILS_initDashboard) return;
         var freshData = dbSnap.val();
-        try {
-          localStorage.setItem('gails_firebase_cache_ts', freshMeta.updatedAt);
-          localStorage.setItem('gails_firebase_cache', JSON.stringify({ records: freshData.records || [], months: freshData.months || [], sourceLastUpdated: freshData.sourceLastUpdated || null }));
-        } catch (cacheErr) {}
+        writeDatasetCache(freshMeta.updatedAt, freshData);
         if (window.GAILS && window.GAILS.state) {
           window.GAILS.state.dataLastUpdated = freshData.sourceLastUpdated || null;
         }
@@ -818,17 +825,25 @@ async function loadSharedDashboardData(canUpload) {
       });
     });
 
-    var tryInit = setInterval(function() {
-      if (window.GAILS_initDashboard) {
-        clearInterval(tryInit);
-        window.GAILS_initDashboard(data.records || [], data.months || []);
-        loadingScreen.style.display = 'none';
-        if (statusEl) {
-          statusEl.textContent = 'Loaded data securely from Firebase Database';
-          statusEl.className = 'status success';
-        }
+    // js/app.js is a deferred classic script and this is a module, so it has
+    // always finished — and published GAILS_initDashboard — long before an auth
+    // state change resolves. This used to poll for it on a 100ms interval,
+    // which never fires immediately: every single load paid a tenth of a second
+    // waiting for a function that was already there. The `load` fallback keeps
+    // it honest if that ordering ever changes, without taxing the normal path.
+    var runInit = function() {
+      window.GAILS_initDashboard(data.records || [], data.months || []);
+      loadingScreen.style.display = 'none';
+      if (statusEl) {
+        statusEl.textContent = 'Loaded data securely from Firebase Database';
+        statusEl.className = 'status success';
       }
-    }, 100);
+    };
+    if (window.GAILS_initDashboard) runInit();
+    else window.addEventListener('load', function() {
+      if (window.GAILS_initDashboard) runInit();
+      else console.error('Dashboard init never loaded; the dataset could not be rendered.');
+    }, { once: true });
   } catch (e) {
     console.error("Failed to load Firebase data:", e);
     loadingScreen.style.display = 'none';
@@ -839,6 +854,12 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     const adminRef = ref(db, `admins/${user.uid}`);
     const userRef = ref(db, `users/${user.uid}`);
+    // Started here, before the profile is even resolved, because the dataset
+    // metadata is readable by anyone signed in and depends on nothing below.
+    // Handed to loadSharedDashboardData at the bottom, by which time it has
+    // usually already landed. The catch keeps a rejection from going unhandled
+    // if this turns out to be someone who gets signed straight back out.
+    const dashboardMetaPromise = get(ref(db, 'dashboardMeta')).catch(function() { return null; });
     try {
       // Neither read depends on the other, and nothing on the page renders
       // until both have landed — awaiting them one after the other spent two
@@ -880,9 +901,16 @@ onAuthStateChanged(auth, async (user) => {
 
       if (isAllowed) {
         if (user.email && userProfile && String(userProfile.email || '').toLowerCase() !== user.email.toLowerCase()) {
-          await update(userRef, {
+          // Repairing a stale stored address is housekeeping: everything below
+          // reads the corrected `userProfile` built here, not the written row,
+          // so awaiting the write only put a round trip in front of the
+          // dashboard on the rare load that needs it. Same reasoning as the
+          // activity-log write further down.
+          update(userRef, {
             email: user.email,
             updatedAt: nowIso()
+          }).catch(function(emailErr) {
+            console.warn('Could not sync your stored email address:', emailErr);
           });
           userProfile = Object.assign({}, userProfile, {
             email: user.email
@@ -939,7 +967,10 @@ onAuthStateChanged(auth, async (user) => {
         startReportVisibilitySync();
         startUserDirectorySync();
         publishDirectoryEntry(user, userProfile);
-        await loadSharedDashboardData(isAdmin || permissions.admin.dataset === 'edit');
+        await loadSharedDashboardData(
+          isAdmin || permissions.admin.dataset === 'edit',
+          dashboardMetaPromise
+        );
       } else {
         loginError.textContent = "You don't have access to this dashboard. Contact your administrator.";
         loginError.style.display = 'block';

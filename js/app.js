@@ -262,7 +262,8 @@
         'watch': 'Watch',
         'below': 'Below'
       };
-      var bandText = 'Band: ' + (bandLabels[bandVal] || bandVal);
+      var bandKey = bandVal.indexOf('abs:') === 0 ? bandVal.slice(4) : bandVal;
+      var bandText = 'Band: ' + (bandLabels[bandKey] || bandKey);
       pills.push('<span class="header-pill-filter">' + escapeHtml(bandText) + '</span>');
     }
 
