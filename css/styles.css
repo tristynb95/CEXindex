@@ -89,7 +89,7 @@ html {
      undifferentiated slab. --row-gap is the air between sibling data rows,
      and is deliberately large enough to see where one row ends. */
   --control-h: 38px;
-  --label-gap: 5px;
+  --label-gap: 4px;
   --row-gap: 8px;
 
   /* ── List-view language ──
@@ -572,11 +572,16 @@ h4 {
   min-width: 0;
 }
 
+/* Single-line uppercase, so the line box need not reserve the descender room
+   1.25 was holding — but 1.1 crowded the label against its control, so this
+   sits between the two. Font size stays at 0.67rem: shrinking it would buy
+   barely a pixel and would undercut the 0.64-0.66rem labels beside it (map
+   toggles, nav group titles). */
 .filter-bar label {
   font-size: 0.67rem;
   color: var(--muted);
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.18;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   margin-bottom: var(--label-gap);
@@ -1229,11 +1234,15 @@ h4 {
      line up with the chart bars beside it — gap is a floor, space-between
      hands out whatever height is left over. */
   justify-content: space-between;
-  gap: 10px;
+  /* Floor only — space-between hands out whatever is left. Kept tight (and
+     the top nudge with it) because the card is now pinned to two KPI cards
+     tall: at the old 10px/14px these five rows needed 190px inside a 161px
+     box and the last row spilled out of the card. */
+  gap: 3px;
   min-height: 0;
   /* Chart.js reserves space above its first bar (category-scale offset) that
      a plain DOM row doesn't get for free — nudge down to match. */
-  padding-top: 14px;
+  padding-top: 4px;
 }
 
 .band-split__row {
@@ -1243,7 +1252,7 @@ h4 {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 3px 4px;
+  padding: 2px 4px;
   border: 0;
   border-radius: 7px;
   background: none;
@@ -1339,7 +1348,7 @@ h4 {
 }
 
 .band-split__count {
-  font-size: 0.92rem;
+  font-size: 0.86rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -1388,6 +1397,32 @@ h4 {
   }
 }
 
+/* Overview rhythm: every chart card stands exactly as tall as two stacked KPI
+   cards, so the KPI grid and the charts below read as two bands of equal
+   weight. --kpi-block-h is published by app.js rather than hard-coded here
+   because KPI cards size to their content — a title that wraps at a narrower
+   viewport makes the block taller, and the charts have to follow. The
+   fallback is the laptop-width measurement, used until the first publish.
+   Desktop only: below 900px the KPI grid reflows to far more rows, and
+   matching that would leave absurdly tall charts. */
+@media (min-width: 901px) {
+
+  .overview-card--scatter,
+  .overview-card--bands,
+  .overview-card--drags,
+  .overview-card--score {
+    height: var(--kpi-block-h, 272px);
+  }
+
+  /* The card height now governs; these floors would stop the chart shrinking
+     into it. Both .overview-chart and .band-split are flex: 1 1 auto, so they
+     take whatever the card has left after its heading and caption. */
+  .overview-chart,
+  .overview-card--scatter .overview-chart {
+    min-height: 0;
+  }
+}
+
 /* Fixed 4-up so the eight KPIs split into two meaningful rows:
    Benchmark + the SHINE trio, then NPS + the KV Link trio. */
 .kpi-row {
@@ -1404,8 +1439,8 @@ h4 {
     radial-gradient(circle at top right, rgba(201, 127, 18, 0.05) 0%, transparent 36%),
     #FFFFFF;
   border-radius: 18px;
-  padding: 13px 17px 11px;
-  min-height: 144px;
+  padding: 11px 15px 10px;
+  min-height: 118px;
   text-align: left;
   box-shadow: 0 6px 22px rgba(48, 36, 22, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(34, 31, 26, 0.09);
@@ -1520,8 +1555,8 @@ h4 {
   display: none;
 }
 
-.kpi--has-info .kpi__top {
-  padding-right: 24px;
+.kpi--has-info .kpi__meta {
+  padding-right: 22px;
 }
 
 .kpi-info {
@@ -1533,7 +1568,7 @@ h4 {
 
 .kpi-info summary {
   position: absolute;
-  top: 8px;
+  bottom: 8px;
   right: 8px;
   display: grid;
   place-items: center;
@@ -1576,7 +1611,7 @@ h4 {
 
 .kpi-info__panel {
   position: absolute;
-  top: 34px;
+  bottom: 34px;
   left: 8px;
   width: min(330px, calc(100vw - 32px));
   padding: 14px;
@@ -1698,7 +1733,7 @@ h4 {
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .kpi__eyebrow {
@@ -1732,20 +1767,23 @@ h4 {
   flex-shrink: 0;
 }
 
+/* Dialled back from clamp(2rem, 2.35vw, 2.65rem): at that size the figure was
+   carrying more of the card's height than its information warranted. It is
+   still comfortably the dominant element against the 0.79rem title. */
 .kpi__value {
-  font-size: clamp(2rem, 2.35vw, 2.65rem);
+  font-size: clamp(1.6rem, 1.9vw, 2.15rem);
   font-weight: 800;
   font-family: var(--font);
   color: var(--text);
   letter-spacing: -0.04em;
   line-height: 1;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
 .kpi--primary .kpi__value {
-  font-size: clamp(2.15rem, 2.55vw, 2.85rem);
+  font-size: clamp(1.75rem, 2.05vw, 2.3rem);
 }
 
 .kpi__title {
@@ -1758,8 +1796,8 @@ h4 {
 }
 
 .kpi__meta {
-  margin-top: 8px;
-  padding-top: 7px;
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px solid rgba(34, 31, 26, 0.075);
   color: var(--muted);
   font-size: 0.68rem;
@@ -1782,7 +1820,7 @@ h4 {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-  margin-top: 6px;
+  margin-top: 4px;
   padding: 2px 7px 2px 5px;
   border-radius: 6px;
   line-height: 1.4;
@@ -2332,22 +2370,57 @@ canvas {
 
 .dashboard-nav {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   padding-top: 11px;
   border-top: 1px solid rgba(34, 31, 26, 0.06);
+}
+
+/* Grouped rail: headings are the only thing separating the sets, so they get
+   air above and none below — the label should feel attached to the items it
+   introduces, not floating between two groups. */
+.dashboard-nav__group {
+  display: grid;
+  gap: 5px;
+}
+
+.dashboard-nav__group-title {
+  margin: 9px 0 0;
+  padding-inline: 4px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(34, 31, 26, 0.42);
+}
+
+.dashboard-nav__group-items {
+  display: grid;
+  gap: 5px;
+}
+
+/* Overview is the home view, so it keeps a hair more separation from the
+   first heading than the groups keep from each other. */
+.dashboard-nav__btn--home {
+  margin-bottom: 2px;
 }
 
 .tab {
   font: inherit;
 }
 
+/* One notch above --control-h, tracking the filter density rather than
+   floating free of it: these are primary navigation, so they carry a little
+   more weight than a filter dropdown, but still sit well under the 44px touch
+   minimum — this is the pointer-only rail, and the drawer below 980px
+   restores 44px. Eight entries plus three group headings have to clear the
+   fold on a laptop viewport. */
 .dashboard-nav__btn {
   appearance: none;
   position: relative;
   width: 100%;
-  min-height: 44px;
-  padding: 10px 13px;
-  border-radius: 13px;
+  min-height: calc(var(--control-h) + 2px);
+  padding: 8px 12px;
+  border-radius: 12px;
   border: 1px solid rgba(34, 31, 26, 0.04);
   background: rgba(34, 31, 26, 0.022);
   color: var(--text);
@@ -2371,6 +2444,28 @@ canvas {
     linear-gradient(135deg, rgba(178, 42, 36, 0.18) 0%, rgba(34, 31, 26, 0.03) 55%, rgba(201, 127, 18, 0.08) 100%);
   border-color: rgba(178, 42, 36, 0.26);
   box-shadow: 0 14px 30px rgba(178, 42, 36, 0.12);
+}
+
+/* Pending view: reads as a real menu entry so people know it is coming, but
+   drops the affordances that promise it does something — no lift on hover,
+   no pointer cursor, and the red icon backs off to match the muted label. */
+.dashboard-nav__btn--soon,
+.dashboard-nav__btn--soon:hover {
+  background: rgba(34, 31, 26, 0.014);
+  border-color: rgba(34, 31, 26, 0.04);
+  border-style: dashed;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
+.dashboard-nav__btn--soon .dashboard-nav__content strong {
+  color: rgba(34, 31, 26, 0.44);
+  font-weight: 600;
+}
+
+.dashboard-nav__btn--soon .dashboard-nav__icon {
+  color: rgba(178, 42, 36, 0.34);
 }
 
 .dashboard-nav__icon {
@@ -2404,12 +2499,6 @@ canvas {
   gap: 4px;
 }
 
-/* Per-item eyebrows made every nav entry two lines tall; hidden so all
-   seven views fit on screen — the strong label carries the meaning. */
-.dashboard-nav__eyebrow {
-  display: none;
-}
-
 .dashboard-nav__content strong {
   display: block;
   color: var(--text);
@@ -2441,6 +2530,17 @@ canvas {
   border-radius: 14px;
 }
 
+/* Collapsed rail: no room for the group labels, so a hairline above each
+   group carries the same grouping the headings do when expanded. */
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__group-title {
+  display: none;
+}
+
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__group {
+  padding-top: 7px;
+  border-top: 1px solid rgba(34, 31, 26, 0.07);
+}
+
 /* Collapsed rail: nav entries and the expand toggle share one 44px
    soft-square footprint, centered, so the rail reads as a single column */
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn {
@@ -2452,7 +2552,8 @@ canvas {
   padding: 0;
 }
 
-.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn::after {
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn::after,
+.dashboard-nav__btn[data-nav-tooltip]::after {
   content: attr(aria-label);
   position: absolute;
   top: 50%;
@@ -2475,7 +2576,15 @@ canvas {
   z-index: 6;
 }
 
-.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn::before {
+/* Expanded rail: the label is already on the button, so the tooltip carries
+   the status instead. Collapsed, the higher-specificity rule above wins and
+   the tooltip falls back to aria-label — the icon alone needs the name. */
+.dashboard-nav__btn[data-nav-tooltip]::after {
+  content: attr(data-nav-tooltip);
+}
+
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn::before,
+.dashboard-nav__btn[data-nav-tooltip]::before {
   content: "";
   position: absolute;
   top: 50%;
@@ -2496,13 +2605,19 @@ canvas {
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:hover::after,
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:hover::before,
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:focus-visible::after,
-.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:focus-visible::before {
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:focus-visible::before,
+.dashboard-nav__btn[data-nav-tooltip]:hover::after,
+.dashboard-nav__btn[data-nav-tooltip]:hover::before,
+.dashboard-nav__btn[data-nav-tooltip]:focus-visible::after,
+.dashboard-nav__btn[data-nav-tooltip]:focus-visible::before {
   opacity: 1;
   visibility: visible;
 }
 
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:hover::after,
-.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:focus-visible::after {
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:focus-visible::after,
+.dashboard-nav__btn[data-nav-tooltip]:hover::after,
+.dashboard-nav__btn[data-nav-tooltip]:focus-visible::after {
   transform: translateY(-50%) translateX(0);
 }
 
@@ -2663,6 +2778,37 @@ canvas {
 
   .dashboard-workspace__menu-btn {
     display: inline-flex;
+  }
+
+  /* Drawer is touch-driven, so the rail's condensed pointer height goes back
+     up to the 44px minimum — there is room to scroll here, unlike the fixed
+     desktop rail. */
+  .dashboard-nav__btn {
+    min-height: 44px;
+    padding: 10px 13px;
+  }
+
+  /* The sidebar is a scrolling drawer at this width, so a tooltip parked
+     outside it would be clipped — and there is no hover to summon it anyway.
+     Same pseudo-element, reflowed into the row as a permanent chip. */
+  .dashboard-nav__btn[data-nav-tooltip]::after {
+    position: static;
+    margin-left: auto;
+    padding: 4px 8px;
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(34, 31, 26, 0.5);
+    background: rgba(34, 31, 26, 0.05);
+    border-color: rgba(34, 31, 26, 0.06);
+    box-shadow: none;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+
+  .dashboard-nav__btn[data-nav-tooltip]::before {
+    display: none;
   }
 }
 
@@ -12097,10 +12243,10 @@ a,
   flex-direction: row;
   align-items: center;
   gap: 10px;
-  min-height: 38px;
-  padding: 4px 4px 4px 11px;
+  min-height: var(--control-h);
+  padding: 3px 3px 3px 10px;
   border: 1px solid rgba(34, 31, 26, 0.09);
-  border-radius: 12px;
+  border-radius: 11px;
   background: rgba(251, 249, 243, 0.86);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 2px rgba(48, 36, 22, 0.04);
 }
@@ -12136,17 +12282,17 @@ a,
   align-items: center;
   gap: 2px;
   margin-left: 0;
-  padding: 3px;
+  padding: 2px;
   border: 1px solid rgba(34, 31, 26, 0.08);
-  border-radius: 9px;
+  border-radius: 8px;
   background: rgba(34, 31, 26, 0.045);
   box-shadow: inset 0 1px 2px rgba(48, 36, 22, 0.05);
 }
 
 .map-segmented-control__btn {
   appearance: none;
-  min-height: 28px;
-  padding: 5px 12px;
+  min-height: 24px;
+  padding: 4px 11px;
   border: 0;
   border-radius: 6px;
   background: transparent;

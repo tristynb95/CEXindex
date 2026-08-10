@@ -475,8 +475,14 @@
             </button>
           </div>
 
+          <!-- Grouped nav: Overview sits above the headings because it is the
+               home view, not a category member. The three groups run in the
+               order people work — how are we scoring, why, then what we filed.
+               Group headings replace the old per-item eyebrows, so the rail is
+               no taller than it was with seven flat entries. -->
           <nav class="dashboard-nav" id="dashboardNav">
-            <button type="button" class="tab dashboard-nav__btn active" data-tab="overview" aria-label="Overview">
+            <button type="button" class="tab dashboard-nav__btn dashboard-nav__btn--home active" data-tab="overview"
+              aria-label="Overview">
               <span class="dashboard-nav__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" focusable="false">
                   <rect x="4" y="4" width="6" height="6" rx="1.5"></rect>
@@ -486,91 +492,124 @@
                 </svg>
               </span>
               <span class="dashboard-nav__content">
-                <span class="dashboard-nav__eyebrow">Summary</span>
                 <strong>Overview</strong>
               </span>
             </button>
-            <button type="button" class="tab dashboard-nav__btn" data-tab="target" aria-label="Focus Bakeries">
-              <span class="dashboard-nav__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <circle cx="12" cy="12" r="7"></circle>
-                  <circle cx="12" cy="12" r="3.5"></circle>
-                  <path d="M17 7L20 4"></path>
-                  <path d="M16.5 4H20V7.5"></path>
-                </svg>
-              </span>
-              <span class="dashboard-nav__content">
-                <span class="dashboard-nav__eyebrow">Priority</span>
-                <strong>Focus Bakeries</strong>
-              </span>
-            </button>
-            <button type="button" class="tab dashboard-nav__btn" data-tab="map" aria-label="Map">
-              <span class="dashboard-nav__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path
-                    d="M12 20C12 20 18 14.4 18 9.5C18 6.46243 15.3137 4 12 4C8.68629 4 6 6.46243 6 9.5C6 14.4 12 20 12 20Z">
-                  </path>
-                  <circle cx="12" cy="9.5" r="2"></circle>
-                </svg>
-              </span>
-              <span class="dashboard-nav__content">
-                <span class="dashboard-nav__eyebrow">Locations</span>
-                <strong>Map</strong>
-              </span>
-            </button>
-            <button type="button" class="tab dashboard-nav__btn" data-tab="trends" aria-label="Trends">
-              <span class="dashboard-nav__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path d="M5 17L10 12L13.5 15.5L19 8.5"></path>
-                  <path d="M15.5 8.5H19V12"></path>
-                </svg>
-              </span>
-              <span class="dashboard-nav__content">
-                <span class="dashboard-nav__eyebrow">History</span>
-                <strong>Trends</strong>
-              </span>
-            </button>
-            <button type="button" class="tab dashboard-nav__btn" data-tab="table" aria-label="League Table">
-              <span class="dashboard-nav__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path d="M7 5H17V7C17 9.76142 14.7614 12 12 12C9.23858 12 7 9.76142 7 7V5Z"></path>
-                  <path d="M7 6H5C5 8.20914 6.79086 10 9 10"></path>
-                  <path d="M17 6H19C19 8.20914 17.2091 10 15 10"></path>
-                  <path d="M12 12V16"></path>
-                  <path d="M9 19H15"></path>
-                </svg>
-              </span>
-              <span class="dashboard-nav__content">
-                <span class="dashboard-nav__eyebrow">Rankings</span>
-                <strong>League Table</strong>
-              </span>
-            </button>
-            <button type="button" class="tab dashboard-nav__btn" data-tab="feedback" aria-label="Customer Feedback">
-              <span class="dashboard-nav__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path d="M4 5C4 4.45 4.45 4 5 4H19C19.55 4 20 4.45 20 5V15C20 15.55 19.55 16 19 16H8.5L5 19.5V5Z">
-                  </path>
-                  <path d="M8 9H16M8 12H13"></path>
-                </svg>
-              </span>
-              <span class="dashboard-nav__content">
-                <span class="dashboard-nav__eyebrow">Sentiment</span>
-                <strong>Feedback</strong>
-              </span>
-            </button>
-            <button type="button" class="tab dashboard-nav__btn" data-tab="visit-log" aria-label="Bakery Reports">
-              <span class="dashboard-nav__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path
-                    d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H14V17H7V15Z">
-                  </path>
-                </svg>
-              </span>
-              <span class="dashboard-nav__content">
-                <span class="dashboard-nav__eyebrow">Site Visits</span>
-                <strong>Bakery Reports</strong>
-              </span>
-            </button>
+
+            <div class="dashboard-nav__group" data-nav-group>
+              <p class="dashboard-nav__group-title" id="dashboardNavGroupPerformance">Performance</p>
+              <div class="dashboard-nav__group-items" role="group" aria-labelledby="dashboardNavGroupPerformance">
+                <button type="button" class="tab dashboard-nav__btn" data-tab="target" aria-label="Focus Bakeries">
+                  <span class="dashboard-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <circle cx="12" cy="12" r="7"></circle>
+                      <circle cx="12" cy="12" r="3.5"></circle>
+                      <path d="M17 7L20 4"></path>
+                      <path d="M16.5 4H20V7.5"></path>
+                    </svg>
+                  </span>
+                  <span class="dashboard-nav__content">
+                    <strong>Focus Bakeries</strong>
+                  </span>
+                </button>
+                <button type="button" class="tab dashboard-nav__btn" data-tab="table" aria-label="League Table">
+                  <span class="dashboard-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M7 5H17V7C17 9.76142 14.7614 12 12 12C9.23858 12 7 9.76142 7 7V5Z"></path>
+                      <path d="M7 6H5C5 8.20914 6.79086 10 9 10"></path>
+                      <path d="M17 6H19C19 8.20914 17.2091 10 15 10"></path>
+                      <path d="M12 12V16"></path>
+                      <path d="M9 19H15"></path>
+                    </svg>
+                  </span>
+                  <span class="dashboard-nav__content">
+                    <strong>League Table</strong>
+                  </span>
+                </button>
+                <button type="button" class="tab dashboard-nav__btn" data-tab="trends" aria-label="Trends">
+                  <span class="dashboard-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M5 17L10 12L13.5 15.5L19 8.5"></path>
+                      <path d="M15.5 8.5H19V12"></path>
+                    </svg>
+                  </span>
+                  <span class="dashboard-nav__content">
+                    <strong>Trends</strong>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div class="dashboard-nav__group" data-nav-group>
+              <p class="dashboard-nav__group-title" id="dashboardNavGroupInsight">Insight</p>
+              <div class="dashboard-nav__group-items" role="group" aria-labelledby="dashboardNavGroupInsight">
+                <!-- Not yet built: deliberately has no `tab` class and no
+                     data-tab, so neither the tab wiring in app.js nor the
+                     per-role tab gating in auth.js picks it up. aria-disabled
+                     rather than the disabled attribute keeps it reachable by
+                     keyboard, so the "coming soon" tooltip is not mouse-only. -->
+                <button type="button" class="dashboard-nav__btn dashboard-nav__btn--soon" aria-disabled="true"
+                  data-nav-tooltip="Coming soon" aria-label="Telemetry (coming soon)">
+                  <span class="dashboard-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M4.5 17.5a8.5 8.5 0 1 1 15 0"></path>
+                      <path d="M12 17.5L15.5 12.5"></path>
+                      <circle cx="12" cy="17.5" r="1.25"></circle>
+                    </svg>
+                  </span>
+                  <span class="dashboard-nav__content">
+                    <strong>Telemetry</strong>
+                  </span>
+                </button>
+                <button type="button" class="tab dashboard-nav__btn" data-tab="map" aria-label="Map">
+                  <span class="dashboard-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M12 20C12 20 18 14.4 18 9.5C18 6.46243 15.3137 4 12 4C8.68629 4 6 6.46243 6 9.5C6 14.4 12 20 12 20Z">
+                      </path>
+                      <circle cx="12" cy="9.5" r="2"></circle>
+                    </svg>
+                  </span>
+                  <span class="dashboard-nav__content">
+                    <strong>Map</strong>
+                  </span>
+                </button>
+                <button type="button" class="tab dashboard-nav__btn" data-tab="feedback"
+                  aria-label="Customer Feedback">
+                  <span class="dashboard-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M4 5C4 4.45 4.45 4 5 4H19C19.55 4 20 4.45 20 5V15C20 15.55 19.55 16 19 16H8.5L5 19.5V5Z">
+                      </path>
+                      <path d="M8 9H16M8 12H13"></path>
+                    </svg>
+                  </span>
+                  <span class="dashboard-nav__content">
+                    <strong>Feedback</strong>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div class="dashboard-nav__group" data-nav-group>
+              <p class="dashboard-nav__group-title" id="dashboardNavGroupReporting">Reporting</p>
+              <div class="dashboard-nav__group-items" role="group" aria-labelledby="dashboardNavGroupReporting">
+                <button type="button" class="tab dashboard-nav__btn" data-tab="visit-log" aria-label="Bakery Reports">
+                  <span class="dashboard-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M8 3.5H13L17.5 8V19C17.5 19.83 16.83 20.5 16 20.5H8C7.17 20.5 6.5 19.83 6.5 19V5C6.5 4.17 7.17 3.5 8 3.5Z">
+                      </path>
+                      <path d="M13 3.5V8H17.5"></path>
+                      <path d="M9.5 12.5H14.5M9.5 16H12.5"></path>
+                    </svg>
+                  </span>
+                  <span class="dashboard-nav__content">
+                    <strong>Bakery Reports</strong>
+                  </span>
+                </button>
+              </div>
+            </div>
           </nav>
         </aside>
 
@@ -2089,8 +2128,10 @@
         <button type="button" class="mobile-bottom-nav__btn tab" data-tab="visit-log" aria-label="Bakery Reports">
           <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
             <path
-              d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H14V17H7V15Z">
+              d="M8 3.5H13L17.5 8V19C17.5 19.83 16.83 20.5 16 20.5H8C7.17 20.5 6.5 19.83 6.5 19V5C6.5 4.17 7.17 3.5 8 3.5Z">
             </path>
+            <path d="M13 3.5V8H17.5"></path>
+            <path d="M9.5 12.5H14.5M9.5 16H12.5"></path>
           </svg>
           <span>Reports</span>
         </button>

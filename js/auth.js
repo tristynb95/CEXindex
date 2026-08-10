@@ -1040,6 +1040,14 @@ function applyDashboardTabPermissions(permissions) {
     const allowed = perms.tabs[key] !== false;
     btn.style.display = allowed ? '' : 'none';
   });
+  // A role that can't see any view in a sidebar group would otherwise be left
+  // with the group heading sitting above nothing.
+  document.querySelectorAll('[data-nav-group]').forEach(function(group) {
+    const groupTabs = Array.from(group.querySelectorAll('.tab[data-tab]'));
+    const anyVisible = groupTabs.some(function(btn) { return btn.style.display !== 'none'; });
+    group.style.display = anyVisible ? '' : 'none';
+  });
+
   const activeHidden = tabButtons.some(function(btn) {
     return btn.classList.contains('active') && btn.style.display === 'none';
   });

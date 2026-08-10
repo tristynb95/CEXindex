@@ -623,10 +623,32 @@
     });
   }
 
+  // ========== OVERVIEW BAND HEIGHT ==========
+  // The overview chart cards stand exactly two KPI cards tall. KPI cards size
+  // to their content — a title that wraps at a narrower viewport adds a line
+  // to all eight, since the row is grid-auto-rows: 1fr — so the figure can't
+  // be a constant in the stylesheet. Measure one card and publish it; the CSS
+  // falls back to a laptop-width value until this first runs.
+  function publishKpiBlockHeight() {
+    if (!dashboardKpiRow) return;
+    var card = dashboardKpiRow.querySelector('.kpi');
+    if (!card) return;
+    var gap = parseFloat(window.getComputedStyle(dashboardKpiRow).rowGap) || 0;
+    var height = card.getBoundingClientRect().height * 2 + gap;
+    if (!height) return;
+    document.documentElement.style.setProperty('--kpi-block-h', Math.round(height) + 'px');
+  }
+
   if (dashboardKpiRow && window.ResizeObserver) {
-    new ResizeObserver(function () { fitKpiValues(); }).observe(dashboardKpiRow);
+    new ResizeObserver(function () {
+      fitKpiValues();
+      publishKpiBlockHeight();
+    }).observe(dashboardKpiRow);
   } else {
-    window.addEventListener('resize', fitKpiValues);
+    window.addEventListener('resize', function () {
+      fitKpiValues();
+      publishKpiBlockHeight();
+    });
   }
 
   // ========== DEFERRED PANEL RENDERS ==========
@@ -745,6 +767,7 @@
           + '</article>';
       }).join('');
       fitKpiValues();
+      publishKpiBlockHeight();
       G.renderOverviewCharts(data);
       G._lastData = data;
       renderOrDeferPanels({
@@ -973,6 +996,7 @@
         + '</article>';
     }).join('');
     fitKpiValues();
+    publishKpiBlockHeight();
 
     G.renderOverviewCharts(data);
     G._lastData = data;
