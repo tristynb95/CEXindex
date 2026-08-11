@@ -722,9 +722,8 @@
       <div id="dashboardWorkspaceShell" class="dashboard-workspace" data-sidebar-collapsed="false"
         data-sidebar-open="false">
         <aside class="dashboard-sidebar" aria-label="Main dashboard menu">
-          <!-- Head + nav are pinned together (see .dashboard-sidebar__pinned)
-               so the menu title and collapse control stay on screen with the
-               nav items instead of scrolling away above them. -->
+          <!-- Head + nav share the rail's internal scrolling region. On
+               desktop the full rail stays pinned beneath the brand header. -->
           <div class="dashboard-sidebar__pinned">
             <div class="dashboard-sidebar__head">
               <div>

@@ -23772,16 +23772,16 @@ body[data-dash-tab="cei"] .methodology {
   }
 
   #dashboardContent {
+    --dashboard-sidebar-w: 232px;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: var(--dashboard-sidebar-w) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     column-gap: clamp(12px, 1vw, 20px);
     row-gap: 12px;
     align-items: stretch;
     min-width: 0;
-    /* Give the grid area itself a floor of one viewport tall, so short-content
-       tabs (Overview) still give the stretched sidebar (below) something
-       viewport-tall to fill. */
+    transition: grid-template-columns 0.28s ease;
+    /* Keep short dashboard views at least as tall as the available screen. */
     min-height: calc(100vh - var(--dashboard-header-h));
     min-height: calc(100dvh - var(--dashboard-header-h));
   }
@@ -23799,41 +23799,34 @@ body[data-dash-tab="cei"] .methodology {
     display: contents;
   }
 
+  #dashboardContent:has(> .dashboard-workspace[data-sidebar-collapsed=true]) {
+    --dashboard-sidebar-w: 96px;
+  }
+
   #dashboardContent .dashboard-sidebar {
     grid-column: 1;
     grid-row: 1 / span 2;
-    /* Stretch to the row's real rendered height (filter bar + main content)
-       — a plain equal-height column, not an independent height:100dvh. The
-       nav inside (below) is what actually stays fixed on screen; the rail
-       itself just needs to reach as far down as the content next to it does,
-       so its background and right border read as one continuous column no
-       matter how short or tall the current tab's content is. */
-    align-self: stretch;
+    /* Fix the complete rail to the viewport so the bottom of the document
+       cannot push it or its menu buttons upward. */
+    position: fixed;
+    top: var(--dashboard-header-h);
+    right: auto;
+    bottom: 0;
+    left: 0;
+    height: auto;
     min-height: 0;
-    /* The base rule sets overflow:hidden for the collapsed-width transition.
-       A sticky-positioned descendant can never escape an ancestor whose
-       overflow isn't visible, so left as-is it would silently cancel the
-       nav's stickiness below. */
-    overflow: visible;
+    overflow: hidden;
     border: 0;
     border-right: 1px solid rgba(34, 31, 26, 0.08);
     border-radius: 0;
     box-shadow: none;
   }
 
-  /* The title/collapse head plus the nav list are what actually need to stay
-     on screen while a long tab scrolls — sticking the rail itself (above)
-     caused it to be shoved behind the header once the page's remaining
-     scroll ran out before the rail's own height did. Sticking this
-     (much shorter) wrapper instead has no such ceiling to hit: its
-     containing block is the rail, which — now that it's stretched to match
-     the content column — is virtually always taller than the wrapper's own
-     content. */
+  /* The rail owns the fixed position. This wrapper only supplies an internal
+     scrollbar when a short viewport cannot fit every menu item. */
   #dashboardContent .dashboard-sidebar__pinned {
-    position: sticky;
-    top: var(--dashboard-header-h);
-    max-height: calc(100vh - var(--dashboard-header-h));
-    max-height: calc(100dvh - var(--dashboard-header-h));
+    height: 100%;
+    max-height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
     scrollbar-width: thin;

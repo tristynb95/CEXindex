@@ -12,28 +12,19 @@ test('desktop dashboard uses a docked rail and fluid content column', () => {
   assert.match(html, /<div class="container" id="dashboardContainer"/);
   assert.match(styles, /@media \(min-width: 981px\)[\s\S]*?#dashboardContainer \{[\s\S]*?max-width:\s*none;/);
   assert.match(styles, /#dashboardContainer \{[\s\S]*?padding:\s*0 clamp\(18px, 1\.5vw, 30px\) 28px 0;/);
-  assert.match(styles, /#dashboardContent \{[\s\S]*?grid-template-columns:\s*auto minmax\(0, 1fr\);/);
+  assert.match(styles, /#dashboardContent \{[\s\S]*?--dashboard-sidebar-w:\s*232px;[\s\S]*?grid-template-columns:\s*var\(--dashboard-sidebar-w\) minmax\(0, 1fr\);/);
+  assert.match(styles, /#dashboardContent:has\(> \.dashboard-workspace\[data-sidebar-collapsed=true\]\) \{[\s\S]*?--dashboard-sidebar-w:\s*96px;/);
   assert.match(styles, /#dashboardContent > \.dashboard-workspace \{\s*display:\s*contents;/);
   assert.match(styles, /#dashboardContent \.dashboard-sidebar \{[\s\S]*?grid-row:\s*1 \/ span 2;/);
   assert.match(styles, /--dashboard-header-h:\s*57px;/);
   assert.match(styles, /\.header \{[\s\S]*?height:\s*var\(--dashboard-header-h\);[\s\S]*?min-height:\s*var\(--dashboard-header-h\);/);
-  // The rail itself is a plain equal-height column (align-self: stretch), not
-  // an independently sticky, viewport-height box — a fixed height there can
-  // exceed its own containing block on short-content tabs, forcing sticky to
-  // shove it up behind the header once the page's scroll runs out. It also
-  // must not inherit the base rule's overflow:hidden, which would silently
-  // cancel the sticky pinned-head/nav wrapper inside it.
-  assert.match(styles, /#dashboardContent \.dashboard-sidebar \{[\s\S]*?align-self:\s*stretch;[\s\S]*?overflow:\s*visible;/);
-  assert.doesNotMatch(
-    styles.match(/#dashboardContent \.dashboard-sidebar \{[^}]*\}/)[0],
-    /position:\s*sticky|height:\s*calc\(100dvh/
-  );
-  // The menu title/collapse control and the nav list are grouped in one
-  // .dashboard-sidebar__pinned wrapper (see index.html) so they scroll and
-  // stick together — the part that actually has to stay on screen, so it
-  // carries the sticky positioning and its own scroll/overflow handling.
+  // The complete menu rail is fixed below the header and anchored to the
+  // viewport bottom, so the document boundary cannot push it upward.
+  assert.match(styles, /#dashboardContent \.dashboard-sidebar \{[\s\S]*?position:\s*fixed;[\s\S]*?top:\s*var\(--dashboard-header-h\);[\s\S]*?bottom:\s*0;[\s\S]*?left:\s*0;[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*hidden;/);
+  // The title/collapse control and nav list share an internal scrolling region
+  // for unusually short viewports without moving the rail itself.
   assert.match(html, /<div class="dashboard-sidebar__pinned">[\s\S]*?dashboard-sidebar__head[\s\S]*?<nav class="dashboard-nav"/);
-  assert.match(styles, /#dashboardContent \.dashboard-sidebar__pinned \{[\s\S]*?position:\s*sticky;[\s\S]*?top:\s*var\(--dashboard-header-h\);[\s\S]*?max-height:\s*calc\(100dvh - var\(--dashboard-header-h\)\);/);
+  assert.match(styles, /#dashboardContent \.dashboard-sidebar__pinned \{[\s\S]*?height:\s*100%;[\s\S]*?max-height:\s*100%;[\s\S]*?overflow-y:\s*auto;/);
   assert.match(styles, /#dashboardContent > \.filter-bar,[\s\S]*?grid-column:\s*2;[\s\S]*?grid-row:\s*1;/);
   assert.match(styles, /#dashboardContent > \.filter-bar,[\s\S]*?margin:\s*12px 0 0;/);
   assert.match(styles, /#dashboardContent \.dashboard-sidebar \{[\s\S]*?border:\s*0;[\s\S]*?border-right:[\s\S]*?border-radius:\s*0;[\s\S]*?box-shadow:\s*none;/);
