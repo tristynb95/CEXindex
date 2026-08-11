@@ -3499,8 +3499,15 @@ window.GAILS = window.GAILS || {};
 
     if (saved.view === 'bakeries' || saved.view === 'unvisited' || saved.view === 'history' || saved.view === 'followups') {
       window.GAILS._activeVisitLogView = saved.view;
+      // This can run before the tab is ever opened — Bakery Reports is warmed
+      // in the background so switching to it is instant. Only paint the
+      // sidebar highlight when Bakery Reports is actually the active tab;
+      // otherwise a background warm-render leaves last session's view lit up
+      // in the sidebar while some other tab (e.g. Overview) is on screen.
+      var visitLogTabEl = document.getElementById('tab-visit-log');
+      var visitLogTabActive = !!(visitLogTabEl && visitLogTabEl.classList.contains('active'));
       document.querySelectorAll('#visitLogViewToggle .target-subtab').forEach(function (b) {
-        b.classList.toggle('active', b.dataset.view === saved.view);
+        b.classList.toggle('active', visitLogTabActive && b.dataset.view === saved.view);
       });
     }
 
