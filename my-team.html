@@ -24,7 +24,7 @@
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js" crossorigin>
   <!-- Powers the section-score charts inside CQV and routine visit reports. -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260811-fullbleed-modals-01">
+  <link rel="stylesheet" href="css/styles.css?v=20260811-checkin-context-14-visit-history-table-01-unvisited-sites-table-01-audit-report-modals-03">
   <!-- The page shell, guard, stat tiles, and card chrome are shared with
        My Activity; only the roster and person panels are new. -->
   <link rel="stylesheet" href="css/my-activity.css?v=20260728-mobile-header-21">
@@ -171,6 +171,15 @@
           </div>
           <div class="my-activity-card__actions">
             <span id="myTeamRosterCount" class="my-activity-pill">0 people</span>
+            <button type="button" id="myTeamRosterExportBtn" class="btn my-activity-export-btn" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </svg>
+              Export
+            </button>
           </div>
         </div>
 
@@ -205,7 +214,20 @@
           </button>
         </div>
         <div class="my-activity-summary" role="status" aria-live="polite" id="myTeamRosterSummary"></div>
-        <div id="myTeamRoster" class="my-team-roster"></div>
+        <table class="my-team-table my-team-roster-table">
+          <thead id="myTeamRosterTableHead">
+            <tr>
+              <th scope="col" class="sortable" data-sort-option="name">Person</th>
+              <th scope="col" class="sortable" data-sort-option="visits">Visits</th>
+              <th scope="col">Bakeries</th>
+              <th scope="col">Open</th>
+              <th scope="col" class="sortable" data-sort-option="overdue">Overdue</th>
+              <th scope="col">Last visit</th>
+            </tr>
+          </thead>
+          <tbody id="myTeamRoster"></tbody>
+        </table>
+        <button type="button" id="myTeamRosterMore" class="visit-log-show-more" hidden>Show more</button>
       </section>
 
       <!-- ========== 3. OPEN ACTIONS ========== -->
@@ -219,6 +241,15 @@
           </div>
           <div class="my-activity-card__actions">
             <span id="myTeamActionsCount" class="my-activity-pill">0 open</span>
+            <button type="button" id="myTeamActionsExportBtn" class="btn my-activity-export-btn" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </svg>
+              Export
+            </button>
           </div>
         </div>
 
@@ -276,6 +307,15 @@
           </div>
           <div class="my-activity-card__actions">
             <span id="myTeamVisitsCount" class="my-activity-pill">0 visits</span>
+            <button type="button" id="myTeamVisitsExportBtn" class="btn my-activity-export-btn" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </svg>
+              Export
+            </button>
           </div>
         </div>
 
@@ -310,7 +350,19 @@
           </button>
         </div>
         <div id="myTeamVisitsSummary" class="my-activity-summary" role="status" aria-live="polite"></div>
-        <div id="myTeamVisitsList" class="my-activity-visit-list"></div>
+        <table class="my-team-table my-team-visits-table">
+          <thead id="myTeamVisitsTableHead">
+            <tr>
+              <th scope="col" class="sortable" data-sort-option="newest">Date</th>
+              <th scope="col" class="sortable" data-sort-option="bakery">Bakery</th>
+              <th scope="col">Ops area</th>
+              <th scope="col">Type</th>
+              <th scope="col" class="sortable" data-sort-option="owner">Person</th>
+              <th scope="col"><span class="sr-only">Report</span></th>
+            </tr>
+          </thead>
+          <tbody id="myTeamVisitsList"></tbody>
+        </table>
         <button type="button" id="myTeamVisitsMore" class="visit-log-show-more" hidden>Show more</button>
       </section>
     </main>
@@ -347,6 +399,40 @@
     </div>
   </div>
 
+  <!-- EXPORT CONFIRMATION — the shared dialog js/visit-report.js drives via
+       GAILS.openSaveConfirmModal/closeSaveConfirmModal. Without this markup the
+       helper fails open (downloads immediately, no prompt); with it, exporting
+       the team, actions or visits tables gets the same "confirm before the
+       file is written" step every other report export in the dashboard has. -->
+  <div id="saveConfirmModal" class="drill-modal" style="display:none;"
+    onclick="if(event.target===this)GAILS.closeSaveConfirmModal()">
+    <div class="drillInner" role="alertdialog" aria-modal="true" aria-labelledby="saveConfirmTitle"
+      aria-describedby="saveConfirmMessage"
+      style="max-width: 440px; height: auto; background: var(--card); border: 1px solid var(--card-border-h); box-shadow: var(--shadow-md);">
+      <div class="drill-modal-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
+        <div>
+          <h3 id="saveConfirmTitle"
+            style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);margin:0;">Confirm</h3>
+          <p id="saveConfirmSubtitle" style="font-size:0.86rem;color:var(--muted-l);margin:5px 0 0 0;">Please review
+            before saving.</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="GAILS.closeSaveConfirmModal()"
+          aria-label="Close confirmation" title="Close">&#10005;</button>
+      </div>
+
+      <div style="padding: 20px 30px 25px; display: flex; flex-direction: column; gap: 20px;">
+        <p id="saveConfirmMessage" style="font-size:0.92rem; line-height: 1.5; color: var(--text-2); margin: 0;">
+        </p>
+
+        <div style="display:flex; gap:12px; justify-content: flex-end;">
+          <button type="button" class="drill-close-btn" data-save-confirm-cancel
+            onclick="GAILS.closeSaveConfirmModal()" style="padding: 9px 15px;">Cancel</button>
+          <button type="button" id="saveConfirmBtn" class="btn" style="padding: 10px 22px;">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- All deferred: downloaded in parallel, executed in this order after parse. -->
   <!-- data-libs is empty because this page has never shipped SheetJS, Leaflet or
        pdf.js, and must keep behaving as though they are unavailable. -->
@@ -363,8 +449,9 @@
   <script defer src="js/mentions.js"></script>
   <script defer src="js/attribution.js"></script>
   <script defer src="js/team.js"></script>
-  <script defer src="js/visit-report.js?v=20260811-fullbleed-modals-01"></script>
+  <script defer src="js/visit-report.js?v=20260811-checkin-context-15-audit-report-modals-03"></script>
   <script defer src="js/custom-selects.js"></script>
+  <script defer src="js/tables.js"></script>
   <script type="module" src="js/my-team.js"></script>
 </body>
 

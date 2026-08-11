@@ -10,6 +10,11 @@ window.GAILS = window.GAILS || {};
   var saveConfirmReturnFocus = null;
   var visitReportReturnFocus = null;
   var visitReportSectionSpy = null;
+  var visitReportContextMap = null;
+  var visitReportContextRun = 0;
+  var visitWeatherCache = Object.create(null);
+  var OPEN_METEO_ARCHIVE_ENDPOINT = 'https://archive-api.open-meteo.com/v1/archive';
+  var VISIT_MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   var escapeHtml = GAILS.escapeHtml;
 
@@ -97,6 +102,7 @@ window.GAILS = window.GAILS || {};
   function hideVisitReportModal(modal) {
     modal.style.display = 'none';
     stopVisitReportSectionSpy();
+    resetVisitReportContext();
     document.body.classList.remove('visit-report-open');
     if (visitReportReturnFocus && visitReportReturnFocus.focus) visitReportReturnFocus.focus();
     visitReportReturnFocus = null;
@@ -108,15 +114,16 @@ window.GAILS = window.GAILS || {};
     var badge = document.getElementById('visitReportTypeBadge');
     var inner = modal && modal.querySelector ? modal.querySelector('.drillInner') : null;
     var presentations = {
-      // Accents match the same visit-type badge colours used in the admin
-      // visit log (.admin-badge--*/.admin-table-badge--*): gold for routine,
-      // red for CQV, purple for NBO, blue for ad-hoc site visits (check-in
-      // and NBO: Opening share one badge there, so they share one accent).
+      // Accents match the same visit-type badge/chip colours used elsewhere
+      // (.admin-badge--*/.admin-table-badge--*, visitTypeTone()): gold for
+      // routine, red for CQV and its follow-up, purple for NBO (both
+      // the coffee visit and the opening variant), and blue for check-ins.
       routine: { eyebrow: 'Bakery report', badge: 'Routine visit', accent: '#C97F12', maxWidth: 1180 },
-      cqv: { eyebrow: 'Quality assurance', badge: record && record.isFollowUp ? 'CQV follow-up' : 'CQV', accent: '#B22A24', maxWidth: 1180 },
+      cqv: { eyebrow: 'Quality assurance', badge: 'CQV', accent: '#B22A24', maxWidth: 1180 },
+      followup: { eyebrow: 'Quality follow-up', badge: 'CQV follow-up', accent: '#B22A24', maxWidth: 1180 },
       nbo: { eyebrow: 'Opening support', badge: 'NBO coffee visit', accent: '#6B4FA8', maxWidth: 1060 },
-      checkin: { eyebrow: 'Bakery report', badge: 'Check-in', accent: '#0D7CA0', maxWidth: 820 },
-      opening: { eyebrow: 'Opening support', badge: 'NBO opening', accent: '#0D7CA0', maxWidth: 900 },
+      checkin: { eyebrow: 'Bakery report', badge: 'Check-in', accent: '#0D7CA0', maxWidth: 1180 },
+      opening: { eyebrow: 'Opening support', badge: 'NBO opening', accent: '#6B4FA8', maxWidth: 1180 },
       empty: { eyebrow: 'Bakery report', badge: 'No visit yet', accent: '#928978', maxWidth: 640 },
       error: { eyebrow: 'Bakery report', badge: 'Unavailable', accent: '#B22A24', maxWidth: 640 }
     };
@@ -154,6 +161,7 @@ window.GAILS = window.GAILS || {};
   // shown report left behind.
   function resetVisitReportBodyLayout(bodyEl) {
     stopVisitReportSectionSpy();
+    resetVisitReportContext();
     if (bodyEl && bodyEl.classList) {
       bodyEl.classList.remove('visit-report-body--enhanced', 'visit-report-body--railed');
     }
@@ -198,6 +206,15 @@ window.GAILS = window.GAILS || {};
           current = id;
         }
       });
+      // A short trailing section can sit fully on screen without its heading
+      // ever reaching the edge line, because the pane runs out of room to
+      // scroll before that happens — the edge-crossing loop above then keeps
+      // pointing at whatever section preceded it. Once there's nowhere further
+      // to scroll, the last section is what's being read, full stop.
+      var canScroll = scroller.scrollHeight > scroller.clientHeight + 4;
+      if (canScroll && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) {
+        current = order[order.length - 1];
+      }
       order.forEach(function(id) {
         if (id === current) links[id].setAttribute('aria-current', 'true');
         else links[id].removeAttribute('aria-current');
@@ -267,10 +284,10 @@ window.GAILS = window.GAILS || {};
     }
 
     // Split the panel into a persistent section rail and a scrolling content
-    // pane, with the stat strip spanning both above them. The report modal now
-    // fills the workspace, so the sections can flow into several columns while
-    // the rail stays put — previously the "Jump to" bar was part of the one
-    // scrolling column and slid away with the report it was navigating.
+    // pane. The quick stats sit above "Jump to" inside that rail instead of
+    // consuming a full-width row, so report content can begin immediately
+    // below the header. Previously the navigation was part of the one scrolling
+    // column and slid away with the report it was navigating.
     var summary = bodyEl.querySelector ? bodyEl.querySelector('.drill-summary') : null;
     if (summary && summary.parentNode !== bodyEl) summary = null;
 
@@ -295,11 +312,13 @@ window.GAILS = window.GAILS || {};
     if (nav) {
       var rail = document.createElement('aside');
       rail.className = 'visit-report-rail';
+      if (summary) rail.appendChild(summary);
       rail.appendChild(nav);
       layout.appendChild(rail);
     }
     layout.appendChild(content);
-    // Leaves the stat strip (if any) first, then the two-pane layout.
+    // Reports without enough sections for a rail keep their summary above the
+    // layout; analytical reports move it into the rail above the section links.
     bodyEl.appendChild(layout);
 
     if (bodyEl.classList) bodyEl.classList.toggle('visit-report-body--railed', !!nav);
@@ -483,12 +502,14 @@ window.GAILS = window.GAILS || {};
       { label: 'Coffee Partner', html: partnerHtml(record.coffeePartner) },
       { label: 'Barista', value: record.mod || '—' },
       { label: 'Head Barista Present', value: record.headBaristaPresent || '—' },
-      { label: 'Staff on Shift', value: record.numberOfStaff != null ? record.numberOfStaff : '—' }
+      { label: 'Staff on Shift', value: record.numberOfStaff != null ? record.numberOfStaff : '—' },
+      { label: 'Visited', value: visitDaysAgoLabel(record) }
     ];
-    return '<div class="drill-summary">' + cards.map(function (c) {
-      return '<div class="drill-card"><div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
-        '<div class="drill-card__value">' + (c.html || escapeHtml(c.value)) + '</div></div>';
-    }).join('') + '</div>';
+    return '<dl class="drill-summary visit-report-overview" aria-label="Report overview">' + cards.map(function (c, index) {
+      var classes = 'drill-card visit-report-stat' + (index === 0 ? ' visit-report-stat--primary' : '');
+      return '<div class="' + classes + '"><dt class="drill-card__label">' + escapeHtml(c.label) + '</dt>' +
+        '<dd class="drill-card__value">' + (c.html || escapeHtml(c.value)) + '</dd></div>';
+    }).join('') + '</dl>';
   }
 
   function buildReportHtml(record) {
@@ -548,6 +569,17 @@ window.GAILS = window.GAILS || {};
   var cqvBand = GAILS.CQVShared.band;
   var cqvBandColor = GAILS.CQVShared.bandColor;
 
+  function buildReportOverviewHtml(cards) {
+    return '<dl class="drill-summary visit-report-overview" aria-label="Report overview">' +
+      cards.map(function (card, index) {
+        var classes = 'drill-card visit-report-stat' + (index === 0 ? ' visit-report-stat--primary' : '');
+        var colorStyle = card.color ? ' style="--report-stat-color:' + escapeHtml(card.color) + ';"' : '';
+        return '<div class="' + classes + '">' +
+          '<dt class="drill-card__label">' + escapeHtml(card.label) + '</dt>' +
+          '<dd class="drill-card__value"' + colorStyle + '>' + escapeHtml(card.value) + '</dd></div>';
+      }).join('') + '</dl>';
+  }
+
   function buildCqvHeaderStatsHtml(record) {
     var scoreText = record.overallPct != null ? record.overallPct + '%' : '—';
     var band = cqvBand(record);
@@ -557,13 +589,9 @@ window.GAILS = window.GAILS || {};
       { label: 'Rating', value: band || '—', color: bandColor },
       { label: 'Points', value: (record.score != null) ? record.score + ' / ' + (record.scoreMax != null ? record.scoreMax : '—') : '—' },
       { label: 'Coffee Partner', value: record.auditorName || '—' },
-      { label: 'Visit Type', value: record.isFollowUp ? 'Follow-Up' : 'CQV' }
+      { label: 'Visited', value: visitDaysAgoLabel(record) }
     ];
-    return '<div class="drill-summary">' + cards.map(function (c) {
-      var colorStyle = c.color ? ' color:' + c.color + ';' : '';
-      return '<div class="drill-card"><div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
-        '<div class="drill-card__value" style="' + colorStyle + '">' + escapeHtml(c.value) + '</div></div>';
-    }).join('') + '</div>';
+    return buildReportOverviewHtml(cards);
   }
 
   function buildCqvScoreRowsHtml(scores) {
@@ -655,15 +683,15 @@ window.GAILS = window.GAILS || {};
       : '';
 
     var summaryHtml = record.summary
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Summary</h4><p class="visit-report-comment">' + escapeHtml(record.summary) + '</p></div></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--summary"><h4>Summary</h4><p class="visit-report-comment">' + escapeHtml(record.summary) + '</p></div></div>'
       : '';
 
     var categoryHtml = record.categoryScores && Object.keys(record.categoryScores).length
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section' + (cqvHasCriticalFail(record) ? ' visit-report-section--danger' : '') + '"><h4>Score by Category</h4>' + buildCqvScoreRowsHtml(record.categoryScores) + '</div></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--score' + (cqvHasCriticalFail(record) ? ' visit-report-section--danger' : '') + '"><h4>Score by Category</h4>' + buildCqvScoreRowsHtml(record.categoryScores) + '</div></div>'
       : '';
 
     var sectionHtml = hasSectionScores
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Score by Section</h4>' + buildCqvScoreRowsHtml(record.sectionScores) + '</div></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--score"><h4>Score by Section</h4>' + buildCqvScoreRowsHtml(record.sectionScores) + '</div></div>'
       : '';
 
     var actionPlanItems = record.actionPlan;
@@ -673,7 +701,7 @@ window.GAILS = window.GAILS || {};
       actionPlanIsDerived = actionPlanItems.length > 0;
     }
 
-    var actionPlanHtml = '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section">' +
+    var actionPlanHtml = '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--action">' +
       '<h4>Action Plan (' + ((actionPlanItems || []).length) + ')</h4>' +
       (actionPlanIsDerived ? '<p class="visit-report-note" style="margin-bottom:10px;">This follow-up report didn’t include a written action plan — showing the questions that lost points instead.</p>' : '') +
       buildCqvActionPlanHtml(actionPlanItems) +
@@ -683,7 +711,10 @@ window.GAILS = window.GAILS || {};
     // height, so they're kept adjacent (and non-wide) to pair up side by
     // side — rather than one of them landing alone next to a much taller or
     // shorter neighbour.
-    return buildCqvHeaderStatsHtml(record) + criticalFailHtml + pdfHtml + summaryHtml + chartHtml + categoryHtml + sectionHtml + actionPlanHtml;
+    var sectionsHtml = record.isFollowUp
+      ? summaryHtml + actionPlanHtml + categoryHtml + sectionHtml + chartHtml
+      : summaryHtml + chartHtml + categoryHtml + sectionHtml + actionPlanHtml;
+    return buildCqvHeaderStatsHtml(record) + criticalFailHtml + pdfHtml + sectionsHtml;
   }
 
   // ── NBO Coffee Visit ──
@@ -699,16 +730,12 @@ window.GAILS = window.GAILS || {};
     var scorable = nboScorable(record);
     var cards = [
       { label: 'Score', value: nboPctText(record) },
-      { label: 'Visit', value: 'Coffee Visit ' + (record.visitNumber || 1) },
-      { label: 'Coffee Partner', value: record.auditorName || '—' },
       { label: 'Met', value: scorable.yes + ' of ' + scorable.total },
-      { label: 'To Work On', value: String(counts.no || 0), color: (counts.no ? '#B22A24' : null) }
+      { label: 'To Work On', value: String(counts.no || 0), color: (counts.no ? '#B22A24' : null) },
+      { label: 'Coffee Partner', value: record.auditorName || '—' },
+      { label: 'Visited', value: visitDaysAgoLabel(record) }
     ];
-    return '<div class="drill-summary">' + cards.map(function (c) {
-      var colorStyle = c.color ? ' color:' + c.color + ';' : '';
-      return '<div class="drill-card"><div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
-        '<div class="drill-card__value" style="' + colorStyle + '">' + escapeHtml(c.value) + '</div></div>';
-    }).join('') + '</div>';
+    return buildReportOverviewHtml(cards);
   }
 
   function buildNboQuestionRowHtml(q) {
@@ -740,11 +767,11 @@ window.GAILS = window.GAILS || {};
     // don't carry them, hence the empty-string fallbacks rather than an
     // "unavailable" placeholder.
     var summaryHtml = record.summary
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section"><h4>Summary</h4><p class="visit-report-comment">' + escapeHtml(record.summary) + '</p></div></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--summary"><h4>Summary</h4><p class="visit-report-comment">' + escapeHtml(record.summary) + '</p></div></div>'
       : '';
 
     var actionPlanHtml = (record.actionPlan && record.actionPlan.length)
-      ? '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section">' +
+      ? '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--action">' +
         '<h4>Action Plan (' + record.actionPlan.length + ')</h4>' +
         buildCqvActionPlanHtml(record.actionPlan) +
         '</div></div>'
@@ -754,7 +781,7 @@ window.GAILS = window.GAILS || {};
     // full question list into their own section at the top.
     var coachingItems = questions.filter(function (q) { return q.note; });
     var coachingHtml = coachingItems.length
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section">' +
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--coaching">' +
         '<h4>Coaching Notes (' + coachingItems.length + ')</h4>' +
         coachingItems.map(buildNboQuestionRowHtml).join('') +
         '</div></div>'
@@ -776,7 +803,7 @@ window.GAILS = window.GAILS || {};
     var sectionsHtml = sectionOrder.map(function (name) {
       var items = bySection[name];
       var noCount = items.filter(function (q) { return q.response === 'NO'; }).length;
-      return '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section">' +
+      return '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--questions">' +
         '<div class="visit-report-section-title-row"><h4>' + escapeHtml(name) + '</h4>' +
         (noCount ? '<span class="visit-section-attention">' + noCount + ' to work on</span>' : '') + '</div>' +
         items.map(buildNboQuestionRowHtml).join('') +
@@ -854,6 +881,424 @@ window.GAILS = window.GAILS || {};
       position: currentIndex === -1 ? 0 : currentIndex + 1,
       total: history.length
     };
+  }
+
+  function resetVisitReportContext() {
+    visitReportContextRun += 1;
+    if (visitReportContextMap && visitReportContextMap.remove) {
+      try {
+        visitReportContextMap.remove();
+      } catch {
+        // The old map container may already have been replaced by report HTML.
+      }
+    }
+    visitReportContextMap = null;
+  }
+
+  function visitDaysAgoLabel(record) {
+    if (!record || !record.date) return '—';
+    var visitDate = new Date(String(record.date || '') + 'T00:00:00Z');
+    if (!isFinite(visitDate.getTime())) return '—';
+    var now = new Date();
+    var todayUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    var days = Math.round((todayUtc.getTime() - visitDate.getTime()) / 86400000);
+    if (!isFinite(days)) return '—';
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 0) return 'Upcoming';
+    return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+  }
+
+  function visitMonthSnapshot(record) {
+    var G = window.GAILS;
+    var isoMonth = /^\d{4}-\d{2}/.test(String(record.date || ''))
+      ? String(record.date).slice(0, 7)
+      : '';
+    var date = isoMonth ? new Date(isoMonth + '-01T00:00:00') : null;
+    var monthKey = date && !isNaN(date.getTime())
+      ? (G.monthLabelFromDate ? G.monthLabelFromDate(date) :
+        VISIT_MONTH_SHORT[date.getMonth()] + ' ' + String(date.getFullYear()).slice(-2))
+      : '';
+    var monthName = date && !isNaN(date.getTime())
+      ? date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+      : 'Report month';
+    var bakeryKey = G.resolveBakeryMetaKey ? G.resolveBakeryMetaKey(record.bakery) : record.bakery;
+    var stateRecords = G.state && Array.isArray(G.state.ALL) ? G.state.ALL : [];
+    var records = stateRecords.length ? stateRecords : (Array.isArray(G._dashboardRecords) ? G._dashboardRecords : []);
+    var matches = records.filter(function (candidate) {
+      if (!candidate || candidate.m !== monthKey || !candidate.b) return false;
+      var candidateKey = G.resolveBakeryMetaKey ? G.resolveBakeryMetaKey(candidate.b) : candidate.b;
+      return candidateKey === bakeryKey;
+    }).sort(function (first, second) {
+      var firstScored = !first.noData && !first.incompletePeriod && isVisitMonthNumber(first.ac);
+      var secondScored = !second.noData && !second.incompletePeriod && isVisitMonthNumber(second.ac);
+      if (firstScored !== secondScored) return firstScored ? -1 : 1;
+      return Number(second.v || 0) - Number(first.v || 0);
+    });
+    var visits = bakeryVisitHistory(record).filter(function (visit) {
+      return isoMonth && String(visit.date || '').slice(0, 7) === isoMonth;
+    });
+
+    return {
+      monthName: monthName,
+      record: matches[0] || null,
+      visits: visits
+    };
+  }
+
+  function isVisitMonthNumber(value) {
+    return value !== null && value !== undefined && value !== '' && isFinite(Number(value));
+  }
+
+  function visitMonthNumber(value, digits, suffix) {
+    if (!isVisitMonthNumber(value)) return '\u2014';
+    var number = Number(value);
+    var fixed = number.toFixed(digits);
+    if (digits && fixed.slice(-2) === '.0') fixed = fixed.slice(0, -2);
+    return fixed + (suffix || '');
+  }
+
+  function visitMonthMetric(label, value) {
+    return '<div class="visit-context-monthly-stat">' +
+      '<dt>' + escapeHtml(label) + '</dt>' +
+      '<dd>' + escapeHtml(value) + '</dd>' +
+    '</div>';
+  }
+
+  function buildVisitMonthHtml(record) {
+    var snapshot = visitMonthSnapshot(record);
+    var monthly = snapshot.record;
+    var scored = !!(monthly && !monthly.noData && !monthly.incompletePeriod && isVisitMonthNumber(monthly.ac));
+    var reportCount = snapshot.visits.length;
+    var metrics;
+
+    if (scored) {
+      var withinTwo = monthly.ts;
+      if (!isVisitMonthNumber(withinTwo)) withinTwo = monthly.s2;
+      metrics = [
+        visitMonthMetric('Benchmark', visitMonthNumber(monthly.ac, 1)),
+        visitMonthMetric('Drink + Meal NPS', visitMonthNumber(monthly.n, 1)),
+        visitMonthMetric('Within 2 minutes', visitMonthNumber(withinTwo, 1, '%')),
+        visitMonthMetric('Responses', visitMonthNumber(monthly.v, 0))
+      ];
+    } else {
+      var checkins = snapshot.visits.filter(function (visit) {
+        return !visit.visitKind || visit.visitKind === 'checkin';
+      }).length;
+      var assessed = Math.max(0, reportCount - checkins);
+      var activeDays = Object.keys(snapshot.visits.reduce(function (days, visit) {
+        if (visit.date) days[visit.date] = true;
+        return days;
+      }, {})).length;
+      metrics = [
+        visitMonthMetric('Reports logged', String(reportCount)),
+        visitMonthMetric('Check-ins', String(checkins)),
+        visitMonthMetric('Assessed visits', String(assessed)),
+        visitMonthMetric('Visit days', String(activeDays))
+      ];
+    }
+
+    return '<section class="visit-context-monthly' + (scored ? '' : ' visit-context-monthly--activity') +
+      '" aria-labelledby="visitMonthTitle">' +
+        '<div class="visit-context-monthly-heading">' +
+          '<span>Monthly snapshot</span>' +
+          '<h5 id="visitMonthTitle">' + escapeHtml(snapshot.monthName) + '</h5>' +
+        '</div>' +
+        '<dl class="visit-context-monthly-stats">' + metrics.join('') + '</dl>' +
+      '</section>';
+  }
+
+  function buildCheckinContextHtml(record) {
+    var G = window.GAILS;
+    var meta = G.getBakeryMeta ? G.getBakeryMeta(record.bakery) : null;
+    var area = [];
+    if (meta && meta.r && meta.r !== 'Other') area.push(meta.r);
+    if (meta && meta.o) area.push(meta.o);
+
+    return '<aside class="visit-report-checkin-rail" aria-label="Visit details and bakery snapshot">' +
+      '<section class="visit-report-checkin-details" aria-labelledby="visitDetailsTitle">' +
+        '<h4 id="visitDetailsTitle">Visit details</h4>' +
+        '<dl class="visit-report-checkin-details-list">' +
+          '<div><dt>Visited by</dt><dd>' + siteVisitCoffeePartnerHtml(record) + '</dd></div>' +
+          '<div><dt>Barista</dt><dd>' + escapeHtml(record.mod || '—') + '</dd></div>' +
+          '<div><dt>Region · Ops</dt><dd>' + escapeHtml(area.join(' · ') || '—') + '</dd></div>' +
+          '<div><dt>Visited</dt><dd>' + escapeHtml(visitDaysAgoLabel(record)) + '</dd></div>' +
+        '</dl>' +
+      '</section>' +
+      buildVisitMonthHtml(record) +
+    '</aside>';
+  }
+
+  function buildCheckinSupportHtml(record) {
+    var G = window.GAILS;
+    var meta = G.getBakeryMeta ? G.getBakeryMeta(record.bakery) : null;
+    var ll = meta && Array.isArray(meta.ll) ? meta.ll.map(Number) : null;
+    var hasLocation = !!(ll && isFinite(ll[0]) && isFinite(ll[1]));
+    var bakeryLabel = G.getBakeryMapLabel ? G.getBakeryMapLabel(record.bakery) : record.bakery;
+    var mapLink = hasLocation
+      ? 'https://www.openstreetmap.org/?mlat=' + ll[0].toFixed(6) +
+        '&mlon=' + ll[1].toFixed(6) + '#map=16/' + ll[0].toFixed(6) + '/' + ll[1].toFixed(6)
+      : '';
+    var mapBody = hasLocation
+      ? '<div class="visit-context-map" data-visit-context-map aria-label="Map showing ' + escapeHtml(bakeryLabel) + '">' +
+          '<div class="visit-context-loading visit-context-map-state"><span aria-hidden="true"></span>Loading map…</div>' +
+        '</div>'
+      : '<div class="visit-context-map visit-context-map--empty">' +
+          '<div class="visit-context-empty"><strong>Location unavailable</strong><span>Add bakery coordinates in the site directory to show the map.</span></div>' +
+        '</div>';
+
+    return '<aside class="visit-report-checkin-context visit-report-checkin-support" aria-label="Site map and weather during visit">' +
+      '<section class="visit-context-card visit-context-map-card">' +
+        '<div class="visit-context-card-heading visit-context-card-heading--simple"><strong>Site location</strong>' +
+          (mapLink ? '<a href="' + escapeHtml(mapLink) + '" target="_blank" rel="noopener">Open map ↗</a>' : '') +
+        '</div>' +
+        mapBody +
+      '</section>' +
+      '<section class="visit-context-card visit-context-weather-card" data-visit-weather-date="' + escapeHtml(record.date || '') +
+        '" data-visit-weather-time="' + escapeHtml(record.time || '') + '">' +
+        '<div class="visit-context-card-heading visit-context-card-heading--simple"><strong>Weather during visit</strong><small>' +
+          escapeHtml(record.date ? formatFollowUpDate(record.date) : 'Date unavailable') + '</small></div>' +
+        '<div class="visit-context-weather-body" aria-live="polite">' +
+          '<div class="visit-context-loading"><span aria-hidden="true"></span>Loading conditions at visit…</div>' +
+        '</div>' +
+        '<a class="visit-context-source" href="https://open-meteo.com/en/docs/historical-weather-api" target="_blank" rel="noopener">Hourly historical estimate · Open-Meteo ↗</a>' +
+      '</section>' +
+    '</aside>';
+  }
+
+  function setVisitContextUnavailable(element, message) {
+    if (!element) return;
+    element.innerHTML = '<div class="visit-context-empty"><strong>Context unavailable</strong><span>' +
+      escapeHtml(message) + '</span></div>';
+  }
+
+  function initVisitContextMap(context, ll, bakeryLabel, runId) {
+    var mapEl = context && context.querySelector ? context.querySelector('[data-visit-context-map]') : null;
+    if (!mapEl) return;
+    var G = window.GAILS;
+
+    if (!G.ensureLeaflet) {
+      setVisitContextUnavailable(mapEl, 'Open the larger map to view this bakery.');
+      return;
+    }
+
+    Promise.resolve(G.ensureLeaflet()).then(function () {
+      if (runId !== visitReportContextRun || !window.L) return;
+      mapEl.innerHTML = '';
+      var map = window.L.map(mapEl, {
+        zoomControl: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false
+      }).setView(ll, 15);
+
+      window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+      window.L.circleMarker(ll, {
+        radius: 8,
+        color: '#ffffff',
+        weight: 3,
+        fillColor: '#0D7CA0',
+        fillOpacity: 1
+      }).addTo(map).bindTooltip(bakeryLabel, { direction: 'top', offset: [0, -8] });
+
+      visitReportContextMap = map;
+      setTimeout(function () {
+        if (runId === visitReportContextRun && visitReportContextMap === map) map.invalidateSize();
+      }, 0);
+    }).catch(function () {
+      if (runId === visitReportContextRun) {
+        setVisitContextUnavailable(mapEl, 'Open the larger map to view this bakery.');
+      }
+    });
+  }
+
+  function weatherValue(value, digits, unit) {
+    return value == null ? '—' : value.toFixed(digits) + unit;
+  }
+
+  function weatherCodeMeta(rawCode, isDay) {
+    var code = Number(rawCode);
+    var daylight = Number(isDay) !== 0;
+
+    if (code === 0) return { label: daylight ? 'Clear sky' : 'Clear night', icon: daylight ? 'clear-day' : 'clear-night', tone: 'clear' };
+    if (code === 1) return { label: 'Mainly clear', icon: daylight ? 'partly-day' : 'partly-night', tone: 'clear' };
+    if (code === 2) return { label: 'Partly cloudy', icon: daylight ? 'partly-day' : 'partly-night', tone: 'cloud' };
+    if (code === 3) return { label: 'Overcast', icon: 'cloudy', tone: 'cloud' };
+    if (code === 45 || code === 48) return { label: code === 48 ? 'Rime fog' : 'Fog', icon: 'fog', tone: 'fog' };
+    if (code === 51 || code === 53 || code === 55) return { label: 'Drizzle', icon: 'drizzle', tone: 'wet' };
+    if (code === 56 || code === 57) return { label: 'Freezing drizzle', icon: 'freezing-rain', tone: 'cold' };
+    if (code === 61 || code === 63 || code === 65) return { label: 'Rain', icon: 'rain', tone: 'wet' };
+    if (code === 66 || code === 67) return { label: 'Freezing rain', icon: 'freezing-rain', tone: 'cold' };
+    if (code === 71 || code === 73 || code === 75 || code === 77) return { label: code === 77 ? 'Snow grains' : 'Snowfall', icon: 'snow', tone: 'cold' };
+    if (code === 80 || code === 81 || code === 82) return { label: 'Rain showers', icon: 'showers', tone: 'wet' };
+    if (code === 85 || code === 86) return { label: 'Snow showers', icon: 'snow', tone: 'cold' };
+    if (code === 95 || code === 96 || code === 99) return { label: code === 95 ? 'Thunderstorm' : 'Thunderstorm with hail', icon: 'thunder', tone: 'storm' };
+    return { label: 'Conditions at visit', icon: 'cloudy', tone: 'cloud' };
+  }
+
+  function visitWeatherIcon(kind) {
+    var sun = '<circle class="visit-weather-icon__sun" cx="22" cy="20" r="8"/>' +
+      '<path class="visit-weather-icon__sunray" d="M22 5v5M22 30v5M7 20h5M32 20h5M11.5 9.5l3.5 3.5M29 27l3.5 3.5M11.5 30.5L15 27M29 13l3.5-3.5"/>';
+    var fullSun = '<circle class="visit-weather-icon__sun" cx="32" cy="32" r="11"/>' +
+      '<path class="visit-weather-icon__sunray" d="M32 8v7M32 49v7M8 32h7M49 32h7M15 15l5 5M44 44l5 5M15 49l5-5M44 20l5-5"/>';
+    var moon = '<path class="visit-weather-icon__moon" d="M34 8a18 18 0 1 0 15 29A19 19 0 0 1 34 8Z"/>' +
+      '<path class="visit-weather-icon__star" d="M46 13l1.2 2.6L50 17l-2.8 1.2L46 21l-1.2-2.8L42 17l2.8-1.4Z"/>';
+    var cloud = '<path class="visit-weather-icon__cloud" d="M17 45h29a9 9 0 0 0 1.2-17.9A14 14 0 0 0 20.5 31 7.5 7.5 0 0 0 17 45Z"/>';
+    var rain = '<path class="visit-weather-icon__rain" d="M23 49l-3 7M34 49l-3 7M45 49l-3 7"/>';
+    var drizzle = '<path class="visit-weather-icon__rain" d="M23 51v2M34 51v2M45 51v2"/>';
+    var snow = '<path class="visit-weather-icon__snow" d="M23 49v8M19.5 51l7 4M26.5 51l-7 4M42 49v8M38.5 51l7 4M45.5 51l-7 4"/>';
+    var lightning = '<path class="visit-weather-icon__lightning" d="M35 45h9l-7 8h5L29 62l4-10h-5Z"/>';
+    var fog = '<path class="visit-weather-icon__fog" d="M13 49h38M17 55h30"/>';
+    var shapes = cloud;
+
+    if (kind === 'clear-day') shapes = fullSun;
+    else if (kind === 'clear-night') shapes = moon;
+    else if (kind === 'partly-day') shapes = sun + cloud;
+    else if (kind === 'partly-night') shapes = moon + cloud;
+    else if (kind === 'fog') shapes = cloud + fog;
+    else if (kind === 'drizzle') shapes = cloud + drizzle;
+    else if (kind === 'rain' || kind === 'freezing-rain') shapes = cloud + rain;
+    else if (kind === 'showers') shapes = sun + cloud + rain;
+    else if (kind === 'snow') shapes = cloud + snow;
+    else if (kind === 'thunder') shapes = cloud + lightning;
+
+    return '<svg class="visit-weather-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">' + shapes + '</svg>';
+  }
+
+  function visitTimeTarget(value) {
+    var match = String(value || '').match(/^([01]\d|2[0-3]):([0-5]\d)/);
+    if (!match) return { minutes: 720, label: '' };
+    return { minutes: Number(match[1]) * 60 + Number(match[2]), label: match[1] + ':' + match[2] };
+  }
+
+  function closestVisitWeatherHour(payload, date, visitTime) {
+    var hourly = payload && payload.hourly ? payload.hourly : {};
+    var times = Array.isArray(hourly.time) ? hourly.time : [];
+    var target = visitTimeTarget(visitTime);
+    var bestIndex = -1;
+    var bestDifference = Infinity;
+
+    times.forEach(function (stamp, index) {
+      var text = String(stamp || '');
+      if (text.slice(0, 10) !== date) return;
+      var match = text.match(/T(\d{2}):(\d{2})/);
+      if (!match) return;
+      var difference = Math.abs((Number(match[1]) * 60 + Number(match[2])) - target.minutes);
+      if (difference < bestDifference) {
+        bestDifference = difference;
+        bestIndex = index;
+      }
+    });
+
+    if (bestIndex < 0) return null;
+
+    function hourlyNumber(key) {
+      var values = Array.isArray(hourly[key]) ? hourly[key] : [];
+      var rawValue = values[bestIndex];
+      if (rawValue == null || rawValue === '') return null;
+      var number = Number(rawValue);
+      return isFinite(number) ? number : null;
+    }
+
+    return {
+      time: String(times[bestIndex] || ''),
+      visitTime: target.label,
+      code: hourlyNumber('weather_code'),
+      temperature: hourlyNumber('temperature_2m'),
+      rainfall: hourlyNumber('precipitation'),
+      isDay: hourlyNumber('is_day')
+    };
+  }
+
+  function weatherMetric(label, textValue) {
+    return '<div class="visit-context-weather-metric"><span>' + escapeHtml(label) + '</span><strong>' +
+      escapeHtml(textValue) + '</strong></div>';
+  }
+
+  function renderVisitWeather(weatherBody, payload, date, visitTime) {
+    var snapshot = closestVisitWeatherHour(payload, date, visitTime);
+    if (!snapshot || (snapshot.code == null && snapshot.temperature == null && snapshot.rainfall == null)) {
+      setVisitContextUnavailable(weatherBody, 'Hourly weather has not been published for this visit.');
+      return;
+    }
+
+    var condition = weatherCodeMeta(snapshot.code, snapshot.isDay);
+    var weatherHour = snapshot.time.slice(11, 16);
+    var timing = weatherHour ? weatherHour + ' local' : 'Recorded visit hour';
+    if (snapshot.visitTime && snapshot.visitTime !== weatherHour) timing += ' · visit at ' + snapshot.visitTime;
+
+    weatherBody.innerHTML =
+      '<div class="visit-context-weather-overview">' +
+        '<div class="visit-context-weather-symbol" data-weather-tone="' + escapeHtml(condition.tone) +
+          '" role="img" aria-label="' + escapeHtml(condition.label) + '">' + visitWeatherIcon(condition.icon) + '</div>' +
+        '<div class="visit-context-weather-copy">' +
+          '<p class="visit-context-weather-summary">' + escapeHtml(condition.label) + '</p>' +
+          '<p class="visit-context-weather-time">' + escapeHtml(timing) + '</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="visit-context-weather-list">' +
+        weatherMetric('Temperature', weatherValue(snapshot.temperature, 1, '°C')) +
+        weatherMetric('Hourly rainfall', weatherValue(snapshot.rainfall, 1, ' mm')) +
+      '</div>';
+  }
+
+  function loadVisitWeather(context, ll, date, visitTime, runId) {
+    var weatherBody = context && context.querySelector ? context.querySelector('.visit-context-weather-body') : null;
+    if (!weatherBody) return;
+    if (!window.fetch || !/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) {
+      setVisitContextUnavailable(weatherBody, 'A valid visit date is needed for historical weather.');
+      return;
+    }
+
+    var cacheKey = ll[0].toFixed(3) + '|' + ll[1].toFixed(3) + '|' + date;
+    var request = visitWeatherCache[cacheKey];
+    if (!request) {
+      var url = OPEN_METEO_ARCHIVE_ENDPOINT +
+        '?latitude=' + encodeURIComponent(ll[0]) +
+        '&longitude=' + encodeURIComponent(ll[1]) +
+        '&start_date=' + encodeURIComponent(date) +
+        '&end_date=' + encodeURIComponent(date) +
+        '&hourly=weather_code,temperature_2m,precipitation,is_day' +
+        '&timezone=auto';
+      request = window.fetch(url).then(function (response) {
+        if (!response.ok) throw new Error('Weather request failed');
+        return response.json();
+      });
+      visitWeatherCache[cacheKey] = request;
+    }
+
+    request.then(function (payload) {
+      if (runId === visitReportContextRun) renderVisitWeather(weatherBody, payload, date, visitTime);
+    }).catch(function () {
+      delete visitWeatherCache[cacheKey];
+      if (runId === visitReportContextRun) {
+        setVisitContextUnavailable(weatherBody, 'Historical weather could not be loaded.');
+      }
+    });
+  }
+
+  function hydrateCheckinContext(bodyEl, record) {
+    if (!bodyEl || !bodyEl.querySelector || !bodyEl.appendChild) return;
+    var context = bodyEl.querySelector('.visit-report-checkin-context');
+    if (!context) return;
+    // The dedicated check-in workspace owns the comments/context columns.
+    // Older report markup placed context inside the generic content wrapper,
+    // where it had to be promoted to the body; keep that compatibility path
+    // without pulling the new context pane out of its grid.
+    var workspace = bodyEl.querySelector('.visit-report-checkin-workspace');
+    if (!workspace && context.parentNode !== bodyEl) bodyEl.appendChild(context);
+
+    var G = window.GAILS;
+    var meta = G.getBakeryMeta ? G.getBakeryMeta(record.bakery) : null;
+    var ll = meta && Array.isArray(meta.ll) ? meta.ll.map(Number) : null;
+    if (!ll || !isFinite(ll[0]) || !isFinite(ll[1])) return;
+
+    var runId = visitReportContextRun;
+    var bakeryLabel = G.getBakeryMapLabel ? G.getBakeryMapLabel(record.bakery) : record.bakery;
+    initVisitContextMap(context, ll, bakeryLabel, runId);
+    loadVisitWeather(context, ll, record.date, record.time, runId);
   }
 
   function visitNavigationButtonHtml(direction, target) {
@@ -949,9 +1394,36 @@ window.GAILS = window.GAILS || {};
     unlockBackgroundScroll();
   };
 
+  function setVisitLogRowExpanded(row, expanded) {
+    row.classList.toggle('expanded', expanded);
+    var expandButton = row.querySelector('.visit-history-table__expand-btn');
+    if (expandButton) {
+      var bakeryLabel = expandButton.getAttribute('data-bakery-label') || 'this visit';
+      expandButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      expandButton.setAttribute('aria-label', (expanded ? 'Hide' : 'Show') + ' notes for ' + bakeryLabel);
+    }
+
+    // Visit History uses a semantic table, so the expanded notes live in the
+    // following detail row rather than as a grid child inside the summary row.
+    var detailsRow = row.nextElementSibling;
+    if (detailsRow && detailsRow.classList.contains('visit-history-table__details-row')) {
+      detailsRow.hidden = !expanded;
+    }
+  }
+
   function toggleVisitLogRow(row) {
-    row.classList.toggle('expanded');
-    row.setAttribute('aria-expanded', row.classList.contains('expanded') ? 'true' : 'false');
+    var expanded = !row.classList.contains('expanded');
+    var table = row.closest ? row.closest('.visit-history-table') : null;
+
+    // Visit History is a single-open disclosure: opening a new visit closes
+    // the previous one, including its detail row and accessible button state.
+    if (expanded && table) {
+      table.querySelectorAll('[data-visit-report-id].expanded').forEach(function (openRow) {
+        if (openRow !== row) setVisitLogRowExpanded(openRow, false);
+      });
+    }
+
+    setVisitLogRowExpanded(row, expanded);
   }
 
   document.addEventListener('click', function (event) {
@@ -1003,7 +1475,7 @@ window.GAILS = window.GAILS || {};
 
     if (event.key === 'Enter' || event.key === ' ') {
       var focused = event.target;
-      if (focused && focused.classList && focused.classList.contains('visit-log-row')) {
+      if (focused && focused.matches && focused.matches('[data-visit-report-id]')) {
         event.preventDefault();
         toggleVisitLogRow(focused);
       }
@@ -1057,23 +1529,18 @@ window.GAILS = window.GAILS || {};
     return 'Routine Coffee Visit';
   }
 
-  // Column headings for the visit rows. The row is otherwise a line of bare
-  // values — two different people's names (coffee partner and ops area), a
-  // bare percentage, a bare em dash where a visit type carries no score — and
-  // nothing on screen says which is which. Column order must stay in step with
-  // .visit-log-row's grid in css/styles.css.
-  //
-  // "Partner / auditor" rather than either alone: the column holds the coffee
-  // partner for routine visits and the auditor for CQV and NBO ones.
+  // Native table headings for Visit History. "Partner / auditor" rather than
+  // either alone: the column holds the coffee partner for routine visits and
+  // the auditor for CQV and NBO ones.
   function visitLogHeadHtml() {
-    return '<div class="visit-log-head" aria-hidden="true">' +
-      '<span>Date</span>' +
-      '<span>Bakery</span>' +
-      '<span>Partner / auditor</span>' +
-      '<span>Score</span>' +
-      '<span>Visit type &amp; notes</span>' +
-      '<span></span>' +
-      '</div>';
+    return '<thead><tr>' +
+      '<th scope="col">Date</th>' +
+      '<th scope="col">Bakery</th>' +
+      '<th scope="col">Partner / auditor</th>' +
+      '<th scope="col">Score</th>' +
+      '<th scope="col">Visit type &amp; notes</th>' +
+      '<th scope="col"><span class="sr-only">Report action</span></th>' +
+      '</tr></thead>';
   }
 
   function visitTypeKey(v) {
@@ -1568,6 +2035,8 @@ window.GAILS = window.GAILS || {};
     var isHistoryView = view === 'history';
     var isFollowUps = view === 'followups';
     var isBakeryList = view === 'bakeries';
+    var filterBarEl = document.querySelector('.visit-log-filter-bar');
+    if (filterBarEl) filterBarEl.setAttribute('data-visit-view', view);
     syncVisitLogSectionTitle(view);
     syncVisitLogActions(view);
     var searchEl = document.getElementById('visitLogSearch');
@@ -2147,6 +2616,7 @@ window.GAILS = window.GAILS || {};
     var bodyEl = document.getElementById('visitReportBody');
     if (!modal || !titleEl || !subtitleEl || !bodyEl) return;
     var modalWasOpen = modal.style.display !== 'none';
+    resetVisitReportContext();
 
     if (!record) {
       window.GAILS._activeVisitReportId = null;
@@ -2174,9 +2644,9 @@ window.GAILS = window.GAILS || {};
 
     if (record.type === 'cqv') {
       titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
-      subtitleEl.textContent = 'Coffee Quality Visit on ' + formatVisitDate(record.date) + (record.title ? ' — ' + record.title : '');
+      subtitleEl.textContent = (record.isFollowUp ? 'CQV follow-up' : 'Coffee Quality Visit') + ' on ' + formatVisitDate(record.date) + (record.title ? ' — ' + record.title : '');
       bodyEl.innerHTML = buildCqvReportHtml(record);
-      setVisitReportPresentation('cqv', record);
+      setVisitReportPresentation(record.isFollowUp ? 'followup' : 'cqv', record);
       enhanceVisitReportBody(bodyEl);
 
       showVisitReportModal(modal);
@@ -2204,37 +2674,30 @@ window.GAILS = window.GAILS || {};
       titleEl.textContent = window.GAILS.getBakeryMapLabel ? window.GAILS.getBakeryMapLabel(record.bakery) : record.bakery;
       subtitleEl.textContent = siteVisitKindLabel(record) + ' on ' + formatVisitDate(record.date) + (record.time ? ' at ' + record.time : '');
 
-      var meta = record.meta || {};
-      var stats = [];
-      // Check-ins carry no Logged By card. NBO openings keep it — they are not
-      // always logged by the person who ran the visit. An absent visitKind is a
-      // check-in, matching siteVisitKindLabel().
-      if (record.visitKind && record.visitKind !== 'checkin') {
-        stats.push({ label: 'Logged By', value: meta.createdBy || record.createdBy || meta.updatedBy || '—' });
-      }
-      stats.push({ label: 'Coffee Partner', html: siteVisitCoffeePartnerHtml(record) });
-      stats.push({ label: 'Barista', value: record.mod || '—' });
-
-      var statsHtml = '<div class="drill-summary">' + stats.map(function (c) {
-        return '<div class="drill-card">' +
-          '<div class="drill-card__label">' + escapeHtml(c.label) + '</div>' +
-          '<div class="drill-card__value">' + (c.html || escapeHtml(c.value)) + '</div></div>';
-      }).join('') + '</div>';
-
-      bodyEl.innerHTML = statsHtml +
-        '<div class="visit-report-section-wrapper">' +
-        '<div class="visit-report-section visit-report-section--comments">' +
-        '<h4>Visit Comments</h4>' +
-        '<p class="visit-report-comment visit-report-comment--primary">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
-        '</div>' +
+      // Check-ins and NBO openings are both ad-hoc site visits and share the
+      // same context-rail + notes + support workspace; only the "Logged by"
+      // detail differs (a check-in is always logged by the visitor, so it
+      // would be redundant there — an NBO opening is not).
+      var isCheckin = !record.visitKind || record.visitKind === 'checkin';
+      bodyEl.innerHTML = '<div class="visit-report-checkin-workspace">' +
+          buildCheckinContextHtml(record) +
+          '<section class="visit-report-section visit-report-section--comments visit-report-checkin-comments" aria-labelledby="visitCheckinCommentsTitle">' +
+            '<div class="visit-report-comments-heading">' +
+              '<h4 id="visitCheckinCommentsTitle">Visit notes</h4>' +
+            '</div>' +
+            '<div class="visit-report-notes" role="region" aria-label="Visit notes" tabindex="0">' +
+              '<p class="visit-report-comment visit-report-comment--primary">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
+            '</div>' +
+          '</section>' +
+          buildCheckinSupportHtml(record) +
         '</div>';
 
-      setVisitReportPresentation(record.visitKind && record.visitKind !== 'checkin' ? 'opening' : 'checkin', record);
-      enhanceVisitReportBody(bodyEl);
-
+      resetVisitReportBodyLayout(bodyEl);
+      setVisitReportPresentation(isCheckin ? 'checkin' : 'opening', record);
       showVisitReportModal(modal);
       bodyEl.scrollTop = 0;
       if (!modalWasOpen) lockBackgroundScroll();
+      hydrateCheckinContext(bodyEl, record);
       return;
     }
 
@@ -3277,6 +3740,15 @@ window.GAILS = window.GAILS || {};
     button.title = allCollapsed ? 'Expand every group' : 'Collapse every group';
   }
 
+  function setVisitLogGroupedRowHidden(row, groupCollapsed) {
+    if (row.classList && row.classList.contains('visit-history-table__details-row')) {
+      var summaryRow = row.previousElementSibling;
+      row.hidden = groupCollapsed || !(summaryRow && summaryRow.classList.contains('expanded'));
+      return;
+    }
+    row.hidden = groupCollapsed;
+  }
+
   function toggleAllVisitLogGroups() {
     var groupNames = window.GAILS._visitLogCurrentGroupNames || [];
     if (!groupNames.length) return;
@@ -3310,7 +3782,7 @@ window.GAILS = window.GAILS || {};
     document.querySelectorAll('#visitLogList tr[data-group]').forEach(function (row) {
       var name = row.getAttribute('data-group') || '';
       if (groupNames.indexOf(name) === -1) return;
-      row.hidden = shouldCollapse;
+      setVisitLogGroupedRowHidden(row, shouldCollapse);
     });
 
     syncVisitLogGroupToggle();
@@ -3331,7 +3803,7 @@ window.GAILS = window.GAILS || {};
       if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
     });
     document.querySelectorAll('#visitLogList tr[data-group]').forEach(function (row) {
-      row.hidden = false;
+      setVisitLogGroupedRowHidden(row, false);
     });
 
     syncVisitLogGroupToggle();
@@ -3584,7 +4056,9 @@ window.GAILS = window.GAILS || {};
             var dirTable = groupRow.closest('table');
             if (dirTable) {
               dirTable.querySelectorAll('tr[data-group]').forEach(function (row) {
-                if (row.getAttribute('data-group') === dirName) row.hidden = willCollapse;
+                if (row.getAttribute('data-group') === dirName) {
+                  setVisitLogGroupedRowHidden(row, willCollapse);
+                }
               });
             }
             syncVisitLogGroupToggle();
@@ -4227,6 +4701,7 @@ window.GAILS = window.GAILS || {};
 
       var html = groupsSorted.map(function (groupName) {
         var groupVisits = grouped[groupName];
+        var isCollapsed = groupVal !== 'none' && !!collapsedGroups[groupName];
 
         // Sort based on selected option within the group
         groupVisits.sort(visitLogSorter(sortVal));
@@ -4285,53 +4760,58 @@ window.GAILS = window.GAILS || {};
           // active grouping — grouping by Region/Visit Type would otherwise
           // lose that context entirely.
           var rowOpsLabel = groupVal === 'ops' ? groupName : (G.getBakeryOps ? G.getBakeryOps(v.bakery) : 'Unknown');
+          var groupAttr = groupVal === 'none' ? '' : ' data-group="' + escapeHtml(groupName) + '"';
+          var groupHiddenAttr = isCollapsed ? ' hidden' : '';
 
-          return '<div class="visit-log-row" data-visit-report-id="' + escapeHtml(v.id) + '" tabindex="0" role="button" aria-expanded="false" aria-label="Visit report for ' + escapeHtml(bakeryLabel) + '">' +
-            '<div class="visit-log-row__date-col">' +
+          return '<tr class="visit-history-table__row" data-visit-report-id="' + escapeHtml(v.id) + '"' + groupAttr + groupHiddenAttr + '>' +
+            '<td data-label="Date"><div class="visit-log-row__date-col">' +
             '<span class="visit-log-row__date">' + escapeHtml(shortDate) + '</span>' +
             '<span class="visit-log-row__time">' + escapeHtml(v.time || '—') + '</span>' +
-            '</div>' +
-            '<div class="visit-log-row__bakery-col">' +
+            '</div></td>' +
+            '<td data-label="Bakery"><div class="visit-log-row__bakery-col">' +
             '<h3 class="visit-log-row__bakery">' + escapeHtml(bakeryLabel) + '</h3>' +
             '<span class="visit-log-row__manager">Ops Area: ' + escapeHtml(rowOpsLabel) + '</span>' +
-            '</div>' +
-            '<div class="visit-log-row__partner" title="' + escapeHtml(isAuditedType ? 'Auditor: ' + partnerColText : partnerColText) + '">' + partnerColHtml + '</div>' +
-            '<div class="visit-log-row__score-col" style="color:' + scoreColor + ';">' + escapeHtml(scoreText) + '</div>' +
-            '<div class="visit-log-row__notes-col">' +
+            '</div></td>' +
+            '<td data-label="Partner / auditor"><div class="visit-log-row__partner" title="' + escapeHtml(isAuditedType ? 'Auditor: ' + partnerColText : partnerColText) + '">' + partnerColHtml + '</div></td>' +
+            '<td data-label="Score"><div class="visit-log-row__score-col" style="color:' + scoreColor + ';">' + escapeHtml(scoreText) + '</div></td>' +
+            '<td data-label="Visit type and notes"><div class="visit-log-row__notes-col">' +
             '<div class="visit-log-row__tags">' + tagsHtml + '</div>' +
             '<p class="visit-log-row__notes-preview">' + escapeHtml(previewText) + '</p>' +
-            '</div>' +
-            '<div class="visit-log-row__action-col">' +
+            '</div></td>' +
+            '<td data-label="Report"><div class="visit-log-row__action-col">' +
             '<button type="button" class="visit-log-row__btn">View Report</button>' +
+            '<button type="button" class="visit-history-table__expand-btn" data-bakery-label="' + escapeHtml(bakeryLabel) + '" aria-expanded="false" aria-controls="visit-history-details-' + escapeHtml(v.id) + '" aria-label="Show notes for ' + escapeHtml(bakeryLabel) + '">' +
             '<span class="visit-log-row__chevron" aria-hidden="true">' +
             '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
-            '</span>' +
-            '</div>' +
-            // Direct grid child spanning all columns, so expanding adds a
-            // panel BELOW the summary line instead of stretching the row.
-            '<div class="visit-log-row__notes-full">' + notesFullHtml + '</div>' +
-            '</div>';
+            '</span></button></div></td>' +
+            '</tr>' +
+            '<tr class="visit-history-table__details-row" id="visit-history-details-' + escapeHtml(v.id) + '"' + groupAttr + ' data-visit-details-for="' + escapeHtml(v.id) + '" hidden>' +
+            '<td colspan="6"><div class="visit-log-row__notes-full">' + notesFullHtml + '</div></td>' +
+            '</tr>';
         }).join('');
 
         if (groupVal === 'none') {
-          return '<div class="unvisited-manager-body">' +
-            visitLogHeadHtml() +
-            visitsHtml +
-            '</div>';
+          return visitsHtml;
         }
 
-        var isCollapsed = !!collapsedGroups[groupName];
-        return '<div class="unvisited-manager-section' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
-          '<button type="button" class="unvisited-manager-title" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
-          '<svg class="unvisited-manager-title__chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
-          '<span>' + escapeHtml(groupName) + ' (' + groupVisits.length + ' visits)</span>' +
+        return '<tr class="bakery-directory__group-row' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
+          '<th scope="rowgroup" colspan="6">' +
+          '<button type="button" class="bakery-directory__group-toggle" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
+          '<svg class="bakery-directory__group-chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
+          '<span>' + escapeHtml(groupName) + '</span>' +
+          '<em>' + groupVisits.length + ' visit' + (groupVisits.length === 1 ? '' : 's') + '</em>' +
           '</button>' +
-          '<div class="unvisited-manager-body">' +
-          visitLogHeadHtml() +
-          visitsHtml +
-          '</div>' +
-          '</div>';
+          '</th>' +
+          '</tr>' +
+          visitsHtml;
       }).join('');
+
+      html = '<div class="table-wrap table-wrap--league table-wrap--floating table-wrap--directory table-wrap--visit-history">' +
+        '<table class="bakery-directory visit-history-table" data-table-fullscreen="off">' +
+        '<caption>Visit history</caption>' +
+        visitLogHeadHtml() +
+        '<tbody>' + html + '</tbody>' +
+        '</table></div>';
 
       if (filtered.length > renderLimit) {
         html += '<button type="button" class="visit-log-show-more">Show more (' + (filtered.length - renderLimit) + ' remaining)</button>';
@@ -4393,16 +4873,6 @@ window.GAILS = window.GAILS || {};
         }
       });
 
-      function lastVisitedLabel(bName) {
-        var stamp = lastVisitMap[bName];
-        if (!stamp) return 'Never visited';
-        var isoDate = stamp.split('T')[0];
-        var days = daysSince(isoDate);
-        var dateLabel = formatVisitDate(isoDate);
-        dateLabel = dateLabel.split(', ')[1] || dateLabel;
-        return 'Last visited ' + dateLabel + (days != null ? ' · ' + days + 'd ago' : '');
-      }
-
       if (totalUnvisited === 0) {
         window.GAILS._visitLogCurrentGroupNames = [];
         renderUnvisitedSummary(totalUnvisited, matchingSites, false);
@@ -4462,40 +4932,63 @@ window.GAILS = window.GAILS || {};
       var html = groupsSorted.map(function (groupName) {
         var bakeries = unvisitedMap[groupName].sort();
         var count = bakeries.length;
+        var isCollapsed = groupVal !== 'none' && !!collapsedUnvisited[groupName];
 
-        var bakeryCardsHtml = bakeries.map(function (bName) {
+        var bakeryRowsHtml = bakeries.map(function (bName) {
           var reg = G.getBakeryRegion ? G.getBakeryRegion(bName) : '—';
-          return '<div class="unvisited-bakery-item">' +
-            '<div class="unvisited-bakery-item__info">' +
-            '<div style="font-weight:700; color:var(--text);">' + escapeHtml(getDirectoryBakeryLabel(bName)) + '</div>' +
-            '<div style="font-size:0.72rem; color:var(--muted-l); margin-top:2px;">' + escapeHtml(reg) + '</div>' +
-            '<div class="unvisited-bakery-item__last">' + escapeHtml(lastVisitedLabel(bName)) + '</div>' +
-            '</div>' +
+          var ops = G.getBakeryOps ? G.getBakeryOps(bName) : '—';
+          var stamp = lastVisitMap[bName] || '';
+          var lastIso = stamp ? stamp.split('T')[0] : '';
+          var lastVisitText = lastIso ? formatVisitDate(lastIso) : 'Never visited';
+          lastVisitText = lastVisitText.split(', ')[1] || lastVisitText;
+          var daysValue = lastIso ? daysSince(lastIso) : null;
+          var daysText = daysValue == null ? '—' : daysValue + ' day' + (daysValue === 1 ? '' : 's');
+          var groupAttr = groupVal === 'none' ? '' : ' data-group="' + escapeHtml(groupName) + '"';
+
+          return '<tr' + groupAttr + (isCollapsed ? ' hidden' : '') + '>' +
+            '<th scope="row" data-label="Bakery">' + escapeHtml(getDirectoryBakeryLabel(bName)) + '</th>' +
+            '<td data-label="Ops Area">' + escapeHtml(ops) + '</td>' +
+            '<td data-label="Region">' + escapeHtml(reg) + '</td>' +
+            '<td data-label="Last Visit">' + escapeHtml(lastVisitText) + '</td>' +
+            '<td data-label="Days Since">' + escapeHtml(daysText) + '</td>' +
+            '<td data-label="Action">' +
             (canLogVisits()
               ? '<button type="button" class="unvisited-log-btn" data-bakery="' + escapeHtml(bName) + '">+ Log Visit</button>'
               : '') +
-            '</div>';
+            '</td>' +
+            '</tr>';
         }).join('');
 
         if (groupVal === 'none') {
-          return '<div class="unvisited-manager-body"><div class="unvisited-bakeries-grid">' + bakeryCardsHtml + '</div></div>';
+          return bakeryRowsHtml;
         }
 
-        var isCollapsed = !!collapsedUnvisited[groupName];
-        return '<div class="unvisited-manager-section' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
-          '<button type="button" class="unvisited-manager-title" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
-          '<svg class="unvisited-manager-title__chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
-          '<span>' + escapeHtml(groupName) + ' (' + count + ' unvisited)</span>' +
+        return '<tr class="bakery-directory__group-row' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
+          '<th scope="rowgroup" colspan="6">' +
+          '<button type="button" class="bakery-directory__group-toggle" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
+          '<svg class="bakery-directory__group-chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
+          '<span>' + escapeHtml(groupName) + '</span>' +
+          '<em>' + count + ' unvisited</em>' +
           '</button>' +
-          '<div class="unvisited-manager-body">' +
-          '<div class="unvisited-bakeries-grid">' +
-          bakeryCardsHtml +
-          '</div>' +
-          '</div>' +
-          '</div>';
+          '</th>' +
+          '</tr>' +
+          bakeryRowsHtml;
       }).join('');
 
-      container.innerHTML = html;
+      container.innerHTML =
+        '<div class="table-wrap table-wrap--league table-wrap--floating table-wrap--directory table-wrap--unvisited">' +
+        '<table class="bakery-directory unvisited-sites-table" data-table-fullscreen="off">' +
+        '<caption>Unvisited sites</caption>' +
+        '<thead><tr>' +
+        '<th scope="col">Bakery</th>' +
+        '<th scope="col">Ops Area</th>' +
+        '<th scope="col">Region</th>' +
+        '<th scope="col">Last Visit</th>' +
+        '<th scope="col">Days Since</th>' +
+        '<th scope="col"><span class="sr-only">Action</span></th>' +
+        '</tr></thead>' +
+        '<tbody>' + html + '</tbody>' +
+        '</table></div>';
       syncVisitLogGroupToggle();
     } else if (view === 'followups') {
       var followStatus = window.GAILS._followUpStatusFilter || 'open';

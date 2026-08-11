@@ -22,11 +22,12 @@
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js" crossorigin>
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js" crossorigin>
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.9.0/firebase-functions.js" crossorigin>
   <!-- SheetJS and pdf.js are both import-time only, and together weighed more
        than the rest of this page combined. js/lazy-lib.js now fetches them when
        an upload actually needs them (and sets pdf.js's worker URL on arrival). -->
-  <link rel="stylesheet" href="css/styles.css?v=20260811-fullbleed-modals-01">
-  <link rel="stylesheet" href="css/admin.css?v=20260727-admin-07">
+  <link rel="stylesheet" href="css/styles.css?v=20260811-checkin-context-14-visit-history-table-01-unvisited-sites-table-01-audit-report-modals-03">
+  <link rel="stylesheet" href="css/admin.css?v=20260811-admin-password-01">
 </head>
 
 <body class="admin-body">
@@ -803,11 +804,39 @@
                         </span>
                       </label>
 
+                      <form id="userAccessPasswordPanel" class="access-password-panel" hidden>
+                        <div class="access-password-panel__head">
+                          <h4>Set a new password</h4>
+                          <p>The current password cannot be viewed. This replaces it and invalidates the person's existing sign-in sessions.</p>
+                        </div>
+                        <div id="userAccessPasswordMsg" class="admin-message" style="display:none;"></div>
+                        <div class="access-password-panel__fields">
+                          <label class="admin-form-field" for="userAccessNewPassword">
+                            <span>New password</span>
+                            <input type="password" id="userAccessNewPassword" autocomplete="new-password" minlength="12" maxlength="128" required>
+                            <small class="admin-form-field__hint">Use at least 12 characters. Share it through a trusted channel.</small>
+                          </label>
+                          <label class="admin-form-field" for="userAccessConfirmPassword">
+                            <span>Confirm new password</span>
+                            <input type="password" id="userAccessConfirmPassword" autocomplete="new-password" minlength="12" maxlength="128" required>
+                          </label>
+                        </div>
+                        <label class="access-password-panel__show" for="userAccessShowPassword">
+                          <input type="checkbox" id="userAccessShowPassword">
+                          <span>Show the password while I check it</span>
+                        </label>
+                        <div class="access-password-panel__actions">
+                          <button type="button" id="userAccessPasswordCancel" class="admin-secondary-btn">Cancel</button>
+                          <button type="submit" id="userAccessPasswordSubmit" class="btn">Set new password</button>
+                        </div>
+                      </form>
+
                       <p id="userAccessStatusNote" class="access-modal__note"></p>
                     </div>
                     <div class="access-modal__footer">
                       <button type="button" id="userAccessRemove" class="admin-inline-danger">Remove access</button>
                       <div class="access-modal__footer-main">
+                        <button type="button" id="userAccessSetPassword" class="admin-inline-btn" aria-controls="userAccessPasswordPanel" aria-expanded="false">Set password</button>
                         <button type="button" id="userAccessResetPassword" class="admin-inline-btn">Reset password</button>
                         <button type="button" id="userAccessCancel" class="admin-secondary-btn">Cancel</button>
                         <button type="button" id="userAccessSave" class="btn">Save access</button>
@@ -1019,7 +1048,7 @@
   <!-- Reuses the CQV parser's pdf.js text extraction and the NBO score helpers,
        so it must load after both. -->
   <script defer src="js/nbo-parser.js"></script>
-  <script type="module" src="js/admin-page.js"></script>
+  <script type="module" src="js/admin-page.js?v=20260811-admin-password-01"></script>
 </body>
 
 </html>

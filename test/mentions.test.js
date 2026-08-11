@@ -681,9 +681,9 @@ test('a check-in report presents attribution once as Coffee Partner', () => {
 
   assert.match(visitReport, /function siteVisitCoffeePartnerHtml\(record\)/);
   assert.match(visitReport, /Attribution\.forVisit\(record\)/);
-  assert.match(siteVisitReport, /\{ label: 'Coffee Partner', html: siteVisitCoffeePartnerHtml\(record\) \}/);
+  assert.match(siteVisitReport, /buildCheckinContextHtml\(record\)/);
+  assert.match(visitReport, /<dt>Visited by<\/dt><dd>' \+ siteVisitCoffeePartnerHtml\(record\) \+ '<\/dd>/);
   assert.doesNotMatch(siteVisitReport, /Assigned To/);
-  assert.match(siteVisitReport, /meta\.createdBy \|\| record\.createdBy \|\| meta\.updatedBy/);
 });
 
 test('the shared people directory is readable but never carries a role', () => {

@@ -66,7 +66,7 @@ const BASELINE_RULES = {
 export default [
   {
     ignores: [
-      'node_modules/**',
+      '**/node_modules/**',
       '.firebase/**',
       'tmp/**',
       'apps-script/**' // Google Apps Script, a separate runtime with its own globals
@@ -105,6 +105,21 @@ export default [
         ...VENDOR_GLOBALS,
         GAILS: 'readonly' // modules read the namespace but never define it
       }
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...BASELINE_RULES
+    }
+  },
+
+  // Firebase Cloud Functions run in Node rather than the browser.
+  {
+    ...js.configs.recommended,
+    files: ['functions/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'commonjs',
+      globals: globals.node
     },
     rules: {
       ...js.configs.recommended.rules,

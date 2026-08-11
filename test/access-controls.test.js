@@ -291,7 +291,7 @@ test('the roster renders the reporting tree, not a flat list', () => {
   assert.match(teamScript, /accessibleRoster = G\.Team \? G\.Team\.visibleTeam\(user\.uid, teamScope, directory\) : \[\]/);
   assert.match(teamScript, /rosterRows = G\.Team \? G\.Team\.teamRows\(currentUserUid, 'all', roster\) : \[\]/);
   assert.match(teamScript, /--team-depth:' \+ row\.depth/);
-  assert.match(read('css/my-team.css'), /\.my-team-person--nested/);
+  assert.match(read('css/my-team.css'), /\.my-team-row--nested/);
   // A manager's own figures and their area's roll-up are stated separately.
   assert.match(teamScript, /Area total: /);
 });

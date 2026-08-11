@@ -116,6 +116,8 @@ test('shows the summary paragraph and the action plan the PDF carried', () => {
   assert.match(html, /BM &amp; HB to collaboratively work on shift planner\.|BM & HB to collaboratively work on shift planner\./);
   assert.match(html, /Due 02 Aug 26/);
   assert.match(html, /<h4>Coaching Notes \(1\)<\/h4>/);
+  assert.equal((html.match(/class="drill-card visit-report-stat/g) || []).length, 4);
+  assert.doesNotMatch(html, /drill-card__label">Visit</);
 });
 
 test('omits both sections for a record imported before they were parsed', () => {

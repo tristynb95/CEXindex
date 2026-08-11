@@ -398,6 +398,15 @@
     });
   }
 
+  function clearInactiveDashboardSubmenuHighlights(activeTabName) {
+    document.querySelectorAll('[data-nav-accordion]').forEach(function (branch) {
+      if (branch.dataset.navAccordion === activeTabName) return;
+      branch.querySelectorAll('.target-subtab.active').forEach(function (button) {
+        button.classList.remove('active');
+      });
+    });
+  }
+
   function syncDashboardSidebarForViewport() {
     if (!dashboardWorkspaceShell) return;
     if (compactDashboardSidebarMedia.matches) {
@@ -414,6 +423,7 @@
     if (!workspace) return;
     var shouldScrollNav = !(options && options.scrollNav === false);
     activeTargetSubtab = name;
+    document.body.dataset.targetSubtab = name;
     document.querySelectorAll('[data-target-subtab]').forEach(function (btn) {
       var isActive = btn.dataset.targetSubtab === name;
       btn.classList.toggle('active', isActive);
@@ -466,6 +476,7 @@
     document.querySelectorAll('.tab').forEach(function (tab) {
       tab.classList.toggle('active', tab.dataset.tab === name);
     });
+    clearInactiveDashboardSubmenuHighlights(name);
     document.querySelectorAll('.dashboard-footer__link').forEach(function (link) {
       link.classList.toggle('active', link.dataset.footerTab === name);
     });
@@ -1042,6 +1053,11 @@
     }
   }
 
+  function revealDashboardContent() {
+    var dashboardContent = document.getElementById('dashboardContent');
+    if (dashboardContent) dashboardContent.style.removeProperty('display');
+  }
+
   // ========== INITIALISE DASHBOARD ==========
   function initDashboard(records, months) {
     // Collapse alias/punctuation variants of a bakery name (e.g.
@@ -1094,7 +1110,7 @@
     rebuildRegionFilter();
 
     document.getElementById('uploadZone').style.display = 'none';
-    document.getElementById('dashboardContent').style.display = 'block';
+    revealDashboardContent();
 
     refresh();
   }
@@ -1787,8 +1803,6 @@
         var shouldOpen = railIsCollapsed || t.getAttribute('aria-expanded') !== 'true';
         if (railIsCollapsed) setDashboardSidebarCollapsed(false);
         setDashboardNavAccordion(shouldOpen ? accordionName : '');
-        activateDashboardTab(t.dataset.tab, { keepSidebarOpen: true });
-        scrollToTop();
         return;
       }
       activateDashboardTab(t.dataset.tab);
@@ -1867,17 +1881,19 @@
     });
   });
 
-  // Bakery Reports owns its view rendering in visit-report.js. The main app
-  // only coordinates the sidebar here: retain the active branch on desktop,
-  // and dismiss the drawer after a mobile view has been chosen.
+  // Bakery Reports owns its view rendering in visit-report.js. A submenu
+  // choice, rather than its parent accordion button, enters the Reports tab.
+  // Capture runs before visit-report.js's bubble listener so entering the tab
+  // can reset its default safely before that listener applies the chosen view.
   document.querySelectorAll('#visitLogViewToggle [data-view]').forEach(function (tab) {
     tab.addEventListener('click', function () {
+      activateDashboardTab('visit-log', { keepSidebarOpen: true });
       setDashboardNavAccordion('visit-log');
       if (compactDashboardSidebarMedia.matches) {
         setDashboardSidebarOpen(false);
         scrollToTop();
       }
-    });
+    }, true);
   });
 
   // ========== INITIALISE FILE UPLOAD ==========
@@ -2241,6 +2257,7 @@
     ? document.querySelector('.tab-content.active').id.replace(/^tab-/, '')
     : 'overview';
   updateDashboardActiveView(initialActiveTab);
+  clearInactiveDashboardSubmenuHighlights(initialActiveTab);
   syncDashboardKpis(initialActiveTab);
   syncDashboardSidebarForViewport();
 
@@ -2318,9 +2335,11 @@
       return bounds;
     }
 
-    // Default placement is above the "i" (see styles.css); flip below and shift
-    // sideways when that would put the panel out of sight, and cap its height so
-    // a short viewport scrolls the card rather than truncating it.
+    // Default placement is to the right of the card (see styles.css): flip to
+    // the left when the right edge would clip and the left has more room, or
+    // fall back to stacking above/below when neither side can fit the panel
+    // (the 2-up mobile grid, mainly). Cap height so a short viewport scrolls
+    // the panel rather than truncating it.
     function positionKpiInfo(disclosure) {
       var summary = disclosure.querySelector('summary');
       var panel = disclosure.querySelector('.kpi-info__panel');
@@ -2328,6 +2347,7 @@
       panel.style.top = '';
       panel.style.bottom = '';
       panel.style.left = '';
+      panel.style.right = '';
       panel.style.maxHeight = '';
       var gap = 8;
       var gutter = 12;
@@ -2335,14 +2355,38 @@
       var anchor = summary.getBoundingClientRect();
       var box = disclosure.getBoundingClientRect();
       var size = panel.getBoundingClientRect();
+      var roomRight = bounds.right - box.right - gap - gutter;
+      var roomLeft = box.left - bounds.left - gap - gutter;
+
+      if (size.width <= Math.max(roomRight, roomLeft)) {
+        // Sideways fits: prefer the right (the default in styles.css) and
+        // only flip left when the right can't hold it, top-aligned with the
+        // card and slid up/down (not clamped by height) to stay in view.
+        if (size.width > roomRight) {
+          panel.style.left = 'auto';
+          panel.style.right = (box.width + gap) + 'px';
+        }
+        var overflowBottom = (box.top + size.height) - (bounds.bottom - gutter);
+        var top = overflowBottom > 0 ? -overflowBottom : 0;
+        var minTop = bounds.top + gutter - box.top;
+        if (top < minTop) top = minTop;
+        panel.style.top = top + 'px';
+        var vRoom = bounds.bottom - gutter - (box.top + top);
+        if (size.height > vRoom && vRoom > 0) panel.style.maxHeight = vRoom + 'px';
+        return;
+      }
+
+      // Neither side has room: stack above/below the "i" instead.
+      panel.style.left = '8px';
       var roomAbove = anchor.top - gap - bounds.top - gutter;
       var roomBelow = bounds.bottom - anchor.bottom - gap - gutter;
-      if (size.height > roomAbove && roomBelow > roomAbove) {
-        panel.style.bottom = 'auto';
-        panel.style.top = (anchor.bottom + gap - box.top) + 'px';
+      panel.style.top = (anchor.bottom + gap - box.top) + 'px';
+      if (roomAbove >= roomBelow) {
+        panel.style.top = '';
+        panel.style.bottom = (box.bottom - anchor.top + gap) + 'px';
       }
-      var overflowRight = size.left + size.width - (bounds.right - gutter);
-      if (overflowRight > 0) panel.style.left = (size.left - box.left - overflowRight) + 'px';
+      var overflowRight = box.left + 8 + size.width - (bounds.right - gutter);
+      if (overflowRight > 0) panel.style.left = (8 - overflowRight) + 'px';
       var room = Math.max(roomAbove, roomBelow);
       if (size.height > room && room > 0) panel.style.maxHeight = room + 'px';
     }

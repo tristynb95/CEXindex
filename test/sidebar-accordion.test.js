@@ -69,11 +69,51 @@ test('one shared state update closes every accordion except the requested branch
 
 test('the accordion stays usable in the collapsed rail and mobile drawer', () => {
   assert.match(app, /if \(railIsCollapsed\) setDashboardSidebarCollapsed\(false\)/);
-  assert.match(app, /activateDashboardTab\(t\.dataset\.tab, \{ keepSidebarOpen: true \}\)/);
   assert.match(app, /document\.querySelectorAll\('\[data-target-subtab\]'\)/);
   assert.match(app, /document\.querySelectorAll\('#visitLogViewToggle \[data-view\]'\)/);
+  assert.match(app, /activateDashboardTab\('visit-log', \{ keepSidebarOpen: true \}\)/);
+  assert.match(app, /#visitLogViewToggle \[data-view\][\s\S]*?\}, true\);/);
   assert.match(styles, /\.dashboard-nav__submenu\[hidden\] \{\s*display: none;/);
   assert.match(styles, /data-sidebar-collapsed="true"\] \.dashboard-nav__submenu \{\s*display: none;/);
+});
+
+test('accordion parent clicks only toggle their submenu and never navigate', () => {
+  const match = app.match(/if \(accordionName\) \{([\s\S]*?)\n\s*return;\n\s*\}/);
+  assert.ok(match, 'parent accordion click branch should exist');
+  assert.match(match[1], /setDashboardNavAccordion\(shouldOpen \? accordionName : ''\)/);
+  assert.doesNotMatch(match[1], /activateDashboardTab|scrollToTop/);
+});
+
+test('submenu highlights are cleared when their parent page is not active', () => {
+  assert.match(app, /function clearInactiveDashboardSubmenuHighlights\(activeTabName\)/);
+  assert.match(app, /clearInactiveDashboardSubmenuHighlights\(name\)/);
+  assert.match(app, /clearInactiveDashboardSubmenuHighlights\(initialActiveTab\)/);
+
+  const makeButton = () => ({
+    active: true,
+    classList: {
+      remove(name) {
+        if (name === 'active') this.owner.active = false;
+      },
+      owner: null
+    }
+  });
+  const focusButton = makeButton();
+  focusButton.classList.owner = focusButton;
+  const reportButton = makeButton();
+  reportButton.classList.owner = reportButton;
+  const makeBranch = (key, button) => ({
+    dataset: { navAccordion: key },
+    querySelectorAll: () => button.active ? [button] : []
+  });
+  const branches = [makeBranch('target', focusButton), makeBranch('visit-log', reportButton)];
+  const start = app.indexOf('function clearInactiveDashboardSubmenuHighlights');
+  const end = app.indexOf('function syncDashboardSidebarForViewport', start);
+  const sandbox = { document: { querySelectorAll: () => branches } };
+
+  vm.runInNewContext(app.slice(start, end) + '\nclearInactiveDashboardSubmenuHighlights("visit-log");', sandbox);
+  assert.equal(focusButton.active, false);
+  assert.equal(reportButton.active, true);
 });
 
 test('submenu rows use the parent width without a left active accent', () => {

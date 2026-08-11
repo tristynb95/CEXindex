@@ -1,60 +1,9 @@
 // ========== TARGETS MODULE ==========
 window.GAILS = window.GAILS || {};
 
-var _sparkState = null; // cached data for toggle re-render
-
-function _drawSparklines(absolute) {
-  if (!_sparkState) return;
-  var G = GAILS;
-  var sparkSorted = _sparkState.sparkSorted;
-  var allAvgByMonth = _sparkState.allAvgByMonth;
-  var FM = _sparkState.FM;
-  var cf = _sparkState.cf || 'c';
-
-  sparkSorted.forEach(function (t) {
-    var canvasId = 'spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_');
-    var lineColor = t.direction === 'up' ? '#1D9E5C' : t.direction === 'down' ? '#B22A24' : '#C97F12';
-    var yOpts = absolute
-      ? { display: true, min: 0, max: 100, ticks: { stepSize: 50, font: { size: 7 }, color: 'rgba(146, 137, 120,0.45)', maxTicksLimit: 3 }, grid: { color: 'rgba(34, 31, 26,0.05)' }, border: { display: false } }
-      : { display: false };
-    G.makeChart(canvasId, {
-      type: 'line',
-      data: {
-        labels: FM, datasets: [
-          { data: t.hist.map(function (r) { return r && !r.noData && !r.incompletePeriod ? r[cf] : null; }), borderColor: lineColor, backgroundColor: lineColor + '18', fill: true, tension: 0.3, pointRadius: 1.5, borderWidth: 2, spanGaps: false },
-          { data: allAvgByMonth, borderColor: 'rgba(146, 137, 120,0.4)', borderWidth: 1, borderDash: [4, 3], pointRadius: 0, fill: false, tension: 0.3, spanGaps: false }
-        ]
-      },
-      options: {
-        plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (items) { return items[0].label; }, label: function (ctx) { return ctx.datasetIndex === 0 ? 'Index: ' + ctx.raw : 'Avg: ' + (ctx.raw ? ctx.raw.toFixed(1) : ''); } } } },
-        scales: { y: yOpts, x: { display: false } },
-        maintainAspectRatio: false
-      }
-    });
-  });
-}
-
-window.GAILS.toggleSparkScale = function () {
-  var absolute = !!(document.getElementById('sparkAbsoluteToggle') || {}).checked;
-  _drawSparklines(absolute);
-};
-
-window.GAILS.changeSparkSort = function () {
-  var G = GAILS;
-  if (G._lastData) {
-    G.renderTargets(G._lastData);
-  }
-};
-
 function _clearTargetTrendCharts() {
   var G = GAILS;
   ['targetAvgTrend', 'targetBandFlow', 'targetMomentumChart', 'targetAreaMomentum'].forEach(function (id) { G.destroyChart(id); });
-  if (_sparkState && _sparkState.sparkSorted) {
-    _sparkState.sparkSorted.forEach(function (t) {
-      G.destroyChart('spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_'));
-    });
-  }
-  _sparkState = null;
 }
 
 function _setTargetTrendState(hasData, message) {
@@ -2637,7 +2586,6 @@ function _renderTargetTrends(targets, bf, cf, highBand, lowBand, isAbsolute) {
   if (FM.length < 2) {
     _clearTargetTrendCharts();
     document.getElementById('trendSummaryCards').innerHTML = '';
-    document.getElementById('sparklineGrid').innerHTML = '';
     document.getElementById('targetTrendTable').innerHTML = '';
     _setTargetTrendState(false, 'At least two completed months are needed to view focus bakery trends.');
     return;
@@ -2646,7 +2594,6 @@ function _renderTargetTrends(targets, bf, cf, highBand, lowBand, isAbsolute) {
   if (targets.length === 0) {
     _clearTargetTrendCharts();
     document.getElementById('trendSummaryCards').innerHTML = '';
-    document.getElementById('sparklineGrid').innerHTML = '';
     document.getElementById('targetTrendTable').innerHTML = '';
     _setTargetTrendState(false, 'No eligible bakeries are in the ' + highBand + ' or ' + lowBand + ' bands through the latest completed month.');
     return;
@@ -2719,70 +2666,6 @@ function _renderTargetTrends(targets, bf, cf, highBand, lowBand, isAbsolute) {
       }]
     }, options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return (ctx.raw > 0 ? '+' : '') + ctx.raw + ' pts avg change across focus bakeries'; } } } }, scales: { x: { title: { display: true, text: 'Avg score change across completed history' } }, y: { ticks: { font: { size: 10 }, autoSkip: false } } } }
   });
-
-  // Sparkline cards
-  var sparkGrid = document.getElementById('sparklineGrid');
-  var sortVal = (document.getElementById('sparkSortBy') || {}).value || 'perf-asc';
-  var sparkSorted = [].concat(trendData).sort(function (a, b) {
-    if (sortVal === 'perf-asc') {
-      var valA = a.latest ? a.latest[cf] : 999;
-      var valB = b.latest ? b.latest[cf] : 999;
-      if (valA !== valB) return valA - valB;
-      return a.name.localeCompare(b.name);
-    } else if (sortVal === 'perf-desc') {
-      var valA = a.latest ? a.latest[cf] : -999;
-      var valB = b.latest ? b.latest[cf] : -999;
-      if (valA !== valB) return valB - valA;
-      return a.name.localeCompare(b.name);
-    } else if (sortVal === 'improve-desc') {
-      var valA = a.periodChange || 0;
-      var valB = b.periodChange || 0;
-      if (valA !== valB) return valB - valA;
-      return a.name.localeCompare(b.name);
-    } else if (sortVal === 'improve-asc') {
-      var valA = a.periodChange || 0;
-      var valB = b.periodChange || 0;
-      if (valA !== valB) return valA - valB;
-      return a.name.localeCompare(b.name);
-    } else if (sortVal === 'alpha-asc') {
-      return a.name.localeCompare(b.name);
-    }
-    return (a.latest ? a.latest[cf] : 999) - (b.latest ? b.latest[cf] : 999);
-  });
-  // Destroy any existing sparkline charts
-  sparkSorted.forEach(function (t) { G.destroyChart('spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_')); });
-  sparkGrid.innerHTML = '';
-  // Build card DOM (canvas elements only — charts drawn by _drawSparklines)
-  sparkSorted.forEach(function (t) {
-    var card = document.createElement('div');
-    var dirClass = t.direction === 'up' ? 'up' : t.direction === 'down' ? 'down' : t.direction === 'flat' ? 'flat' : 'new-entry';
-    var dirLabel = t.direction === 'up' ? '\u2191 Improving' : t.direction === 'down' ? '\u2193 Dipping' : t.direction === 'flat' ? '\u2194 Steady' : 'New';
-    var ceiNow = t.latest ? t.latest[cf] : '\u2014';
-    var bandNow = t.latest ? t.latest[bf] : '\u2014';
-    var changeText = t.ceiChange !== 0 ? (t.ceiChange > 0 ? '+' : '') + t.ceiChange.toFixed(1) : '';
-    var changeColor = t.ceiChange > 0 ? 'var(--green)' : 'var(--red)';
-
-    var modClass = t.streak >= 3 ? ' spark-card--chronic' : t.direction === 'down' ? ' spark-card--declining' : '';
-    card.className = 'spark-card' + modClass;
-
-    card.innerHTML =
-      '<div class="spark-card__head">' +
-      '<div><div class="spark-card__name">' + t.name + '</div><div class="spark-card__mgr">' + G.getBakeryOps(t.name) + '</div></div>' +
-      '<span class="dir ' + dirClass + '" style="font-size:0.62rem">' + dirLabel + '</span>' +
-      '</div>' +
-      '<div class="spark-card__metrics">' +
-      '<div><span class="spark-card__cei">' + ceiNow + '</span><span class="spark-card__cei-label">Score</span></div>' +
-      '<span class="band ' + G.bc(bandNow) + '" style="font-size:0.58rem">' + bandNow + '</span>' +
-      (changeText ? '<span class="spark-card__change" style="color:' + changeColor + '">' + changeText + '</span>' : '') +
-      (t.streak >= 2 ? '<span class="spark-card__streak">\u2193' + t.streak + 'm</span>' : '') +
-      '</div>' +
-      '<canvas id="spark_' + t.name.replace(/[^a-zA-Z0-9]/g, '_') + '" height="44"></canvas>';
-    sparkGrid.appendChild(card);
-  });
-  // Cache data and draw with current toggle state
-  _sparkState = { sparkSorted: sparkSorted, allAvgByMonth: allAvgByMonth, FM: FM, cf: cf };
-  var toggleEl = document.getElementById('sparkAbsoluteToggle');
-  _drawSparklines(toggleEl && toggleEl.checked);
 
   // Momentum uses strict calendar neighbours. If either monthly result is
   // missing or unusable, that bakery does not contribute to that month's bar.

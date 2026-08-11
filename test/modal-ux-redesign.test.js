@@ -116,8 +116,9 @@ test('Bakery Reports identify report type and provide navigable responsive secti
 
   assert.match(script, /function setVisitReportPresentation/);
   assert.match(script, /routine: \{[^}]*maxWidth: 1180/);
+  assert.match(script, /followup: \{[^}]*badge: 'CQV follow-up'[^}]*accent: '#B22A24'/);
   assert.match(script, /nbo: \{[^}]*maxWidth: 1060/);
-  assert.match(script, /checkin: \{[^}]*maxWidth: 820/);
+  assert.match(script, /checkin: \{[^}]*maxWidth: 1180/);
   assert.match(script, /empty: \{[^}]*maxWidth: 640/);
   assert.match(script, /--visit-report-max-width/);
   assert.match(script, /function visitReportHeadingLabel/);
@@ -127,13 +128,18 @@ test('Bakery Reports identify report type and provide navigable responsive secti
   assert.match(script, /visit-report-section-wrapper--wide/);
   assert.match(script, /visit-action-item/);
   assert.match(script, /visit-question-layout/);
+  assert.match(script, /<dl class="drill-summary visit-report-overview"[^>]*aria-label="Report overview"/);
+  assert.match(script, /<dt class="drill-card__label">/);
+  assert.match(script, /<dd class="drill-card__value"/);
+  assert.match(script, /setVisitReportPresentation\(record\.isFollowUp \? 'followup' : 'cqv', record\)/);
+  assert.match(script, /record\.isFollowUp[\s\S]*?summaryHtml \+ actionPlanHtml \+ categoryHtml \+ sectionHtml \+ chartHtml/);
 
-  // Stat strip, then a persistent section rail beside a scrolling content
-  // pane — the rail replaces the pill bar that used to scroll away with the
-  // report it was navigating.
+  // Quick stats stack above the persistent section links in the left rail,
+  // leaving the full report height available to the scrolling content pane.
   assert.match(script, /layout\.className = 'visit-report-layout'/);
   assert.match(script, /content\.className = 'visit-report-content'/);
   assert.match(script, /rail\.className = 'visit-report-rail'/);
+  assert.match(script, /if \(summary\) rail\.appendChild\(summary\)/);
   assert.match(script, /classList\.toggle\('visit-report-body--railed', !!nav\)/);
   assert.match(script, /function trackVisitReportSection/);
   assert.match(script, /setAttribute\('aria-current', 'true'\)/);
@@ -146,25 +152,102 @@ test('Bakery Reports identify report type and provide navigable responsive secti
   // with a permanently empty third track, because the full-width Action Plan
   // below it keeps that track from collapsing.
   assert.match(styles, /#visitReportModal \.visit-report-content \{[\s\S]*?grid-template-columns: repeat\(var\(--report-cols, 2\), minmax\(0, 1fr\)\)/);
+  assert.match(styles, /#visitReportModal \.visit-report-rail \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column/);
+  assert.match(styles, /#visitReportModal \.visit-report-overview \.visit-report-stat \{[\s\S]*?min-height: 40px/);
+  assert.match(styles, /#visitReportModal \.visit-report-overview \.visit-report-stat \{[\s\S]*?grid-template-columns: 82px minmax\(0, 1fr\)/);
+  assert.match(styles, /#visitReportModal \.visit-report-overview \.drill-card__value \{[\s\S]*?overflow-wrap: anywhere/);
+  assert.match(styles, /#visitReportModal \.visit-report-rail > \.visit-report-overview \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(script, /setProperty\('--report-cols', Math\.max\(1, Math\.min\(3, narrowCount\)\)\)/);
   assert.match(script, /setProperty\('--report-cols-md'/);
   assert.match(styles, /@media \(max-width: 1080px\)[\s\S]*?grid-template-columns: repeat\(var\(--report-cols-md, 2\)/);
 
-  // Note-led reports put their stat strip in the reading column too, hard
-  // left, so the strip, the sections and the panel title share one edge.
+  // Check-ins mirror the CQV composition: quick facts in a narrow left rail,
+  // the visit note in the main pane, and compact site context on the right.
   assert.match(
     styles,
-    /data-report-type="checkin"\] #visitReportBody > \.drill-summary,[\s\S]*?max-width: var\(--visit-report-max-width[\s\S]*?margin-inline: 0/
+    /data-report-type='checkin'\] #visitReportBody[\s\S]*?\{[\s\S]*?display: flex;[\s\S]*?overflow: hidden/
   );
+  assert.match(styles, /\.visit-report-checkin-workspace \{[\s\S]*?align-items: stretch;[\s\S]*?grid-template-columns: 260px minmax\(0, 1fr\) 280px/);
+  assert.match(styles, /\.visit-report-checkin-rail \{[\s\S]*?flex-direction: column/);
+  assert.match(styles, /\.visit-report-checkin-details-list \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column/);
+  assert.match(styles, /\.visit-report-checkin-details-list > div \{[\s\S]*?justify-content: space-between;[\s\S]*?min-height: 42px/);
+  assert.match(styles, /data-report-type='checkin'\] \.visit-report-section--comments \{[\s\S]*?padding: 0;[\s\S]*?border: 1px solid[\s\S]*?border-radius: 14px/);
+  assert.match(styles, /\.visit-report-comments-heading \{[\s\S]*?align-items: center;[\s\S]*?min-height: 40px;[\s\S]*?border-bottom:/);
+  assert.match(styles, /\.visit-report-comment-byline \{[\s\S]*?display: flex/);
+  assert.match(styles, /\.visit-report-notes \{[\s\S]*?flex: 1 1 auto;[\s\S]*?overflow-y: auto;[\s\S]*?border: 0;/);
+  assert.doesNotMatch(styles, /data-report-type='checkin'\] \.drill-modal-header \{[\s\S]*?calc\(\(100vw - var\(--visit-report-max-width/);
+  assert.doesNotMatch(styles, /\.visit-report-notes::before/);
   assert.match(styles, /#visitReportModal \.visit-report-rail \.visit-report-toc \{[\s\S]*?position: sticky/);
   assert.match(styles, /\.visit-report-toc a\[aria-current="true"\]/);
-  // The per-type width now sets the reading measure for note-led reports
-  // rather than the width of a floating modal.
-  assert.match(styles, /data-report-type="checkin"\] \.visit-report-content,[\s\S]*?max-width: var\(--visit-report-max-width/);
+  assert.match(styles, /@media \(max-width: 1080px\)[\s\S]*?\.visit-report-checkin-workspace \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
   // Below the two-pane threshold the rail falls back to a horizontal bar.
   assert.match(styles, /@media \(max-width: 1080px\)[\s\S]*?\.visit-report-rail \.visit-report-toc \{[\s\S]*?position: static/);
   assert.doesNotMatch(styles, /\.visit-report-overview-stack/);
   assert.match(styles, /@media print \{\s*#visitReportModal \.visit-report-rail/);
+});
+
+test('check-in reports use visit facts, central notes, and compact site context', () => {
+  const script = read('js/visit-report.js');
+  const styles = read('css/styles.css');
+  const profile = read('js/bakery-profile.js');
+  const activity = read('js/my-activity.js');
+
+  assert.match(script, /function buildCheckinContextHtml/);
+  assert.doesNotMatch(script, /function buildCheckinSummaryHtml/);
+  assert.match(script, /class="visit-report-checkin-workspace"/);
+  assert.match(script, /class="visit-report-checkin-rail" aria-label="Visit details and bakery snapshot"/);
+  assert.match(script, /id="visitDetailsTitle">Visit details/);
+  assert.match(script, /<dt>Region · Ops<\/dt>/);
+  assert.match(script, /<dt>Visited<\/dt>/);
+  assert.doesNotMatch(script, /<dt>Region<\/dt>|<dt>Ops area<\/dt>|<dt>Visit history<\/dt>/);
+  assert.match(script, /<span>Monthly snapshot<\/span>/);
+  assert.match(styles, /\.visit-context-monthly-heading \{[\s\S]*?justify-content: space-between/);
+  assert.match(script, /class="visit-report-comments-heading"/);
+  assert.match(script, /class="visit-report-notes" role="region" aria-label="Visit notes" tabindex="0"/);
+  assert.match(script, /function buildCheckinSupportHtml/);
+  assert.match(script, /class="visit-report-checkin-context visit-report-checkin-support"/);
+  assert.match(script, /data-visit-context-map/);
+  assert.match(script, /visit-context-weather-card/);
+  assert.match(script, /OpenStreetMap/);
+  assert.match(script, /Open-Meteo/);
+  assert.match(script, /https:\/\/archive-api\.open-meteo\.com\/v1\/archive/);
+  assert.match(script, /function weatherCodeMeta/);
+  assert.match(script, /function visitWeatherIcon/);
+  assert.match(script, /function closestVisitWeatherHour/);
+  assert.match(script, /hourly=weather_code,temperature_2m,precipitation,is_day/);
+  assert.match(script, /loadVisitWeather\(context, ll, record\.date, record\.time, runId\)/);
+  assert.match(script, /weatherMetric\('Temperature', weatherValue\(snapshot\.temperature, 1, '°C'\)\)/);
+  assert.match(script, /weatherMetric\('Hourly rainfall', weatherValue\(snapshot\.rainfall, 1, ' mm'\)\)/);
+  assert.doesNotMatch(script, /NASA POWER|WS10M|Average wind|weatherMetric\('High'|weatherMetric\('Low'/);
+  assert.match(script, /function buildVisitMonthHtml/);
+  assert.match(script, /function visitMonthSnapshot/);
+  assert.match(script, /G\.state && Array\.isArray\(G\.state\.ALL\)/);
+  assert.match(script, /Array\.isArray\(G\._dashboardRecords\)/);
+  assert.match(script, /visitMonthMetric\('Benchmark'/);
+  assert.match(script, /visitMonthMetric\('Drink \+ Meal NPS'/);
+  assert.match(script, /visitMonthMetric\('Within 2 minutes'/);
+  assert.match(script, /visitMonthMetric\('Reports logged'/);
+  assert.match(script, /function hydrateCheckinContext/);
+  assert.match(script, /var workspace = bodyEl\.querySelector\('\.visit-report-checkin-workspace'\)/);
+  assert.match(script, /if \(!workspace && context\.parentNode !== bodyEl\) bodyEl\.appendChild\(context\)/);
+  assert.match(script, /function visitDaysAgoLabel/);
+  assert.match(script, /hydrateCheckinContext\(bodyEl, record\);/);
+  assert.match(profile, /G\._dashboardRecords = dashboardRecords/);
+  assert.match(activity, /G\._dashboardRecords = performanceRecords/);
+
+  assert.match(styles, /\.visit-context-monthly \{[\s\S]*?display: block;[\s\S]*?padding: 0;/);
+  assert.match(styles, /\.visit-context-monthly-stats \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column/);
+  assert.match(styles, /\.visit-context-monthly-stat \{[\s\S]*?justify-content: space-between;[\s\S]*?min-height: 42px;[\s\S]*?border-radius: 9px/);
+  assert.match(styles, /\.visit-report-checkin-support \{[\s\S]*?grid-template-columns: minmax\(240px, 320px\) minmax\(0, 1fr\)/);
+  assert.match(styles, /data-report-type='checkin'\] \.visit-report-comment--primary[\s\S]*?\{[\s\S]*?1\.02rem[\s\S]*?line-height: 1\.72;[\s\S]*?white-space: pre-wrap/);
+  assert.match(styles, /\.visit-context-source \{[\s\S]*?align-self: flex-end/);
+  assert.match(styles, /\.visit-context-map \{[\s\S]*?height: clamp\(190px, 28vh, 230px\);[\s\S]*?aspect-ratio: auto/);
+  assert.match(styles, /\.visit-context-weather-list \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column/);
+  assert.match(styles, /\.visit-context-weather-metric \{[\s\S]*?justify-content: space-between;[\s\S]*?min-height: 34px/);
+  assert.match(styles, /\.visit-context-weather-overview \{[\s\S]*?display: flex;[\s\S]*?align-items: center/);
+  assert.match(styles, /\.visit-context-weather-symbol \{[\s\S]*?width: 58px;[\s\S]*?height: 58px/);
+  assert.doesNotMatch(script, /visit-context-card-footer/);
+  assert.doesNotMatch(styles, /\.visit-context-card-footer/);
 });
 
 test('Focus Bakery uses the shared modal header and grouped queue navigation', () => {
@@ -181,6 +264,8 @@ test('Focus Bakery uses the shared modal header and grouped queue navigation', (
   assert.match(styles, /\.focus-detail-nav \{[\s\S]*?gap: 0;[\s\S]*?height: 36px;[\s\S]*?overflow: hidden/);
   assert.match(styles, /\.focus-detail-nav__btn \{[\s\S]*?width: 34px;[\s\S]*?border: 0;[\s\S]*?border-radius: 0/);
   assert.match(styles, /#focusDetailModal \.modal-close-btn \{[\s\S]*?width: 36px;[\s\S]*?border-radius: 10px/);
+  assert.match(styles, /#visitReportModal \.drill-modal-header,\s*#focusDetailModal \.drill-modal-header \{[\s\S]*?padding: 13px 20px 11px/);
+  assert.match(styles, /#visitReportModal \.drill-modal-title,\s*#focusDetailModal \.drill-modal-title \{[\s\S]*?1\.28rem/);
 
   // Placement in the full-bleed panel is explicit: the trend chart, the
   // history table and the visit-report button run the full width, leaving the

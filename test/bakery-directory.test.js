@@ -307,6 +307,8 @@ test('opens Bakery Reports on the Bakery Directory by default', () => {
   const GAILS = loadDirectoryBuilder();
 
   assert.match(html, /class="target-subtab active" data-view="bakeries"/);
+  assert.match(html, /data-view="bakeries"[\s\S]*?<span>Bakery Directory<\/span>/);
+  assert.doesNotMatch(html, /<span>Bakery List<\/span>/);
   assert.doesNotMatch(html, /class="target-subtab active" data-view="history"/);
 
   GAILS._activeVisitLogView = 'history';

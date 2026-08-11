@@ -32,14 +32,11 @@ test('follow-up tasks expose dedicated grouping and sorting controls', () => {
   assert.match(source, /followUpSort:\s*followUpSortVal/);
 });
 
-// Replaces an earlier check that pinned Follow-up Tasks to a four-column grid
-// with Group By starting a second row. The filters no longer live in the
-// content column, so there is no second row to start: they are a page-level
-// bar on the full container width, laid out as one flex row.
-test('the Bakery Reports filters are a page-level bar laid out as one row', () => {
+test('the Bakery Reports filters are a page-level bar with a balanced Visit History layout', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
   const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
+  const source = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
 
   // A sibling of the global filter bar, ahead of the sidebar + content shell —
   // that is what makes it span the page rather than the content column.
@@ -59,11 +56,18 @@ test('the Bakery Reports filters are a page-level bar laid out as one row', () =
   const chipsAt = html.indexOf('id="followUpStatusToggle"');
   assert.ok(chipsAt > html.indexOf('id="tab-visit-log"'), 'status chips belong in the card');
 
-  // One row: Search fixed, the dropdowns sharing what it gives back but capped
-  // so a control that wraps onto its own row cannot span the whole bar.
+  // The shared layout remains flexible for the smaller control sets.
   assert.match(styles, /\.visit-log-filter-bar \.visit-log-filters \{\s*display: flex;\s*flex-wrap: wrap;/);
   assert.match(styles, /\.visit-log-filter-bar \.visit-log-filters>\.visit-log-filter-control:first-child \{\s*flex: 0 0 225px;[\s\S]*?max-width: 225px;/);
   assert.match(styles, /\.visit-log-filter-bar \.visit-log-filter-control,[\s\S]*?max-width: 240px;/);
+
+  // Visit History exposes the largest set, so it publishes its view on the
+  // filter bar and uses two explicit rows instead of stranding Rating alone.
+  assert.match(source, /filterBarEl\.setAttribute\('data-visit-view', view\)/);
+  assert.match(styles, /\.visit-log-filter-bar\[data-visit-view="history"\] \.visit-log-filters \{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\) var\(--control-h\);[\s\S]*?"search period region ops \."[\s\S]*?"group sort type rating reset";/);
+  ['visitLogRegionControl', 'visitLogOpsControl', 'visitLogGroupControl', 'visitLogSortControl', 'visitLogTypeControl'].forEach((id) => {
+    assert.match(html, new RegExp(`id="${id}"`));
+  });
 
   // Search then Period lead the bar — the two controls that decide which
   // records exist, ahead of the ones that narrow and arrange them.

@@ -1616,16 +1616,17 @@ h4 {
   outline-offset: 2px;
 }
 
-/* Opens above the "i" by default. The KPI row sits inside .dashboard-workspace,
-   which clips its overflow, so on the top row that default put most of the card
-   outside the clip and made it unreadable — js/app.js flips it below the button
-   (and nudges it sideways) whenever the space above cannot hold it. Position
-   stays absolute rather than fixed because .tab-content.active animates a
-   transform, which makes it the containing block for fixed descendants. */
+/* Opens to the right of the card by default — KPI cards are short (~118px),
+   so stacking the panel above/below the "i" left almost no room and forced a
+   cramped, scrolling stub. The row has more room sideways. js/app.js flips it
+   to the left when the right edge would clip, and falls back to above/below
+   only when neither side has room (e.g. the 2-up mobile grid). Position stays
+   absolute rather than fixed because .tab-content.active animates a transform,
+   which makes it the containing block for fixed descendants. */
 .kpi-info__panel {
   position: absolute;
-  bottom: 34px;
-  left: 8px;
+  top: 0;
+  left: calc(100% + 8px);
   z-index: 6;
   width: min(330px, calc(100vw - 32px));
   overflow-y: auto;
@@ -13852,6 +13853,66 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 }
 
+/* Visit History has the largest control set. Letting flex decide the wrap put
+   seven controls on the first row and stranded Rating beside Reset on the
+   second. At full desktop widths, use two deliberate rows instead: scope and
+   location filters first, then arrangement and visit-detail filters. */
+@media (min-width: 1200px) {
+  .visit-log-filter-bar[data-visit-view="history"] .visit-log-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) var(--control-h);
+    grid-template-areas:
+      "search period region ops ."
+      "group sort type rating reset";
+  }
+
+  .visit-log-filter-bar[data-visit-view="history"] .visit-log-filter-control,
+  .visit-log-filter-bar[data-visit-view="history"] .visit-log-filter-control--compact {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .visit-log-filter-bar[data-visit-view="history"] .visit-log-filters > .visit-log-filter-control:first-child {
+    grid-area: search;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .visit-log-filter-bar[data-visit-view="history"] #visitLogPeriodControl {
+    grid-area: period;
+  }
+
+  .visit-log-filter-bar[data-visit-view="history"] #visitLogRegionControl {
+    grid-area: region;
+  }
+
+  .visit-log-filter-bar[data-visit-view="history"] #visitLogOpsControl {
+    grid-area: ops;
+  }
+
+  .visit-log-filter-bar[data-visit-view="history"] #visitLogGroupControl {
+    grid-area: group;
+  }
+
+  .visit-log-filter-bar[data-visit-view="history"] #visitLogSortControl {
+    grid-area: sort;
+  }
+
+  .visit-log-filter-bar[data-visit-view="history"] #visitLogTypeControl {
+    grid-area: type;
+  }
+
+  .visit-log-filter-bar[data-visit-view="history"] #visitLogRatingControl {
+    grid-area: rating;
+  }
+
+  .visit-log-filter-bar[data-visit-view="history"] .visit-log-reset-btn {
+    grid-area: reset;
+  }
+}
+
 /* Period follows Search, ahead of Region and Ops Area. It is the other control
    that decides which records exist at all rather than how they are narrowed or
    arranged, so the two that set the scope lead the bar and the rest follow.
@@ -14098,6 +14159,167 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 }
 
+/* Visit History uses the Bakery Directory's semantic table surface and compact
+   row rhythm. Only its column proportions and expandable detail row differ. */
+.table-wrap--visit-history .visit-history-table {
+  min-width: 960px;
+}
+
+.visit-history-table thead th:nth-child(1) {
+  width: 13%;
+}
+
+.visit-history-table thead th:nth-child(2) {
+  width: 21%;
+}
+
+.visit-history-table thead th:nth-child(3) {
+  width: 15%;
+}
+
+.visit-history-table thead th:nth-child(4) {
+  width: 9%;
+}
+
+.visit-history-table thead th:nth-child(5) {
+  width: 29%;
+}
+
+.visit-history-table thead th:nth-child(6) {
+  width: 13%;
+}
+
+.visit-history-table__row {
+  cursor: pointer;
+}
+
+.visit-history-table__row td {
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.visit-history-table__row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.visit-history-table__expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-l);
+  cursor: pointer;
+}
+
+.visit-history-table__expand-btn:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.visit-history-table__expand-btn:hover .visit-log-row__chevron {
+  color: var(--accent);
+}
+
+.visit-history-table__expand-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.visit-history-table .visit-log-row__date,
+.visit-history-table .visit-log-row__bakery,
+.visit-history-table .visit-log-row__score-col {
+  font-size: 0.8rem;
+}
+
+.visit-history-table__row:hover .visit-log-row__btn {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.visit-history-table__row.expanded .visit-log-row__notes-preview {
+  display: none;
+}
+
+.visit-history-table__row.expanded .visit-log-row__chevron svg {
+  transform: rotate(180deg);
+}
+
+.visit-history-table__details-row > td {
+  padding: 0;
+  background: rgba(178, 42, 36, 0.018);
+  white-space: normal;
+}
+
+.visit-history-table__details-row:hover > td {
+  background: rgba(178, 42, 36, 0.018);
+  color: var(--text-2);
+}
+
+.visit-history-table__details-row .visit-log-row__notes-full {
+  display: block;
+  grid-column: auto;
+  margin: 0;
+  padding: 14px 16px 16px;
+  border-top: 1px dashed var(--card-border);
+}
+
+@media (max-width: 640px) {
+  .table-wrap--visit-history .visit-history-table {
+    min-width: 900px;
+  }
+}
+
+/* Unvisited Sites follows the same compact data-table treatment, with room for
+   visit recency and the row-level Log Visit action. */
+.table-wrap--unvisited .unvisited-sites-table {
+  min-width: 760px;
+}
+
+.unvisited-sites-table thead th:nth-child(1) {
+  width: 25%;
+}
+
+.unvisited-sites-table thead th:nth-child(2) {
+  width: 22%;
+}
+
+.unvisited-sites-table thead th:nth-child(3) {
+  width: 15%;
+}
+
+.unvisited-sites-table thead th:nth-child(4) {
+  width: 16%;
+}
+
+.unvisited-sites-table thead th:nth-child(5) {
+  width: 10%;
+}
+
+.unvisited-sites-table thead th:nth-child(6) {
+  width: 12%;
+}
+
+.unvisited-sites-table tbody td:last-child {
+  text-align: right;
+}
+
+.unvisited-sites-table .unvisited-log-btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .table-wrap--unvisited .unvisited-sites-table {
+    min-width: 720px;
+  }
+}
+
 /* ── Bakery Reports card header ─────────────────────────────────────────
    Standfirst left, primary actions pinned top-right inside the card. The
    actions used to sit beside the page h1 outside it; on a page whose nav bar
@@ -14321,9 +14543,36 @@ body.visit-log-filter-open .mobile-bottom-nav {
   max-height: calc(100vh - 40px);
 }
 
-/* Log Visit runs two columns, so it gets the extra width. */
+/* Log Visit uses the same full-screen frame as the report drilldowns. */
 .drillInner.form-modal--wide {
-  width: min(96vw, 1080px);
+  width: min(96vw, 1480px);
+  height: calc(100vh - 40px);
+  max-height: none;
+}
+
+/* Keep the full-screen shell without stretching its form controls across the
+   entire frame. The denser rhythm also keeps the notes field above the fixed
+   footer at common laptop heights. */
+.form-modal--wide .form-modal__body--split {
+  padding-inline: max(0px, calc((100% - 1240px) / 2));
+}
+
+.form-modal--wide .form-modal__col {
+  gap: 10px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.form-modal--wide .form-field {
+  gap: 4px;
+}
+
+.form-modal--wide .form-field-row {
+  gap: 12px;
+}
+
+.form-modal--wide .form-modal__notes {
+  min-height: 96px;
 }
 
 .form-modal__header {
@@ -14632,6 +14881,17 @@ body.visit-log-filter-open .mobile-bottom-nav {
   .form-modal__footer {
     padding-left: 22px;
     padding-right: 22px;
+  }
+}
+
+@media (max-width: 540px) {
+  .drillInner.form-modal--wide {
+    width: 100%;
+    height: calc(100vh - 16px);
+  }
+
+  .form-modal--wide .form-field-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -18679,9 +18939,10 @@ body.profile-modal-open {
   margin-bottom: 20px;
 }
 
-.focus-page-intro h2 {
+.focus-page-intro h1 {
   margin: 0;
   font-size: 1.28rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
@@ -23159,7 +23420,7 @@ body[data-dash-tab="cei"] .methodology {
   }
 
   #visitReportModal .visit-report-body--railed .visit-report-layout {
-    grid-template-columns: 236px minmax(0, 1fr);
+    grid-template-columns: 240.6px minmax(0, 1fr);
   }
 
   #visitReportModal .visit-report-rail {
@@ -23198,30 +23459,34 @@ body[data-dash-tab="cei"] .methodology {
     max-width: 92ch;
   }
 
-  /* ── Section rail ── */
+  /* ── Section rail ──
+     Kept compact — this column also carries the overview stat card and, on
+     reports with many sections (NBO in particular), the link list is long
+     enough that a looser rhythm here pushes the rail past the panel height. */
   #visitReportModal .visit-report-rail .visit-report-toc {
     position: sticky;
     top: 0;
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 9px;
-    padding: 13px 12px;
+    gap: 6px;
+    padding: 9px 10px;
   }
 
   #visitReportModal .visit-report-rail .visit-report-toc > div {
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
     overflow: visible;
   }
 
   #visitReportModal .visit-report-rail .visit-report-toc a {
-    min-height: 33px;
-    padding: 6px 10px;
+    min-height: 26px;
+    padding: 4px 9px;
     border-color: transparent;
-    border-radius: 9px;
+    border-radius: 8px;
     background: transparent;
-    line-height: 1.3;
+    font-size: 0.72rem;
+    line-height: 1.25;
     text-align: left;
     white-space: normal;
   }
@@ -23233,7 +23498,7 @@ body[data-dash-tab="cei"] .methodology {
   }
 
   #visitReportModal .visit-report-rail .visit-report-pdf-btn {
-    margin: 3px 0 0;
+    margin: 2px 0 0;
     justify-content: center;
   }
 
@@ -23310,7 +23575,7 @@ body[data-dash-tab="cei"] .methodology {
       grid-template-rows: auto minmax(0, 1fr);
     }
 
-    /* Losing the rail's 236px does not buy back a third section column. */
+    /* Losing the rail's 240.6px does not buy back a third section column. */
     #visitReportModal .visit-report-content {
       grid-template-columns: repeat(var(--report-cols-md, 2), minmax(0, 1fr));
     }
@@ -23400,5 +23665,1278 @@ body[data-dash-tab="cei"] .methodology {
   #visitReportModal .visit-report-content > .visit-report-note,
   #visitReportModal .visit-report-content > .visit-report-empty {
     grid-column: 1 / -1;
+  }
+}
+
+/* ===========================================================================
+   FLUID DESKTOP DASHBOARD SHELL
+
+   The menu is a true left rail beneath the sticky brand banner. Filters and
+   page content share the remaining viewport width so their left and right
+   edges stay aligned. The existing workspace wrapper remains in the DOM for
+   sidebar state and mobile behaviour; display: contents promotes its two
+   children into this desktop grid without duplicating markup.
+   ========================================================================== */
+@media (min-width: 981px) {
+  :root {
+    --dashboard-header-h: 57px;
+  }
+
+  .header {
+    height: var(--dashboard-header-h);
+    min-height: var(--dashboard-header-h);
+  }
+
+  #dashboardContainer {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 clamp(18px, 1.5vw, 30px) 28px 0;
+    overflow: visible;
+  }
+
+  #dashboardContent {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: clamp(12px, 1vw, 20px);
+    row-gap: 12px;
+    align-items: start;
+    min-width: 0;
+  }
+
+  #dashboardContent > .filter-bar,
+  #dashboardContent > .visit-log-filter-bar {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    margin: 12px 0 0;
+  }
+
+  #dashboardContent > .dashboard-workspace {
+    display: contents;
+  }
+
+  #dashboardContent .dashboard-sidebar {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    position: sticky;
+    top: var(--dashboard-header-h);
+    align-self: start;
+    height: calc(100vh - var(--dashboard-header-h));
+    height: calc(100dvh - var(--dashboard-header-h));
+    min-height: 0;
+    border: 0;
+    border-right: 1px solid rgba(34, 31, 26, 0.08);
+    border-radius: 0;
+    box-shadow: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(34, 31, 26, 0.18) transparent;
+  }
+
+  #dashboardContent .dashboard-sidebar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  #dashboardContent .dashboard-sidebar::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(34, 31, 26, 0.16);
+  }
+
+  #dashboardContent .dashboard-workspace__main {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    padding: clamp(18px, 1.5vw, 26px);
+    border: 1px solid rgba(34, 31, 26, 0.06);
+    border-radius: 22px;
+    background:
+      linear-gradient(180deg, rgba(34, 31, 26, 0.018) 0%, rgba(34, 31, 26, 0.006) 100%),
+      rgba(255, 255, 255, 0.44);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 18px 44px rgba(48, 36, 22, 0.07);
+  }
+}
+
+/* ==========================================================================
+   FLATTENED LIST-VIEW SHELLS
+
+   Priority Overview and the four Bakery Reports views already provide their
+   own accurate, dynamic heading. Their former white .section card duplicated
+   the rounded dashboard main shell and left a generic parent title floating
+   above the real page name. Promote the view content into the main shell while
+   leaving nested data surfaces (toolbars, tables, rows, and detail cards)
+   untouched.
+   ========================================================================== */
+body[data-dash-tab="visit-log"] .section-page-title,
+body[data-dash-tab="target"][data-target-subtab="summary"] .section-page-title {
+  display: none;
+}
+
+body[data-dash-tab="visit-log"] #dashboardContent .dashboard-workspace__main,
+body[data-dash-tab="target"][data-target-subtab="summary"] #dashboardContent .dashboard-workspace__main {
+  background: #fff;
+}
+
+#tab-visit-log > .section,
+#tab-target [data-target-subtab-panel="summary"] > .section {
+  --section-pad-x: 0px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transition: none;
+}
+
+#tab-visit-log > .section:hover,
+#tab-target [data-target-subtab-panel="summary"] > .section:hover {
+  border-color: transparent;
+}
+
+#tab-visit-log .visit-log-section-title {
+  font-size: 1.28rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Keep the identity banners compact so the report content remains the visual
+   focus. Every bakery report type deliberately shares this exact geometry;
+   data-report-type may change colour and content, but never text or control
+   positioning. The Focus Bakery workspace uses the same restrained scale. */
+@media screen {
+  #visitReportModal .drill-modal-header,
+  #focusDetailModal .drill-modal-header {
+    gap: 18px;
+    padding: 13px 20px 11px;
+  }
+
+  #visitReportModal .drill-modal-eyebrow,
+  #focusDetailModal .drill-modal-eyebrow {
+    margin-bottom: 3px;
+    font-size: 0.59rem;
+  }
+
+  #visitReportModal .drill-modal-title,
+  #focusDetailModal .drill-modal-title {
+    font-size: clamp(1.1rem, 1.55vw, 1.28rem);
+    line-height: 1.15;
+  }
+
+  #visitReportModal .drill-modal-subtitle,
+  #focusDetailModal .drill-modal-subtitle {
+    margin-top: 3px;
+    font-size: 0.76rem;
+    line-height: 1.3;
+  }
+
+  #visitReportModal .drill-modal-badge,
+  #focusDetailModal .drill-modal-badge {
+    min-height: 22px;
+    padding: 3px 8px;
+    font-size: 0.62rem;
+  }
+
+  @media (max-width: 760px) {
+    #visitReportModal .drill-modal-header,
+    #focusDetailModal .drill-modal-header {
+      gap: 10px;
+      padding: 12px 13px 10px;
+    }
+
+    #visitReportModal .drill-modal-title,
+    #focusDetailModal .drill-modal-title {
+      font-size: 1.08rem;
+    }
+
+    #visitReportModal .drill-modal-subtitle,
+    #focusDetailModal .drill-modal-subtitle {
+      font-size: 0.72rem;
+    }
+  }
+}
+
+/* ==========================================================================
+   CHECK-IN REPORT COMPOSITION
+
+   The visit note is the report. Visit facts and the monthly snapshot sit in a
+   compact CQV-style rail, while the map and weather form a quiet support rail.
+   ========================================================================== */
+@media screen {
+  #visitReportModal[data-report-type='checkin'] #visitReportBody,
+  #visitReportModal[data-report-type='opening'] #visitReportBody {
+    display: flex;
+    flex-direction: column;
+    padding: 15px clamp(14px, 2vw, 26px) clamp(16px, 1.8vw, 24px);
+    overflow: hidden;
+    scroll-behavior: auto;
+  }
+
+  #visitReportModal .visit-report-checkin-workspace {
+    display: grid;
+    flex: 1 1 auto;
+    align-items: stretch;
+    grid-template-columns: 260px minmax(0, 1fr) 280px;
+    gap: 16px;
+    min-width: 0;
+    min-height: 0;
+    padding-right: 0;
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+
+  #visitReportModal .visit-report-checkin-rail {
+    display: flex;
+    align-self: stretch;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  #visitReportModal .visit-report-checkin-details {
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 1px solid rgba(146, 137, 120, 0.22);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.97);
+  }
+
+  /* Header keeps its text but drops the tinted wash and pill-row look below,
+     matching the flat, divider-ruled rows of the CQV/NBO/routine rail. */
+  #visitReportModal .visit-report-checkin-details > h4 {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+    margin: 0;
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(146, 137, 120, 0.18);
+    color: var(--drill-accent, var(--accent));
+    background: transparent;
+    font-size: 0.63rem;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    min-height: 32px;
+    padding: 6px 12px;
+    border: 0;
+    border-bottom: 1px solid rgba(146, 137, 120, 0.18);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list > div:last-child {
+    border-bottom: 0;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list dt {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.6rem;
+    font-weight: 780;
+    letter-spacing: 0.04em;
+    line-height: 1.25;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list dd {
+    max-width: 70%;
+    min-width: 0;
+    margin: 0;
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 750;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
+  #visitReportModal[data-report-type='checkin'] .visit-report-section--comments {
+    display: flex;
+    align-self: stretch;
+    flex-direction: column;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(146, 137, 120, 0.22);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 10px 28px rgba(54, 47, 38, 0.055);
+  }
+
+  #visitReportModal[data-report-type='opening'] .visit-report-section--comments {
+    display: flex;
+    align-self: stretch;
+    flex-direction: column;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(146, 137, 120, 0.22);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 10px 28px rgba(54, 47, 38, 0.055);
+  }
+
+  #visitReportModal .visit-report-comments-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex: 0 0 auto;
+    min-height: 40px;
+    margin: 0;
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(146, 137, 120, 0.18);
+    background: color-mix(in srgb, var(--drill-accent, var(--accent)) 3%, white);
+  }
+
+  #visitReportModal .visit-report-comments-heading > div > span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--drill-accent, var(--accent));
+    font-size: 0.63rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-report-comments-heading h4 {
+    margin: 0;
+    color: var(--text);
+    font-size: 0.82rem;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    text-transform: none;
+  }
+
+  #visitReportModal .visit-report-comment-byline {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px 18px;
+    flex: 0 0 auto;
+    max-width: 72%;
+    margin: 0;
+    color: var(--text-2);
+    text-align: right;
+  }
+
+  #visitReportModal .visit-report-comment-byline > span {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  #visitReportModal .visit-report-comment-byline small {
+    font-size: 0.58rem;
+    font-weight: 780;
+    letter-spacing: 0.075em;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-report-comment-byline strong {
+    color: var(--text);
+    font-size: 0.72rem;
+    font-weight: 720;
+  }
+
+  #visitReportModal .visit-report-notes {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: clamp(18px, 1.5vw, 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 0;
+    border-radius: 0;
+    outline: 0;
+    background: transparent;
+    box-shadow: none;
+    scrollbar-gutter: auto;
+  }
+
+  #visitReportModal .visit-report-notes:focus-visible {
+    box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--drill-accent, var(--accent)) 14%, transparent);
+  }
+
+  #visitReportModal[data-report-type='checkin'] .visit-report-comment--primary,
+  #visitReportModal[data-report-type='opening'] .visit-report-comment--primary {
+    width: 100%;
+    max-width: 92ch;
+    margin: 0;
+    color: var(--text);
+    font-size: clamp(0.92rem, 0.9vw, 1.02rem);
+    font-style: normal;
+    line-height: 1.72;
+    white-space: pre-wrap;
+  }
+
+  #visitReportModal .visit-report-checkin-context {
+    display: flex;
+    align-self: stretch;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  #visitReportModal .visit-context-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+
+  #visitReportModal .visit-context-heading > p {
+    max-width: 58ch;
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.67rem;
+    line-height: 1.45;
+    text-align: right;
+  }
+
+  #visitReportModal .visit-context-heading > div:first-child > span,
+  #visitReportModal .visit-context-card-heading > span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--drill-accent, var(--accent));
+    font-size: 0.63rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-context-heading h4 {
+    margin: 0;
+    color: var(--text);
+    font-size: 1.04rem;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+  }
+
+  #visitReportModal .visit-context-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  #visitReportModal .visit-context-chips > span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 4px 9px;
+    border: 1px solid rgba(146, 137, 120, 0.2);
+    border-radius: 999px;
+    color: var(--text-2);
+    background: rgba(255, 255, 255, 0.82);
+    font-size: 0.66rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  #visitReportModal .visit-context-monthly {
+    display: block;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(146, 137, 120, 0.22);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.97);
+  }
+
+  /* Header keeps its text but drops the tinted wash and pill-row look below,
+     matching the flat, divider-ruled rows of the CQV/NBO/routine rail. */
+  #visitReportModal .visit-context-monthly-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-direction: row;
+    gap: 8px;
+    min-width: 0;
+    min-height: 32px;
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(146, 137, 120, 0.18);
+    background: transparent;
+  }
+
+  #visitReportModal .visit-context-monthly-heading > span {
+    display: block;
+    margin-bottom: 0;
+    color: var(--drill-accent, var(--accent));
+    font-size: 0.63rem;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-context-monthly-heading h5 {
+    margin: 0;
+    color: var(--text);
+    font-size: 0.72rem;
+    font-weight: 760;
+    letter-spacing: -0.012em;
+  }
+
+  #visitReportModal .visit-context-monthly-heading p {
+    margin: 5px 0 0;
+    color: var(--text-2);
+    font-size: 0.6rem;
+    line-height: 1.38;
+  }
+
+  #visitReportModal .visit-context-monthly-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  #visitReportModal .visit-context-monthly--activity .visit-context-monthly-stats {
+    display: flex;
+  }
+
+  #visitReportModal .visit-context-monthly-stat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    min-height: 32px;
+    padding: 6px 12px;
+    border: 0;
+    border-bottom: 1px solid rgba(146, 137, 120, 0.18);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  #visitReportModal .visit-context-monthly-stat:last-child {
+    border-bottom: 0;
+  }
+
+  #visitReportModal .visit-context-monthly-stat dt {
+    overflow: hidden;
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.6rem;
+    font-weight: 780;
+    letter-spacing: 0.04em;
+    line-height: 1.25;
+    text-transform: uppercase;
+    white-space: normal;
+  }
+
+  #visitReportModal .visit-context-monthly-stat dd {
+    margin: 0;
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 780;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    text-align: right;
+  }
+
+  #visitReportModal .visit-context-monthly-stat small {
+    display: block;
+    overflow: hidden;
+    margin-top: 4px;
+    color: var(--text-2);
+    font-size: 0.6rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #visitReportModal .visit-context-grid {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(230px, 0.85fr) minmax(220px, 1.15fr);
+    gap: 12px;
+    min-height: 0;
+  }
+
+  #visitReportModal .visit-context-card {
+    display: flex;
+    min-width: 0;
+    overflow: hidden;
+    flex-direction: column;
+    border: 1px solid rgba(146, 137, 120, 0.22);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.97);
+  }
+
+  /* Map card keeps its intrinsic height; the weather card absorbs whatever
+     vertical space is left so the support rail fits without scrolling. */
+  #visitReportModal .visit-context-map-card {
+    flex: 0 0 auto;
+  }
+
+  #visitReportModal .visit-context-weather-card {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  #visitReportModal .visit-context-card-heading {
+    padding: 9px 12px;
+  }
+
+  #visitReportModal .visit-context-card-heading--simple {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 40px;
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(146, 137, 120, 0.18);
+    background: color-mix(in srgb, var(--drill-accent, var(--accent)) 3%, white);
+  }
+
+  #visitReportModal .visit-context-card-heading--simple small {
+    color: var(--text-2);
+    font-size: 0.65rem;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+
+  #visitReportModal .visit-context-card-heading--simple > a {
+    color: var(--drill-accent, var(--accent));
+    font-size: 0.65rem;
+    font-weight: 750;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  #visitReportModal .visit-context-card-heading--simple > a:hover,
+  #visitReportModal .visit-context-card-heading--simple > a:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  #visitReportModal .visit-context-card-heading > strong {
+    display: block;
+    overflow: hidden;
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 750;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #visitReportModal .visit-context-map {
+    position: relative;
+    z-index: 0;
+    display: grid;
+    flex: 0 0 auto;
+    width: 100%;
+    height: clamp(190px, 28vh, 230px);
+    min-height: 0;
+    aspect-ratio: auto;
+    overflow: hidden;
+    place-items: center;
+    border: 0;
+    background:
+      radial-gradient(circle at 50% 48%, rgba(13, 124, 160, 0.1), transparent 34%),
+      #eceae4;
+  }
+
+  #visitReportModal .visit-context-map.leaflet-container {
+    font-family: inherit;
+  }
+
+  #visitReportModal .visit-context-map .leaflet-control-attribution {
+    padding: 2px 5px;
+    font-size: 0.52rem;
+  }
+
+  #visitReportModal .visit-context-weather-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 0;
+    padding: 12px;
+    overflow-y: auto;
+    border: 0;
+    background:
+      radial-gradient(circle at 92% 4%, rgba(13, 124, 160, 0.09), transparent 34%),
+      #faf9f6;
+  }
+
+  #visitReportModal .visit-context-weather-summary {
+    margin: 0;
+    color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 780;
+    letter-spacing: -0.012em;
+  }
+
+  #visitReportModal .visit-context-weather-overview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  #visitReportModal .visit-context-weather-symbol {
+    display: grid;
+    flex: 0 0 58px;
+    width: 58px;
+    height: 58px;
+    place-items: center;
+    border: 1px solid rgba(146, 137, 120, 0.14);
+    border-radius: 14px;
+    background: rgba(232, 242, 248, 0.72);
+  }
+
+  #visitReportModal .visit-context-weather-symbol[data-weather-tone='clear'] {
+    background: rgba(255, 240, 190, 0.72);
+  }
+
+  #visitReportModal .visit-context-weather-symbol[data-weather-tone='wet'],
+  #visitReportModal .visit-context-weather-symbol[data-weather-tone='storm'] {
+    background: rgba(220, 235, 245, 0.78);
+  }
+
+  #visitReportModal .visit-context-weather-symbol[data-weather-tone='cold'],
+  #visitReportModal .visit-context-weather-symbol[data-weather-tone='fog'] {
+    background: rgba(235, 240, 243, 0.82);
+  }
+
+  #visitReportModal .visit-weather-icon {
+    width: 48px;
+    height: 48px;
+    overflow: visible;
+  }
+
+  #visitReportModal .visit-weather-icon__sun {
+    fill: #ffd45c;
+    stroke: #d99b1c;
+    stroke-width: 2;
+  }
+
+  #visitReportModal .visit-weather-icon__sunray,
+  #visitReportModal .visit-weather-icon__rain,
+  #visitReportModal .visit-weather-icon__snow,
+  #visitReportModal .visit-weather-icon__fog {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  #visitReportModal .visit-weather-icon__sunray {
+    stroke: #d99b1c;
+    stroke-width: 2.4;
+  }
+
+  #visitReportModal .visit-weather-icon__moon {
+    fill: #f2df9d;
+    stroke: #8b7a53;
+    stroke-width: 2;
+  }
+
+  #visitReportModal .visit-weather-icon__star {
+    fill: #d6ab38;
+  }
+
+  #visitReportModal .visit-weather-icon__cloud {
+    fill: #eef2f4;
+    stroke: #7d8b94;
+    stroke-linejoin: round;
+    stroke-width: 2;
+  }
+
+  #visitReportModal .visit-weather-icon__rain {
+    stroke: #2f88b8;
+    stroke-width: 2.6;
+  }
+
+  #visitReportModal .visit-weather-icon__snow {
+    stroke: #5d9fc1;
+    stroke-width: 1.8;
+  }
+
+  #visitReportModal .visit-weather-icon__fog {
+    stroke: #8b989f;
+    stroke-width: 2.3;
+  }
+
+  #visitReportModal .visit-weather-icon__lightning {
+    fill: #f2bd2e;
+    stroke: #b87908;
+    stroke-linejoin: round;
+    stroke-width: 1.5;
+  }
+
+  #visitReportModal .visit-context-weather-copy {
+    min-width: 0;
+  }
+
+  #visitReportModal .visit-context-weather-time {
+    margin: 3px 0 0;
+    color: var(--text-2);
+    font-size: 0.64rem;
+    line-height: 1.35;
+  }
+
+  #visitReportModal .visit-context-weather-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  #visitReportModal .visit-context-weather-metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    min-height: 34px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  #visitReportModal .visit-context-weather-metric > span {
+    display: block;
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.64rem;
+    font-weight: 750;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-context-weather-metric > strong {
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 750;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  #visitReportModal .visit-context-weather-note {
+    margin: 11px 0 0;
+    color: var(--text-2);
+    font-size: 0.63rem;
+    line-height: 1.4;
+  }
+
+  #visitReportModal .visit-context-loading,
+  #visitReportModal .visit-context-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 92px;
+    padding: 16px;
+    color: var(--text-2);
+    font-size: 0.72rem;
+    line-height: 1.45;
+    text-align: center;
+  }
+
+  #visitReportModal .visit-context-loading > span {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(13, 124, 160, 0.18);
+    border-top-color: var(--drill-accent, var(--accent));
+    border-radius: 50%;
+    animation: visit-context-spin 0.8s linear infinite;
+  }
+
+  #visitReportModal .visit-context-empty > strong {
+    color: var(--text);
+    font-size: 0.78rem;
+  }
+
+  #visitReportModal .visit-context-empty > span {
+    max-width: 34ch;
+  }
+
+  @keyframes visit-context-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #visitReportModal .visit-context-loading > span {
+      animation: none;
+    }
+  }
+
+  @media (max-width: 1080px) {
+    #visitReportModal[data-report-type='checkin'] #visitReportBody,
+    #visitReportModal[data-report-type='opening'] #visitReportBody {
+      overflow-y: auto;
+    }
+
+    #visitReportModal .visit-report-checkin-workspace {
+      flex: 0 0 auto;
+      grid-template-columns: minmax(0, 1fr);
+      min-height: auto;
+      padding-right: 0;
+      overflow: visible;
+    }
+
+    #visitReportModal .visit-report-checkin-rail {
+      display: grid;
+      align-self: stretch;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    #visitReportModal[data-report-type='checkin'] .visit-report-section--comments,
+    #visitReportModal[data-report-type='opening'] .visit-report-section--comments,
+    #visitReportModal .visit-report-checkin-context {
+      min-height: auto;
+    }
+
+    #visitReportModal .visit-report-notes {
+      max-height: min(52vh, 520px);
+    }
+
+    #visitReportModal .visit-report-checkin-support {
+      display: grid;
+      grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+      align-items: start;
+      overflow: visible;
+    }
+  }
+
+  #visitReportModal .visit-context-source {
+    align-self: flex-end;
+    margin: 0 12px 10px;
+    color: var(--drill-accent, var(--accent));
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.3;
+    text-decoration: none;
+  }
+
+  #visitReportModal .visit-context-source:hover,
+  #visitReportModal .visit-context-source:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  @media (max-width: 700px) {
+    #visitReportModal .visit-report-checkin-rail {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #visitReportModal .visit-report-comment-byline {
+      justify-content: flex-start;
+      max-width: none;
+      text-align: left;
+    }
+
+    #visitReportModal .visit-report-checkin-context {
+      padding: 0;
+    }
+
+    #visitReportModal .visit-context-heading {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #visitReportModal .visit-context-heading > p {
+      max-width: 62ch;
+      text-align: left;
+    }
+
+    #visitReportModal .visit-context-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #visitReportModal .visit-report-checkin-support {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #visitReportModal .visit-context-map-card {
+      width: min(100%, 320px);
+      justify-self: start;
+    }
+
+    #visitReportModal .visit-context-map {
+      height: clamp(190px, 42vw, 230px);
+      min-height: 0;
+    }
+
+    #visitReportModal .visit-context-weather-body {
+      min-height: 0;
+    }
+  }
+}
+
+@media print {
+  #visitReportModal .visit-report-checkin-context {
+    display: none !important;
+  }
+}
+
+/* ===========================================================================
+   AUDIT REPORTS: COMPACT OVERVIEW + TYPE-SPECIFIC READING ORDER
+
+   CQV, CQV follow-up and NBO reports share the shell, but not the emphasis.
+   Their type already lives in the header badge, so the overview keeps only
+   four decision-useful facts and uses one compact line instead of a card row.
+   ========================================================================== */
+@media screen {
+  #visitReportModal[data-report-type='cqv'] #visitReportBody,
+  #visitReportModal[data-report-type='followup'] #visitReportBody,
+  #visitReportModal[data-report-type='nbo'] #visitReportBody,
+  #visitReportModal[data-report-type='routine'] #visitReportBody {
+    gap: 10px;
+    padding-top: 10px;
+  }
+
+  #visitReportModal .visit-report-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  #visitReportModal .visit-report-rail > .visit-report-overview {
+    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    margin: 0;
+    border-radius: 12px;
+    box-shadow: none;
+  }
+
+  #visitReportModal .visit-report-overview .visit-report-stat {
+    display: grid;
+    align-items: center;
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 8px;
+    min-height: 32px;
+    padding: 6px 12px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(146, 137, 120, 0.18);
+  }
+
+  #visitReportModal .visit-report-overview .visit-report-stat:last-child {
+    border-bottom: 0;
+  }
+
+  #visitReportModal .visit-report-overview .visit-report-stat--primary {
+    background: color-mix(in srgb, var(--drill-accent, var(--accent)) 5%, #fff);
+  }
+
+  #visitReportModal .visit-report-overview .drill-card__label {
+    min-width: 0;
+    margin: 0;
+    font-size: 0.6rem;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  #visitReportModal .visit-report-overview .drill-card__value {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--report-stat-color, var(--text));
+    font-size: 0.8rem;
+    line-height: 1.25;
+    text-align: right;
+    white-space: normal;
+  }
+
+  #visitReportModal .visit-report-overview .visit-report-stat--primary .drill-card__value {
+    color: var(--report-stat-color, var(--drill-accent, var(--accent)));
+    font-size: 0.9rem;
+  }
+
+  #visitReportModal[data-report-type='cqv'] .visit-report-body--railed .visit-report-layout,
+  #visitReportModal[data-report-type='followup'] .visit-report-body--railed .visit-report-layout,
+  #visitReportModal[data-report-type='nbo'] .visit-report-body--railed .visit-report-layout,
+  #visitReportModal[data-report-type='routine'] .visit-report-body--railed .visit-report-layout {
+    /* Matches the check-in modal's left rail width for consistency. */
+    grid-template-columns: 240.6px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  #visitReportModal[data-report-type='cqv'] .visit-report-content,
+  #visitReportModal[data-report-type='followup'] .visit-report-content,
+  #visitReportModal[data-report-type='nbo'] .visit-report-content,
+  #visitReportModal[data-report-type='routine'] .visit-report-content {
+    gap: 12px;
+  }
+
+  #visitReportModal[data-report-type='nbo'] .visit-report-content {
+    width: min(100%, 1180px);
+  }
+
+  #visitReportModal[data-report-type='cqv'] .visit-report-section,
+  #visitReportModal[data-report-type='followup'] .visit-report-section,
+  #visitReportModal[data-report-type='nbo'] .visit-report-section {
+    padding: 16px 18px 20px;
+    border-radius: 14px;
+  }
+
+  #visitReportModal .visit-report-section--summary .visit-report-comment {
+    max-width: 94ch;
+    margin-top: 0;
+    color: var(--text);
+    font-size: 0.84rem;
+    font-style: normal;
+    line-height: 1.58;
+  }
+
+  #visitReportModal[data-report-type='followup'] .visit-report-section--action,
+  #visitReportModal[data-report-type='nbo'] .visit-report-section--coaching {
+    border-color: color-mix(in srgb, var(--drill-accent, var(--accent)) 28%, rgba(146, 137, 120, 0.2));
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--drill-accent, var(--accent)) 78%, transparent),
+      0 7px 20px rgba(54, 47, 38, 0.045);
+  }
+
+  #visitReportModal[data-report-type='cqv'] .visit-report-hs-banner,
+  #visitReportModal[data-report-type='followup'] .visit-report-hs-banner {
+    min-height: 42px;
+    padding: 10px 14px;
+    font-size: 0.8rem;
+  }
+
+  #visitReportModal[data-report-type='nbo'] .visit-report-section--questions .visit-question {
+    padding-block: 11px;
+  }
+}
+
+@media screen and (max-width: 1080px) {
+  /* Below this width the rail stacks above the content as a top panel
+     instead of sitting beside it. Neither pane has a bounded height to
+     scroll within any more, so — same fix as checkin/opening at this
+     breakpoint — the body itself scrolls instead of clipping whatever
+     doesn't fit. */
+  #visitReportModal[data-report-type='cqv'] #visitReportBody,
+  #visitReportModal[data-report-type='followup'] #visitReportBody,
+  #visitReportModal[data-report-type='nbo'] #visitReportBody,
+  #visitReportModal[data-report-type='routine'] #visitReportBody {
+    overflow-y: auto;
+  }
+
+  #visitReportModal[data-report-type='cqv'] .visit-report-body--railed .visit-report-layout,
+  #visitReportModal[data-report-type='followup'] .visit-report-body--railed .visit-report-layout,
+  #visitReportModal[data-report-type='nbo'] .visit-report-body--railed .visit-report-layout,
+  #visitReportModal[data-report-type='routine'] .visit-report-body--railed .visit-report-layout {
+    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: auto;
+    gap: 11px;
+  }
+
+  #visitReportModal[data-report-type='nbo'] .visit-report-content {
+    width: 100%;
+  }
+
+  #visitReportModal .visit-report-rail {
+    overflow: visible;
+  }
+
+  #visitReportModal .visit-report-rail .visit-report-toc {
+    position: static;
+  }
+
+  #visitReportModal .visit-report-content {
+    overflow: visible;
+  }
+
+  #visitReportModal .visit-report-rail > .visit-report-overview {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  #visitReportModal .visit-report-overview .visit-report-stat {
+    border-right: 1px solid rgba(146, 137, 120, 0.18);
+    border-bottom: 0;
+  }
+
+  #visitReportModal .visit-report-overview .visit-report-stat:last-child {
+    border-right: 0;
+  }
+}
+
+@media screen and (max-width: 760px) {
+  #visitReportModal .visit-report-rail > .visit-report-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #visitReportModal .visit-report-overview .visit-report-stat {
+    align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+    min-height: 54px;
+    padding: 8px 10px;
+    border-right: 1px solid rgba(146, 137, 120, 0.18);
+    border-bottom: 1px solid rgba(146, 137, 120, 0.18);
+  }
+
+  #visitReportModal .visit-report-overview .visit-report-stat:nth-child(2n) {
+    border-right: 0;
+  }
+
+  #visitReportModal .visit-report-overview .visit-report-stat:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  #visitReportModal .visit-report-overview .drill-card__value {
+    width: 100%;
+    text-align: left;
+  }
+
+  #visitReportModal[data-report-type='cqv'] .visit-report-section,
+  #visitReportModal[data-report-type='followup'] .visit-report-section,
+  #visitReportModal[data-report-type='nbo'] .visit-report-section {
+    padding: 14px 14px 18px;
   }
 }

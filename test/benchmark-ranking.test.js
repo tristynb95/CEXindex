@@ -167,3 +167,90 @@ test('the benchmark KPI breakdown shows weighted points and reconciles adjustmen
   assert.match(adjustedHtml, /kpi-info__adjustment[\s\S]*?Volume adjustment[\s\S]*?-2\.1/);
   assert.match(adjustedHtml, /kpi-info__total[\s\S]*?<span>Score<\/span>[\s\S]*?70\.0/);
 });
+
+// The KPI row sits inside .dashboard-workspace, which clips its overflow, so a
+// panel opening upward from the top row was cut off and unreadable.
+function loadKpiInfoPlacement() {
+  const start = app.indexOf('    function visibleBounds(el) {');
+  const end = app.indexOf('\n  })();', start);
+  assert.ok(start > 0 && end > start, 'KPI info placement block not found in app.js');
+  const listeners = [];
+  const context = {
+    Math,
+    window: {
+      innerWidth: 1550,
+      innerHeight: 830,
+      getComputedStyle: el => el.computed || { overflow: 'visible', overflowX: 'visible', overflowY: 'visible' },
+      addEventListener: () => {}
+    },
+    document: { body: { tagName: 'BODY' }, addEventListener: () => {}, querySelectorAll: () => [] }
+  };
+  const { positionKpiInfo } = vm.runInNewContext(
+    `(function () { ${app.slice(start, end)}; return { positionKpiInfo }; }())`,
+    context
+  );
+  return { positionKpiInfo, listeners };
+}
+
+function makeDisclosure({
+  cardTop, clipTop, panelHeight = 386,
+  cardLeft = 266, cardWidth = 330, panelWidth = 330,
+  clipLeft = 0, clipWidth = 1540
+}) {
+  const rect = (top, height, left, width) => () =>
+    ({ top, bottom: top + height, left, right: left + width, width, height });
+  const workspace = {
+    computed: { overflow: 'clip', overflowX: 'clip', overflowY: 'clip' },
+    getBoundingClientRect: rect(clipTop, 1300, clipLeft, clipWidth),
+    parentElement: { tagName: 'BODY' }
+  };
+  const card = { getBoundingClientRect: rect(cardTop, 118, cardLeft, cardWidth), parentElement: workspace };
+  const summary = { style: {}, getBoundingClientRect: rect(cardTop + 90, 20, cardLeft + cardWidth - 28, 20) };
+  // Panel measured where CSS puts it by default: to the right of the card, top-aligned.
+  const panel = { style: {}, getBoundingClientRect: rect(cardTop, panelHeight, cardLeft + cardWidth + 8, panelWidth) };
+  return {
+    panel,
+    disclosure: {
+      style: {},
+      getBoundingClientRect: rect(cardTop, 118, cardLeft, cardWidth),
+      parentElement: card,
+      querySelector: sel => (sel === 'summary' ? summary : panel)
+    }
+  };
+}
+
+test('the benchmark KPI panel opens to the right of the card and flips left when the right edge would clip', () => {
+  const { positionKpiInfo } = loadKpiInfoPlacement();
+
+  // Plenty of room on both sides: the CSS default (right of the card) is left alone.
+  const roomy = makeDisclosure({ cardTop: 234, clipTop: 75 });
+  positionKpiInfo(roomy.disclosure);
+  assert.equal(roomy.panel.style.left, '');
+  assert.equal(roomy.panel.style.right, '');
+  assert.equal(roomy.panel.style.top, '0px');
+
+  // Card sits near the right edge of the clipped workspace, but has room on
+  // its left: flip the panel to that side instead of overflowing the clip.
+  const nearRightEdge = makeDisclosure({ cardTop: 234, clipTop: 75, cardLeft: 400, clipWidth: 750 });
+  positionKpiInfo(nearRightEdge.disclosure);
+  assert.equal(nearRightEdge.panel.style.left, 'auto');
+  assert.equal(nearRightEdge.panel.style.right, '338px');
+});
+
+test('the benchmark KPI panel falls back to stacking above/below and caps its height when neither side can hold it', () => {
+  const { positionKpiInfo } = loadKpiInfoPlacement();
+
+  // Narrow mobile-width card: no room to either side, so it stacks instead.
+  const narrow = makeDisclosure({ cardTop: 234, clipTop: 75, cardLeft: 8, cardWidth: 165, clipWidth: 350 });
+  positionKpiInfo(narrow.disclosure);
+  assert.equal(narrow.panel.style.top, '118px');
+
+  // Same narrow card, but a panel tall enough that even the stacked fallback
+  // must cap its height rather than overflow the clip.
+  const short = makeDisclosure({
+    cardTop: 234, clipTop: 75, cardLeft: 8, cardWidth: 165, clipWidth: 350, panelHeight: 600
+  });
+  positionKpiInfo(short.disclosure);
+  assert.equal(short.panel.style.top, '118px');
+  assert.equal(short.panel.style.maxHeight, '466px');
+});

@@ -1617,6 +1617,9 @@ async function loadBakeryProfile(user) {
   dashboardRecords = Array.isArray(dashboardData.records)
     ? dashboardData.records
     : Object.values(dashboardData.records || {});
+  // The shared visit-report renderer uses this read-only reference for the
+  // report month's bakery snapshot on standalone pages.
+  G._dashboardRecords = dashboardRecords;
 
   var existsInData = dashboardRecords.some(function(record) { return record && sameBakery(record.b); });
   if (!bakeryMeta && !existsInData) {

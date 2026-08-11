@@ -1,4 +1,8 @@
 {
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22"
+  },
   "database": {
     "rules": "database.rules.json"
   },
@@ -9,12 +13,10 @@
     "public": ".",
     "headers": [
       {
-        "//": "HTML is the entry point and carries the ?v= stamps that bust everything else, so it must always be revalidated.",
         "source": "**/*.html",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },
       {
-        "//": "Scripts and styles were revalidated on every load — ~30 conditional requests per page, and a re-parse of a 500KB stylesheet — even when nothing had changed. Five minutes is chosen deliberately over a year-long immutable cache: only some tags carry a ?v= stamp, so a long max-age would strand a change to an unstamped file (js/app.js, js/config.js, ...) in people's browsers. This is the longest window that still lets a deploy reach everyone on their next few page views. Moving to a year requires stamping every tag first.",
         "source": "**/*.@(js|css)",
         "headers": [{ "key": "Cache-Control", "value": "public, max-age=300" }]
       },
@@ -37,6 +39,8 @@
       ".vscode/**",
       "apps-script",
       "apps-script/**",
+      "functions",
+      "functions/**",
       "tools",
       "tools/**",
       "tmp",

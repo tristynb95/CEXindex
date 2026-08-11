@@ -173,7 +173,7 @@ test('the page shell and result rows use the compact density system', () => {
   assert.match(activityStyles, /\.my-activity-stat \{[\s\S]*?padding: 11px 14px/);
   assert.match(activityStyles, /\.my-activity-action \{[\s\S]*?padding: 11px 14px/);
   assert.match(activityStyles, /\.my-activity-visit \{[\s\S]*?padding: 10px 14px/);
-  assert.match(teamStyles, /\.my-team-person \{[\s\S]*?padding: 10px 13px/);
+  assert.match(teamStyles, /\.my-team-table tbody td \{[\s\S]*?padding: 11px 14px/);
   assert.match(teamStyles, /@media \(max-width: 860px\)/);
 });
 

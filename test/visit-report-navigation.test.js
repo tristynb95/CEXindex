@@ -86,7 +86,7 @@ function loadVisitReport() {
   context.window = context;
   vm.createContext(context);
   vm.runInContext(source, context);
-  return { context, GAILS, actions, modal, subtitle, scrollCalls };
+  return { context, GAILS, actions, body, modal, subtitle, scrollCalls };
 }
 
 function navButtonIsDisabled(html, direction) {
@@ -127,4 +127,37 @@ test('moves through one bakery history while numbering the oldest report first',
 
   fixture.GAILS.closeVisitReport();
   assert.deepEqual(fixture.scrollCalls.at(-1), [0, 321]);
+});
+
+test('renders the visited bakery dashboard metrics from the report month', () => {
+  const fixture = loadVisitReport();
+  fixture.GAILS.state = {
+    ALL: [
+      { b: 'Henley', m: 'Jun 26', ac: 55, n: 40, ts: 62, v: 14, noData: false },
+      { b: 'Henley', m: 'Jul 26', ac: 81.5, n: 64.2, ts: 76.4, v: 38, noData: false }
+    ]
+  };
+  fixture.GAILS._allVisitsObj = {
+    report: { type: 'siteVisit', bakery: "GAIL'S Henley", date: '2026-07-19', time: '14:15' }
+  };
+
+  fixture.GAILS.openVisitReportById('report');
+
+  assert.match(fixture.body.innerHTML, /July 2026/);
+  assert.doesNotMatch(fixture.body.innerHTML, /visit-report-checkin-summary/);
+  assert.doesNotMatch(fixture.body.innerHTML, /visit-report-comment-byline/);
+  assert.match(fixture.body.innerHTML, /visit-report-notes/);
+  assert.match(fixture.body.innerHTML, /Visited by/);
+  assert.match(fixture.body.innerHTML, /Barista/);
+  assert.match(fixture.body.innerHTML, /First recorded visit/);
+  assert.match(fixture.body.innerHTML, /visit-report-checkin-workspace/);
+  assert.match(fixture.body.innerHTML, /visit-report-checkin-rail/);
+  assert.match(fixture.body.innerHTML, /Monthly snapshot/);
+  assert.match(fixture.body.innerHTML, /visit-context-map/);
+  assert.match(fixture.body.innerHTML, /visit-context-weather-card/);
+  assert.match(fixture.body.innerHTML, /Benchmark[\s\S]*?81\.5/);
+  assert.match(fixture.body.innerHTML, /Drink \+ Meal NPS[\s\S]*?64\.2/);
+  assert.match(fixture.body.innerHTML, /Within 2 minutes[\s\S]*?76\.4%/);
+  assert.match(fixture.body.innerHTML, /Responses[\s\S]*?38/);
+  assert.doesNotMatch(fixture.body.innerHTML, /Benchmark score[\s\S]*?55[\s\S]*?out of 100/);
 });

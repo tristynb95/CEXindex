@@ -3253,6 +3253,8 @@ async function loadActivityHub(user) {
   performanceRecords = Array.isArray(dashboardData.records)
     ? dashboardData.records
     : Object.values(dashboardData.records || {});
+  // Keep the dashboard's monthly rows available to the shared report modal.
+  G._dashboardRecords = performanceRecords;
 
   if (G.Mentions) {
     var directory = initial[4] && initial[4].exists() ? initial[4].val() : {};

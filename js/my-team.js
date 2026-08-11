@@ -61,6 +61,9 @@ const rosterSummary = document.getElementById('myTeamRosterSummary');
 const rosterSearch = document.getElementById('myTeamRosterSearch');
 const rosterSort = document.getElementById('myTeamRosterSort');
 const rosterReset = document.getElementById('myTeamRosterReset');
+const rosterExportBtn = document.getElementById('myTeamRosterExportBtn');
+const rosterTableHead = document.getElementById('myTeamRosterTableHead');
+const rosterMoreBtn = document.getElementById('myTeamRosterMore');
 
 const actionsFilter = document.getElementById('myTeamActionsFilter');
 const actionsList = document.getElementById('myTeamActionsList');
@@ -69,6 +72,7 @@ const actionsSearch = document.getElementById('myTeamActionsSearch');
 const actionsSort = document.getElementById('myTeamActionsSort');
 const actionsSummary = document.getElementById('myTeamActionsSummary');
 const actionsReset = document.getElementById('myTeamActionsReset');
+const actionsExportBtn = document.getElementById('myTeamActionsExportBtn');
 
 const visitsList = document.getElementById('myTeamVisitsList');
 const visitsCount = document.getElementById('myTeamVisitsCount');
@@ -77,6 +81,8 @@ const visitsSearch = document.getElementById('myTeamVisitsSearch');
 const visitsSort = document.getElementById('myTeamVisitsSort');
 const visitsSummary = document.getElementById('myTeamVisitsSummary');
 const visitsReset = document.getElementById('myTeamVisitsReset');
+const visitsExportBtn = document.getElementById('myTeamVisitsExportBtn');
+const visitsTableHead = document.getElementById('myTeamVisitsTableHead');
 
 const selectionBar = document.getElementById('myTeamSelection');
 const selectionText = document.getElementById('myTeamSelectionText');
@@ -85,6 +91,7 @@ const jumpNav = document.getElementById('myTeamJump');
 
 const FILTER_STORAGE_KEY = 'gails_my_team_filters';
 const VISIT_CHUNK = 20;
+const ROSTER_CHUNK = 25;
 const DEPARTMENTS = [
   { id: 'operations', name: 'Operations' },
   { id: 'coffee-team', name: 'Coffee Team' }
@@ -109,6 +116,8 @@ let period = '3';
 let actionsStatus = 'open';
 let visitLimit = VISIT_CHUNK;
 let visitResultCount = 0;
+let rosterLimit = ROSTER_CHUNK;
+let rosterResultCount = 0;
 let selectedUid = '';       // '' means the whole team
 
 // ---------- shared formatting ----------
@@ -281,6 +290,9 @@ function visitTypeTone(visit) {
 
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2, none: 3 };
 const PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low', none: 'None' };
+const ACTIONS_STATUS_LABELS = {
+  open: 'Open', overdue: 'Overdue', soon: 'Due soon', done: 'Completed', all: 'All'
+};
 
 function normalizePriority(value) {
   var v = String(value || '').toLowerCase();
@@ -773,29 +785,40 @@ function personRowHtml(row, stats, branchStats) {
       (row.teamSize > row.reportCount ? ' (' + row.teamSize + ' in their area)' : '');
   }
 
-  return '<button type="button" class="my-team-person' + (isSelected ? ' is-selected' : '') +
-    (row.depth ? ' my-team-person--nested' : '') + '"' +
+  var branchNote = branchStats
+    ? '<span class="my-team-table__branch">Area total: ' + plural(branchStats.visits, 'visit') +
+      ', ' + plural(branchStats.open, 'open action') + '</span>'
+    : '';
+
+  // Flagged directly on the row a manager is already scanning, not just in
+  // the aggregate insight sentence above — "who needs attention" should be
+  // answerable without reading every number in every row.
+  var flags = '';
+  if (!stats.visits) {
+    flags += '<span class="my-team-table__flag my-team-table__flag--muted">No visits ' +
+      escapeHtml(periodLabel()) + '</span>';
+  }
+  if (stats.overdue) {
+    flags += '<span class="my-team-table__flag my-team-table__flag--alert">' +
+      escapeHtml(plural(stats.overdue, 'overdue action')) + '</span>';
+  }
+
+  return '<tr class="my-team-row' + (isSelected ? ' is-selected' : '') +
+    (row.depth ? ' my-team-row--nested' : '') + '"' +
     ' style="--team-depth:' + row.depth + '"' +
-    ' data-person="' + escapeHtml(person.uid) + '" aria-pressed="' + isSelected + '">' +
-    '<div class="my-team-person__id">' +
-    '<strong>' + escapeHtml(person.name || person.email || 'Unnamed') + '</strong>' +
-    '<span>' + escapeHtml(person.roleName || 'Viewer') + escapeHtml(reportsNote) + '</span>' +
-    '</div>' +
-    '<div class="my-team-person__figures">' +
-    '<span class="my-team-figure"><strong>' + stats.visits + '</strong>visits</span>' +
-    '<span class="my-team-figure" title="Bakeries assigned through Region Coffee Team"><strong>' +
-    stats.bakeries + '</strong>bakeries</span>' +
-    '<span class="my-team-figure"><strong>' + stats.open + '</strong>open</span>' +
-    '<span class="my-team-figure' + (stats.overdue ? ' my-team-figure--alert' : '') + '">' +
-    '<strong>' + stats.overdue + '</strong>overdue</span>' +
-    '</div>' +
-    '<div class="my-team-person__last">' + escapeHtml(lastOut) +
-    (branchStats
-      ? '<span class="my-team-person__branch">Area total: ' + plural(branchStats.visits, 'visit') +
-        ', ' + plural(branchStats.open, 'open action') + '</span>'
-      : '') +
-    '</div>' +
-    '</button>';
+    ' data-person="' + escapeHtml(person.uid) + '" tabindex="0" role="button"' +
+    ' aria-pressed="' + isSelected + '">' +
+    '<td class="my-team-table__person">' +
+    '<span class="my-team-table__name">' + escapeHtml(person.name || person.email || 'Unnamed') + '</span>' +
+    '<span class="my-team-table__role">' + escapeHtml(person.roleName || 'Viewer') + escapeHtml(reportsNote) + '</span>' +
+    (flags ? '<span class="my-team-table__flags">' + flags + '</span>' : '') +
+    '</td>' +
+    '<td data-label="Visits">' + stats.visits + '</td>' +
+    '<td data-label="Bakeries" title="Bakeries assigned through Region Coffee Team">' + stats.bakeries + '</td>' +
+    '<td data-label="Open">' + stats.open + '</td>' +
+    '<td data-label="Overdue" class="' + (stats.overdue ? 'my-team-table__cell--alert' : '') + '">' + stats.overdue + '</td>' +
+    '<td data-label="Last visit" class="my-team-table__last">' + escapeHtml(lastOut) + branchNote + '</td>' +
+    '</tr>';
 }
 
 function filteredRosterRows(visits, tasks) {
@@ -852,6 +875,7 @@ function renderSelection() {
 function renderRoster() {
   if (!rosterEl) return;
   syncRosterResetState();
+  syncRosterSortHeaders();
   if (rosterCount) rosterCount.textContent = plural(roster.length, 'person', 'people');
 
   if (!roster.length) {
@@ -859,18 +883,21 @@ function renderRoster() {
       var department = normalizeDepartment(person.department);
       return department && hiddenMyTeamDepartments[department] === true;
     });
-    rosterEl.innerHTML = emptyStateHtml('&#128101;', allDepartmentsHidden
+    rosterEl.innerHTML = emptyStateRowHtml('&#128101;', allDepartmentsHidden
       ? 'Every department in your team is hidden. An administrator can change the departments visible to you from Manage Access.'
       : (teamScope === 'all'
         ? 'No people are published to the team directory yet. An administrator can publish it from the People & Access panel.'
-        : 'Nobody reports to you yet. An administrator sets reporting lines in the People & Access panel.'));
+        : 'Nobody reports to you yet. An administrator sets reporting lines in the People & Access panel.'), 6);
     if (rosterSummary) rosterSummary.textContent = '';
+    if (rosterExportBtn) rosterExportBtn.disabled = true;
     return;
   }
 
   var visits = teamVisits();
   var tasks = teamTasks();
   var visibleRows = filteredRosterRows(visits, tasks);
+  rosterResultCount = visibleRows.length;
+  if (rosterExportBtn) rosterExportBtn.disabled = !visibleRows.length;
 
   if (rosterCount) {
     rosterCount.textContent = visibleRows.length === roster.length
@@ -878,7 +905,8 @@ function renderRoster() {
       : visibleRows.length + ' of ' + plural(roster.length, 'person', 'people');
   }
 
-  rosterEl.innerHTML = visibleRows.map(function (row) {
+  var shownRows = visibleRows.slice(0, rosterLimit);
+  rosterEl.innerHTML = shownRows.map(function (row) {
     var stats = row._stats || statsFor([row.person.uid], visits, tasks);
     // Only worth rolling up when there is actually a branch to roll up.
     var branchStats = row.teamSize ? statsFor(branchOf(row.person.uid), visits, tasks) : null;
@@ -886,7 +914,14 @@ function renderRoster() {
   }).join('');
 
   if (!visibleRows.length) {
-    rosterEl.innerHTML = emptyStateHtml('&#128269;', 'No team members match that search.');
+    rosterEl.innerHTML = emptyStateRowHtml('&#128269;', 'No team members match that search.', 6);
+  }
+
+  if (rosterMoreBtn) {
+    var remaining = Math.max(0, visibleRows.length - shownRows.length);
+    rosterMoreBtn.hidden = remaining === 0;
+    rosterMoreBtn.disabled = remaining === 0;
+    rosterMoreBtn.textContent = 'Show more (' + remaining + ' left)';
   }
 
   if (rosterSummary) {
@@ -901,6 +936,9 @@ function renderRoster() {
       : plural(visits.length, 'visit') + ' and ' +
         plural(tasks.filter(function (task) { return !taskIsDone(task); }).length, 'open action') +
         ' across the team ' + periodLabel() + '.';
+    if (shownRows.length < visibleRows.length) {
+      rosterSummary.textContent += ' · Showing first ' + shownRows.length;
+    }
   }
 }
 
@@ -959,6 +997,25 @@ function teamActionSorter(sort) {
   };
 }
 
+// Shared by the render and the export button, so a downloaded file always
+// lists exactly the actions the current filters put on screen.
+function filteredActions(tasks) {
+  var query = actionsSearch ? actionsSearch.value.trim().toLowerCase() : '';
+  var sort = actionsSort ? actionsSort.value : 'due';
+  return tasks.filter(function (task) {
+    var matchesStatus = actionsStatus === 'all' ||
+      (actionsStatus === 'done' && taskIsDone(task)) ||
+      (actionsStatus === 'overdue' && taskIsOverdue(task)) ||
+      (actionsStatus === 'soon' && taskIsDueSoon(task)) ||
+      (actionsStatus === 'open' && !taskIsDone(task));
+    if (!matchesStatus) return false;
+    return includesSearch([
+      task.title || '', task.detail || '', bakerySiteName(task.bakery),
+      bakeryOps(task.bakery), ownerLabel(task.owners)
+    ], query);
+  }).sort(teamActionSorter(sort));
+}
+
 function renderActions() {
   if (!actionsList) return;
   syncActionsResetState();
@@ -971,19 +1028,8 @@ function renderActions() {
   }
 
   var query = actionsSearch ? actionsSearch.value.trim().toLowerCase() : '';
-  var sort = actionsSort ? actionsSort.value : 'due';
-  var shown = tasks.filter(function (task) {
-    var matchesStatus = actionsStatus === 'all' ||
-      (actionsStatus === 'done' && taskIsDone(task)) ||
-      (actionsStatus === 'overdue' && taskIsOverdue(task)) ||
-      (actionsStatus === 'soon' && taskIsDueSoon(task)) ||
-      (actionsStatus === 'open' && !taskIsDone(task));
-    if (!matchesStatus) return false;
-    return includesSearch([
-      task.title || '', task.detail || '', bakerySiteName(task.bakery),
-      bakeryOps(task.bakery), ownerLabel(task.owners)
-    ], query);
-  }).sort(teamActionSorter(sort));
+  var shown = filteredActions(tasks);
+  if (actionsExportBtn) actionsExportBtn.disabled = !shown.length;
 
   if (actionsSummary) {
     actionsSummary.textContent = shown.length
@@ -1010,38 +1056,31 @@ function actionsEmptyMessage() {
 }
 
 function visitRowHtml(visit) {
-  return '<article class="my-activity-visit" data-visit-id="' + escapeHtml(visit.id) + '">' +
-    '<div class="my-activity-visit__date">' +
-    '<strong>' + escapeHtml(formatIsoDate(visit.date)) + '</strong>' +
-    '<span>' + escapeHtml(visit.time || '—') + '</span>' +
-    '</div>' +
-    '<div class="my-activity-visit__main">' +
-    '<a class="my-activity-visit__bakery" href="' + escapeHtml(bakeryProfileHref(visit.bakery, 'section-team-visits')) + '">' +
-    escapeHtml(bakerySiteName(visit.bakery)) + '</a>' +
-    '<div class="my-activity-visit__tags">' +
-    '<span class="my-activity-tag my-activity-tag--' + visitTypeTone(visit) + '">' + escapeHtml(visitTypeLabel(visit)) + '</span>' +
-    '<span class="my-activity-tag my-activity-tag--blue">' + escapeHtml(ownerLabel(visit.owners)) + '</span>' +
-    '<span class="my-activity-visit__ops">' + escapeHtml(bakeryOps(visit.bakery)) + '</span>' +
-    '</div>' +
-    '</div>' +
-    '<div class="my-activity-visit__action">' +
+  return '<tr class="my-team-row" data-visit-id="' + escapeHtml(visit.id) + '">' +
+    '<td data-label="Date" class="my-team-table__date">' +
+    '<span class="my-team-table__date-day">' + escapeHtml(formatIsoDate(visit.date)) + '</span>' +
+    (visit.time ? '<span class="my-team-table__date-time">' + escapeHtml(visit.time) + '</span>' : '') +
+    '</td>' +
+    '<td data-label="Bakery"><a class="my-team-table__link" href="' + escapeHtml(bakeryProfileHref(visit.bakery, 'section-team-visits')) + '">' +
+    escapeHtml(bakerySiteName(visit.bakery)) + '</a></td>' +
+    '<td data-label="Ops area">' + escapeHtml(bakeryOps(visit.bakery)) + '</td>' +
+    '<td data-label="Type"><span class="my-activity-tag my-activity-tag--' + visitTypeTone(visit) + '">' + escapeHtml(visitTypeLabel(visit)) + '</span></td>' +
+    '<td data-label="Person"><span class="my-activity-tag my-activity-tag--blue">' + escapeHtml(ownerLabel(visit.owners)) + '</span></td>' +
+    '<td class="my-team-table__action">' +
     // Keep a real dashboard href as a fallback and for modified clicks, while
     // ordinary clicks are enhanced into the in-page report modal below.
-    '<a class="my-activity-visit__link" data-open-visit-report="' + escapeHtml(visit.id) + '"' +
+    '<a class="my-team-table__report-link" data-open-visit-report="' + escapeHtml(visit.id) + '"' +
     ' href="index.html?visit=' + encodeURIComponent(visit.id) + '#visit-log">View report</a>' +
-    '</div>' +
-    '</article>';
+    '</td>' +
+    '</tr>';
 }
 
-function renderVisits() {
-  if (!visitsList) return;
-  syncVisitsResetState();
-  var visits = forSelected(teamVisits());
-  if (visitsCount) visitsCount.textContent = plural(visits.length, 'visit');
+// Shared by the render and the export button, so a downloaded file always
+// lists exactly the visits the current filters put on screen.
+function filteredVisits(visits) {
   var query = visitsSearch ? visitsSearch.value.trim().toLowerCase() : '';
   var sort = visitsSort ? visitsSort.value : 'newest';
-
-  visits = visits.filter(function (visit) {
+  return visits.filter(function (visit) {
     return includesSearch([
       bakerySiteName(visit.bakery), bakeryOps(visit.bakery),
       visitTypeLabel(visit), ownerLabel(visit.owners)
@@ -1058,7 +1097,19 @@ function renderVisits() {
     }
     return String(b.date).localeCompare(String(a.date));
   });
+}
+
+function renderVisits() {
+  if (!visitsList) return;
+  syncVisitsResetState();
+  syncVisitsSortHeaders();
+  var visits = forSelected(teamVisits());
+  if (visitsCount) visitsCount.textContent = plural(visits.length, 'visit');
+  var query = visitsSearch ? visitsSearch.value.trim().toLowerCase() : '';
+
+  visits = filteredVisits(visits);
   visitResultCount = visits.length;
+  if (visitsExportBtn) visitsExportBtn.disabled = !visits.length;
 
   if (visitsSummary) {
     visitsSummary.textContent = visits.length
@@ -1068,11 +1119,11 @@ function renderVisits() {
   }
 
   if (!visits.length) {
-    visitsList.innerHTML = emptyStateHtml('&#128506;', dataReady.visits
+    visitsList.innerHTML = emptyStateRowHtml('&#128506;', dataReady.visits
       ? (query
         ? 'No visits match that search in this period.'
         : 'No visits credited to the team ' + periodLabel() + '.')
-      : 'Loading the team’s visits…');
+      : 'Loading the team’s visits…', 6);
     if (visitsMoreBtn) {
       visitsMoreBtn.hidden = true;
       visitsMoreBtn.disabled = true;
@@ -1098,6 +1149,14 @@ function emptyStateHtml(icon, message) {
     escapeHtml(message) + '</p></div>';
 }
 
+// The roster and visits tables render straight into a <tbody>, so an empty
+// state has to stay valid table markup — a bare <div> dropped into a <tbody>
+// gets silently hoisted out of the table by the browser's HTML parser.
+function emptyStateRowHtml(icon, message, colspan) {
+  return '<tr class="my-team-table__empty-row"><td colspan="' + colspan + '">' +
+    emptyStateHtml(icon, message) + '</td></tr>';
+}
+
 function renderAll() {
   renderSelection();
   renderStats();
@@ -1105,6 +1164,309 @@ function renderAll() {
   renderRoster();
   renderActions();
   renderVisits();
+}
+
+// ---------- exports ----------
+// A manager who has just reviewed their team's workload is the person most
+// likely to need it as a file — to hand upward, or keep as a dated record.
+// Each export reads the same filtered/sorted list its section is currently
+// showing, so a download never contains rows the screen isn't.
+
+const EXPORT_NUMBER_FORMATS = { date: 'dd mmm yyyy', percent: '0.0%', number: '0' };
+let exporterLabel = '';
+
+function bakeryRegion(name) {
+  return (typeof G.getBakeryRegion === 'function' ? G.getBakeryRegion(name) : '') || 'Unknown';
+}
+
+function selectLabel(select, fallback) {
+  var option = select && select.options[select.selectedIndex];
+  return option ? option.textContent : fallback;
+}
+
+function ownersFullText(owners) {
+  return (owners || []).map(function (owner) { return owner.name || owner.email; })
+    .filter(Boolean).join(', ');
+}
+
+function exportMetaBase(extra) {
+  return [
+    ['Exported by', exporterLabel],
+    ['Generated', new Date().toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    })],
+    ['Scope', teamScope === 'all' ? 'Whole coffee team' : 'Your reporting line']
+  ].concat(extra || []);
+}
+
+function buildRosterExportData() {
+  var visits = teamVisits();
+  var tasks = teamTasks();
+  var rows = filteredRosterRows(visits, tasks);
+  var query = rosterSearch ? rosterSearch.value.trim() : '';
+  var meta = exportMetaBase([
+    ['Period', periodLabel()],
+    ['Sorted by', selectLabel(rosterSort, 'Reporting line')],
+    ['People exported', rows.length]
+  ]);
+  if (query) meta.splice(3, 0, ['Search', query]);
+
+  return {
+    title: 'GAIL’s — My Team',
+    sheetName: 'Team',
+    filename: 'GAILs My Team ' + new Date().toISOString().slice(0, 10) + '.xlsx',
+    meta: meta,
+    columns: [
+      { label: 'Name', type: 'text', width: 24 },
+      { label: 'Role', type: 'text', width: 22 },
+      { label: 'Direct Reports', type: 'number', width: 12 },
+      { label: 'Visits', type: 'number', width: 9 },
+      { label: 'Bakeries', type: 'number', width: 10 },
+      { label: 'Open Actions', type: 'number', width: 12 },
+      { label: 'Overdue Actions', type: 'number', width: 14 },
+      { label: 'Last Visit', type: 'date', width: 14 },
+      { label: 'Last Visit Bakery', type: 'text', width: 24 }
+    ],
+    rows: rows.map(function (row) {
+      var stats = row._stats || statsFor([row.person.uid], visits, tasks);
+      return [
+        row.person.name || row.person.email || 'Unnamed',
+        row.person.roleName || 'Viewer',
+        row.reportCount || 0,
+        stats.visits,
+        stats.bakeries,
+        stats.open,
+        stats.overdue,
+        stats.lastVisit ? stats.lastVisit.date : '',
+        stats.lastVisit ? bakerySiteName(stats.lastVisit.bakery) : ''
+      ];
+    })
+  };
+}
+
+function buildActionsExportData() {
+  var tasks = filteredActions(forSelected(teamTasks()));
+  var query = actionsSearch ? actionsSearch.value.trim() : '';
+  var meta = exportMetaBase([
+    ['Status', ACTIONS_STATUS_LABELS[actionsStatus] || 'Open'],
+    ['Sorted by', selectLabel(actionsSort, 'Due Date')],
+    ['Actions exported', tasks.length],
+    ['Overdue', tasks.filter(taskIsOverdue).length]
+  ]);
+  if (query) meta.splice(3, 0, ['Search', query]);
+
+  return {
+    title: 'GAIL’s — My Team Actions',
+    sheetName: 'Team Actions',
+    filename: 'GAILs My Team Actions ' + new Date().toISOString().slice(0, 10) + '.xlsx',
+    meta: meta,
+    columns: [
+      { label: 'Bakery', type: 'text', width: 24 },
+      { label: 'Region', type: 'text', width: 16 },
+      { label: 'Ops Area', type: 'text', width: 18 },
+      { label: 'Action', type: 'text', width: 34 },
+      { label: 'Detail', type: 'text', width: 60 },
+      { label: 'Priority', type: 'text', width: 10 },
+      { label: 'Due Date', type: 'date', width: 13 },
+      { label: 'Days Overdue', type: 'number', width: 13 },
+      { label: 'Status', type: 'text', width: 10 },
+      { label: 'Added', type: 'date', width: 12 },
+      { label: 'Completed', type: 'date', width: 13 },
+      { label: 'Owner', type: 'text', width: 24 }
+    ],
+    rows: tasks.map(function (task) {
+      var due = dueMeta(task.dueDate);
+      return [
+        bakerySiteName(task.bakery),
+        bakeryRegion(task.bakery),
+        bakeryOps(task.bakery),
+        task.title || '',
+        task.detail || '',
+        PRIORITY_LABELS[normalizePriority(task.priority)],
+        task.dueDate || '',
+        taskIsOverdue(task) ? Math.abs(due.days) : '',
+        taskIsDone(task) ? 'Done' : (taskIsOverdue(task) ? 'Overdue' : 'Open'),
+        task.createdAt ? String(task.createdAt).slice(0, 10) : '',
+        task.completedAt ? String(task.completedAt).slice(0, 10) : '',
+        ownersFullText(task.owners)
+      ];
+    })
+  };
+}
+
+function buildVisitsExportData() {
+  var visits = filteredVisits(forSelected(teamVisits()));
+  var query = visitsSearch ? visitsSearch.value.trim() : '';
+  var meta = exportMetaBase([
+    ['Period', periodLabel()],
+    ['Sorted by', selectLabel(visitsSort, 'Newest first')],
+    ['Visits exported', visits.length]
+  ]);
+  if (query) meta.splice(3, 0, ['Search', query]);
+
+  return {
+    title: 'GAIL’s — My Team Visits',
+    sheetName: 'Team Visits',
+    filename: 'GAILs My Team Visits ' + new Date().toISOString().slice(0, 10) + '.xlsx',
+    meta: meta,
+    columns: [
+      { label: 'Date', type: 'date', width: 13 },
+      { label: 'Time', type: 'text', width: 7 },
+      { label: 'Bakery', type: 'text', width: 26 },
+      { label: 'Region', type: 'text', width: 16 },
+      { label: 'Ops Area', type: 'text', width: 18 },
+      { label: 'Visit Type', type: 'text', width: 20 },
+      { label: 'Person', type: 'text', width: 24 }
+    ],
+    rows: visits.map(function (visit) {
+      return [
+        visit.date,
+        visit.time || '',
+        bakerySiteName(visit.bakery),
+        bakeryRegion(visit.bakery),
+        bakeryOps(visit.bakery),
+        visitTypeLabel(visit),
+        ownersFullText(visit.owners)
+      ];
+    })
+  };
+}
+
+// Blank cells become null so aoa_to_sheet leaves them genuinely empty rather
+// than writing an empty string Excel then treats as text.
+function exportCellValue(value, type) {
+  if (value == null || value === '') return null;
+  if (type === 'date') {
+    var d = new Date(String(value).slice(0, 10) + 'T00:00:00');
+    return isNaN(d.getTime()) ? String(value) : d;
+  }
+  if (type === 'number') {
+    var n = Number(value);
+    return isNaN(n) ? String(value) : n;
+  }
+  return String(value);
+}
+
+function exportCellText(value, type) {
+  var v = exportCellValue(value, type);
+  if (v == null) return '';
+  if (v instanceof Date) return v.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  return String(v);
+}
+
+function buildExportDataSheet(data) {
+  var X = window.XLSX;
+  var header = data.columns.map(function (col) { return col.label; });
+  var body = data.rows.map(function (row) {
+    return row.map(function (cell, i) {
+      return exportCellValue(cell, data.columns[i] ? data.columns[i].type : 'text');
+    });
+  });
+  var ws = X.utils.aoa_to_sheet([header].concat(body), { cellDates: true });
+  var range = X.utils.decode_range(ws['!ref']);
+
+  data.columns.forEach(function (col, c) {
+    var fmt = EXPORT_NUMBER_FORMATS[col.type];
+    if (!fmt) return;
+    for (var r = 1; r <= range.e.r; r++) {
+      var cell = ws[X.utils.encode_cell({ r: r, c: c })];
+      if (cell && cell.t !== 's') cell.z = fmt;
+    }
+  });
+
+  ws['!cols'] = data.columns.map(function (col) { return { wch: col.width || 16 }; });
+  ws['!autofilter'] = { ref: X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: range.e.r, c: range.e.c } }) };
+  return ws;
+}
+
+function buildExportInfoSheet(data) {
+  var X = window.XLSX;
+  var ws = X.utils.aoa_to_sheet([[data.title], []].concat(data.meta || []));
+  ws['!cols'] = [{ wch: 22 }, { wch: 54 }];
+  ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+  return ws;
+}
+
+function triggerDownload(blob, filename) {
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+}
+
+function exportCsvFallback(data) {
+  var lines = [[data.title]]
+    .concat(data.meta || [])
+    .concat([[], data.columns.map(function (col) { return col.label; })])
+    .concat(data.rows.map(function (row) {
+      return row.map(function (cell, i) {
+        return exportCellText(cell, data.columns[i] ? data.columns[i].type : 'text');
+      });
+    }));
+  var csv = lines.map(function (row) {
+    return row.map(function (cell) {
+      return '"' + String(cell == null ? '' : cell).replace(/"/g, '""') + '"';
+    }).join(',');
+  }).join('\r\n');
+  triggerDownload(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }),
+    data.filename.replace(/\.xlsx$/, '.csv'));
+}
+
+// Writes through XLSX.write + a Blob rather than SheetJS's file writer: the
+// dashboard owns the single writeFile call in this codebase (see
+// test/excel-export-confirmation.test.js), and the workbook is identical
+// either way.
+function downloadWorkbook(data) {
+  if (!window.XLSX) {
+    exportCsvFallback(data);
+    return;
+  }
+  var wb = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb, buildExportInfoSheet(data), 'Report Info');
+  window.XLSX.utils.book_append_sheet(wb, buildExportDataSheet(data), data.sheetName);
+  var out = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  triggerDownload(new Blob([out], { type: 'application/octet-stream' }), data.filename);
+}
+
+// Routed through the shared confirm-before-download dialog (js/visit-report.js)
+// so a manager sees the row count and file name before anything is written —
+// the same guarantee every other report export in the dashboard makes. If the
+// modal markup is ever missing from this page, openSaveConfirmModal fails open
+// and downloads immediately rather than silently doing nothing.
+function requestExport(buildData) {
+  if (typeof G.ensureXLSX !== 'function') return;
+  G.ensureXLSX().then(function () {
+    var data = buildData();
+    if (!data.rows.length) return;
+    var isExcel = !!window.XLSX;
+    var filename = isExcel ? data.filename : data.filename.replace(/\.xlsx$/, '.csv');
+    var rowLabel = data.rows.length === 1 ? 'row' : 'rows';
+
+    if (typeof G.openSaveConfirmModal !== 'function') {
+      downloadWorkbook(data);
+      return;
+    }
+    G.openSaveConfirmModal({
+      title: isExcel ? 'Download Excel File' : 'Download CSV File',
+      subtitle: 'Confirm before the download starts.',
+      message: 'Download "' + filename + '" with ' + data.rows.length + ' ' + rowLabel + '?',
+      confirmLabel: isExcel ? 'Download Excel' : 'Download CSV',
+      onConfirm: function () { downloadWorkbook(data); }
+    });
+  });
+}
+
+if (rosterExportBtn) {
+  rosterExportBtn.addEventListener('click', function () { requestExport(buildRosterExportData); });
+}
+if (actionsExportBtn) {
+  actionsExportBtn.addEventListener('click', function () { requestExport(buildActionsExportData); });
+}
+if (visitsExportBtn) {
+  visitsExportBtn.addEventListener('click', function () { requestExport(buildVisitsExportData); });
 }
 
 // ---------- visit report modal ----------
@@ -1145,6 +1507,33 @@ function syncRosterResetState() {
   ), 'team');
 }
 
+// Column headers are a second entry point into the same "Order by" dropdown
+// rather than a parallel sort mechanism — clicking one sets the dropdown's
+// value and lets its existing change handler do the rest, so there is only
+// ever one source of truth for how a table is sorted.
+const ROSTER_SORT_DIRECTION = { name: 'asc', visits: 'desc', overdue: 'desc' };
+
+function syncRosterSortHeaders() {
+  if (!rosterTableHead || !rosterSort) return;
+  var value = rosterSort.value;
+  Array.from(rosterTableHead.querySelectorAll('[data-sort-option]')).forEach(function (th) {
+    var key = th.getAttribute('data-sort-option');
+    var active = key === value;
+    th.classList.toggle('sort-asc', active && ROSTER_SORT_DIRECTION[key] === 'asc');
+    th.classList.toggle('sort-desc', active && ROSTER_SORT_DIRECTION[key] === 'desc');
+  });
+}
+
+if (rosterTableHead) {
+  rosterTableHead.addEventListener('click', function (event) {
+    var th = event.target.closest('[data-sort-option]');
+    if (!th || !rosterSort) return;
+    rosterSort.value = th.getAttribute('data-sort-option');
+    if (typeof G.syncCustomSelect === 'function') G.syncCustomSelect(rosterSort);
+    rosterSort.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+
 function syncActionsResetState() {
   setFilterResetState(actionsReset, !!(
     (actionsSearch && actionsSearch.value.trim()) ||
@@ -1159,6 +1548,34 @@ function syncVisitsResetState() {
     (visitsSort && visitsSort.value !== 'newest') ||
     period !== '3'
   ), 'visit');
+}
+
+// The Date header doubles as the newest/oldest toggle those two dropdown
+// options already represent — clicking it again flips direction rather than
+// re-selecting the same value, since "sort by date" always means one or the
+// other, never neither.
+function syncVisitsSortHeaders() {
+  if (!visitsTableHead || !visitsSort) return;
+  var value = visitsSort.value;
+  Array.from(visitsTableHead.querySelectorAll('[data-sort-option]')).forEach(function (th) {
+    var key = th.getAttribute('data-sort-option');
+    var isDateHeader = key === 'newest';
+    var active = isDateHeader ? (value === 'newest' || value === 'oldest') : key === value;
+    th.classList.toggle('sort-desc', active && (isDateHeader ? value === 'newest' : false));
+    th.classList.toggle('sort-asc', active && (isDateHeader ? value === 'oldest' : true));
+  });
+}
+
+if (visitsTableHead) {
+  visitsTableHead.addEventListener('click', function (event) {
+    var th = event.target.closest('[data-sort-option]');
+    if (!th || !visitsSort) return;
+    var value = th.getAttribute('data-sort-option');
+    if (value === 'newest') value = visitsSort.value === 'newest' ? 'oldest' : 'newest';
+    visitsSort.value = value;
+    if (typeof G.syncCustomSelect === 'function') G.syncCustomSelect(visitsSort);
+    visitsSort.dispatchEvent(new Event('change', { bubbles: true }));
+  });
 }
 
 function saveFilters() {
@@ -1270,6 +1687,18 @@ if (rosterEl) {
     saveFilters();
     renderAll();
   });
+
+  // Each person is a row acting as a button (role="button", tabindex="0"),
+  // so Enter/Space need to be wired up by hand the way a native <button>
+  // would be for free. Re-dispatching a click keeps a single source of truth
+  // for what "selecting" a row does, above.
+  rosterEl.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    var row = event.target.closest('[data-person]');
+    if (!row) return;
+    event.preventDefault();
+    row.click();
+  });
 }
 
 let rosterSearchDebounce = null;
@@ -1278,6 +1707,7 @@ if (rosterSearch) {
     syncRosterResetState();
     clearTimeout(rosterSearchDebounce);
     rosterSearchDebounce = setTimeout(function () {
+      rosterLimit = ROSTER_CHUNK;
       saveFilters();
       renderRoster();
     }, 160);
@@ -1286,6 +1716,7 @@ if (rosterSearch) {
 
 if (rosterSort) {
   rosterSort.addEventListener('change', function () {
+    rosterLimit = ROSTER_CHUNK;
     saveFilters();
     renderRoster();
   });
@@ -1337,7 +1768,16 @@ if (rosterReset) {
     if (rosterSort) rosterSort.value = 'hierarchy';
     if (typeof G.syncCustomSelect === 'function' && rosterSort) G.syncCustomSelect(rosterSort);
     clearTimeout(rosterSearchDebounce);
+    rosterLimit = ROSTER_CHUNK;
     saveFilters();
+    renderRoster();
+  });
+}
+
+if (rosterMoreBtn) {
+  rosterMoreBtn.addEventListener('click', function () {
+    if (rosterMoreBtn.disabled || rosterLimit >= rosterResultCount) return;
+    rosterLimit = Math.min(rosterResultCount, rosterLimit + ROSTER_CHUNK);
     renderRoster();
   });
 }
@@ -1551,6 +1991,8 @@ async function loadTeam(user) {
       (teamScope === 'all' ? 'the coffee team' : 'your team') +
       ' has been doing — where they have been, and what they have opened.';
   }
+  exporterLabel = String((userProfile && userProfile.firstName) || user.displayName || user.email || 'Unknown') +
+    (user.email ? ' (' + user.email + ')' : '');
   if (backLink && document.referrer && document.referrer.indexOf('admin.html') !== -1) {
     backLink.setAttribute('href', 'admin.html');
     backLink.textContent = '← Admin Portal';

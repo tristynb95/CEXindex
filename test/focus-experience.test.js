@@ -98,9 +98,9 @@ test('puts the recommendation and action list before secondary analysis', () => 
   assert.match(summary, /class="focus-method focus-method--overlay focus-priority-help"/);
   assert.match(summary, /class="focus-priority-help__tooltip"[^>]*role="tooltip"/);
   assert.match(styles, /\.focus-priority-help,\s*\.focus-priority-help\[open\] \{[\s\S]*?margin-left: auto/);
-  assert.match(html, /<span>Priorities<\/span>/);
+  assert.match(html, /<span>Priority Overview<\/span>/);
   assert.doesNotMatch(html, /<span>Where to focus<\/span>/);
-  assert.match(summary, /<h2>Priority Overview<\/h2>/);
+  assert.match(summary, /<h1>Priority Overview<\/h1>/);
   assert.doesNotMatch(summary, /Focus bakery action plan|Focus bakery priorities/);
   assert.doesNotMatch(summary, /top priority highlighted below/);
   assert.doesNotMatch(summary, /Start with the recommended bakery/);
@@ -220,7 +220,7 @@ test('simplifies the bakery review and uses benchmark-based RAG analysis', () =>
   assert.match(styles, /\.focus-review-summary/);
   assert.match(styles, /\.focus-driver__movement-icon--up/);
   assert.match(styles, /\.focus-driver__movement-icon--down/);
-  assert.match(styles, /#focusDetailModal \.drill-modal-title \{[\s\S]*?font-size: 1\.45rem/);
+  assert.match(styles, /#visitReportModal \.drill-modal-title,\s*#focusDetailModal \.drill-modal-title \{[\s\S]*?1\.28rem/);
   assert.match(styles, /#focusDetailBody \{[\s\S]*?padding: 22px 24px 24px;[\s\S]*?gap: 22px/);
   assert.match(styles, /\.focus-review-summary \{[\s\S]*?background: var\(--card\)/);
   assert.match(styles, /\.focus-review-summary__facts \{[\s\S]*?grid-template-columns: repeat\(5/);

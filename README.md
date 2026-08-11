@@ -1,7 +1,8 @@
 # CEXindex — GAIL's Coffee Experience Dashboard
 
-A static dashboard for GAIL's bakery visit data, served by Firebase Hosting and
-backed by Firebase Auth + Realtime Database + Storage.
+A static frontend for GAIL's bakery visit data, served by Firebase Hosting and
+backed by Firebase Auth + Realtime Database + Storage. Privileged account
+changes run in a small Firebase Cloud Functions backend under `functions/`.
 
 **There is no build step.** The HTML loads `js/` and `css/` directly. `package.json`
 exists only for tooling (ESLint); nothing is bundled, compiled, or minified.
@@ -16,6 +17,9 @@ exists only for tooling (ESLint); nothing is bundled, compiled, or minified.
 | `bakery-profile.html` | `js/bakery-profile.js` | Per-bakery performance, visits, tasks, map, and team notes |
 | `my-activity.html` | `js/my-activity.js` | The signed-in user's own open actions and visits (both filterable and exportable to Excel), plus their activity feed. Opt-in per user — see below |
 | `my-team.html` | `js/my-team.js` | A manager's view of their team's visits, tasks, and coverage. Granted by role — see below |
+
+`functions/index.js` exposes the full-admin-only `setUserPassword` callable;
+the rest of the user interface remains an unbundled static frontend.
 
 ## The two JavaScript worlds
 
@@ -499,6 +503,31 @@ Two related shapes to keep to elsewhere:
 - **Sign-in reads that don't depend on each other go in one `Promise.all`.**
   Every page blocks on its `admins/` and `users/` reads before it can render
   anything; awaiting them in sequence spent two round trips for one.
+
+## Admin-managed passwords
+
+A full administrator can open **People & Access**, manage a person, and choose
+**Set password**. The current password is never available to the page: the form
+accepts only a new value and its confirmation. The callable function verifies
+the signed-in Firebase token, independently checks `admins/{uid} === true`,
+changes the selected Auth user, revokes their refresh tokens so existing sessions
+cannot renew, and records only actor, target, and timestamp metadata under
+`securityAudit/passwordChanges`.
+
+Custom roles with permission to edit People do not receive this control. Admins
+also cannot use it on their own account; their Profile page retains the normal
+current-password confirmation flow.
+
+The frontend button requires the callable function to be deployed. Cloud
+Functions deployment requires the Firebase project to use the Blaze plan:
+
+```bash
+npm --prefix functions install
+firebase deploy --only functions,hosting
+```
+
+CI currently deploys Hosting only, so a new function version must be deployed
+manually unless the workflow is extended.
 
 ## Security rules
 

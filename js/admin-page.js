@@ -3,6 +3,7 @@ import { ref, set, update, push, remove, onValue, get, query, limitToLast, order
 import { ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, updateProfile, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-functions.js";
 import {
   ACCESS_GROUPS, accessRowsForGroup, readAccessGrid, permissionsFromAccessGrid,
   TEAM_SCOPES, normalizeTeamScope, teamScopeLabel, describeVisibility, describeEditing,
@@ -16,6 +17,8 @@ import { mountNotificationCentre } from './notification-centre.js';
 
 const secondaryApp = initializeApp(firebaseConfig, 'AdminPage');
 const secondaryAuth = getAuth(secondaryApp);
+const functionsClient = getFunctions();
+const setUserPasswordCall = httpsCallable(functionsClient, 'setUserPassword');
 
 // ── DOM refs ──
 const authGuard       = document.getElementById('authGuard');
@@ -60,6 +63,14 @@ const userAccessCancel  = document.getElementById('userAccessCancel');
 const userAccessSave    = document.getElementById('userAccessSave');
 const userAccessRemove  = document.getElementById('userAccessRemove');
 const userAccessResetPw = document.getElementById('userAccessResetPassword');
+const userAccessSetPassword = document.getElementById('userAccessSetPassword');
+const userAccessPasswordPanel = document.getElementById('userAccessPasswordPanel');
+const userAccessPasswordMsg = document.getElementById('userAccessPasswordMsg');
+const userAccessNewPassword = document.getElementById('userAccessNewPassword');
+const userAccessConfirmPassword = document.getElementById('userAccessConfirmPassword');
+const userAccessShowPassword = document.getElementById('userAccessShowPassword');
+const userAccessPasswordCancel = document.getElementById('userAccessPasswordCancel');
+const userAccessPasswordSubmit = document.getElementById('userAccessPasswordSubmit');
 const userAccessTitle   = document.getElementById('userAccessTitle');
 const userAccessEmail   = document.getElementById('userAccessEmail');
 const userAccessFirstName = document.getElementById('userAccessFirstName');
@@ -226,6 +237,7 @@ const state = {
   editingRoleId: null,
   permissions: normalizePermissions(BUILTIN_ROLES.viewer.permissions),
   isAdmin: false,
+  isFullAdmin: false,
   reportVisibilityEnabled: false
 };
 
@@ -1399,6 +1411,9 @@ function userStatus(user) {
   if (currentUserId() === user.uid) {
     return { label: 'You', note: 'This is the account you are signed in with.', tone: 'self' };
   }
+  if (invitation.status === 'pending' && invitation.passwordSetAt) {
+    return { label: 'Password ready', note: 'An admin set a password. Waiting for them to sign in and confirm their details.', tone: 'pending' };
+  }
   if (invitation.status === 'pending') {
     return { label: 'Invited', note: 'Waiting for them to choose a password and confirm their details.', tone: 'pending' };
   }
@@ -1558,6 +1573,45 @@ function directReportCount(uid) {
   return api.teamUnder(uid, state.users).length;
 }
 
+function resetUserPasswordPanel() {
+  if (userAccessNewPassword) {
+    userAccessNewPassword.value = '';
+    userAccessNewPassword.type = 'password';
+  }
+  if (userAccessConfirmPassword) {
+    userAccessConfirmPassword.value = '';
+    userAccessConfirmPassword.type = 'password';
+  }
+  if (userAccessShowPassword) userAccessShowPassword.checked = false;
+  if (userAccessPasswordSubmit) userAccessPasswordSubmit.disabled = false;
+  clearMessage(userAccessPasswordMsg);
+}
+
+function closeUserPasswordPanel() {
+  resetUserPasswordPanel();
+  if (userAccessPasswordPanel) userAccessPasswordPanel.hidden = true;
+  if (userAccessSetPassword) userAccessSetPassword.setAttribute('aria-expanded', 'false');
+}
+
+function openUserPasswordPanel() {
+  if (!state.isFullAdmin || state.accessUserUid === currentUserId() || !userAccessPasswordPanel) return;
+  resetUserPasswordPanel();
+  userAccessPasswordPanel.hidden = false;
+  if (userAccessSetPassword) userAccessSetPassword.setAttribute('aria-expanded', 'true');
+  window.requestAnimationFrame(function() {
+    if (userAccessNewPassword) userAccessNewPassword.focus();
+  });
+}
+
+function managedPasswordErrorMessage(error) {
+  var code = String(error && error.code || '').replace(/^functions\//, '');
+  if (code === 'permission-denied') return 'Only a full administrator can set another person\'s password.';
+  if (code === 'unauthenticated') return 'Your session has expired. Sign in again and retry.';
+  if (code === 'failed-precondition') return error.message || 'That account is not ready for a password change.';
+  if (code === 'not-found' || code === 'unimplemented') return 'The secure password service has not been deployed yet.';
+  return error && error.message ? error.message : 'The password could not be changed. Please try again.';
+}
+
 function openAccessModal(uid) {
   var user = findUser(uid);
   if (!user || !userAccessModal) return;
@@ -1568,6 +1622,7 @@ function openAccessModal(uid) {
   state.accessUserUid = uid;
   state.accessDraft = accessDraftFor(user);
   clearMessage(userAccessMsg);
+  closeUserPasswordPanel();
 
   if (userAccessTitle) userAccessTitle.textContent = userLabel(user);
   if (userAccessEmail) userAccessEmail.textContent = user.email || 'No email on record';
@@ -1623,8 +1678,12 @@ function openAccessModal(uid) {
   if (userAccessResetPw) {
     var invitation = user.invitation || {};
     var isInvite = invitation.status === 'pending' || invitation.status === 'delivery_failed';
-    userAccessResetPw.textContent = isInvite ? 'Resend invitation' : 'Reset password';
+    userAccessResetPw.textContent = isInvite ? 'Resend invitation' : 'Send reset email';
     userAccessResetPw.hidden = !canEdit('users') || isCurrent;
+  }
+  if (userAccessSetPassword) {
+    userAccessSetPassword.hidden = !state.isFullAdmin || isCurrent;
+    userAccessSetPassword.disabled = false;
   }
   if (userAccessRemove) userAccessRemove.hidden = !editable;
   if (userAccessSave) userAccessSave.hidden = !canEdit('users');
@@ -1641,6 +1700,7 @@ function openAccessModal(uid) {
 
 function closeAccessModal() {
   markDraftDirty('access', false);
+  closeUserPasswordPanel();
   state.accessUserUid = null;
   state.accessDraft = null;
   if (userAccessModal) userAccessModal.style.display = 'none';
@@ -4071,6 +4131,7 @@ onAuthStateChanged(primaryAuth, async function(user) {
     }
 
     state.isAdmin = isAdmin;
+    state.isFullAdmin = adminSnap.exists() && adminSnap.val() === true;
     state.permissions = resolveRolePermissions(roleId, customRoleDef);
     updateProfileMenu(user, userSnap.exists() ? userSnap.val() : null);
 
@@ -4520,6 +4581,67 @@ if (userAccessRemove) {
   });
 }
 
+if (userAccessSetPassword) {
+  userAccessSetPassword.addEventListener('click', function() {
+    if (userAccessPasswordPanel && !userAccessPasswordPanel.hidden) closeUserPasswordPanel();
+    else openUserPasswordPanel();
+  });
+}
+
+if (userAccessPasswordCancel) {
+  userAccessPasswordCancel.addEventListener('click', closeUserPasswordPanel);
+}
+
+if (userAccessShowPassword) {
+  userAccessShowPassword.addEventListener('change', function() {
+    var type = userAccessShowPassword.checked ? 'text' : 'password';
+    if (userAccessNewPassword) userAccessNewPassword.type = type;
+    if (userAccessConfirmPassword) userAccessConfirmPassword.type = type;
+  });
+}
+
+if (userAccessPasswordPanel) {
+  userAccessPasswordPanel.addEventListener('submit', async function(event) {
+    event.preventDefault();
+    var uid = state.accessUserUid;
+    var user = findUser(uid);
+    if (!user || !state.isFullAdmin || uid === currentUserId()) return;
+
+    clearMessage(userAccessPasswordMsg);
+    var password = userAccessNewPassword ? userAccessNewPassword.value : '';
+    var confirmationValue = userAccessConfirmPassword ? userAccessConfirmPassword.value : '';
+    if (password.length < 12) {
+      setMessage(userAccessPasswordMsg, 'error', 'The new password must be at least 12 characters.');
+      if (userAccessNewPassword) userAccessNewPassword.focus();
+      return;
+    }
+    if (password !== confirmationValue) {
+      setMessage(userAccessPasswordMsg, 'error', 'The two password entries do not match.');
+      if (userAccessConfirmPassword) userAccessConfirmPassword.focus();
+      return;
+    }
+    if (!confirm('Replace the password for ' + (user.email || userLabel(user)) + '? Their existing sign-in sessions will be invalidated.')) return;
+
+    userAccessPasswordSubmit.disabled = true;
+    userAccessSetPassword.disabled = true;
+    setMessage(userAccessPasswordMsg, 'info', 'Setting the new password...');
+    try {
+      var result = await setUserPasswordCall({ uid: uid, password: password });
+      var changedFor = result.data && result.data.email ? result.data.email : (user.email || userLabel(user));
+      var auditWarning = result.data && result.data.auditRecorded === false
+        ? ' The password changed, but its audit entry could not be saved.'
+        : '';
+      closeUserPasswordPanel();
+      setMessage(userAccessMsg, auditWarning ? 'info' : 'success', 'New password set for ' + changedFor + '. Existing sessions cannot renew and will require the new password.' + auditWarning);
+    } catch (error) {
+      setMessage(userAccessPasswordMsg, 'error', managedPasswordErrorMessage(error));
+    } finally {
+      userAccessPasswordSubmit.disabled = false;
+      userAccessSetPassword.disabled = false;
+    }
+  });
+}
+
 if (userAccessResetPw) {
   userAccessResetPw.addEventListener('click', async function() {
     var uid = state.accessUserUid;
@@ -4565,6 +4687,7 @@ if (userAccessModal) {
   ['input', 'change'].forEach(function(eventName) {
     userAccessModal.addEventListener(eventName, function(event) {
       if (!state.accessDraft || !event.target.matches('input, select, textarea')) return;
+      if (event.target.closest('#userAccessPasswordPanel')) return;
       if (event.target === userAccessMyActivity && state.accessUserUid === currentUserId()) return;
       markDraftDirty('access', true);
     });

@@ -1,5 +1,4 @@
-// Summary cards at the top of a site-visit report. Check-ins do not show a
-// Logged By card; NBO openings still do.
+// Check-ins and NBO openings share the exact same facts-rail workspace.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -93,10 +92,16 @@ test('a check-in report drops the Logged By card and keeps the rest', () => {
   const html = renderSiteVisit({ visitKind: 'checkin' });
 
   assert.equal(html.includes('Logged By'), false);
-  assert.equal(cardCount(html), 2);
-  assert.match(html, /Coffee Partner/);
+  assert.equal(cardCount(html), 0);
+  assert.doesNotMatch(html, /visit-report-comment-byline/);
+  assert.match(html, /visit-report-notes/);
+  assert.match(html, /Visited by/);
   assert.match(html, /Barista/);
-  assert.match(html, /Visit Comments/);
+  assert.match(html, /Visit notes/);
+  assert.match(html, /visit-report-checkin-rail/);
+  assert.match(html, /Monthly snapshot/);
+  assert.match(html, /visit-report-checkin-support/);
+  assert.match(html, /visit-context-weather-card/);
 });
 
 test('a visit with no recorded kind is a check-in and drops the card too', () => {
@@ -104,13 +109,20 @@ test('a visit with no recorded kind is a check-in and drops the card too', () =>
   const html = renderSiteVisit({});
 
   assert.equal(html.includes('Logged By'), false);
-  assert.match(html, /Coffee Partner/);
+  assert.match(html, /Visited by/);
 });
 
-test('an NBO opening keeps its Logged By card', () => {
+test('an NBO opening mirrors the check-in workspace with no Logged by row', () => {
   const html = renderSiteVisit({ visitKind: 'nboOpening' });
 
-  assert.match(html, /Logged By/);
-  assert.match(html, /Tristen Bayley/);
-  assert.equal(cardCount(html), 3);
+  assert.equal(html.includes('Logged by'), false);
+  assert.equal(cardCount(html), 0);
+  assert.match(html, /visit-report-checkin-workspace/);
+  assert.match(html, /visit-report-checkin-rail/);
+  assert.match(html, /visit-report-notes/);
+  assert.match(html, /Visited by/);
+  assert.match(html, /Barista/);
+  assert.match(html, /Monthly snapshot/);
+  assert.match(html, /visit-report-checkin-support/);
+  assert.match(html, /visit-context-weather-card/);
 });

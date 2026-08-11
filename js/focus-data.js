@@ -270,7 +270,7 @@ window.GAILS = window.GAILS || {};
         snapshot[field] = summedValue(recentValid, field);
       });
       // Keep the period total for existing consumers, and expose the monthly
-      // figure explicitly for the Focus "All bakery data" table.
+      // figure explicitly for the Focus "Focus Bakery List" table.
       snapshot.tdMonthlyAvg = averagePositiveValue(recentValid, 'td');
 
       snapshot.b = name;
