@@ -388,11 +388,17 @@ test('the bell outranks the header\'s blanket button rule', () => {
 
 test('the pages ask for the stylesheet version that carries the bell', () => {
   // The stylesheet is cache-busted by an explicit version string, so shipping
-  // new CSS without bumping it ships nothing.
-  ['index.html', 'admin.html', 'bakery-profile.html', 'my-activity.html', 'my-team.html', 'profile.html']
-    .forEach((page) => {
-      assert.match(read(page), /css\/styles\.css\?v=20260728-notification-centre-05/, page);
-    });
+  // new CSS without bumping it ships nothing — and a page left behind on an
+  // older string ships stale CSS to that page alone. Pinning the literal here
+  // only meant editing this test on every bump, so what is asserted is the
+  // property that actually matters: one shared, present version.
+  const pages = ['index.html', 'admin.html', 'bakery-profile.html', 'my-activity.html', 'my-team.html', 'profile.html'];
+  const versions = pages.map((page) => {
+    const match = /css\/styles\.css\?v=([^"']+)/.exec(read(page));
+    assert.ok(match, page + ' must cache-bust the stylesheet');
+    return match[1];
+  });
+  assert.equal(new Set(versions).size, 1, 'pages disagree on the stylesheet version: ' + versions.join(', '));
   assert.match(read('css/styles.css'), /\.profile-menu__bell \{/);
 });
 

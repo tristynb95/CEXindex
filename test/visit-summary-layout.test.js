@@ -32,13 +32,79 @@ test('follow-up tasks expose dedicated grouping and sorting controls', () => {
   assert.match(source, /followUpSort:\s*followUpSortVal/);
 });
 
-test('follow-up task grouping starts the second desktop filter row', () => {
+// Replaces an earlier check that pinned Follow-up Tasks to a four-column grid
+// with Group By starting a second row. The filters no longer live in the
+// content column, so there is no second row to start: they are a page-level
+// bar on the full container width, laid out as one flex row.
+test('the Bakery Reports filters are a page-level bar laid out as one row', () => {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+  const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 
-  assert.match(
-    styles,
-    /#tab-visit-log\[data-visit-view="followups"\] \.visit-log-filters\s*\{\s*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);\s*\}/
-  );
+  // A sibling of the global filter bar, ahead of the sidebar + content shell —
+  // that is what makes it span the page rather than the content column.
+  const barAt = html.indexOf('<div class="visit-log-filter-bar"');
+  const shellAt = html.indexOf('id="dashboardWorkspaceShell"');
+  const tabAt = html.indexOf('id="tab-visit-log"');
+  assert.ok(barAt > 0, 'the filter bar must exist');
+  assert.ok(barAt < shellAt, 'the filter bar must sit above the workspace shell');
+  assert.ok(barAt < tabAt, 'the filter bar must sit outside the tab panel');
+
+  // Exactly one of the two page bars is on screen at a time.
+  assert.match(app, /filterBar\.classList\.toggle\('filter-bar--hidden', name === 'visit-log'\)/);
+  assert.match(app, /visitLogFilterBar\.classList\.toggle\('visit-log-filter-bar--visible', name === 'visit-log'\)/);
+
+  // The status chips narrow the task list rather than the page's data, so they
+  // stay in the card with the counts they change, not up in the bar.
+  const chipsAt = html.indexOf('id="followUpStatusToggle"');
+  assert.ok(chipsAt > html.indexOf('id="tab-visit-log"'), 'status chips belong in the card');
+
+  // One row: Search fixed, the dropdowns sharing what it gives back but capped
+  // so a control that wraps onto its own row cannot span the whole bar.
+  assert.match(styles, /\.visit-log-filter-bar \.visit-log-filters \{\s*display: flex;\s*flex-wrap: wrap;/);
+  assert.match(styles, /\.visit-log-filter-bar \.visit-log-filters>\.visit-log-filter-control:first-child \{\s*flex: 0 0 225px;[\s\S]*?max-width: 225px;/);
+  assert.match(styles, /\.visit-log-filter-bar \.visit-log-filter-control,[\s\S]*?max-width: 240px;/);
+
+  // Search then Period lead the bar — the two controls that decide which
+  // records exist, ahead of the ones that narrow and arrange them.
+  assert.match(html, /id="visitLogPeriodControl"/);
+  assert.match(styles, /\.visit-log-filter-bar \.visit-log-filters>\.visit-log-filter-control:first-child \{\s*order: -2;/);
+  assert.match(styles, /\.visit-log-filter-bar #visitLogPeriodControl \{\s*order: -1;/);
+});
+
+test('the header breadcrumb gives each setting its own bubble', () => {
+  const source = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
+
+  // Period, Group By and Sort By are three bubbles at every width. The combined
+  // "Period · Grouped by · Sorted by" capsule read as one sentence, so finding
+  // a single value meant parsing all of it.
+  assert.doesNotMatch(source, /coreConfigText = periodText/);
+  assert.match(source, /pills\.push\('<span class="header-pill-core">' \+ escapeHtml\(periodText\) \+ '<\/span>'\)/);
+  assert.match(source, /escapeHtml\(groupLabels\[groupVal\] \|\| 'Grouped'\)/);
+  assert.match(source, /escapeHtml\(sortLabels\[sortVal\] \|\| 'Sorted'\)/);
+
+  // Unvisited Sites and Follow-up Tasks lost their combined capsules too.
+  assert.doesNotMatch(source, /Follow-up Tasks · '/);
+  assert.doesNotMatch(source, /'<span class="header-pill-core">Unvisited in ' \+ escapeHtml\(periodText\) \+ ' \\u00b7 '/);
+});
+
+test('the bakery directory reports its own list controls, not the view you came from', () => {
+  const source = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
+
+  // The directory has no Period, and its Sort By / Group By are a separate pair
+  // of dropdowns from the ones the reporting views read.
+  assert.match(source, /Sorted by ' \+\s*escapeHtml\(exportFilterLabel\('visitLogDirectorySort', 'Bakery Name \(A-Z\)'\)\)/);
+  assert.match(source, /exportFilterLabel\('visitLogDirectoryGroup', 'None'\)/);
+
+  // The breadcrumb has to be written before the per-view branches, all of which
+  // can return early — that is what left the directory showing Visit History's
+  // period, grouping and sort.
+  const headerAt = source.indexOf('headerSub.innerHTML = window.GAILS.getVisitLogHeaderSummary()');
+  const directoryAt = source.indexOf('renderBakeryDirectory({');
+  const emptyGuardAt = source.indexOf("if (visitIds.length === 0 && view !== 'followups')");
+  assert.ok(headerAt > 0 && directoryAt > 0 && emptyGuardAt > 0);
+  assert.ok(headerAt < directoryAt, 'breadcrumb must be written before the directory returns');
+  assert.ok(headerAt < emptyGuardAt, 'breadcrumb must be written before the no-visits guard returns');
 });
 
 test('follow-up task cards promote bakery context and do not repeat their group heading', () => {

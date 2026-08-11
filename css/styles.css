@@ -959,6 +959,7 @@ h4 {
 .bakery-ms__search-row {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 6px;
   padding: 4px 6px 8px;
   border-bottom: 1px solid rgba(34, 31, 26, 0.06);
@@ -966,7 +967,13 @@ h4 {
 }
 
 .bakery-ms__search {
-  flex: 1;
+  /* Inputs have an intrinsic minimum width. Without explicitly releasing it,
+     the search field keeps its Overview-sized width and pushes Clear outside
+     a narrower Bakery Reports dropdown. */
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  box-sizing: border-box;
   border: 1px solid rgba(34, 31, 26, 0.1);
   border-radius: 8px;
   background: rgba(34, 31, 26, 0.05);
@@ -1609,11 +1616,20 @@ h4 {
   outline-offset: 2px;
 }
 
+/* Opens above the "i" by default. The KPI row sits inside .dashboard-workspace,
+   which clips its overflow, so on the top row that default put most of the card
+   outside the clip and made it unreadable — js/app.js flips it below the button
+   (and nudges it sideways) whenever the space above cannot hold it. Position
+   stays absolute rather than fixed because .tab-content.active animates a
+   transform, which makes it the containing block for fixed descendants. */
 .kpi-info__panel {
   position: absolute;
   bottom: 34px;
   left: 8px;
+  z-index: 6;
   width: min(330px, calc(100vw - 32px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 14px;
   border: 1px solid var(--card-border-h);
   border-radius: 12px;
@@ -2196,8 +2212,8 @@ canvas {
   flex: 0 0 232px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 13px 14px;
+  gap: 8px;
+  padding: 12px;
   border-right: 1px solid rgba(34, 31, 26, 0.08);
   background:
     radial-gradient(circle at top left, rgba(178, 42, 36, 0.06) 0%, transparent 42%),
@@ -2219,6 +2235,7 @@ canvas {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-height: 30px;
 }
 
 /* The "Main Menu" eyebrow doubled up with the title — hidden to declutter */
@@ -2229,7 +2246,7 @@ canvas {
 .dashboard-sidebar__title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 0.94rem;
   line-height: 1.1;
   color: var(--text);
 }
@@ -2271,11 +2288,11 @@ canvas {
    double-chevron pointing toward the collapse direction, accent on hover */
 .dashboard-sidebar__toggle {
   flex: 0 0 auto;
-  min-height: 32px;
-  padding: 5px 13px;
+  min-height: 30px;
+  padding: 4px 11px;
   border-radius: var(--r-pill);
-  font-size: 0.72rem;
-  gap: 8px;
+  font-size: 0.68rem;
+  gap: 7px;
   background: #FFFFFF;
   border: 1px solid var(--card-border-h);
   color: var(--text-2);
@@ -2370,8 +2387,8 @@ canvas {
 
 .dashboard-nav {
   display: grid;
-  gap: 5px;
-  padding-top: 11px;
+  gap: 3px;
+  padding-top: 8px;
   border-top: 1px solid rgba(34, 31, 26, 0.06);
 }
 
@@ -2380,13 +2397,14 @@ canvas {
    introduces, not floating between two groups. */
 .dashboard-nav__group {
   display: grid;
-  gap: 5px;
+  gap: 3px;
 }
 
 .dashboard-nav__group-title {
-  margin: 9px 0 0;
-  padding-inline: 4px;
-  font-size: 0.66rem;
+  margin: 6px 0 1px;
+  padding-inline: 3px;
+  font-size: 0.6rem;
+  line-height: 1.2;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -2395,7 +2413,92 @@ canvas {
 
 .dashboard-nav__group-items {
   display: grid;
-  gap: 5px;
+  gap: 3px;
+}
+
+/* Focus Bakeries and Bakery Reports are expandable branches of the main
+   menu. Their child views sit almost flush with the parent width: a tiny left
+   inset communicates hierarchy without making the rows feel narrow or
+   disconnected from the main navigation. */
+.dashboard-nav__branch {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dashboard-nav__chevron {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-left: auto;
+  margin-right: 2px;
+  border-right: 1.8px solid currentColor;
+  border-bottom: 1.8px solid currentColor;
+  color: rgba(34, 31, 26, 0.48);
+  transform: rotate(45deg) translate(-1px, -1px);
+  transform-origin: center;
+  transition: color 0.18s ease, transform 0.22s var(--ease);
+}
+
+.dashboard-nav__btn--parent[aria-expanded="true"] .dashboard-nav__chevron {
+  color: var(--accent);
+  transform: rotate(225deg) translate(-1px, -1px);
+}
+
+.dashboard-nav__submenu {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  margin: 0 0 2px;
+  padding: 1px 0 1px 5px;
+  border: 0;
+  animation: dashboardNavSubmenuIn 0.18s var(--ease);
+}
+
+.dashboard-nav__submenu[hidden] {
+  display: none;
+}
+
+@keyframes dashboardNavSubmenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard-nav__submenu .target-subtab {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28px;
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 5px 8px 5px 31px;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(34, 31, 26, 0.64);
+  font-size: 0.71rem;
+  line-height: 1.15;
+  white-space: normal;
+  text-align: left;
+  box-shadow: none;
+}
+
+.dashboard-nav__submenu .target-subtab:hover {
+  color: var(--text);
+  background: rgba(34, 31, 26, 0.045);
+  box-shadow: none;
+}
+
+.dashboard-nav__submenu .target-subtab.active {
+  color: var(--accent);
+  background: rgba(178, 42, 36, 0.11);
+  box-shadow: none;
 }
 
 /* Overview is the home view, so it keeps a hair more separation from the
@@ -2412,66 +2515,42 @@ canvas {
    floating free of it: these are primary navigation, so they carry a little
    more weight than a filter dropdown, but still sit well under the 44px touch
    minimum — this is the pointer-only rail, and the drawer below 980px
-   restores 44px. Eight entries plus three group headings have to clear the
+   restores 44px. Seven destinations plus three group headings have to clear the
    fold on a laptop viewport. */
 .dashboard-nav__btn {
   appearance: none;
   position: relative;
   width: 100%;
-  min-height: calc(var(--control-h) + 2px);
-  padding: 8px 12px;
-  border-radius: 12px;
+  min-height: var(--control-h);
+  padding: 7px 10px;
+  border-radius: 11px;
   border: 1px solid rgba(34, 31, 26, 0.04);
   background: rgba(34, 31, 26, 0.022);
   color: var(--text);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   text-align: left;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(34, 31, 26, 0.015);
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: none;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .dashboard-nav__btn:hover {
   background: rgba(34, 31, 26, 0.05);
   border-color: rgba(201, 127, 18, 0.2);
-  transform: translateY(-1px);
 }
 
 .dashboard-nav__btn.active {
-  background:
-    linear-gradient(135deg, rgba(178, 42, 36, 0.18) 0%, rgba(34, 31, 26, 0.03) 55%, rgba(201, 127, 18, 0.08) 100%);
-  border-color: rgba(178, 42, 36, 0.26);
-  box-shadow: 0 14px 30px rgba(178, 42, 36, 0.12);
-}
-
-/* Pending view: reads as a real menu entry so people know it is coming, but
-   drops the affordances that promise it does something — no lift on hover,
-   no pointer cursor, and the red icon backs off to match the muted label. */
-.dashboard-nav__btn--soon,
-.dashboard-nav__btn--soon:hover {
-  background: rgba(34, 31, 26, 0.014);
-  border-color: rgba(34, 31, 26, 0.04);
-  border-style: dashed;
-  cursor: default;
-  transform: none;
+  background: rgba(178, 42, 36, 0.085);
+  border-color: rgba(178, 42, 36, 0.22);
   box-shadow: none;
 }
 
-.dashboard-nav__btn--soon .dashboard-nav__content strong {
-  color: rgba(34, 31, 26, 0.44);
-  font-weight: 600;
-}
-
-.dashboard-nav__btn--soon .dashboard-nav__icon {
-  color: rgba(178, 42, 36, 0.34);
-}
-
 .dashboard-nav__icon {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2479,8 +2558,8 @@ canvas {
 }
 
 .dashboard-nav__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   stroke: currentColor;
   fill: none;
   stroke-width: 1.9;
@@ -2502,7 +2581,7 @@ canvas {
 .dashboard-nav__content strong {
   display: block;
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   line-height: 1.2;
 }
 
@@ -2510,7 +2589,9 @@ canvas {
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-sidebar__title,
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-sidebar__copy,
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-sidebar__toggle-label,
-.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__content {
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__content,
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__chevron,
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__submenu {
   display: none;
 }
 
@@ -2552,8 +2633,7 @@ canvas {
   padding: 0;
 }
 
-.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn::after,
-.dashboard-nav__btn[data-nav-tooltip]::after {
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn::after {
   content: attr(aria-label);
   position: absolute;
   top: 50%;
@@ -2576,15 +2656,7 @@ canvas {
   z-index: 6;
 }
 
-/* Expanded rail: the label is already on the button, so the tooltip carries
-   the status instead. Collapsed, the higher-specificity rule above wins and
-   the tooltip falls back to aria-label — the icon alone needs the name. */
-.dashboard-nav__btn[data-nav-tooltip]::after {
-  content: attr(data-nav-tooltip);
-}
-
-.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn::before,
-.dashboard-nav__btn[data-nav-tooltip]::before {
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn::before {
   content: "";
   position: absolute;
   top: 50%;
@@ -2605,19 +2677,13 @@ canvas {
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:hover::after,
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:hover::before,
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:focus-visible::after,
-.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:focus-visible::before,
-.dashboard-nav__btn[data-nav-tooltip]:hover::after,
-.dashboard-nav__btn[data-nav-tooltip]:hover::before,
-.dashboard-nav__btn[data-nav-tooltip]:focus-visible::after,
-.dashboard-nav__btn[data-nav-tooltip]:focus-visible::before {
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:focus-visible::before {
   opacity: 1;
   visibility: visible;
 }
 
 .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:hover::after,
-.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:focus-visible::after,
-.dashboard-nav__btn[data-nav-tooltip]:hover::after,
-.dashboard-nav__btn[data-nav-tooltip]:focus-visible::after {
+.dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-nav__btn:focus-visible::after {
   transform: translateY(-50%) translateX(0);
 }
 
@@ -2788,28 +2854,12 @@ canvas {
     padding: 10px 13px;
   }
 
-  /* The sidebar is a scrolling drawer at this width, so a tooltip parked
-     outside it would be clipped — and there is no hover to summon it anyway.
-     Same pseudo-element, reflowed into the row as a permanent chip. */
-  .dashboard-nav__btn[data-nav-tooltip]::after {
-    position: static;
-    margin-left: auto;
-    padding: 4px 8px;
-    font-size: 0.6rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: rgba(34, 31, 26, 0.5);
-    background: rgba(34, 31, 26, 0.05);
-    border-color: rgba(34, 31, 26, 0.06);
-    box-shadow: none;
-    opacity: 1;
-    visibility: visible;
-    transform: none;
+  .dashboard-nav__submenu .target-subtab {
+    min-height: 40px;
+    padding: 9px 10px 9px 33px;
+    font-size: 0.8rem;
   }
 
-  .dashboard-nav__btn[data-nav-tooltip]::before {
-    display: none;
-  }
 }
 
 @media (max-width: 640px) {
@@ -2959,25 +3009,6 @@ canvas {
   white-space: nowrap;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.target-subtab__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-}
-
-.target-subtab__icon svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .target-subtab:hover {
@@ -12988,23 +13019,18 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 }
 
-/* Follow-up Tasks uses the first row for Search, Region, Ops Area, and
-   Assigned To. Group By then starts the second row beside Sort By and Reset,
-   keeping the primary narrowing controls together above the view controls. */
-@media (min-width: 901px) {
-  #tab-visit-log[data-visit-view="followups"] .visit-log-filters {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
+/* No single-row variant for the in-card tray, deliberately. Packing all seven
+   controls plus Reset onto one row saves ~65px, but inside the content column
+   that row is stuck at roughly 1030px however wide the monitor is — about
+   124px per control once Search and Reset take their share. That is not enough
+   for the values these dropdowns actually hold: "All Regions" and "Last 3
+   Months" both ellipsised, and a filter whose current value you cannot read is
+   worse than a filter block one row taller. The four-column grid above gives
+   every control ~230px and nothing truncates.
 
-/* No single-row variant here, deliberately. Packing all seven controls plus
-   Reset onto one row saves ~65px, but .container caps the workspace at
-   1440px, so that row is stuck at roughly 1030px however wide the monitor
-   is — about 124px per control once Search and Reset take their share. That
-   is not enough for the values these dropdowns actually hold: "All Regions"
-   and "Last 3 Months" both ellipsised, and a filter whose current value you
-   cannot read is worse than a filter block one row taller. The four-column
-   grid above gives every control ~230px and nothing truncates. */
+   Bakery Reports escapes that budget by hosting the same controls in a bar
+   above the sidebar, on the full container width — see
+   .visit-log-filter-bar further down, which does lay them out in one row. */
 
 /* Narrow desktop: a quarter-width column gets too tight for the Search
    placeholder, so Search takes its own full row and the dropdowns flow
@@ -13634,7 +13660,8 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 
   .visit-log-filter-panel .filter-select__trigger,
-  .visit-log-filter-panel .visit-log-select {
+  .visit-log-filter-panel .visit-log-select,
+  .visit-log-filter-panel .bakery-ms__trigger {
     min-height: 42px;
     padding: 9px 12px;
     font-size: 0.82rem;
@@ -13646,7 +13673,8 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 
   .visit-log-filter-panel .filter-select__trigger:hover,
-  .visit-log-filter-panel .visit-log-select:hover {
+  .visit-log-filter-panel .visit-log-select:hover,
+  .visit-log-filter-panel .bakery-ms__trigger:hover {
     border-color: rgba(178, 42, 36, 0.45);
     background:
       linear-gradient(180deg, rgba(34, 31, 26, 0.07) 0%, rgba(34, 31, 26, 0.03) 100%),
@@ -13657,6 +13685,15 @@ body.visit-log-filter-open .mobile-bottom-nav {
     border-color: var(--accent) !important;
     background: rgba(255, 255, 255, 0.96) !important;
     box-shadow: 0 0 0 3px var(--accent-d);
+  }
+
+  .visit-log-filter-panel__body .visit-log-filter-control:has(.bakery-ms__trigger.is-open) {
+    grid-column: 1 / -1;
+    z-index: 4120;
+  }
+
+  .visit-log-filter-panel .bakery-ms__dropdown {
+    z-index: 4120;
   }
 
   .visit-log-filter-panel .filter-select__menu {
@@ -13726,18 +13763,129 @@ body.visit-log-filter-open .mobile-bottom-nav {
   }
 }
 
+/* ── Bakery Reports filter bar ──────────────────────────────────────────
+   The filters used to sit mid-card, under the results title, which put the
+   controls that shape the list below the heading that names it. They are now
+   a page-level bar in the exact slot the global .filter-bar holds on every
+   other tab — a sibling of it in the markup, above the sidebar and content
+   shell, so it spans the container rather than the content column. Same
+   surface and padding as that bar, so the two read as one control strip that
+   simply changes its contents as you move between tabs.
+
+   Only ever one of the two is on screen: switchTab() in js/app.js hides
+   .filter-bar and shows this together.
+
+   Placed after the responsive .visit-log-filters blocks above so the
+   descendant selectors' specificity carries at every width — the tray keeps
+   its behaviour but hands its surface, padding, and margin to the bar. */
+.visit-log-filter-bar {
+  display: none;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 7px 14px;
+  margin-bottom: 10px;
+}
+
+.visit-log-filter-bar--visible {
+  display: block;
+}
+
+.visit-log-filter-bar .visit-log-filters {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+/* The directory is reference data, not an action queue, so it has no
+   follow-up status behind it. */
+#tab-visit-log[data-visit-view="bakeries"] .follow-up-status-toggle {
+  display: none !important;
+}
+
+/* One row where the width allows it, like the global bar beside it. The
+   in-card tray had to wrap to four columns because the content column left it
+   ~124px per control; on the full container width the same controls clear the
+   longest value any of them holds ("Last 3 Months", "All Regions").
+
+   Flex rather than a fixed track count: the control set changes per view —
+   five on Unvisited Sites, eight on Visit History with Rating showing — and a
+   flex basis lets each view fill the row it actually needs instead of leaving
+   dead tracks or forcing an early wrap. */
+@media (min-width: 981px) {
+  .visit-log-filter-bar .visit-log-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 12px;
+  }
+
+  /* The dropdowns split whatever Search gives back — but they stop at 240px.
+     Uncapped, a control that wraps onto a row of its own takes the entire bar
+     width (Visit History did exactly that to Visit Type), which reads as a
+     different kind of field from the ones above it and makes a single select
+     look like a search box. Better to leave the tail of a short row empty than
+     to stretch one control across it. */
+  .visit-log-filter-bar .visit-log-filter-control,
+  .visit-log-filter-bar .visit-log-filter-control--compact {
+    flex: 1 1 150px;
+    min-width: 150px;
+    max-width: 240px;
+  }
+
+  /* Search is fixed rather than elastic. It is free text, so width past the
+     point where the placeholder fits buys nothing — that space does more for
+     the dropdowns, whose values have to be readable to be useful. */
+  .visit-log-filter-bar .visit-log-filters>.visit-log-filter-control:first-child {
+    flex: 0 0 225px;
+    min-width: 225px;
+    max-width: 225px;
+  }
+
+  /* justify-self does nothing in a flex row, and the button must not stretch
+     to a share of the free space the controls are dividing up. */
+  .visit-log-filter-bar .visit-log-reset-btn {
+    flex: 0 0 auto;
+  }
+}
+
+/* Period follows Search, ahead of Region and Ops Area. It is the other control
+   that decides which records exist at all rather than how they are narrowed or
+   arranged, so the two that set the scope lead the bar and the rest follow.
+   Only Visit History and Unvisited Sites show it — syncVisitLogViewControls()
+   hides it on the directory and on Follow-up Tasks — so no view scoping is
+   needed here.
+
+   Done with order rather than markup: the mobile filter sheet is a separate
+   layout where the controls keep their source grouping, and Search is not even
+   inside the sheet. Kept out of the 981px block above so the desktop grid at
+   721-980px orders them the same way. */
+@media (min-width: 721px) {
+  .visit-log-filter-bar .visit-log-filters>.visit-log-filter-control:first-child {
+    order: -2;
+  }
+
+  .visit-log-filter-bar #visitLogPeriodControl {
+    order: -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .visit-log-filter-bar {
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+}
+
 /* ── Bakery Reports view nav ────────────────────────────────────────────
    The view switcher is the Focus Bakeries sub-tab bar (.target-subtabs__nav
    + .target-subtab), sitting above the card exactly as Focus's does — this
    class only supplies the gap that Focus gets from its .target-subtabs grid. */
 .visit-log-subtabs {
   margin-bottom: 16px;
-}
-
-/* The directory uses the standard result/export bar but has no follow-up
-   status state behind it. */
-#tab-visit-log[data-visit-view="bakeries"] .follow-up-status-toggle {
-  display: none !important;
 }
 
 /* ── Bakery directory ───────────────────────────────────────────────────
@@ -13961,9 +14109,9 @@ body.visit-log-filter-open .mobile-bottom-nav {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 10px 16px;
-  /* Clears the filter tray below by more than the tray clears the summary
-     bar: this row is the card's header, and at the tray's own 14px it read as
-     the first item in the filter stack rather than as the header above it. */
+  /* The filters now lead the page (.visit-log-filter-bar), so this row sits
+     directly above the summary bar and the list. 20px keeps it reading as the
+     card's header rather than as the first item in the results stack. */
   margin-bottom: 20px;
 }
 
@@ -13975,6 +14123,13 @@ body.visit-log-filter-open .mobile-bottom-nav {
   font-weight: 800;
   letter-spacing: -0.01em;
   color: var(--text);
+}
+
+/* The follow-up status chips ride on the title row. A little more air than the
+   header's own 16px column gap, so the group separates from the heading by
+   more than its pills separate from each other and reads as one control. */
+.visit-log-section-header .follow-up-status-toggle {
+  margin-left: 6px;
 }
 
 .visit-log-actions {
@@ -14333,7 +14488,8 @@ body.visit-log-filter-open .mobile-bottom-nav {
    Scoped to >=721px so the mobile filter drawer keeps its own sizing, which
    is tuned for touch targets (see the max-width:720px block above). */
 @media (min-width: 721px) {
-  .visit-log-filters .filter-select__trigger {
+  .visit-log-filters .filter-select__trigger,
+  .visit-log-filters .bakery-ms__trigger {
     min-height: 38px;
     padding: 8px 12px;
     font-size: 0.85rem;
@@ -14341,6 +14497,57 @@ body.visit-log-filter-open .mobile-bottom-nav {
 
   .visit-log-filters .filter-select__menu {
     max-height: 252px;
+  }
+
+  /* Same component language as Overview, scaled to the report bar's narrower
+     150-240px controls. Colours, selection states and chips stay shared; only
+     density changes, and every flexible child is allowed to shrink. */
+  .visit-log-filters .visit-log-ms .bakery-ms__dropdown {
+    top: calc(100% + 6px);
+    padding: 6px;
+    border-radius: 14px;
+  }
+
+  .visit-log-filters .visit-log-ms .bakery-ms__search-row {
+    gap: 5px;
+    padding: 3px 3px 7px;
+  }
+
+  .visit-log-filters .visit-log-ms .bakery-ms__search {
+    min-height: 32px;
+    padding: 5px 8px;
+    font-size: 0.78rem;
+  }
+
+  .visit-log-filters .visit-log-ms .bakery-ms__clear {
+    padding: 5px 8px;
+    font-size: 0.7rem;
+  }
+
+  .visit-log-filters .visit-log-ms .bakery-ms__list {
+    max-height: min(32vh, 210px);
+  }
+
+  .visit-log-filters .visit-log-ms .bakery-ms__option {
+    gap: 8px;
+    padding: 8px 9px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+  }
+
+  .visit-log-filters .visit-log-ms .bakery-ms__option>span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .visit-log-filters .visit-log-ms .bakery-ms__selected-section {
+    padding: 8px 3px 2px;
+  }
+
+  .visit-log-filters .visit-log-ms .bakery-ms__selected-chips {
+    max-height: 80px;
   }
 
   .visit-log-filters .filter-select__search {
@@ -21756,40 +21963,10 @@ body[data-dash-tab="cei"] .methodology {
     #f7f5f0;
 }
 
-.drill-insight-section {
-  margin-bottom: 18px;
-  padding: 18px;
-  border: 1px solid rgba(146, 137, 120, 0.2);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 8px 22px rgba(54, 47, 38, 0.05);
-}
-
-.drill-section-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 15px;
-}
-
-.drill-section-heading h4,
-.drill-controls-heading h4 {
-  margin: 0;
-  color: var(--text);
-  font-size: 1rem;
-  font-weight: 750;
-  letter-spacing: -0.012em;
-}
-
-.drill-section-heading p {
-  max-width: 430px;
-  margin: 0;
-  color: var(--text-2);
-  font-size: 0.75rem;
-  line-height: 1.45;
-  text-align: right;
-}
+/* The "At a glance" insight section and the separate controls block it sat
+   above are gone — the full-bleed panel merged them into one .drill-toolbar
+   row (see FULL-BLEED WORKSPACE MODALS at the end of this file) so the
+   comparison table gets the height they were spending. */
 
 .drill-modal--overview .drill-summary {
   display: grid;
@@ -21837,37 +22014,6 @@ body[data-dash-tab="cei"] .methodology {
 .drill-modal--overview .drill-card__value {
   font-size: 1.42rem;
   letter-spacing: -0.025em;
-}
-
-.drill-modal--overview .drill-controls {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
-  align-items: center;
-  gap: 13px 20px;
-  margin: 0;
-  padding: 16px 18px 13px;
-  border: 1px solid rgba(146, 137, 120, 0.22);
-  border-bottom: 0;
-  border-radius: 18px 18px 0 0;
-  background: rgba(255, 255, 255, 0.96);
-}
-
-.drill-controls-heading > div {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-}
-
-.drill-result-count {
-  color: var(--text-2);
-  font-size: 0.71rem;
-  white-space: nowrap;
-}
-
-.drill-controls-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .drill-search {
@@ -22028,22 +22174,6 @@ body[data-dash-tab="cei"] .methodology {
     padding: 14px 13px 18px;
   }
 
-  .drill-insight-section {
-    margin-bottom: 13px;
-    padding: 14px;
-    border-radius: 15px;
-  }
-
-  .drill-section-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .drill-section-heading p {
-    text-align: left;
-  }
-
   .drill-modal--overview .drill-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -22060,17 +22190,6 @@ body[data-dash-tab="cei"] .methodology {
 
   .drill-modal--overview .drill-card:nth-child(n+3) {
     border-bottom: 0;
-  }
-
-  .drill-modal--overview .drill-controls {
-    grid-template-columns: 1fr;
-    gap: 11px;
-    padding: 14px;
-  }
-
-  .drill-controls-actions {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .drill-search input {
@@ -22168,19 +22287,9 @@ body[data-dash-tab="cei"] .methodology {
     #f7f5f0;
 }
 
-.drill-modal--visit-report #visitReportBody.visit-report-body--enhanced {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: stretch;
-  gap: 14px;
-}
-
-.drill-modal--visit-report #visitReportBody > .drill-summary,
-.drill-modal--visit-report #visitReportBody > .visit-report-overview-stack,
-.drill-modal--visit-report #visitReportBody > .visit-report-toc,
-.drill-modal--visit-report #visitReportBody > .visit-report-note {
-  grid-column: 1 / -1;
-}
+/* The report body is now a stat strip over a rail + content two-pane layout
+   (see FULL-BLEED WORKSPACE MODALS at the end of this file); the sections grid
+   lives on .visit-report-content, not on the body itself. */
 
 /* .visit-report-section-wrapper is display:contents (see below), so it never
    becomes a grid item itself — grid-column has to land on whichever of its
@@ -22203,24 +22312,6 @@ body[data-dash-tab="cei"] .methodology {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 8px 22px rgba(54, 47, 38, 0.05);
-}
-
-.visit-report-overview-stack {
-  display: flex;
-  grid-column: 1 / -1;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-  width: 100%;
-}
-
-.visit-report-overview-stack > .drill-summary,
-.visit-report-overview-stack > .visit-report-toc {
-  position: static !important;
-  inset: auto !important;
-  transform: none !important;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 .drill-modal--visit-report .drill-card {
@@ -22630,19 +22721,9 @@ body[data-dash-tab="cei"] .methodology {
   }
 }
 
-@media (max-width: 900px) {
-  .drill-modal--visit-report #visitReportBody.visit-report-body--enhanced {
-    grid-template-columns: 1fr;
-  }
-
-  .drill-modal--visit-report #visitReportBody > .drill-summary,
-  .drill-modal--visit-report #visitReportBody > .visit-report-overview-stack,
-  .drill-modal--visit-report #visitReportBody > .visit-report-toc,
-  .drill-modal--visit-report #visitReportBody > .visit-report-note,
-  .drill-modal--visit-report .visit-report-section-wrapper--wide {
-    grid-column: 1;
-  }
-}
+/* The sections grid collapses to one column with the rest of the two-pane
+   layout, at the 1080px and 760px breakpoints in FULL-BLEED WORKSPACE MODALS
+   at the end of this file. */
 
 @media (max-width: 760px) {
   .drill-modal--visit-report .drill-modal-header {
@@ -22696,10 +22777,6 @@ body[data-dash-tab="cei"] .methodology {
     margin-left: 0;
     width: 100%;
     justify-content: center;
-  }
-
-  .visit-report-overview-stack {
-    gap: 10px;
   }
 
   .drill-modal--visit-report .visit-report-section {
@@ -22785,20 +22862,11 @@ body[data-dash-tab="cei"] .methodology {
   }
 }
 
-#visitReportModal.drill-modal--visit-report .visit-report-inner {
-  width: min(95vw, var(--visit-report-max-width, 1180px));
-}
-
-/* Report density determines the frame: analytical reports retain room for
-   charts and paired sections, while note-led check-ins use a focused reading
-   width and a guaranteed single-column flow. */
-#visitReportModal[data-report-type="checkin"] #visitReportBody.visit-report-body--enhanced,
-#visitReportModal[data-report-type="opening"] #visitReportBody.visit-report-body--enhanced {
-  display: flex;
-  align-items: stretch;
-  flex-direction: column;
-}
-
+/* Report density used to pick the modal's own width. The panel is full-bleed
+   now, so --visit-report-max-width (set per report type by
+   setVisitReportPresentation) sizes the reading column inside it instead —
+   see the note-led rules in FULL-BLEED WORKSPACE MODALS at the end of this
+   file. Analytical reports ignore it and use the whole panel. */
 #visitReportModal[data-report-type="checkin"] .visit-report-section-wrapper,
 #visitReportModal[data-report-type="opening"] .visit-report-section-wrapper,
 #visitReportModal[data-report-type="checkin"] .visit-report-section,
@@ -22812,14 +22880,6 @@ body[data-dash-tab="cei"] .methodology {
 #visitReportModal[data-report-type="opening"] .drill-summary {
   width: 100%;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-#drillModal .drill-insight-section {
-  padding: 14px 16px;
-}
-
-#drillModal .drill-section-heading {
-  margin-bottom: 10px;
 }
 
 #drillModal .drill-summary {
@@ -22877,10 +22937,6 @@ body[data-dash-tab="cei"] .methodology {
     width: 100%;
   }
 
-  #drillModal .drill-insight-section {
-    padding: 12px;
-  }
-
   #drillModal .drill-summary,
   #visitReportModal .drill-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -22890,5 +22946,459 @@ body[data-dash-tab="cei"] .methodology {
   #visitReportModal .drill-card {
     min-height: 62px;
     padding: 8px 10px;
+  }
+}
+
+/* ═══════════════════════════ FULL-BLEED WORKSPACE MODALS ══════════════════
+   The drill-down modals (overview segment, focus bakery deep-dive) and the
+   bakery report modal used to float as centred cards ~1160px wide under a
+   92vh cap, which left a 13-column comparison table scrolling inside a 460px
+   window on a 1440px screen. They now dock to the whole workspace below the
+   page banner: full width, full remaining height, square corners, no scrim.
+
+   The Focus Bakery modal kit is otherwise untouched — white surface, 3px
+   semantic top accent from --drill-accent, ink title over a hairline divider.
+   The accent now runs the full width of the screen directly under the banner,
+   which is where it reads best.
+
+   --app-banner-h is measured at runtime by js/utils.js, because each host page
+   (dashboard, Bakery Profile, My Activity, My Team) uses a different banner
+   element and they all reflow at mobile widths.
+
+   Everything below is screen-only: the report's print stylesheet flattens the
+   same modal into an A4 document and must not inherit any of it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --app-banner-h: 0px;
+}
+
+@media screen {
+
+  /* ── Shell ── */
+  .drill-modal--overview,
+  .drill-modal--focus,
+  .drill-modal--visit-report {
+    top: var(--app-banner-h, 0px);
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+    background: transparent;
+    /* None of the page shows through a full-bleed panel, so the blur is pure
+       GPU cost on every scroll frame. */
+    backdrop-filter: none;
+  }
+
+  .drill-modal--overview > .drillInner,
+  .drill-modal--focus > .drillInner,
+  .drill-modal--visit-report > .drillInner {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    /* Keeps the semantic top accent, drops the floating-card edges. */
+    border-width: 3px 0 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* On phones these used to dock to the bottom edge as a sheet, and carried a
+     grab handle to say so. A panel that fills the screen from the banner down
+     is not draggable, so the handle would be a stray grey bar. */
+  @media (max-width: 540px) {
+    .drill-modal--overview > .drillInner::before,
+    .drill-modal--focus > .drillInner::before,
+    .drill-modal--visit-report > .drillInner::before {
+      content: none;
+    }
+  }
+
+  /* The scroll lock pins <body> with position:fixed and a negative top offset,
+     which would carry a sticky banner off the top of the screen with it — so
+     the banner is promoted to fixed for as long as a panel is open. It also
+     sits above the panel (z-index 1000) so its shadow falls onto it. */
+  html.fullbleed-modal-open .header,
+  html.fullbleed-modal-open .bakery-profile-header,
+  html.fullbleed-modal-open .my-activity-header {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 1001;
+  }
+
+  /* ── Overview drill-down: one toolbar row, then table ──
+     The stat cards and the search/toggle controls share a single row so the
+     comparison table — the reason the panel is open — takes every remaining
+     pixel of height, with its heading row pinned while it scrolls. */
+  /* Horizontal padding matches the modal header's, so the eyebrow, the title,
+     the toolbar and the table all share one left edge down the panel. */
+  #drillModal.drill-modal--overview #drillBody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 15px clamp(14px, 2vw, 24px) clamp(16px, 1.8vw, 24px);
+    overflow: hidden;
+  }
+
+  #drillModal .drill-toolbar {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 24px;
+    padding: 12px 16px;
+    border: 1px solid rgba(146, 137, 120, 0.22);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  #drillModal .drill-toolbar .drill-summary {
+    display: grid;
+    flex: 1 1 460px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    max-width: 780px;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid rgba(146, 137, 120, 0.2);
+    border-radius: 13px;
+  }
+
+  #drillModal .drill-toolbar .drill-card {
+    min-width: 0;
+    padding: 8px 14px;
+    border: 0;
+    border-right: 1px solid rgba(146, 137, 120, 0.18);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  #drillModal .drill-toolbar .drill-card:last-child {
+    border-right: 0;
+  }
+
+  #drillModal .drill-toolbar__actions {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  #drillModal .drill-toolbar .drill-sort-hint {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.68rem;
+    white-space: nowrap;
+  }
+
+  #drillModal.drill-modal--overview .drill-table-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow: auto;
+    border-radius: 18px;
+  }
+
+  #drillModal.drill-modal--overview .drill-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #faf9f6;
+    /* A sticky row does not paint its own bottom border reliably. */
+    box-shadow: inset 0 -1px 0 rgba(146, 137, 120, 0.28);
+  }
+
+  /* The key-metric view no longer needs a min-width floor to look deliberate —
+     it has the whole screen. The all-metrics view keeps one so its 13 columns
+     stay legible and scroll rather than crush. */
+  #drillModal.drill-modal--overview .drill-table {
+    min-width: 0;
+  }
+
+  #drillModal.drill-modal--overview .drill-show-details .drill-table {
+    min-width: 1320px;
+  }
+
+  /* ── Bakery report: stat strip, section rail, scrolling content ──
+     A report is a set of independent sections read in any order, so the jump
+     list becomes a persistent left rail with the live section highlighted,
+     instead of a pill bar that scrolls away with the content. The sections
+     themselves flow into as many columns as the screen will hold. */
+  #visitReportModal.drill-modal--visit-report #visitReportBody {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 15px clamp(14px, 2vw, 26px) clamp(16px, 1.8vw, 24px);
+    overflow: hidden;
+    scroll-behavior: auto;
+  }
+
+  /* The stat strip spans the panel, above both panes. The base .drill-summary
+     carries align-self:flex-start, which in this column flex context is the
+     inline axis and would shrink the strip to a narrow stack of cards. */
+  #visitReportModal.drill-modal--visit-report #visitReportBody > .drill-summary {
+    flex: 0 0 auto;
+    align-self: stretch;
+    width: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  #visitReportModal .visit-report-layout {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    min-height: 0;
+  }
+
+  #visitReportModal .visit-report-body--railed .visit-report-layout {
+    grid-template-columns: 236px minmax(0, 1fr);
+  }
+
+  #visitReportModal .visit-report-rail {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  #visitReportModal .visit-report-content {
+    display: grid;
+    align-content: start;
+    /* --report-cols is set by enhanceVisitReportBody from the number of narrow
+       sections the report actually has, so the last row is always full. An
+       auto-fit track count cannot do this: a full-width section lower down
+       occupies every track, so a track with no narrow section in it never
+       collapses and just sits there empty. */
+    grid-template-columns: repeat(var(--report-cols, 2), minmax(0, 1fr));
+    gap: 14px;
+    min-width: 0;
+    min-height: 0;
+    padding-right: 4px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+  }
+
+  #visitReportModal .visit-report-content h4[id] {
+    scroll-margin-top: 16px;
+  }
+
+  /* Summary, coaching notes and comments are the sections marked --wide, so
+     they span the whole content pane. Prose still needs a measure — a 1200px
+     line of a coffee partner's write-up is not readable. */
+  #visitReportModal .visit-report-section-wrapper--wide .visit-report-comment {
+    max-width: 92ch;
+  }
+
+  /* ── Section rail ── */
+  #visitReportModal .visit-report-rail .visit-report-toc {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 9px;
+    padding: 13px 12px;
+  }
+
+  #visitReportModal .visit-report-rail .visit-report-toc > div {
+    flex-direction: column;
+    gap: 2px;
+    overflow: visible;
+  }
+
+  #visitReportModal .visit-report-rail .visit-report-toc a {
+    min-height: 33px;
+    padding: 6px 10px;
+    border-color: transparent;
+    border-radius: 9px;
+    background: transparent;
+    line-height: 1.3;
+    text-align: left;
+    white-space: normal;
+  }
+
+  #visitReportModal .visit-report-rail .visit-report-toc a[aria-current="true"] {
+    border-color: color-mix(in srgb, var(--drill-accent, var(--accent)) 32%, transparent);
+    color: var(--drill-accent, var(--accent));
+    background: color-mix(in srgb, var(--drill-accent, var(--accent)) 9%, #fff);
+  }
+
+  #visitReportModal .visit-report-rail .visit-report-pdf-btn {
+    margin: 3px 0 0;
+    justify-content: center;
+  }
+
+  /* ── Note-led reports keep a reading measure ──
+     Check-ins, NBO openings and the empty/error states are a few paragraphs,
+     not a dashboard; stretched across 1900px they would be unreadable. The
+     per-type --visit-report-max-width that used to size the whole floating
+     modal now sizes this column, so the same editorial judgement carries over
+     to the full-bleed panel. */
+  #visitReportModal[data-report-type="checkin"] .visit-report-content,
+  #visitReportModal[data-report-type="opening"] .visit-report-content,
+  /* The stat strip joins the reading column rather than spanning the panel:
+     a check-in carries two stat cards, and stretched over 1500px they became
+     two labels marooned at opposite ends of an empty band. */
+  #visitReportModal[data-report-type="checkin"] #visitReportBody > .drill-summary,
+  #visitReportModal[data-report-type="opening"] #visitReportBody > .drill-summary {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    width: 100%;
+    max-width: var(--visit-report-max-width, 900px);
+    /* Left-aligned, not centred: the panel's title and eyebrow sit hard left,
+       and a reading column floated to the middle of an otherwise empty panel
+       reads as a separate, unrelated object. */
+    margin-inline: 0;
+  }
+
+  #visitReportModal[data-report-type="checkin"] .visit-report-content,
+  #visitReportModal[data-report-type="opening"] .visit-report-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #visitReportModal[data-report-type="empty"] #visitReportBody,
+  #visitReportModal[data-report-type="error"] #visitReportBody {
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* These two states never reach enhanceVisitReportBody, so there is no
+     layout wrapper to size — the empty card itself is the content. */
+  #visitReportModal[data-report-type="empty"] #visitReportBody > *,
+  #visitReportModal[data-report-type="error"] #visitReportBody > * {
+    flex: 0 1 auto;
+    width: min(100%, var(--visit-report-max-width, 640px));
+  }
+
+  /* ── Focus bakery deep-dive ──
+     Placement is explicit rather than auto-fit because the sections are not
+     interchangeable: the trend chart and the month-by-month history table are
+     wide by nature, while the driver bars and the suggested next steps are
+     two halves of the same "what do I do about it" answer and read best side
+     by side — which is what the extra width buys here. */
+  #focusDetailModal.drill-modal--focus #focusDetailBody {
+    display: grid;
+    align-content: start;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    padding: 20px clamp(14px, 2vw, 26px) clamp(18px, 2vw, 26px);
+  }
+
+  #focusDetailModal.drill-modal--focus #focusDetailBody > .focus-review-summary,
+  #focusDetailModal.drill-modal--focus #focusDetailBody > .focus-detail-section--trend,
+  #focusDetailModal.drill-modal--focus #focusDetailBody > .focus-detail-section--history,
+  /* A bare button, not a section — without this it lands in one track and
+     reads as a half-width stub under the full-width history table. */
+  #focusDetailModal.drill-modal--focus #focusDetailBody > .focus-detail__visitbtn {
+    grid-column: 1 / -1;
+  }
+
+  /* ── Narrow screens ──
+     Below the two-pane threshold the rail returns to a horizontal pill bar
+     above the sections, and everything is a single column again. */
+  @media (max-width: 1080px) {
+    #visitReportModal .visit-report-body--railed .visit-report-layout {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    /* Losing the rail's 236px does not buy back a third section column. */
+    #visitReportModal .visit-report-content {
+      grid-template-columns: repeat(var(--report-cols-md, 2), minmax(0, 1fr));
+    }
+
+    #visitReportModal .visit-report-rail {
+      overflow: visible;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-toc {
+      position: static;
+      flex-direction: row;
+      align-items: center;
+      gap: 13px;
+      padding: 10px 12px;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-toc > div {
+      flex-direction: row;
+      gap: 7px;
+      overflow-x: auto;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-toc a {
+      border-color: rgba(146, 137, 120, 0.22);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      white-space: nowrap;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-pdf-btn {
+      margin: 0 0 0 auto;
+    }
+  }
+
+  @media (max-width: 760px) {
+    #drillModal.drill-modal--overview #drillBody,
+    #visitReportModal.drill-modal--visit-report #visitReportBody,
+    #focusDetailModal.drill-modal--focus #focusDetailBody {
+      padding: 12px 12px 16px;
+    }
+
+    #drillModal .drill-toolbar {
+      gap: 10px;
+      padding: 10px 12px;
+    }
+
+    #drillModal .drill-toolbar .drill-summary {
+      flex: 1 1 100%;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #drillModal .drill-toolbar .drill-card:nth-child(2n) {
+      border-right: 0;
+    }
+
+    #drillModal .drill-toolbar__actions {
+      flex: 1 1 100%;
+      justify-content: flex-start;
+    }
+
+    #drillModal .drill-toolbar .drill-sort-hint {
+      display: none;
+    }
+
+    #drillModal .drill-search input {
+      width: 100%;
+    }
+
+    #visitReportModal .visit-report-content,
+    #focusDetailModal.drill-modal--focus #focusDetailBody {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+/* The section rail is navigation, not content — the report prints without it,
+   exactly like the pill bar it replaced. */
+@media print {
+  #visitReportModal .visit-report-rail {
+    display: none !important;
+  }
+}
+
+@media screen {
+  /* Notes and standalone banners read as a full-width line across the
+     content pane, not as a card sharing a row with a section. */
+  #visitReportModal .visit-report-content > .visit-report-note,
+  #visitReportModal .visit-report-content > .visit-report-empty {
+    grid-column: 1 / -1;
   }
 }

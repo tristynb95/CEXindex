@@ -9,6 +9,7 @@ window.GAILS = window.GAILS || {};
   var WAIT_TIME_TARGET_SECONDS = 120;
   var saveConfirmReturnFocus = null;
   var visitReportReturnFocus = null;
+  var visitReportSectionSpy = null;
 
   var escapeHtml = GAILS.escapeHtml;
 
@@ -95,6 +96,7 @@ window.GAILS = window.GAILS || {};
 
   function hideVisitReportModal(modal) {
     modal.style.display = 'none';
+    stopVisitReportSectionSpy();
     document.body.classList.remove('visit-report-open');
     if (visitReportReturnFocus && visitReportReturnFocus.focus) visitReportReturnFocus.focus();
     visitReportReturnFocus = null;
@@ -141,12 +143,91 @@ window.GAILS = window.GAILS || {};
     return (directText || heading.textContent || '').replace(/\s+/g, ' ').trim().replace(/\s*\(.*\)$/, '');
   }
 
+  // Holds the teardown for the rail's scroll listeners while a report is open.
+  function stopVisitReportSectionSpy() {
+    if (visitReportSectionSpy) visitReportSectionSpy();
+    visitReportSectionSpy = null;
+  }
+
+  // The empty and error states replace the body without going through
+  // enhanceVisitReportBody, so they clear the layout classes a previously
+  // shown report left behind.
+  function resetVisitReportBodyLayout(bodyEl) {
+    stopVisitReportSectionSpy();
+    if (bodyEl && bodyEl.classList) {
+      bodyEl.classList.remove('visit-report-body--enhanced', 'visit-report-body--railed');
+    }
+  }
+
+  // Highlights the rail entry for whatever section is at the top of the
+  // content pane. A rail that never says where you are is just a link list.
+  //
+  // This measures on scroll rather than using an IntersectionObserver band:
+  // the sections sit in a multi-column grid, so a band narrow enough to mean
+  // "at the top" leaves dead zones where a tall section spans it and nothing
+  // is reported at all. Reading positions directly always names a section.
+  function trackVisitReportSection(nav, scroller) {
+    stopVisitReportSectionSpy();
+    if (!nav.querySelectorAll || !scroller.addEventListener) return;
+
+    var links = {};
+    var order = [];
+    Array.prototype.forEach.call(nav.querySelectorAll('a[href^="#visitReportSection"]'), function(link) {
+      var id = link.getAttribute('href').slice(1);
+      links[id] = link;
+      order.push(id);
+    });
+    if (!order.length) return;
+
+    var frame = null;
+
+    function update() {
+      frame = null;
+      var edge = scroller.getBoundingClientRect().top + 24;
+      var currentTop = -Infinity;
+      var current = order[0];
+      order.forEach(function(id) {
+        var heading = document.getElementById(id);
+        if (!heading) return;
+        var top = heading.getBoundingClientRect().top;
+        // The last heading to have passed the top edge is the one being read.
+        // Sections sharing a grid row share a top, and `>` keeps the first of
+        // that row rather than the last.
+        if (top <= edge && top > currentTop) {
+          currentTop = top;
+          current = id;
+        }
+      });
+      order.forEach(function(id) {
+        if (id === current) links[id].setAttribute('aria-current', 'true');
+        else links[id].removeAttribute('aria-current');
+      });
+    }
+
+    function schedule() {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame ? window.requestAnimationFrame(update) : setTimeout(update, 16);
+    }
+
+    scroller.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    update();
+
+    visitReportSectionSpy = function() {
+      scroller.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  }
+
   function enhanceVisitReportBody(bodyEl) {
     if (!bodyEl || !bodyEl.querySelectorAll || !document.createElement) return;
+    // The body has just been re-rendered, so any rail listeners from the
+    // report before this one are watching detached nodes.
+    stopVisitReportSectionSpy();
     if (bodyEl.classList) bodyEl.classList.add('visit-report-body--enhanced');
 
     // The source-PDF link (CQV, CQV follow-up, NBO) starts out as its own
-    // near-empty card. Below, once a Jump To bar exists, that link is moved
+    // near-empty card. Below, once a section rail exists, that link is moved
     // into it and its now-empty carrier wrapper is dropped — so it's excluded
     // from the section/nav bookkeeping here.
     var pdfLink = bodyEl.querySelector ? bodyEl.querySelector('.visit-report-pdf-btn') : null;
@@ -155,6 +236,7 @@ window.GAILS = window.GAILS || {};
     var wrappers = Array.prototype.slice.call(bodyEl.querySelectorAll('.visit-report-section-wrapper'))
       .filter(function(wrapper) { return wrapper !== pdfWrapper; });
     var sections = [];
+    var narrowCount = 0;
 
     wrappers.forEach(function(wrapper, index) {
       var heading = wrapper.querySelector ? wrapper.querySelector('h4') : null;
@@ -164,13 +246,14 @@ window.GAILS = window.GAILS || {};
       ));
       if (/^(summary|action plan|coaching notes)/i.test(label)) isWide = true;
       if (isWide && wrapper.classList) wrapper.classList.add('visit-report-section-wrapper--wide');
+      if (!isWide) narrowCount += 1;
       if (!heading || !label) return;
       heading.id = 'visitReportSection' + (index + 1);
       sections.push({ id: heading.id, label: label });
     });
 
     var nav = null;
-    if (sections.length >= 2 && bodyEl.insertBefore) {
+    if (sections.length >= 2) {
       nav = document.createElement('nav');
       nav.className = 'visit-report-toc';
       nav.setAttribute('aria-label', 'Report sections');
@@ -182,24 +265,45 @@ window.GAILS = window.GAILS || {};
         if (pdfWrapper.parentNode) pdfWrapper.parentNode.removeChild(pdfWrapper);
       }
     }
-    if (!nav) return;
 
-    var firstWrapper = wrappers[0];
+    // Split the panel into a persistent section rail and a scrolling content
+    // pane, with the stat strip spanning both above them. The report modal now
+    // fills the workspace, so the sections can flow into several columns while
+    // the rail stays put — previously the "Jump to" bar was part of the one
+    // scrolling column and slid away with the report it was navigating.
     var summary = bodyEl.querySelector ? bodyEl.querySelector('.drill-summary') : null;
-    if (summary && summary.parentNode === bodyEl && bodyEl.insertBefore) {
-      // Keep summary and section navigation in one normal-flow stack. This
-      // prevents grid/sticky cascade rules from ever placing the nav over the
-      // stat strip while the report body scrolls.
-      var overview = document.createElement('div');
-      overview.className = 'visit-report-overview-stack';
-      bodyEl.insertBefore(overview, summary);
-      overview.appendChild(summary);
-      overview.appendChild(nav);
-    } else if (firstWrapper) {
-      bodyEl.insertBefore(nav, firstWrapper);
-    } else if (bodyEl.appendChild) {
-      bodyEl.appendChild(nav);
+    if (summary && summary.parentNode !== bodyEl) summary = null;
+
+    var layout = document.createElement('div');
+    layout.className = 'visit-report-layout';
+    var content = document.createElement('div');
+    content.className = 'visit-report-content';
+    // The sections grid is sized to how many narrow sections there actually
+    // are, not to how many would fit. A CQV has exactly two (Score by Category
+    // and Score by Section); an auto-fit grid gave it three tracks and left
+    // the third standing empty, because the full-width Action Plan below it
+    // keeps that track from ever collapsing. The -md value is the same count
+    // capped for the mid-width breakpoint, since an inline custom property
+    // cannot be overridden from a media query.
+    content.style.setProperty('--report-cols', Math.max(1, Math.min(3, narrowCount)));
+    content.style.setProperty('--report-cols-md', Math.max(1, Math.min(2, narrowCount)));
+
+    Array.prototype.slice.call(bodyEl.children).forEach(function(child) {
+      if (child !== summary) content.appendChild(child);
+    });
+
+    if (nav) {
+      var rail = document.createElement('aside');
+      rail.className = 'visit-report-rail';
+      rail.appendChild(nav);
+      layout.appendChild(rail);
     }
+    layout.appendChild(content);
+    // Leaves the stat strip (if any) first, then the two-pane layout.
+    bodyEl.appendChild(layout);
+
+    if (bodyEl.classList) bodyEl.classList.toggle('visit-report-body--railed', !!nav);
+    if (nav) trackVisitReportSection(nav, content);
   }
 
   function trapVisitReportFocus(event, modal) {
@@ -821,6 +925,7 @@ window.GAILS = window.GAILS || {};
       '<span aria-hidden="true">&#9745;</span><h4>No report to show yet</h4>' +
       '<p>Once a routine coffee visit is logged, its score, observations and actions will appear here.</p>' +
       '</div>';
+    resetVisitReportBodyLayout(bodyEl);
     setVisitReportPresentation('empty');
 
     window.GAILS._activeVisitReportId = null;
@@ -1054,11 +1159,45 @@ window.GAILS = window.GAILS || {};
     return opt ? opt.text : '';
   }
 
+  function normalizeVisitLogFilterValues(value) {
+    var values = Array.isArray(value) ? value : (typeof value === 'string' && value ? [value] : []);
+    return values.map(function (item) { return String(item || '').trim(); }).filter(Boolean);
+  }
+
+  function getVisitLogFilterValues(input) {
+    var el = typeof input === 'string' ? document.getElementById(input) : input;
+    if (!el) return [];
+    if (!el.multiple || !el.options) return el.value ? [el.value] : [];
+    return Array.prototype.filter.call(el.options, function (option) {
+      return option.selected && !!option.value;
+    }).map(function (option) { return option.value; });
+  }
+
+  function setVisitLogFilterValues(input, values) {
+    var el = typeof input === 'string' ? document.getElementById(input) : input;
+    if (!el || !el.options) return;
+    var wanted = normalizeVisitLogFilterValues(values);
+    Array.prototype.forEach.call(el.options, function (option) {
+      option.selected = !!option.value && wanted.indexOf(option.value) !== -1;
+    });
+    if (el._visitLogMultiSelect) el._visitLogMultiSelect.sync();
+  }
+
+  function visitLogFilterMatches(values, candidate) {
+    return !values.length || values.indexOf(candidate) !== -1;
+  }
+
   // Filter selects use an empty value for "no filter", so the readable
   // "All regions"-style label has to be supplied rather than read off.
   function exportFilterLabel(id, allLabel) {
     var el = document.getElementById(id);
     if (!el) return allLabel;
+    if (el.multiple) {
+      var labels = Array.prototype.filter.call(el.options, function (option) {
+        return option.selected && !!option.value;
+      }).map(function (option) { return option.text; });
+      return labels.length ? labels.join(', ') : allLabel;
+    }
     return el.value ? exportOptionText(el) : allLabel;
   }
 
@@ -1453,9 +1592,11 @@ window.GAILS = window.GAILS || {};
     if (searchEl) {
       // The field's own SEARCH label carries the verb, so the placeholder only
       // has to name what can be matched — which also keeps it inside the
-      // control on the single-row filter layout.
+      // control on the single-row filter layout, where Search is a fixed
+      // 225px. "coffee team" would ellipsise there, and the directory's team
+      // columns are the only ones "team" could mean.
       searchEl.placeholder = isBakeryList
-        ? 'Bakery, ops area or coffee team…'
+        ? 'Bakery, ops area or team…'
         : (isHistoryView
           ? 'Bakery or partner…'
           : (isFollowUps ? 'Bakery or action…' : 'Bakery name…'));
@@ -2015,6 +2156,7 @@ window.GAILS = window.GAILS || {};
         '<span aria-hidden="true">!</span><h4>This report is unavailable</h4>' +
         '<p>The visit may have been removed or the link may no longer be valid.</p>' +
         '</div>';
+      resetVisitReportBodyLayout(bodyEl);
       setVisitReportPresentation('error');
       renderVisitReportActions(null, null);
       showVisitReportModal(modal);
@@ -2280,6 +2422,7 @@ window.GAILS = window.GAILS || {};
   function populateDropdown(selectId, itemsSet, placeholder) {
     var select = document.getElementById(selectId);
     if (!select) return;
+    var currentValues = getVisitLogFilterValues(select);
     var currentVal = select.value;
     select.innerHTML = '<option value="">' + placeholder + '</option>';
     var sorted = Array.from(itemsSet).sort();
@@ -2287,11 +2430,195 @@ window.GAILS = window.GAILS || {};
       var opt = document.createElement('option');
       opt.value = item;
       opt.textContent = item;
+      if (select.multiple) opt.selected = currentValues.indexOf(item) !== -1;
       select.appendChild(opt);
     });
-    if (itemsSet.has(currentVal)) {
+    if (!select.multiple && itemsSet.has(currentVal)) {
       select.value = currentVal;
     }
+    if (select._visitLogMultiSelect) select._visitLogMultiSelect.sync();
+  }
+
+  // Bakery Reports shares the Overview filter bar's checkbox/chip UI, while a
+  // hidden native multiple select remains the single source of filter state.
+  function createVisitLogMultiSelect(config) {
+    var select = document.getElementById(config.selectId);
+    var container = document.getElementById(config.containerId);
+    var trigger = document.getElementById(config.triggerId);
+    var label = document.getElementById(config.labelId);
+    var dropdown = document.getElementById(config.dropdownId);
+    var list = document.getElementById(config.listId);
+    var search = config.searchId ? document.getElementById(config.searchId) : null;
+    var clearBtn = document.getElementById(config.clearId);
+    var selectedSection = document.getElementById(config.selectedSectionId);
+    var selectedChips = document.getElementById(config.chipsId);
+    var selectedCount = document.getElementById(config.countId);
+    if (!select || !container || !trigger || !label || !dropdown || !list || !clearBtn ||
+      !selectedSection || !selectedChips || !selectedCount || select._visitLogMultiSelect) return;
+
+    var isOpen = false;
+
+    function options() {
+      return Array.prototype.filter.call(select.options, function (option) { return !!option.value; });
+    }
+
+    function values() {
+      return getVisitLogFilterValues(select);
+    }
+
+    function updateLabel() {
+      var selected = values();
+      label.textContent = !selected.length
+        ? config.allLabel
+        : (selected.length === 1 ? selected[0] : selected.length + ' ' + config.pluralLabel);
+      trigger.classList.toggle('bakery-ms__trigger--active', selected.length > 0);
+      clearBtn.style.display = selected.length ? '' : 'none';
+    }
+
+    function renderSelected() {
+      var selected = values().slice().sort();
+      selectedSection.style.display = selected.length ? '' : 'none';
+      selectedCount.textContent = selected.length;
+      selectedChips.innerHTML = '';
+      selected.forEach(function (name) {
+        var chip = document.createElement('span');
+        chip.className = 'bakery-ms__sel-chip';
+        var chipLabel = document.createElement('span');
+        chipLabel.textContent = name;
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'bakery-ms__sel-chip-remove';
+        remove.setAttribute('aria-label', 'Remove ' + name);
+        remove.innerHTML = '&#x2715;';
+        remove.addEventListener('click', function (event) {
+          event.stopPropagation();
+          setVisitLogFilterValues(select, values().filter(function (value) { return value !== name; }));
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        chip.appendChild(chipLabel);
+        chip.appendChild(remove);
+        selectedChips.appendChild(chip);
+      });
+    }
+
+    function renderList() {
+      var selected = values();
+      var query = search ? search.value.toLowerCase().trim() : '';
+      var visible = options().filter(function (option) {
+        return !query || option.textContent.toLowerCase().indexOf(query) !== -1;
+      });
+      list.innerHTML = '';
+      if (!visible.length) {
+        var empty = document.createElement('div');
+        empty.className = 'filter-select__empty';
+        empty.textContent = 'No matches found';
+        list.appendChild(empty);
+        return;
+      }
+      visible.forEach(function (option) {
+        var checked = selected.indexOf(option.value) !== -1;
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'bakery-ms__option' + (checked ? ' is-checked' : '');
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', checked ? 'true' : 'false');
+        var box = document.createElement('span');
+        box.className = 'bakery-ms__checkbox';
+        box.setAttribute('aria-hidden', 'true');
+        var text = document.createElement('span');
+        text.textContent = option.textContent;
+        button.appendChild(box);
+        button.appendChild(text);
+        button.addEventListener('click', function () {
+          var next = values();
+          var index = next.indexOf(option.value);
+          if (index === -1) next.push(option.value); else next.splice(index, 1);
+          setVisitLogFilterValues(select, next);
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        list.appendChild(button);
+      });
+    }
+
+    function sync() {
+      updateLabel();
+      renderSelected();
+      if (isOpen) renderList();
+    }
+
+    function close() {
+      isOpen = false;
+      dropdown.style.display = 'none';
+      trigger.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    function open() {
+      ['visitLogRegion', 'visitLogOps', 'visitLogBakery'].forEach(function (id) {
+        var other = document.getElementById(id);
+        if (other && other !== select && other._visitLogMultiSelect) other._visitLogMultiSelect.close();
+      });
+      isOpen = true;
+      dropdown.style.display = 'block';
+      trigger.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      if (search) search.value = '';
+      renderList();
+      renderSelected();
+      if (search) search.focus({ preventScroll: true });
+    }
+
+    trigger.addEventListener('click', function () { if (isOpen) close(); else open(); });
+    if (search) search.addEventListener('input', renderList);
+    clearBtn.addEventListener('click', function () {
+      setVisitLogFilterValues(select, []);
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    document.addEventListener('click', function (event) {
+      // renderList()/renderSelected() replace the clicked option or chip before
+      // this document listener runs. composedPath() preserves the original
+      // path through the multiselect, so an in-menu selection remains open for
+      // the next choice instead of looking like a click on a detached node.
+      var path = event.composedPath ? event.composedPath() : [];
+      var clickedInside = path.length
+        ? path.some(function (element) { return element === container; })
+        : container.contains(event.target);
+      if (isOpen && !clickedInside) close();
+    });
+    document.addEventListener('keydown', function (event) {
+      if (isOpen && event.key === 'Escape') {
+        close();
+        trigger.focus();
+      }
+    });
+
+    select._visitLogMultiSelect = { sync: sync, close: close };
+    sync();
+  }
+
+  function initVisitLogMultiSelects() {
+    [
+      { key: 'Region', allLabel: 'All Regions', pluralLabel: 'regions' },
+      { key: 'Ops', allLabel: 'All Areas', pluralLabel: 'areas', searchable: true },
+      { key: 'Bakery', allLabel: 'All Bakeries', pluralLabel: 'bakeries', searchable: true }
+    ].forEach(function (item) {
+      var prefix = 'visitLog' + item.key;
+      createVisitLogMultiSelect({
+        selectId: prefix,
+        containerId: prefix + 'Multiselect',
+        triggerId: prefix + 'MsTrigger',
+        labelId: prefix + 'MsLabel',
+        dropdownId: prefix + 'Dropdown',
+        listId: prefix + 'MsList',
+        searchId: item.searchable ? prefix + 'Search' : '',
+        clearId: prefix + 'ClearBtn',
+        selectedSectionId: prefix + 'MsSelectedSection',
+        chipsId: prefix + 'MsChips',
+        countId: prefix + 'MsCount',
+        allLabel: item.allLabel,
+        pluralLabel: item.pluralLabel
+      });
+    });
   }
 
   function getPeriodLabel(val) {
@@ -2323,7 +2650,6 @@ window.GAILS = window.GAILS || {};
   }
 
   window.GAILS.getVisitLogHeaderSummary = function () {
-    var G = window.GAILS;
     var searchEl = document.getElementById('visitLogSearch');
     var regionEl = document.getElementById('visitLogRegion');
     var opsEl = document.getElementById('visitLogOps');
@@ -2338,9 +2664,9 @@ window.GAILS = window.GAILS || {};
     var followUpSortEl = document.getElementById('followUpSort');
 
     var searchVal = searchEl ? searchEl.value.trim() : '';
-    var regionVal = regionEl ? regionEl.value : '';
-    var opsVal = opsEl ? opsEl.value : '';
-    var bakeryVal = bakeryEl ? bakeryEl.value : '';
+    var regionVals = getVisitLogFilterValues(regionEl);
+    var opsVals = getVisitLogFilterValues(opsEl);
+    var bakeryVals = getVisitLogFilterValues(bakeryEl);
     var typeVal = typeEl ? typeEl.value : '';
     var ratingVal = ratingEl ? ratingEl.value : '';
     var groupVal = groupEl ? groupEl.value : getVisitLogDefaultGroup();
@@ -2351,11 +2677,22 @@ window.GAILS = window.GAILS || {};
     var pills = [];
 
     if (view === 'bakeries') {
+      // The directory's own list controls, not the reporting views'. It has no
+      // Period, and its Sort By / Group By are a separate pair of dropdowns
+      // (visitLogDirectorySort / visitLogDirectoryGroup) from the ones the
+      // history views read.
+      var directoryGroupEl = document.getElementById('visitLogDirectoryGroup');
       pills.push('<span class="header-pill-core">Bakery Directory</span>');
+      pills.push('<span class="header-pill-core">Sorted by ' +
+        escapeHtml(exportFilterLabel('visitLogDirectorySort', 'Bakery Name (A-Z)')) + '</span>');
+      pills.push('<span class="header-pill-core">' +
+        (directoryGroupEl && directoryGroupEl.value !== 'none'
+          ? 'Grouped by ' + escapeHtml(exportFilterLabel('visitLogDirectoryGroup', 'None'))
+          : 'Ungrouped') + '</span>');
       if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
-      if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
-      if (opsVal) pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
-      if (bakeryVal) pills.push('<span class="header-pill-filter">' + escapeHtml(bakeryVal) + '</span>');
+      if (regionVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogRegion', 'All regions')) + '</span>');
+      if (opsVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogOps', 'All ops areas')) + '</span>');
+      if (bakeryVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogBakery', 'All bakeries')) + '</span>');
       var directoryTitle = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
       return directoryTitle + '<span class="header-sub-pillwrap">' + pills.join('') + '</span>';
     }
@@ -2363,15 +2700,11 @@ window.GAILS = window.GAILS || {};
     if (view === 'followups') {
       var statusLabels = FOLLOW_UP_STATUS_LABELS;
       var followStatus = window.GAILS._followUpStatusFilter || 'open';
-      if (window.innerWidth <= 980) {
-        pills.push('<span class="header-pill-core">Follow-up Tasks</span>');
-        pills.push('<span class="header-pill-core">' + escapeHtml(statusLabels[followStatus] || 'Open') + '</span>');
-      } else {
-        pills.push('<span class="header-pill-core">Follow-up Tasks · ' + escapeHtml(statusLabels[followStatus] || 'Open') + '</span>');
-      }
+      pills.push('<span class="header-pill-core">Follow-up Tasks</span>');
+      pills.push('<span class="header-pill-core">' + escapeHtml(statusLabels[followStatus] || 'Open') + '</span>');
       if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
-      if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
-      if (opsVal) pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
+      if (regionVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogRegion', 'All regions')) + '</span>');
+      if (opsVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogOps', 'All ops areas')) + '</span>');
       if (followUpAssigneeEl && followUpAssigneeEl.value) {
         pills.push('<span class="header-pill-filter">Assigned to ' +
           escapeHtml(exportFilterLabel('followUpAssignee', 'All')) + '</span>');
@@ -2393,17 +2726,12 @@ window.GAILS = window.GAILS || {};
         'region': 'Grouped by Region',
         'none': 'Ungrouped'
       };
-      if (window.innerWidth <= 980) {
-        pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + '</span>');
-        pills.push('<span class="header-pill-core">' + escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Region') + '</span>');
-      } else {
-        pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + ' \u00b7 ' +
-          escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Region') + '</span>');
-      }
+      pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + '</span>');
+      pills.push('<span class="header-pill-core">' + escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Region') + '</span>');
 
       if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
-      if (regionVal) pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
-      if (opsVal) pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
+      if (regionVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogRegion', 'All regions')) + '</span>');
+      if (opsVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogOps', 'All ops areas')) + '</span>');
 
       var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
       return title +
@@ -2426,26 +2754,23 @@ window.GAILS = window.GAILS || {};
       'type': 'Sorted by Type'
     };
 
-    // Phones: separate pills so they wrap individually next to the title
-    // instead of one long bubble dropping below it. Desktop keeps the
-    // single combined capsule.
-    if (window.innerWidth <= 980) {
-      pills.push('<span class="header-pill-core">' + escapeHtml(periodText) + '</span>');
-      pills.push('<span class="header-pill-core">' + escapeHtml(groupLabels[groupVal] || 'Grouped') + '</span>');
-      pills.push('<span class="header-pill-core">' + escapeHtml(sortLabels[sortVal] || 'Sorted') + '</span>');
-    } else {
-      var coreConfigText = periodText + ' · ' + (groupLabels[groupVal] || 'Grouped') + ' · ' + (sortLabels[sortVal] || 'Sorted');
-      pills.push('<span class="header-pill-core">' + escapeHtml(coreConfigText) + '</span>');
-    }
+    // One bubble per setting, at every width. The combined "Period · Grouped
+    // by · Sorted by" capsule read as a single sentence, so you had to parse
+    // the whole of it to find the one value you were checking; separate
+    // bubbles also wrap individually beside the title instead of dropping the
+    // whole run below it.
+    pills.push('<span class="header-pill-core">' + escapeHtml(periodText) + '</span>');
+    pills.push('<span class="header-pill-core">' + escapeHtml(groupLabels[groupVal] || 'Grouped') + '</span>');
+    pills.push('<span class="header-pill-core">' + escapeHtml(sortLabels[sortVal] || 'Sorted') + '</span>');
 
     if (searchVal) {
       pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
     }
-    if (regionVal) {
-      pills.push('<span class="header-pill-filter">' + escapeHtml(regionVal) + '</span>');
+    if (regionVals.length) {
+      pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogRegion', 'All regions')) + '</span>');
     }
-    if (opsVal) {
-      pills.push('<span class="header-pill-filter">' + escapeHtml(opsVal) + '</span>');
+    if (opsVals.length) {
+      pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogOps', 'All ops areas')) + '</span>');
     }
     if (typeVal) {
       var typeLabels = {
@@ -2480,13 +2805,14 @@ window.GAILS = window.GAILS || {};
     return [...new Set(Object.values(meta).map(function (v) { return v.r; }))].filter(function (r) { return r && r !== 'Other'; }).sort();
   }
 
-  // Scoped to regionVal so the Ops Area dropdown only ever lists areas
-  // that actually operate in the selected region.
-  function getVisitLogOps(regionVal) {
+  // Scoped to the selected regions so the Ops Area dropdown only lists areas
+  // that actually operate in at least one of them.
+  function getVisitLogOps(regionValues) {
     var G = window.GAILS;
     var meta = (G && G.BAKERY_META) || {};
+    var regions = normalizeVisitLogFilterValues(regionValues);
     return [...new Set(Object.values(meta)
-      .filter(function (v) { return !regionVal || v.r === regionVal; })
+      .filter(function (v) { return visitLogFilterMatches(regions, v.r); })
       .map(function (v) { return v.o; })
     )].filter(Boolean).sort();
   }
@@ -2497,12 +2823,14 @@ window.GAILS = window.GAILS || {};
     return String(label).replace(/^GAIL['\u2018\u2019]s(?:\s+|$)/i, '').trim();
   }
 
-  function getDirectoryBakeryNames(regionVal, opsVal) {
+  function getDirectoryBakeryNames(regionValues, opsValues) {
     var G = window.GAILS;
     var meta = (G && G.BAKERY_META) || {};
+    var regions = normalizeVisitLogFilterValues(regionValues);
+    var opsAreas = normalizeVisitLogFilterValues(opsValues);
     return Object.keys(meta).filter(reportBakeryAllowed).filter(function (name) {
-      if (regionVal && G.getBakeryRegion && G.getBakeryRegion(name) !== regionVal) return false;
-      if (opsVal && G.getBakeryOps && G.getBakeryOps(name) !== opsVal) return false;
+      if (G.getBakeryRegion && !visitLogFilterMatches(regions, G.getBakeryRegion(name))) return false;
+      if (G.getBakeryOps && !visitLogFilterMatches(opsAreas, G.getBakeryOps(name))) return false;
       return true;
     }).map(function (name) {
       return getDirectoryBakeryLabel(name);
@@ -2514,23 +2842,17 @@ window.GAILS = window.GAILS || {};
     var opsEl = document.getElementById('visitLogOps');
     populateDropdown(
       'visitLogBakery',
-      new Set(getDirectoryBakeryNames(regionEl ? regionEl.value : '', opsEl ? opsEl.value : '')),
+      new Set(getDirectoryBakeryNames(getVisitLogFilterValues(regionEl), getVisitLogFilterValues(opsEl))),
       'All Bakeries'
     );
-    if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect('visitLogBakery');
   }
 
   function populateVisitLogFilterOptions() {
     var regionEl = document.getElementById('visitLogRegion');
-    var regionVal = regionEl ? regionEl.value : '';
     populateDropdown('visitLogRegion', new Set(getVisitLogRegions()), 'All Regions');
-    populateDropdown('visitLogOps', new Set(getVisitLogOps(regionVal)), 'All Areas');
+    populateDropdown('visitLogOps', new Set(getVisitLogOps(getVisitLogFilterValues(regionEl))), 'All Areas');
     populateDirectoryBakeryOptions();
     populateFollowUpAssigneeOptions();
-    if (window.GAILS.syncCustomSelect) {
-      window.GAILS.syncCustomSelect('visitLogRegion');
-      window.GAILS.syncCustomSelect('visitLogOps');
-    }
     applyReportScopeToFilters();
   }
 
@@ -2543,10 +2865,7 @@ window.GAILS = window.GAILS || {};
       var el = document.getElementById(id);
       if (!el) return;
       var control = el.closest ? el.closest('.visit-log-filter-control') : null;
-      if (scoped && el.value) {
-        el.value = '';
-        if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect(id);
-      }
+      if (scoped && getVisitLogFilterValues(el).length) setVisitLogFilterValues(el, []);
       if (control) control.style.display = scoped ? 'none' : '';
     });
   }
@@ -2574,9 +2893,9 @@ window.GAILS = window.GAILS || {};
     var defaultPeriod = getVisitLogDefaultPeriod();
     var count = 0;
 
-    if (regionEl && regionEl.value) count++;
-    if (opsEl && opsEl.value) count++;
-    if (isBakeryList && bakeryEl && bakeryEl.value) count++;
+    if (getVisitLogFilterValues(regionEl).length) count++;
+    if (getVisitLogFilterValues(opsEl).length) count++;
+    if (isBakeryList && getVisitLogFilterValues(bakeryEl).length) count++;
     if (isBakeryList && directorySortEl && directorySortEl.value !== 'nameAsc') count++;
     if (isBakeryList && directoryGroupEl && directoryGroupEl.value !== 'none') count++;
     if (isFollowUps && followUpAssigneeEl && followUpAssigneeEl.value) count++;
@@ -2644,6 +2963,10 @@ window.GAILS = window.GAILS || {};
       var trigger = wrapper.querySelector('.filter-select__trigger');
       if (trigger) trigger.setAttribute('aria-expanded', 'false');
     });
+    ['visitLogRegion', 'visitLogOps', 'visitLogBakery'].forEach(function (id) {
+      var multi = document.getElementById(id);
+      if (multi && multi._visitLogMultiSelect) multi._visitLogMultiSelect.close();
+    });
     panel.classList.remove('is-open');
     backdrop.classList.remove('is-open');
     backdrop.setAttribute('aria-hidden', 'true');
@@ -2693,14 +3016,12 @@ window.GAILS = window.GAILS || {};
         ? ''
         : (typeof saved.search === 'string' ? saved.search : '');
     }
-    setSelectValueIfPresent(regionEl, saved.region);
-    // Ops options depend on the selected region, so rebuild them first
-    if (regionEl && regionEl.value) {
-      populateDropdown('visitLogOps', new Set(getVisitLogOps(regionEl.value)), 'All Areas');
-    }
-    setSelectValueIfPresent(document.getElementById('visitLogOps'), saved.ops);
+    setVisitLogFilterValues(regionEl, saved.region);
+    // Ops options depend on every selected region, so rebuild them first.
+    populateDropdown('visitLogOps', new Set(getVisitLogOps(getVisitLogFilterValues(regionEl))), 'All Areas');
+    setVisitLogFilterValues(document.getElementById('visitLogOps'), saved.ops);
     populateDirectoryBakeryOptions();
-    setSelectValueIfPresent(document.getElementById('visitLogBakery'), saved.bakery);
+    setVisitLogFilterValues(document.getElementById('visitLogBakery'), saved.bakery);
     setSelectValueIfPresent(document.getElementById('visitLogDirectorySort'), saved.directorySort);
     setSelectValueIfPresent(document.getElementById('visitLogDirectoryGroup'), saved.directoryGroup);
     setSelectValueIfPresent(document.getElementById('visitLogGroup'), saved.group);
@@ -2739,9 +3060,9 @@ window.GAILS = window.GAILS || {};
     var meta = (G && G.BAKERY_META) || {};
     var values = filters || {};
     var search = String(values.search || '').trim().toLowerCase();
-    var regionFilter = String(values.region || '');
-    var opsFilter = String(values.ops || '');
-    var bakeryFilter = String(values.bakery || '');
+    var regionFilters = normalizeVisitLogFilterValues(values.region);
+    var opsFilters = normalizeVisitLogFilterValues(values.ops);
+    var bakeryFilters = normalizeVisitLogFilterValues(values.bakery);
     var sortBy = String(values.sort || 'nameAsc');
 
     return Object.keys(meta).filter(reportBakeryAllowed).map(function (name) {
@@ -2761,9 +3082,9 @@ window.GAILS = window.GAILS || {};
         areaHeadBarista: opsAssignment && opsAssignment.areaHeadBarista || ''
       };
     }).filter(function (row) {
-      if (regionFilter && row.region !== regionFilter) return false;
-      if (opsFilter && row.ops !== opsFilter) return false;
-      if (bakeryFilter && row.bakery !== bakeryFilter) return false;
+      if (!visitLogFilterMatches(regionFilters, row.region)) return false;
+      if (!visitLogFilterMatches(opsFilters, row.ops)) return false;
+      if (!visitLogFilterMatches(bakeryFilters, row.bakery)) return false;
       if (!search) return true;
       return [
         row.bakery,
@@ -3093,6 +3414,7 @@ window.GAILS = window.GAILS || {};
     // Initialize listeners once
     if (!window.GAILS._visitLogFiltersInited) {
       window.GAILS._visitLogFiltersInited = true;
+      initVisitLogMultiSelects();
       var searchEl = document.getElementById('visitLogSearch');
       var regionEl = document.getElementById('visitLogRegion');
       var opsEl = document.getElementById('visitLogOps');
@@ -3149,10 +3471,9 @@ window.GAILS = window.GAILS || {};
         });
       }
       if (regionEl) regionEl.addEventListener('change', function () {
-        // Selected region narrowed/changed - the ops list must be rebuilt to
-        // only offer areas that actually operate in that region.
-        populateDropdown('visitLogOps', new Set(getVisitLogOps(regionEl.value)), 'All Areas');
-        if (window.GAILS.syncCustomSelect) window.GAILS.syncCustomSelect('visitLogOps');
+        // Selected regions changed: keep only ops areas and bakeries that
+        // still sit inside at least one selected region.
+        populateDropdown('visitLogOps', new Set(getVisitLogOps(getVisitLogFilterValues(regionEl))), 'All Areas');
         populateDirectoryBakeryOptions();
         syncVisitLogMobileFilterButton();
         window.GAILS.renderVisitLog();
@@ -3587,16 +3908,16 @@ window.GAILS = window.GAILS || {};
         resetBtn.addEventListener('click', function () {
           try { localStorage.removeItem(VISIT_LOG_FILTER_STORAGE_KEY); } catch (e) { /* storage unavailable */ }
           if (searchEl) searchEl.value = '';
-          if (regionEl) regionEl.value = '';
+          setVisitLogFilterValues(regionEl, []);
           if (typeEl) typeEl.value = '';
           if (ratingEl) ratingEl.value = '';
           if (groupEl) groupEl.value = getVisitLogDefaultGroup();
           if (sortEl) sortEl.value = 'date';
           if (periodEl) periodEl.value = getVisitLogDefaultPeriod(window.GAILS._activeVisitLogView || 'bakeries');
           populateDropdown('visitLogOps', new Set(getVisitLogOps('')), 'All Areas');
-          if (opsEl) opsEl.value = '';
+          setVisitLogFilterValues(opsEl, []);
           populateDirectoryBakeryOptions();
-          if (bakeryEl) bakeryEl.value = '';
+          setVisitLogFilterValues(bakeryEl, []);
           if (directorySortEl) directorySortEl.value = 'nameAsc';
           if (directoryGroupEl) directoryGroupEl.value = 'none';
           if (followUpAssigneeEl) followUpAssigneeEl.value = '';
@@ -3610,9 +3931,6 @@ window.GAILS = window.GAILS || {};
           syncCqvRatingVisibility();
           syncVisitLogMobileFilterButton();
           if (window.GAILS.syncCustomSelect) {
-            window.GAILS.syncCustomSelect('visitLogRegion');
-            window.GAILS.syncCustomSelect('visitLogOps');
-            window.GAILS.syncCustomSelect('visitLogBakery');
             window.GAILS.syncCustomSelect('visitLogDirectorySort');
             window.GAILS.syncCustomSelect('visitLogDirectoryGroup');
             window.GAILS.syncCustomSelect('followUpAssignee');
@@ -3674,9 +3992,9 @@ window.GAILS = window.GAILS || {};
 
     // Get filter values
     var searchVal = document.getElementById('visitLogSearch') ? document.getElementById('visitLogSearch').value.toLowerCase().trim() : '';
-    var regionVal = document.getElementById('visitLogRegion') ? document.getElementById('visitLogRegion').value : '';
-    var opsVal = document.getElementById('visitLogOps') ? document.getElementById('visitLogOps').value : '';
-    var bakeryVal = document.getElementById('visitLogBakery') ? document.getElementById('visitLogBakery').value : '';
+    var regionVal = getVisitLogFilterValues('visitLogRegion');
+    var opsVal = getVisitLogFilterValues('visitLogOps');
+    var bakeryVal = getVisitLogFilterValues('visitLogBakery');
     var directorySortVal = document.getElementById('visitLogDirectorySort') ? document.getElementById('visitLogDirectorySort').value : 'nameAsc';
     var directoryGroupVal = document.getElementById('visitLogDirectoryGroup') ? document.getElementById('visitLogDirectoryGroup').value : 'none';
     var typeVal = document.getElementById('visitLogType') ? document.getElementById('visitLogType').value : '';
@@ -3723,6 +4041,16 @@ window.GAILS = window.GAILS || {};
       view: view
     });
 
+    // Ahead of the per-view branches below, all of which can return early. The
+    // directory and the "no check-ins yet" guard both did, which left the
+    // header breadcrumb showing the view you came from — the directory read
+    // "Last 2 Months · Grouped by Region · Sorted by Date", none of which it
+    // even offers.
+    var headerSub = document.getElementById('headerSub');
+    if (headerSub && window.GAILS.getVisitLogHeaderSummary) {
+      headerSub.innerHTML = window.GAILS.getVisitLogHeaderSummary();
+    }
+
     if (view === 'bakeries') {
       renderBakeryDirectory({
         search: searchVal,
@@ -3758,7 +4086,8 @@ window.GAILS = window.GAILS || {};
     // "Show more" pagination: any filter/view change resets the row limit
     // back to the first chunk; the Show more button re-renders with the same
     // signature, so the raised limit survives.
-    var renderSig = [view, searchVal, regionVal, opsVal, typeVal, ratingVal, groupVal, sortVal, periodVal, followUpStatus].join('|');
+    var renderSig = [view, searchVal, regionVal.join(','), opsVal.join(','), bakeryVal.join(','),
+      typeVal, ratingVal, groupVal, sortVal, periodVal, followUpStatus].join('|');
     if (window.GAILS._visitLogRenderSig !== renderSig) {
       window.GAILS._visitLogRenderSig = renderSig;
       window.GAILS._visitLogRenderLimit = VISIT_LOG_RENDER_CHUNK;
@@ -3771,11 +4100,6 @@ window.GAILS = window.GAILS || {};
     var appHeader = document.querySelector('.header');
     if (appHeader) {
       document.documentElement.style.setProperty('--visit-sticky-top', appHeader.offsetHeight + 'px');
-    }
-
-    var headerSub = document.getElementById('headerSub');
-    if (headerSub && window.GAILS.getVisitLogHeaderSummary) {
-      headerSub.innerHTML = window.GAILS.getVisitLogHeaderSummary();
     }
 
     // Convert object to array. Scoped ops managers only see visits for their
@@ -3796,13 +4120,13 @@ window.GAILS = window.GAILS || {};
           var auditorMatch = v.auditorName && v.auditorName.toLowerCase().indexOf(searchVal) !== -1;
           if (!bakeryMatch && !partnerMatch && !auditorMatch) return false;
         }
-        if (regionVal) {
+        if (regionVal.length) {
           var reg = G.getBakeryRegion ? G.getBakeryRegion(v.bakery) : 'Unknown';
-          if (reg !== regionVal) return false;
+          if (regionVal.indexOf(reg) === -1) return false;
         }
-        if (opsVal) {
+        if (opsVal.length) {
           var ops = G.getBakeryOps ? G.getBakeryOps(v.bakery) : 'Unknown';
-          if (ops !== opsVal) return false;
+          if (opsVal.indexOf(ops) === -1) return false;
         }
         if (!isDateWithinMonths(v.date, periodVal)) {
           return false;
@@ -4035,13 +4359,13 @@ window.GAILS = window.GAILS || {};
         if (searchVal) {
           if (bName.toLowerCase().indexOf(searchVal) === -1) return;
         }
-        if (regionVal) {
+        if (regionVal.length) {
           var reg = G.getBakeryRegion ? G.getBakeryRegion(bName) : 'Unknown';
-          if (reg !== regionVal) return;
+          if (regionVal.indexOf(reg) === -1) return;
         }
-        if (opsVal) {
+        if (opsVal.length) {
           var ops = G.getBakeryOps ? G.getBakeryOps(bName) : 'Unknown';
-          if (ops !== opsVal) return;
+          if (opsVal.indexOf(ops) === -1) return;
         }
         matchingSites++;
 
@@ -4188,8 +4512,8 @@ window.GAILS = window.GAILS || {};
             followUpAttributionLabel(t)).toLowerCase();
           if (hay.indexOf(searchVal) === -1) return false;
         }
-        if (regionVal && (G.getBakeryRegion ? G.getBakeryRegion(t.bakery) : 'Unknown') !== regionVal) return false;
-        if (opsVal && (G.getBakeryOps ? G.getBakeryOps(t.bakery) : 'Unknown') !== opsVal) return false;
+        if (!visitLogFilterMatches(regionVal, G.getBakeryRegion ? G.getBakeryRegion(t.bakery) : 'Unknown')) return false;
+        if (!visitLogFilterMatches(opsVal, G.getBakeryOps ? G.getBakeryOps(t.bakery) : 'Unknown')) return false;
         if (!followUpTaskMatchesAssignee(t, followUpAssigneeVal)) return false;
         return true;
       }

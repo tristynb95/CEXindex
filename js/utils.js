@@ -339,3 +339,73 @@ window.GAILS.formatSecs = function(secs) {
   if (s === 60) { m += 1; s = 0; }
   return m + ':' + (s < 10 ? '0' : '') + s;
 };
+
+/* ========== FULL-BLEED WORKSPACE MODALS ==========
+   The drill-down and bakery report modals fill the whole workspace below the
+   page banner instead of floating as centred popups, so dense comparison
+   tables and long reports get the screen rather than a 24px gutter.
+
+   Two things have to hold for that to look right on every host page
+   (dashboard, Bakery Profile, My Activity, My Team):
+
+   1. --app-banner-h has to track the real banner height. Each page uses a
+      different banner element and they all reflow at mobile widths, so it is
+      measured rather than hard-coded.
+   2. The banner has to stay put. These modals lock background scroll by
+      pinning <body> with position:fixed and a negative top offset, which
+      drags a sticky banner off the top of the screen with it — so while a
+      full-bleed modal is open the banner is promoted to position:fixed
+      (see html.fullbleed-modal-open in styles.css). */
+(function() {
+  if (typeof document === 'undefined' || !document.documentElement) return;
+
+  var BANNER_SELECTOR = '.header, .bakery-profile-header, .my-activity-header';
+  var FULLBLEED_MODALS = ['drillModal', 'focusDetailModal', 'visitReportModal'];
+  var OPEN_CLASS = 'fullbleed-modal-open';
+
+  function measureBanner() {
+    var el = document.querySelector(BANNER_SELECTOR);
+    // A height of 0 is the right answer while the dashboard banner is still
+    // display:none pre-auth — there is nothing for the modal to sit under.
+    var height = el ? Math.round(el.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--app-banner-h', height + 'px');
+  }
+
+  function isOpen(el) {
+    if (!el) return false;
+    if (el.style && el.style.display && el.style.display !== 'none') return true;
+    if (!window.getComputedStyle) return false;
+    return window.getComputedStyle(el).display !== 'none';
+  }
+
+  function syncOpenState() {
+    var open = FULLBLEED_MODALS.some(function(id) {
+      return isOpen(document.getElementById(id));
+    });
+    document.documentElement.classList.toggle(OPEN_CLASS, open);
+    if (open) measureBanner();
+  }
+
+  function init() {
+    measureBanner();
+
+    var banner = document.querySelector(BANNER_SELECTOR);
+    if (banner && window.ResizeObserver) new ResizeObserver(measureBanner).observe(banner);
+    window.addEventListener('resize', measureBanner);
+
+    // Every modal here is opened and closed by writing style.display, across
+    // several modules and close paths (button, Esc, queue stepping), so the
+    // state is observed rather than pushed from each call site.
+    if (window.MutationObserver) {
+      var observer = new MutationObserver(syncOpenState);
+      FULLBLEED_MODALS.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) observer.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
+      });
+    }
+    syncOpenState();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();

@@ -27,7 +27,10 @@
   }
 
   function buildCustomSelect(select) {
-    if (!select || select.dataset.customSelectReady === 'true') return;
+    // Multiple-value filters use the shared checkbox/chip control instead of
+    // this single-value menu. Their native selects remain as hidden state and
+    // event sources for form compatibility.
+    if (!select || select.multiple || select.dataset.customSelectReady === 'true') return;
 
     var wrapper = document.createElement('div');
     wrapper.className = 'filter-select';

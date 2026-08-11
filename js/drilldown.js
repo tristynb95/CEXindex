@@ -25,24 +25,38 @@ window.GAILS = window.GAILS || {};
     return Math.round(rows.reduce(function(sum, row) { return sum + Number(row[field] || 0); }, 0) / rows.length);
   }
 
-  function renderOverviewSummary(rows) {
+  // One toolbar row: the segment's headline stats on the left, the controls
+  // that act on the table on the right. This replaces what used to be a
+  // separate "At a glance" section stacked above a separate controls block —
+  // now the panel fills the workspace, that stack cost ~140px of height that
+  // the comparison table can use instead.
+  function renderDrillToolbar(rows) {
     var highest = rows.length ? rows.reduce(function(best, row) {
       return Number(row.ac || 0) > Number(best.ac || 0) ? row : best;
     }, rows[0]) : null;
 
-    return '<section class="drill-insight-section" aria-labelledby="drillSummaryHeading">' +
-      '<div class="drill-section-heading">' +
-        '<div><span class="drill-section-kicker">At a glance</span>' +
-        '<h4 id="drillSummaryHeading">Performance snapshot</h4></div>' +
-        '<p>Use the table below to compare bakeries and open a bakery profile.</p>' +
-      '</div>' +
+    return '<div class="drill-toolbar">' +
       '<div class="drill-summary">' +
-        renderSummaryCard('Bakeries', rows.length, 'in this segment') +
+        // The Bakeries card is the live count: searching narrows it, and its
+        // meta line picks up "of N" so the segment total is still there. A
+        // separate count chip next to the search box would have made four
+        // copies of the same number, with the header badge and subtitle.
+        '<div class="drill-card"><div class="drill-card__label">Bakeries</div>' +
+          '<div class="drill-card__value" data-drill-count aria-live="polite">' + escapeHtml(rows.length) + '</div>' +
+          '<div class="drill-card__meta" data-drill-count-meta>in this segment</div></div>' +
         renderSummaryCard('Avg Benchmark Score', average(rows, 'ac'), 'across this group') +
         renderSummaryCard('Avg NPS (D+M)', average(rows, 'n'), 'drink + meal') +
         renderSummaryCard('Highest score', highest ? metricText(highest.ac) : '—', highest ? highest.b : '') +
       '</div>' +
-      '</section>';
+      '<div class="drill-toolbar__actions">' +
+        '<span class="drill-sort-hint"><strong>&#8597;</strong> Select a heading to sort</span>' +
+        '<label class="drill-search"><span class="sr-only">Search bakeries</span>' +
+          '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>' +
+          '<input type="search" data-drill-search placeholder="Search bakery or area" autocomplete="off">' +
+        '</label>' +
+        '<button type="button" class="drill-view-toggle" data-drill-toggle-details aria-pressed="false">Show all metrics</button>' +
+      '</div>' +
+      '</div>';
   }
 
   function renderBandPill(G, band) {
@@ -98,24 +112,6 @@ window.GAILS = window.GAILS || {};
     }).join('');
   }
 
-  function renderTableControls(isAnchor, rowCount) {
-    return '<div class="drill-controls"' + (isAnchor ? ' data-table-fullscreen-anchor="true"' : '') + '>' +
-      '<div class="drill-controls-heading">' +
-        '<span class="drill-section-kicker">Bakery comparison</span>' +
-        '<div><h4>Compare performance</h4><span class="drill-result-count" aria-live="polite">' +
-          escapeHtml(rowCount) + ' bakeries</span></div>' +
-      '</div>' +
-      '<div class="drill-controls-actions">' +
-        '<label class="drill-search"><span class="sr-only">Search bakeries</span>' +
-          '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>' +
-          '<input type="search" data-drill-search placeholder="Search bakery or area" autocomplete="off">' +
-        '</label>' +
-        '<button type="button" class="drill-view-toggle" data-drill-toggle-details aria-pressed="false">Show all metrics</button>' +
-      '</div>' +
-      '<div class="drill-sort-hint"><strong>&#8597;</strong> Select a heading to sort</div>' +
-      '</div>';
-  }
-
   function renderTableWrap(G, columns, rows) {
     return '<div class="drill-table-wrap" role="region" aria-label="Bakery comparison table" tabindex="0">' +
       '<table class="drill-table drill-table--key" data-table-fullscreen="off"><thead><tr>' +
@@ -132,7 +128,7 @@ window.GAILS = window.GAILS || {};
   }
 
   function renderTable(G, columns, rows) {
-    return renderTableControls(false, rows.length) + renderTableWrap(G, columns, rows);
+    return renderDrillToolbar(rows) + renderTableWrap(G, columns, rows);
   }
 
   function parseNpsRange(title) {
@@ -236,9 +232,11 @@ window.GAILS = window.GAILS || {};
     if (!body || !body.querySelector || !body.querySelectorAll) return;
     var search = body.querySelector('[data-drill-search]');
     var toggle = body.querySelector('[data-drill-toggle-details]');
-    var count = body.querySelector('.drill-result-count');
+    var count = body.querySelector('[data-drill-count]');
+    var countMeta = body.querySelector('[data-drill-count-meta]');
     var empty = body.querySelector('.drill-empty-state');
     var rows = Array.prototype.slice.call(body.querySelectorAll('.drill-table tbody tr'));
+    var total = rows.length;
 
     if (search && search.addEventListener) {
       search.addEventListener('input', function() {
@@ -249,17 +247,26 @@ window.GAILS = window.GAILS || {};
           row.hidden = !matches;
           if (matches) visible += 1;
         });
-        if (count) count.textContent = visible + (visible === 1 ? ' bakery' : ' bakeries');
+        if (count) count.textContent = visible;
+        if (countMeta) countMeta.textContent = visible === total ? 'in this segment' : 'of ' + total + ' in this segment';
         if (empty) empty.hidden = visible !== 0;
       });
     }
 
+    function setDetailColumns(expanded) {
+      toggle.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+      toggle.textContent = expanded ? 'Show key metrics' : 'Show all metrics';
+      body.classList.toggle('drill-show-details', expanded);
+    }
+
     if (toggle && toggle.addEventListener) {
+      // The panel now fills the workspace, so on a desktop screen the full
+      // metric set fits without horizontal scroll — open on it rather than
+      // making people find the toggle. Narrower screens still start compact.
+      var fitsAllMetrics = !!(window.matchMedia && window.matchMedia('(min-width: 1280px)').matches);
+      setDetailColumns(fitsAllMetrics);
       toggle.addEventListener('click', function() {
-        var expanded = toggle.getAttribute('aria-pressed') !== 'true';
-        toggle.setAttribute('aria-pressed', expanded ? 'true' : 'false');
-        toggle.textContent = expanded ? 'Show key metrics' : 'Show all metrics';
-        body.classList.toggle('drill-show-details', expanded);
+        setDetailColumns(toggle.getAttribute('aria-pressed') !== 'true');
       });
     }
   }
@@ -354,11 +361,9 @@ window.GAILS = window.GAILS || {};
         }
       ]));
 
-      content += renderOverviewSummary(npsSorted);
       content += renderTable(G, npsColumns, npsSorted);
     } else {
       var absSorted = [].concat(bakeries).sort(function(a, b) { return b.ac - a.ac; });
-      content += renderOverviewSummary(absSorted);
       content += renderTable(G, baseColumns.concat([
         {
           label: 'Benchmark Score',

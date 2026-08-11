@@ -383,6 +383,21 @@
     syncDashboardSidebarControls();
   }
 
+  // The two menu branches share one accordion state. Updating every branch in
+  // one pass guarantees that opening Focus Bakeries always closes Bakery
+  // Reports, and vice versa, while keeping the ARIA state in sync with what is
+  // visibly rendered.
+  function setDashboardNavAccordion(name) {
+    document.querySelectorAll('[data-nav-accordion]').forEach(function (branch) {
+      var isOpen = !!name && branch.dataset.navAccordion === name;
+      var toggle = branch.querySelector('[data-nav-accordion-toggle]');
+      var panel = branch.querySelector('[data-nav-accordion-panel]');
+      branch.dataset.navAccordionOpen = isOpen ? 'true' : 'false';
+      if (toggle) toggle.setAttribute('aria-expanded', String(isOpen));
+      if (panel) panel.hidden = !isOpen;
+    });
+  }
+
   function syncDashboardSidebarForViewport() {
     if (!dashboardWorkspaceShell) return;
     if (compactDashboardSidebarMedia.matches) {
@@ -399,7 +414,7 @@
     if (!workspace) return;
     var shouldScrollNav = !(options && options.scrollNav === false);
     activeTargetSubtab = name;
-    workspace.querySelectorAll('.target-subtab').forEach(function (btn) {
+    document.querySelectorAll('[data-target-subtab]').forEach(function (btn) {
       var isActive = btn.dataset.targetSubtab === name;
       btn.classList.toggle('active', isActive);
       if (isActive && shouldScrollNav) {
@@ -438,7 +453,7 @@
     window.scrollTo(0, 0);
   }
 
-  function activateDashboardTab(name) {
+  function activateDashboardTab(name, options) {
     var activePanel = document.getElementById('tab-' + name);
     if (!activePanel) return null;
 
@@ -475,9 +490,16 @@
     renderHeaderSummary();
     updateBandFilterOptions();
 
+    // The two page-level filter bars swap: Bakery Reports filters its own data,
+    // so it hides the shared bar and shows its own in the same slot above the
+    // sidebar + content shell.
     var filterBar = document.querySelector('.filter-bar');
     if (filterBar) {
       filterBar.classList.toggle('filter-bar--hidden', name === 'visit-log');
+    }
+    var visitLogFilterBar = document.querySelector('.visit-log-filter-bar');
+    if (visitLogFilterBar) {
+      visitLogFilterBar.classList.toggle('visit-log-filter-bar--visible', name === 'visit-log');
     }
 
     // Visit Log carries its own standalone filters, so the shared panel — and
@@ -492,7 +514,7 @@
       }
     }
 
-    if (compactDashboardSidebarMedia.matches) {
+    if (compactDashboardSidebarMedia.matches && !(options && options.keepSidebarOpen)) {
       setDashboardSidebarOpen(false);
     }
 
@@ -1758,6 +1780,17 @@
   // Tabs
   document.querySelectorAll('.tab').forEach(function (t) {
     t.addEventListener('click', function () {
+      var accordionName = t.dataset.navAccordionToggle;
+      if (accordionName) {
+        var railIsCollapsed = !compactDashboardSidebarMedia.matches &&
+          dashboardWorkspaceShell && dashboardWorkspaceShell.dataset.sidebarCollapsed === 'true';
+        var shouldOpen = railIsCollapsed || t.getAttribute('aria-expanded') !== 'true';
+        if (railIsCollapsed) setDashboardSidebarCollapsed(false);
+        setDashboardNavAccordion(shouldOpen ? accordionName : '');
+        activateDashboardTab(t.dataset.tab, { keepSidebarOpen: true });
+        scrollToTop();
+        return;
+      }
       activateDashboardTab(t.dataset.tab);
       scrollToTop();
     });
@@ -1822,10 +1855,26 @@
     });
   });
 
-  document.querySelectorAll('.target-subtab').forEach(function (tab) {
+  document.querySelectorAll('[data-target-subtab]').forEach(function (tab) {
     tab.addEventListener('click', function () {
+      activateDashboardTab('target', { keepSidebarOpen: true });
+      setDashboardNavAccordion('target');
       activateTargetSubtab(tab.dataset.targetSubtab);
       if (window.matchMedia('(max-width: 980px)').matches) {
+        setDashboardSidebarOpen(false);
+        scrollToTop();
+      }
+    });
+  });
+
+  // Bakery Reports owns its view rendering in visit-report.js. The main app
+  // only coordinates the sidebar here: retain the active branch on desktop,
+  // and dismiss the drawer after a mobile view has been chosen.
+  document.querySelectorAll('#visitLogViewToggle [data-view]').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      setDashboardNavAccordion('visit-log');
+      if (compactDashboardSidebarMedia.matches) {
+        setDashboardSidebarOpen(false);
         scrollToTop();
       }
     });
@@ -2250,6 +2299,65 @@
       open.open = false;
       var summary = open.querySelector('summary');
       if (summary) summary.focus();
+    });
+
+    // The room a KPI panel has to open into: the viewport, tightened by any
+    // ancestor that clips (.dashboard-workspace does), since anything outside
+    // one of those is invisible however it is positioned.
+    function visibleBounds(el) {
+      var bounds = { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
+      for (var node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+        var style = window.getComputedStyle(node);
+        if (style.overflow === 'visible' && style.overflowX === 'visible' && style.overflowY === 'visible') continue;
+        var rect = node.getBoundingClientRect();
+        bounds.top = Math.max(bounds.top, rect.top);
+        bounds.bottom = Math.min(bounds.bottom, rect.bottom);
+        bounds.left = Math.max(bounds.left, rect.left);
+        bounds.right = Math.min(bounds.right, rect.right);
+      }
+      return bounds;
+    }
+
+    // Default placement is above the "i" (see styles.css); flip below and shift
+    // sideways when that would put the panel out of sight, and cap its height so
+    // a short viewport scrolls the card rather than truncating it.
+    function positionKpiInfo(disclosure) {
+      var summary = disclosure.querySelector('summary');
+      var panel = disclosure.querySelector('.kpi-info__panel');
+      if (!summary || !panel) return;
+      panel.style.top = '';
+      panel.style.bottom = '';
+      panel.style.left = '';
+      panel.style.maxHeight = '';
+      var gap = 8;
+      var gutter = 12;
+      var bounds = visibleBounds(disclosure);
+      var anchor = summary.getBoundingClientRect();
+      var box = disclosure.getBoundingClientRect();
+      var size = panel.getBoundingClientRect();
+      var roomAbove = anchor.top - gap - bounds.top - gutter;
+      var roomBelow = bounds.bottom - anchor.bottom - gap - gutter;
+      if (size.height > roomAbove && roomBelow > roomAbove) {
+        panel.style.bottom = 'auto';
+        panel.style.top = (anchor.bottom + gap - box.top) + 'px';
+      }
+      var overflowRight = size.left + size.width - (bounds.right - gutter);
+      if (overflowRight > 0) panel.style.left = (size.left - box.left - overflowRight) + 'px';
+      var room = Math.max(roomAbove, roomBelow);
+      if (size.height > room && room > 0) panel.style.maxHeight = room + 'px';
+    }
+
+    // `toggle` does not bubble, so listen in the capture phase — the KPI row is
+    // re-rendered on every filter change, which rules out per-element binding.
+    document.addEventListener('toggle', function (e) {
+      var disclosure = e.target;
+      if (!disclosure || !disclosure.classList || !disclosure.classList.contains('kpi-info')) return;
+      if (disclosure.open) positionKpiInfo(disclosure);
+    }, true);
+    ['scroll', 'resize'].forEach(function (evt) {
+      window.addEventListener(evt, function () {
+        document.querySelectorAll('.kpi-info[open]').forEach(function (el) { positionKpiInfo(el); });
+      }, evt === 'scroll' ? { passive: true, capture: true } : { passive: true });
     });
   })();
 

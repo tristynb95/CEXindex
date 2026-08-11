@@ -32,7 +32,7 @@
        SheetJS and Leaflet are no longer loaded here at all — js/lazy-lib.js
        fetches them on demand (and warms them once the page is idle). -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260728-notification-centre-05-mobile-banners-03-notification-fit-04">
+  <link rel="stylesheet" href="css/styles.css?v=20260811-fullbleed-modals-01">
 </head>
 
 <body>
@@ -169,8 +169,8 @@
           <div class="profile-menu__identity">
             <span id="profileMenuName">Your profile</span>
             <small id="profileMenuEmail"></small>
-            <button type="button" class="profile-menu__bell" data-notification-trigger
-              aria-haspopup="dialog" aria-expanded="false" title="Notifications">
+            <button type="button" class="profile-menu__bell" data-notification-trigger aria-haspopup="dialog"
+              aria-expanded="false" title="Notifications">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7" />
                 <path d="M13.7 20a2 2 0 0 1-3.4 0" />
@@ -432,6 +432,265 @@
         </div>
       </div>
 
+      <!-- BAKERY REPORTS FILTER BAR — the global bar above is hidden on that
+           tab (Bakery Reports filters its own data), so these take its exact
+           slot: full container width, above the sidebar and content shell.
+           Kept a sibling of .filter-bar rather than living inside the tab so
+           it spans the page rather than the content column. Shown by
+           activateDashboardTab() in js/app.js. -->
+      <div class="visit-log-filter-bar">
+        <!-- STANDALONE VISIT LOG FILTERS -->
+        <div class="visit-log-filters">
+          <div class="visit-log-filter-control">
+            <label for="visitLogSearch">Search</label>
+            <input type="search" id="visitLogSearch" placeholder="Bakery or partner&hellip;"
+              class="visit-log-input" autocomplete="off">
+          </div>
+          <button type="button" id="visitLogMobileFilterBtn" class="visit-log-mobile-filter-btn"
+            aria-controls="visitLogFilterPanel" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round">
+              <path d="M3 7h18M7 12h10M11 17h2" />
+            </svg>
+            <span>Filters</span>
+            <span id="visitLogFilterBadge" class="visit-log-filter-badge" hidden></span>
+          </button>
+          <div id="visitLogFilterBackdrop" class="visit-log-filter-backdrop" hidden></div>
+          <div id="visitLogFilterPanel" class="visit-log-filter-panel" aria-label="Visit report filters">
+            <div class="visit-log-filter-panel__header">
+              <strong>Filters</strong>
+              <button type="button" id="visitLogFilterCloseBtn" class="visit-log-filter-panel__close"
+                aria-label="Close filters">
+                <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round">
+                  <path d="M1 1l12 12M13 1L1 13" />
+                </svg>
+              </button>
+            </div>
+            <div class="visit-log-filter-panel__body">
+              <div class="visit-log-filter-control">
+                <label for="visitLogRegionMsTrigger">Region</label>
+                <select id="visitLogRegion" class="visit-log-multiselect__native" multiple hidden aria-hidden="true" tabindex="-1">
+                  <option value="">All Regions</option>
+                </select>
+                <div class="bakery-ms visit-log-ms" id="visitLogRegionMultiselect">
+                  <button class="bakery-ms__trigger" id="visitLogRegionMsTrigger" type="button"
+                    aria-haspopup="listbox" aria-expanded="false" aria-controls="visitLogRegionMsList">
+                    <span class="bakery-ms__trigger-label" id="visitLogRegionMsLabel">All Regions</span>
+                    <span class="bakery-ms__trigger-icon" aria-hidden="true"></span>
+                  </button>
+                  <div class="bakery-ms__dropdown" id="visitLogRegionDropdown">
+                    <div class="bakery-ms__search-row">
+                      <button class="bakery-ms__clear" id="visitLogRegionClearBtn" type="button"
+                        aria-label="Clear region selection">Clear</button>
+                    </div>
+                    <div class="bakery-ms__list" id="visitLogRegionMsList" role="listbox"
+                      aria-label="Regions" aria-multiselectable="true"></div>
+                    <div class="bakery-ms__selected-section" id="visitLogRegionMsSelectedSection" style="display:none">
+                      <div class="bakery-ms__selected-header">
+                        <span class="bakery-ms__selected-title">Selected</span>
+                        <span class="bakery-ms__selected-count" id="visitLogRegionMsCount"></span>
+                      </div>
+                      <div class="bakery-ms__selected-chips" id="visitLogRegionMsChips"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="visit-log-filter-control">
+                <label for="visitLogOpsMsTrigger">Ops Area</label>
+                <select id="visitLogOps" class="visit-log-multiselect__native" multiple hidden aria-hidden="true" tabindex="-1">
+                  <option value="">All Areas</option>
+                </select>
+                <div class="bakery-ms visit-log-ms" id="visitLogOpsMultiselect">
+                  <button class="bakery-ms__trigger" id="visitLogOpsMsTrigger" type="button"
+                    aria-haspopup="listbox" aria-expanded="false" aria-controls="visitLogOpsMsList">
+                    <span class="bakery-ms__trigger-label" id="visitLogOpsMsLabel">All Areas</span>
+                    <span class="bakery-ms__trigger-icon" aria-hidden="true"></span>
+                  </button>
+                  <div class="bakery-ms__dropdown" id="visitLogOpsDropdown">
+                    <div class="bakery-ms__search-row">
+                      <input class="bakery-ms__search" id="visitLogOpsSearch" type="search" placeholder="Search&hellip;"
+                        autocomplete="off" spellcheck="false" aria-label="Search ops areas">
+                      <button class="bakery-ms__clear" id="visitLogOpsClearBtn" type="button"
+                        aria-label="Clear ops area selection">Clear</button>
+                    </div>
+                    <div class="bakery-ms__list" id="visitLogOpsMsList" role="listbox"
+                      aria-label="Ops Areas" aria-multiselectable="true"></div>
+                    <div class="bakery-ms__selected-section" id="visitLogOpsMsSelectedSection" style="display:none">
+                      <div class="bakery-ms__selected-header">
+                        <span class="bakery-ms__selected-title">Selected</span>
+                        <span class="bakery-ms__selected-count" id="visitLogOpsMsCount"></span>
+                      </div>
+                      <div class="bakery-ms__selected-chips" id="visitLogOpsMsChips"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="visit-log-filter-control" id="followUpAssigneeControl" style="display:none;">
+                <label for="followUpAssignee">Assigned To</label>
+                <select id="followUpAssignee" class="visit-log-select" data-searchable="true">
+                  <option value="">All</option>
+                </select>
+              </div>
+              <div class="visit-log-filter-control visit-log-filter-control--compact" id="followUpGroupControl"
+                style="display:none;">
+                <label for="followUpGroup">Group By</label>
+                <select id="followUpGroup" class="visit-log-select">
+                  <option value="bakery">Bakery</option>
+                  <option value="region">Region</option>
+                  <option value="ops">Ops Area</option>
+                  <option value="priority">Priority</option>
+                  <option value="status">Status</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              <div class="visit-log-filter-control visit-log-filter-control--compact" id="followUpSortControl"
+                style="display:none;">
+                <label for="followUpSort">Sort By</label>
+                <select id="followUpSort" class="visit-log-select">
+                  <option value="dueAsc">Due Date (Soonest)</option>
+                  <option value="priority">Priority (High-Low)</option>
+                  <option value="createdDesc">Date Added (Newest)</option>
+                  <option value="bakeryAsc">Bakery Name (A-Z)</option>
+                </select>
+              </div>
+              <div class="visit-log-filter-control" id="visitLogBakeryControl" style="display:none;">
+                <label for="visitLogBakeryMsTrigger">Bakery</label>
+                <select id="visitLogBakery" class="visit-log-multiselect__native" multiple hidden aria-hidden="true" tabindex="-1">
+                  <option value="">All Bakeries</option>
+                </select>
+                <div class="bakery-ms visit-log-ms" id="visitLogBakeryMultiselect">
+                  <button class="bakery-ms__trigger" id="visitLogBakeryMsTrigger" type="button"
+                    aria-haspopup="listbox" aria-expanded="false" aria-controls="visitLogBakeryMsList">
+                    <span class="bakery-ms__trigger-label" id="visitLogBakeryMsLabel">All Bakeries</span>
+                    <span class="bakery-ms__trigger-icon" aria-hidden="true"></span>
+                  </button>
+                  <div class="bakery-ms__dropdown" id="visitLogBakeryDropdown">
+                    <div class="bakery-ms__search-row">
+                      <input class="bakery-ms__search" id="visitLogBakerySearch" type="search" placeholder="Search&hellip;"
+                        autocomplete="off" spellcheck="false" aria-label="Search bakeries">
+                      <button class="bakery-ms__clear" id="visitLogBakeryClearBtn" type="button"
+                        aria-label="Clear bakery selection">Clear</button>
+                    </div>
+                    <div class="bakery-ms__list" id="visitLogBakeryMsList" role="listbox"
+                      aria-label="Bakeries" aria-multiselectable="true"></div>
+                    <div class="bakery-ms__selected-section" id="visitLogBakeryMsSelectedSection" style="display:none">
+                      <div class="bakery-ms__selected-header">
+                        <span class="bakery-ms__selected-title">Selected</span>
+                        <span class="bakery-ms__selected-count" id="visitLogBakeryMsCount"></span>
+                      </div>
+                      <div class="bakery-ms__selected-chips" id="visitLogBakeryMsChips"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="visit-log-filter-control visit-log-filter-control--compact"
+                id="visitLogDirectorySortControl" style="display:none;">
+                <label for="visitLogDirectorySort">Sort By</label>
+                <select id="visitLogDirectorySort" class="visit-log-select">
+                  <option value="nameAsc">Bakery Name (A-Z)</option>
+                  <option value="nameDesc">Bakery Name (Z-A)</option>
+                  <option value="region">Region</option>
+                  <option value="ops">Ops Area</option>
+                  <option value="partner">Coffee Partner</option>
+                  <option value="trainer">Coffee Trainer</option>
+                  <option value="barista">Area Head Barista</option>
+                </select>
+              </div>
+              <div class="visit-log-filter-control visit-log-filter-control--compact"
+                id="visitLogDirectoryGroupControl" style="display:none;">
+                <label for="visitLogDirectoryGroup">Group By</label>
+                <select id="visitLogDirectoryGroup" class="visit-log-select">
+                  <option value="none">None</option>
+                  <option value="region">Region</option>
+                  <option value="ops">Ops Area</option>
+                  <option value="partner">Coffee Partner</option>
+                  <option value="trainer">Coffee Trainer</option>
+                  <option value="barista">Area Head Barista</option>
+                </select>
+              </div>
+              <div class="visit-log-filter-control visit-log-filter-control--compact">
+                <label for="visitLogGroup">Group By</label>
+                <select id="visitLogGroup" class="visit-log-select">
+                  <option value="ops">Ops Area</option>
+                  <option value="region" selected>Region</option>
+                  <option value="type">Visit Type</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              <!-- Sits second in the bar, right after Search — see the order
+                   rules in css/styles.css. It stays here in source order so
+                   the mobile filter sheet keeps its own grouping. -->
+              <div class="visit-log-filter-control visit-log-filter-control--compact"
+                id="visitLogPeriodControl">
+                <label for="visitLogPeriod">Period</label>
+                <select id="visitLogPeriod" class="visit-log-select">
+                  <option value="0">All Time</option>
+                  <option value="currentMonth">This Month</option>
+                  <option value="1">Last Month</option>
+                  <option value="2">Last 2 Months</option>
+                  <option value="3">Last 3 Months</option>
+                  <option value="6">Last 6 Months</option>
+                  <option value="12">Last 12 Months</option>
+                  <option value="thisQuarter" selected>This Quarter</option>
+                  <option value="lastQuarter">Last Quarter</option>
+                  <option value="thisYear">This Year</option>
+                  <option value="lastYear">Last Year</option>
+                </select>
+              </div>
+              <div class="visit-log-filter-control visit-log-filter-control--compact">
+                <label for="visitLogSort">Sort By</label>
+                <select id="visitLogSort" class="visit-log-select">
+                  <option value="date">Date</option>
+                  <option value="nameAsc">Alphabetical (A-Z)</option>
+                  <option value="nameDesc">Alphabetical (Z-A)</option>
+                  <option value="type">Visit Type</option>
+                </select>
+              </div>
+              <div class="visit-log-filter-control">
+                <label for="visitLogType">Visit Type</label>
+                <select id="visitLogType" class="visit-log-select">
+                  <option value="">All Types</option>
+                  <option value="routine">Routine Coffee Visit</option>
+                  <option value="siteVisit">Check-in</option>
+                  <option value="nboOpening">NBO: Opening</option>
+                  <option value="nboVisit1">NBO: Coffee Visit 1</option>
+                  <option value="nboVisit2">NBO: Coffee Visit 2</option>
+                  <option value="cqv">CQV</option>
+                  <option value="cqvFollowUp">CQV Follow-Up</option>
+                </select>
+              </div>
+              <div class="visit-log-filter-control visit-log-filter-control--compact" id="visitLogRatingControl"
+                style="display:none;">
+                <label for="visitLogRating">Rating</label>
+                <select id="visitLogRating" class="visit-log-select">
+                  <option value="">All Ratings</option>
+                  <option value="Green">Green</option>
+                  <option value="Yellow">Yellow</option>
+                  <option value="Red">Red</option>
+                </select>
+              </div>
+              <button type="button" id="visitLogResetBtn" class="visit-log-reset-btn" title="Reset filters"
+                aria-label="Reset filters">
+                <svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true"
+                  focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
+                </svg>
+                <svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true"
+                  focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
+                  <path d="m22 3-5 5" />
+                  <path d="m17 3 5 5" />
+                </svg>
+                <span class="visit-log-reset-btn__label">Reset</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Mobile filter backdrop -->
       <div class="filter-side-backdrop" id="filterSideBackdrop" aria-hidden="true"></div>
 
@@ -499,19 +758,46 @@
             <div class="dashboard-nav__group" data-nav-group>
               <p class="dashboard-nav__group-title" id="dashboardNavGroupPerformance">Performance</p>
               <div class="dashboard-nav__group-items" role="group" aria-labelledby="dashboardNavGroupPerformance">
-                <button type="button" class="tab dashboard-nav__btn" data-tab="target" aria-label="Focus Bakeries">
-                  <span class="dashboard-nav__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <circle cx="12" cy="12" r="7"></circle>
-                      <circle cx="12" cy="12" r="3.5"></circle>
-                      <path d="M17 7L20 4"></path>
-                      <path d="M16.5 4H20V7.5"></path>
-                    </svg>
-                  </span>
-                  <span class="dashboard-nav__content">
-                    <strong>Focus Bakeries</strong>
-                  </span>
-                </button>
+                <div class="dashboard-nav__branch" data-nav-accordion="target">
+                  <button type="button" class="tab dashboard-nav__btn dashboard-nav__btn--parent" data-tab="target"
+                    data-nav-accordion-toggle="target" aria-label="Focus Bakeries" aria-expanded="false"
+                    aria-controls="dashboardNavTargetSubmenu">
+                    <span class="dashboard-nav__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" focusable="false">
+                        <circle cx="12" cy="12" r="7"></circle>
+                        <circle cx="12" cy="12" r="3.5"></circle>
+                        <path d="M17 7L20 4"></path>
+                        <path d="M16.5 4H20V7.5"></path>
+                      </svg>
+                    </span>
+                    <span class="dashboard-nav__content">
+                      <strong>Focus Bakeries</strong>
+                    </span>
+                    <span class="dashboard-nav__chevron" aria-hidden="true"></span>
+                  </button>
+                  <div class="dashboard-nav__submenu" id="dashboardNavTargetSubmenu"
+                    data-nav-accordion-panel="target" role="group" aria-label="Focus bakery views" hidden>
+                    <button class="target-subtab active" type="button"
+                      data-target-subtab="summary">
+                      <span>Priorities</span>
+                    </button>
+                    <button class="target-subtab" type="button" data-target-subtab="priority">
+                      <span>All bakery data</span>
+                    </button>
+                    <button class="target-subtab" type="button" data-target-subtab="table">
+                      <span>Monthly results</span>
+                    </button>
+                    <button class="target-subtab" type="button" data-target-subtab="graphs">
+                      <span>Charts</span>
+                    </button>
+                    <button class="target-subtab" type="button" data-target-subtab="map">
+                      <span>Map</span>
+                    </button>
+                    <button class="target-subtab" type="button" data-target-subtab="feedback">
+                      <span>Customer comments</span>
+                    </button>
+                  </div>
+                </div>
                 <button type="button" class="tab dashboard-nav__btn" data-tab="table" aria-label="League Table">
                   <span class="dashboard-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
@@ -543,24 +829,6 @@
             <div class="dashboard-nav__group" data-nav-group>
               <p class="dashboard-nav__group-title" id="dashboardNavGroupInsight">Insight</p>
               <div class="dashboard-nav__group-items" role="group" aria-labelledby="dashboardNavGroupInsight">
-                <!-- Not yet built: deliberately has no `tab` class and no
-                     data-tab, so neither the tab wiring in app.js nor the
-                     per-role tab gating in auth.js picks it up. aria-disabled
-                     rather than the disabled attribute keeps it reachable by
-                     keyboard, so the "coming soon" tooltip is not mouse-only. -->
-                <button type="button" class="dashboard-nav__btn dashboard-nav__btn--soon" aria-disabled="true"
-                  data-nav-tooltip="Coming soon" aria-label="Telemetry (coming soon)">
-                  <span class="dashboard-nav__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path d="M4.5 17.5a8.5 8.5 0 1 1 15 0"></path>
-                      <path d="M12 17.5L15.5 12.5"></path>
-                      <circle cx="12" cy="17.5" r="1.25"></circle>
-                    </svg>
-                  </span>
-                  <span class="dashboard-nav__content">
-                    <strong>Telemetry</strong>
-                  </span>
-                </button>
                 <button type="button" class="tab dashboard-nav__btn" data-tab="map" aria-label="Map">
                   <span class="dashboard-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
@@ -574,12 +842,10 @@
                     <strong>Map</strong>
                   </span>
                 </button>
-                <button type="button" class="tab dashboard-nav__btn" data-tab="feedback"
-                  aria-label="Customer Feedback">
+                <button type="button" class="tab dashboard-nav__btn" data-tab="feedback" aria-label="Customer Feedback">
                   <span class="dashboard-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M4 5C4 4.45 4.45 4 5 4H19C19.55 4 20 4.45 20 5V15C20 15.55 19.55 16 19 16H8.5L5 19.5V5Z">
+                      <path d="M4 5C4 4.45 4.45 4 5 4H19C19.55 4 20 4.45 20 5V15C20 15.55 19.55 16 19 16H8.5L5 19.5V5Z">
                       </path>
                       <path d="M8 9H16M8 12H13"></path>
                     </svg>
@@ -594,20 +860,40 @@
             <div class="dashboard-nav__group" data-nav-group>
               <p class="dashboard-nav__group-title" id="dashboardNavGroupReporting">Reporting</p>
               <div class="dashboard-nav__group-items" role="group" aria-labelledby="dashboardNavGroupReporting">
-                <button type="button" class="tab dashboard-nav__btn" data-tab="visit-log" aria-label="Bakery Reports">
-                  <span class="dashboard-nav__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M8 3.5H13L17.5 8V19C17.5 19.83 16.83 20.5 16 20.5H8C7.17 20.5 6.5 19.83 6.5 19V5C6.5 4.17 7.17 3.5 8 3.5Z">
-                      </path>
-                      <path d="M13 3.5V8H17.5"></path>
-                      <path d="M9.5 12.5H14.5M9.5 16H12.5"></path>
-                    </svg>
-                  </span>
-                  <span class="dashboard-nav__content">
-                    <strong>Bakery Reports</strong>
-                  </span>
-                </button>
+                <div class="dashboard-nav__branch" data-nav-accordion="visit-log">
+                  <button type="button" class="tab dashboard-nav__btn dashboard-nav__btn--parent" data-tab="visit-log"
+                    data-nav-accordion-toggle="visit-log" aria-label="Bakery Reports" aria-expanded="false"
+                    aria-controls="visitLogViewToggle">
+                    <span class="dashboard-nav__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M8 3.5H13L17.5 8V19C17.5 19.83 16.83 20.5 16 20.5H8C7.17 20.5 6.5 19.83 6.5 19V5C6.5 4.17 7.17 3.5 8 3.5Z">
+                        </path>
+                        <path d="M13 3.5V8H17.5"></path>
+                        <path d="M9.5 12.5H14.5M9.5 16H12.5"></path>
+                      </svg>
+                    </span>
+                    <span class="dashboard-nav__content">
+                      <strong>Bakery Reports</strong>
+                    </span>
+                    <span class="dashboard-nav__chevron" aria-hidden="true"></span>
+                  </button>
+                  <div class="dashboard-nav__submenu" id="visitLogViewToggle" data-nav-accordion-panel="visit-log"
+                    role="group" aria-label="Bakery Reports views" hidden>
+                    <button type="button" class="target-subtab active" data-view="bakeries">
+                      <span>Bakery List</span>
+                    </button>
+                    <button type="button" class="target-subtab" data-view="history">
+                      <span>Visit History</span>
+                    </button>
+                    <button type="button" class="target-subtab" data-view="unvisited">
+                      <span>Unvisited Sites</span>
+                    </button>
+                    <button type="button" class="target-subtab" data-view="followups">
+                      <span>Follow-up Tasks</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </nav>
@@ -657,17 +943,20 @@
             <div class="grid-2 trends-summary-grid">
               <div class="section trend-card">
                 <h2 id="trendNpsSplitTitle">NPS by Month</h2>
-                <p class="chart-caption">Drink + Meal NPS against Coffee-only, Meal-only and all-response NPS when those splits are available.</p>
+                <p class="chart-caption">Drink + Meal NPS against Coffee-only, Meal-only and all-response NPS when those
+                  splits are available.</p>
                 <div class="trend-chart"><canvas id="trendNpsSplit"></canvas></div>
               </div>
               <div class="section trend-card">
                 <h2 id="trendCXTitle">Average CX Scores by Month</h2>
-                <p class="chart-caption">Quality, efficiency, friendliness and overall experience compared month by month.</p>
+                <p class="chart-caption">Quality, efficiency, friendliness and overall experience compared month by
+                  month.</p>
                 <div class="trend-chart"><canvas id="trendCX"></canvas></div>
               </div>
               <div class="section trend-card">
                 <h2 id="trendWaitPressureTitle">Coffee Timing Mix by Month</h2>
-                <p class="chart-caption">The monthly share of drinks served in &lt;2 min, 2&ndash;3 min and &gt;3 min.</p>
+                <p class="chart-caption">The monthly share of drinks served in &lt;2 min, 2&ndash;3 min and &gt;3 min.
+                </p>
                 <div class="trend-chart"><canvas id="trendWaitPressure"></canvas></div>
               </div>
               <div class="section trend-card">
@@ -678,7 +967,8 @@
             </div>
             <div class="section trends-tracker">
               <h2>Bakery Tracker</h2>
-              <p class="chart-caption">Use the bakery filter above to compare monthly trends. One bakery shows actual datapoints; multiple bakeries show a combined average; no selection shows the all-bakeries average.</p>
+              <p class="chart-caption">Use the bakery filter above to compare monthly trends. One bakery shows actual
+                datapoints; multiple bakeries show a combined average; no selection shows the all-bakeries average.</p>
               <div id="bakeryTrackerStatus" class="status trends-tracker__status">Showing all-bakeries averages.</div>
               <div class="trend-chart trend-chart--tracker"><canvas id="bakeryTracker"></canvas></div>
               <div id="bakeryTrackerTable" class="trends-tracker__table"></div>
@@ -811,31 +1101,33 @@
                   <div class="method-hero__copy">
                     <p class="method-hero__eyebrow">Coffee Experience Index</p>
                     <h2>How the score is calculated</h2>
-                <p class="methodology__lead">The headline result is the <strong>Benchmark Score</strong>: a number from
-                  0 to 100 showing how closely a bakery met six fixed company standards. Other bakeries do not change
-                  the raw result. Response volume can change the published result through the low-volume adjustment
-                  described below.</p>
+                    <p class="methodology__lead">The headline result is the <strong>Benchmark Score</strong>: a number
+                      from
+                      0 to 100 showing how closely a bakery met six fixed company standards. Other bakeries do not
+                      change
+                      the raw result. Response volume can change the published result through the low-volume adjustment
+                      described below.</p>
 
-                <div class="method-overview" aria-label="Method summary">
-                  <div class="method-overview__item">
-                    <span class="method-overview__label">Unit</span>
-                    <strong>One bakery, one selected period</strong>
-                    <p>Monthly source results are combined when more than one month is selected.</p>
-                  </div>
-                  <div class="method-overview__item">
-                    <span class="method-overview__label">Main result</span>
-                    <strong>Adjusted Benchmark Score</strong>
-                    <p>Six component scores are weighted, then adjusted only where response volume is low.</p>
-                  </div>
-                  <div class="method-overview__item">
-                    <span class="method-overview__label">Precision</span>
-                    <strong>Calculated to one decimal place</strong>
-                    <p>The headline card rounds the result to a whole number for display.</p>
-                  </div>
-                </div>
-                <p class="method-note"><strong>Selection summaries:</strong> when several bakeries are selected, the
-                  dashboard card shows their arithmetic mean. Each bakery is scored first; the source data is not
-                  pooled into one combined bakery.</p>
+                    <div class="method-overview" aria-label="Method summary">
+                      <div class="method-overview__item">
+                        <span class="method-overview__label">Unit</span>
+                        <strong>One bakery, one selected period</strong>
+                        <p>Monthly source results are combined when more than one month is selected.</p>
+                      </div>
+                      <div class="method-overview__item">
+                        <span class="method-overview__label">Main result</span>
+                        <strong>Adjusted Benchmark Score</strong>
+                        <p>Six component scores are weighted, then adjusted only where response volume is low.</p>
+                      </div>
+                      <div class="method-overview__item">
+                        <span class="method-overview__label">Precision</span>
+                        <strong>Calculated to one decimal place</strong>
+                        <p>The headline card rounds the result to a whole number for display.</p>
+                      </div>
+                    </div>
+                    <p class="method-note"><strong>Selection summaries:</strong> when several bakeries are selected, the
+                      dashboard card shows their arithmetic mean. Each bakery is scored first; the source data is not
+                      pooled into one combined bakery.</p>
 
                   </div>
                   <div class="method-hero__score" aria-label="Benchmark Score runs from 0 to 100">
@@ -855,14 +1147,18 @@
                   <nav class="method-toc" aria-label="Methodology sections">
                     <span class="method-toc__label">On this page</span>
                     <button type="button" data-method-anchor="method-inputs"><span>01</span>Inputs and weights</button>
-                    <button type="button" data-method-anchor="method-components"><span>02</span>Component points</button>
+                    <button type="button" data-method-anchor="method-components"><span>02</span>Component
+                      points</button>
                     <button type="button" data-method-anchor="method-raw-score"><span>03</span>Raw score</button>
                     <button type="button" data-method-anchor="method-volume"><span>04</span>Volume adjustment</button>
-                    <button type="button" data-method-anchor="method-periods"><span>05</span>Periods and ranking</button>
-                    <button type="button" data-method-anchor="method-reproduce"><span>06</span>Reproduce a result</button>
+                    <button type="button" data-method-anchor="method-periods"><span>05</span>Periods and
+                      ranking</button>
+                    <button type="button" data-method-anchor="method-reproduce"><span>06</span>Reproduce a
+                      result</button>
                     <div class="method-toc__stamp">
                       <span aria-hidden="true">&#10003;</span>
-                      <p><strong>Auditable specification</strong>Values and examples are checked against the live scoring code.</p>
+                      <p><strong>Auditable specification</strong>Values and examples are checked against the live
+                        scoring code.</p>
                     </div>
                   </nav>
 
@@ -875,78 +1171,89 @@
                           <h3>Inputs and weights</h3>
                         </div>
                       </header>
-                <p>The source is the uploaded <strong>NPS + Coffee Data</strong> workbook. Each monthly sheet supplies
-                  one row per bakery. Ratings and timing percentages are held on a 0&ndash;100 scale; average wait is
-                  held in seconds.</p>
-                <div class="method-weight-map" aria-label="Score weights: quality 20%, customer-rated efficiency 20%, friendliness 20%, NPS 20%, coffee efficiency 10%, average wait 10%">
-                  <div class="method-weight-map__segment method-weight-map__segment--quality"><strong>20%</strong><span>Quality</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--efficiency"><strong>20%</strong><span>Efficiency</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--friendly"><strong>20%</strong><span>Friendliness</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--nps"><strong>20%</strong><span>NPS</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--timing"><strong>10%</strong><span>Coffee<br>Efficiency</span></div>
-                  <div class="method-weight-map__segment method-weight-map__segment--wait"><strong>10%</strong><span>Avg Wait<br>Time</span></div>
-                </div>
-                <div class="method-table-wrap" tabindex="0" role="region"
-                  aria-label="Score inputs and weights; scroll horizontally if needed">
-                  <table class="method-table" data-table-fullscreen="off">
-                    <caption>Inputs used in the Benchmark Score</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Measure</th>
-                        <th scope="col">What is read from the source</th>
-                        <th scope="col">Weight</th>
-                        <th scope="col">100 component points</th>
-                        <th scope="col">0 component points</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr data-methodology-key="nps" data-weight="0.2" data-target="55" data-floor="45">
-                        <th scope="row">Drink + Meal NPS</th>
-                        <td>Recommendation score for drink and meal responses</td>
-                        <td><strong>20%</strong></td>
-                        <td>55 or higher</td>
-                        <td>45 or lower</td>
-                      </tr>
-                      <tr data-methodology-key="dr" data-weight="0.2" data-target="90" data-floor="80">
-                        <th scope="row">Drink quality</th>
-                        <td>Customer rating</td>
-                        <td><strong>20%</strong></td>
-                        <td>90% or higher</td>
-                        <td>80% or lower</td>
-                      </tr>
-                      <tr data-methodology-key="ef" data-weight="0.2" data-target="90" data-floor="80">
-                        <th scope="row">Customer-rated efficiency</th>
-                        <td>Customer rating</td>
-                        <td><strong>20%</strong></td>
-                        <td>90% or higher</td>
-                        <td>80% or lower</td>
-                      </tr>
-                      <tr data-methodology-key="fr" data-weight="0.2" data-target="90" data-floor="80">
-                        <th scope="row">Friendliness</th>
-                        <td>Customer rating</td>
-                        <td><strong>20%</strong></td>
-                        <td>90% or higher</td>
-                        <td>80% or lower</td>
-                      </tr>
-                      <tr data-methodology-key="time" data-weight="0.1">
-                        <th scope="row">Coffee efficiency</th>
-                        <td>Within 2 minutes, within 3 minutes and over 5 minutes</td>
-                        <td><strong>10%</strong></td>
-                        <td colspan="2">Calculated from three timing tests below</td>
-                      </tr>
-                      <tr data-methodology-key="at" data-weight="0.1" data-target="120" data-floor="125">
-                        <th scope="row">Average wait time</th>
-                        <td>Mean drink wait in seconds</td>
-                        <td><strong>10%</strong></td>
-                        <td>2:00 (120s) or less</td>
-                        <td>125 seconds or more</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p class="method-note"><strong>NPS field choice:</strong> where the workbook contains a Drink + Meal
-                  split, that value is used and food-only responses are removed from response volume. Older workbooks
-                  without the split use the all-response NPS and volume.</p>
+                      <p>The source is the uploaded <strong>NPS + Coffee Data</strong> workbook. Each monthly sheet
+                        supplies
+                        one row per bakery. Ratings and timing percentages are held on a 0&ndash;100 scale; average wait
+                        is
+                        held in seconds.</p>
+                      <div class="method-weight-map"
+                        aria-label="Score weights: quality 20%, customer-rated efficiency 20%, friendliness 20%, NPS 20%, coffee efficiency 10%, average wait 10%">
+                        <div class="method-weight-map__segment method-weight-map__segment--quality">
+                          <strong>20%</strong><span>Quality</span></div>
+                        <div class="method-weight-map__segment method-weight-map__segment--efficiency">
+                          <strong>20%</strong><span>Efficiency</span></div>
+                        <div class="method-weight-map__segment method-weight-map__segment--friendly">
+                          <strong>20%</strong><span>Friendliness</span></div>
+                        <div class="method-weight-map__segment method-weight-map__segment--nps">
+                          <strong>20%</strong><span>NPS</span></div>
+                        <div class="method-weight-map__segment method-weight-map__segment--timing">
+                          <strong>10%</strong><span>Coffee<br>Efficiency</span></div>
+                        <div class="method-weight-map__segment method-weight-map__segment--wait">
+                          <strong>10%</strong><span>Avg Wait<br>Time</span></div>
+                      </div>
+                      <div class="method-table-wrap" tabindex="0" role="region"
+                        aria-label="Score inputs and weights; scroll horizontally if needed">
+                        <table class="method-table" data-table-fullscreen="off">
+                          <caption>Inputs used in the Benchmark Score</caption>
+                          <thead>
+                            <tr>
+                              <th scope="col">Measure</th>
+                              <th scope="col">What is read from the source</th>
+                              <th scope="col">Weight</th>
+                              <th scope="col">100 component points</th>
+                              <th scope="col">0 component points</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr data-methodology-key="nps" data-weight="0.2" data-target="55" data-floor="45">
+                              <th scope="row">Drink + Meal NPS</th>
+                              <td>Recommendation score for drink and meal responses</td>
+                              <td><strong>20%</strong></td>
+                              <td>55 or higher</td>
+                              <td>45 or lower</td>
+                            </tr>
+                            <tr data-methodology-key="dr" data-weight="0.2" data-target="90" data-floor="80">
+                              <th scope="row">Drink quality</th>
+                              <td>Customer rating</td>
+                              <td><strong>20%</strong></td>
+                              <td>90% or higher</td>
+                              <td>80% or lower</td>
+                            </tr>
+                            <tr data-methodology-key="ef" data-weight="0.2" data-target="90" data-floor="80">
+                              <th scope="row">Customer-rated efficiency</th>
+                              <td>Customer rating</td>
+                              <td><strong>20%</strong></td>
+                              <td>90% or higher</td>
+                              <td>80% or lower</td>
+                            </tr>
+                            <tr data-methodology-key="fr" data-weight="0.2" data-target="90" data-floor="80">
+                              <th scope="row">Friendliness</th>
+                              <td>Customer rating</td>
+                              <td><strong>20%</strong></td>
+                              <td>90% or higher</td>
+                              <td>80% or lower</td>
+                            </tr>
+                            <tr data-methodology-key="time" data-weight="0.1">
+                              <th scope="row">Coffee efficiency</th>
+                              <td>Within 2 minutes, within 3 minutes and over 5 minutes</td>
+                              <td><strong>10%</strong></td>
+                              <td colspan="2">Calculated from three timing tests below</td>
+                            </tr>
+                            <tr data-methodology-key="at" data-weight="0.1" data-target="120" data-floor="125">
+                              <th scope="row">Average wait time</th>
+                              <td>Mean drink wait in seconds</td>
+                              <td><strong>10%</strong></td>
+                              <td>2:00 (120s) or less</td>
+                              <td>125 seconds or more</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <p class="method-note"><strong>NPS field choice:</strong> where the workbook contains a Drink +
+                        Meal
+                        split, that value is used and food-only responses are removed from response volume. Older
+                        workbooks
+                        without the split use the all-response NPS and volume.</p>
 
                     </section>
 
@@ -958,69 +1265,73 @@
                           <h3>Convert each input to component points</h3>
                         </div>
                       </header>
-                <p>Every measure is first converted to a component score from 0 to 100. In the formulas,
-                  <strong>clamp</strong> means that a result below 0 is set to 0 and a result above 100 is set to 100.
-                </p>
+                      <p>Every measure is first converted to a component score from 0 to 100. In the formulas,
+                        <strong>clamp</strong> means that a result below 0 is set to 0 and a result above 100 is set to
+                        100.
+                      </p>
 
-                <div class="method-rule-grid">
-                  <section class="method-rule">
-                    <h4>NPS, quality, efficiency and friendliness</h4>
-                    <p>Values between the floor and target move in a straight line.</p>
-                    <div class="formula">component = clamp((actual &minus; floor) &divide; (target &minus; floor) &times; 100)</div>
-                    <p>For example, a quality result of 85% is halfway between the 80% floor and 90% target, so it
-                      receives 50 component points.</p>
-                  </section>
+                      <div class="method-rule-grid">
+                        <section class="method-rule">
+                          <h4>NPS, quality, efficiency and friendliness</h4>
+                          <p>Values between the floor and target move in a straight line.</p>
+                          <div class="formula">component = clamp((actual &minus; floor) &divide; (target &minus; floor)
+                            &times; 100)</div>
+                          <p>For example, a quality result of 85% is halfway between the 80% floor and 90% target, so it
+                            receives 50 component points.</p>
+                        </section>
 
-                  <section class="method-rule">
-                    <h4>Average wait time</h4>
-                    <p>Lower is better. A wait between 120 and 125 seconds loses 20 points for each additional second.
-                    </p>
-                    <div class="formula">wait points = clamp((125 &minus; seconds) &divide; 5 &times; 100)</div>
-                    <p>For example, 122 seconds receives 60 component points.</p>
-                  </section>
+                        <section class="method-rule">
+                          <h4>Average wait time</h4>
+                          <p>Lower is better. A wait between 120 and 125 seconds loses 20 points for each additional
+                            second.
+                          </p>
+                          <div class="formula">wait points = clamp((125 &minus; seconds) &divide; 5 &times; 100)</div>
+                          <p>For example, 122 seconds receives 60 component points.</p>
+                        </section>
 
-                  <section class="method-rule method-rule--wide">
-                    <h4>Coffee efficiency</h4>
-                    <p>Three timing tests make up this component:</p>
-                    <div class="method-table-wrap method-table-wrap--nested" tabindex="0" role="region"
-                      aria-label="Coffee efficiency sub-score rules; scroll horizontally if needed">
-                      <table class="method-table method-table--compact" data-table-fullscreen="off">
-                        <thead>
-                          <tr>
-                            <th scope="col">Timing test</th>
-                            <th scope="col">Share of component</th>
-                            <th scope="col">100 points</th>
-                            <th scope="col">0 points</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <th scope="row">Orders within 2 minutes</th>
-                            <td>25%</td>
-                            <td>70% or higher</td>
-                            <td>under 70%</td>
-                          </tr>
-                          <tr>
-                            <th scope="row">Orders within 3 minutes</th>
-                            <td>25%</td>
-                            <td>90% or higher</td>
-                            <td>under 90%</td>
-                          </tr>
-                          <tr>
-                            <th scope="row">Orders over 5 minutes</th>
-                            <td>50%</td>
-                            <td>1% or lower</td>
-                            <td>over 1%</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                    <div class="formula">coffee efficiency points = (2-minute points &times; 0.25) + (3-minute points &times;
-                      0.25) + (over-5-minute points &times; 0.50)</div>
-                    <p>Each test is pass/fail: it earns full points if it clears its target and zero points if it
-                      doesn&rsquo;t. There is no partial credit within a test.</p>
-                  </section>
-                </div>
+                        <section class="method-rule method-rule--wide">
+                          <h4>Coffee efficiency</h4>
+                          <p>Three timing tests make up this component:</p>
+                          <div class="method-table-wrap method-table-wrap--nested" tabindex="0" role="region"
+                            aria-label="Coffee efficiency sub-score rules; scroll horizontally if needed">
+                            <table class="method-table method-table--compact" data-table-fullscreen="off">
+                              <thead>
+                                <tr>
+                                  <th scope="col">Timing test</th>
+                                  <th scope="col">Share of component</th>
+                                  <th scope="col">100 points</th>
+                                  <th scope="col">0 points</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <th scope="row">Orders within 2 minutes</th>
+                                  <td>25%</td>
+                                  <td>70% or higher</td>
+                                  <td>under 70%</td>
+                                </tr>
+                                <tr>
+                                  <th scope="row">Orders within 3 minutes</th>
+                                  <td>25%</td>
+                                  <td>90% or higher</td>
+                                  <td>under 90%</td>
+                                </tr>
+                                <tr>
+                                  <th scope="row">Orders over 5 minutes</th>
+                                  <td>50%</td>
+                                  <td>1% or lower</td>
+                                  <td>over 1%</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <div class="formula">coffee efficiency points = (2-minute points &times; 0.25) + (3-minute
+                            points &times;
+                            0.25) + (over-5-minute points &times; 0.50)</div>
+                          <p>Each test is pass/fail: it earns full points if it clears its target and zero points if it
+                            doesn&rsquo;t. There is no partial credit within a test.</p>
+                        </section>
+                      </div>
 
                     </section>
 
@@ -1034,24 +1345,32 @@
                       </header>
                       <div class="method-score-build">
                         <div class="method-score-build__formula">
-                <div class="formula formula--score">raw score = (NPS &times; 0.2) + (quality &times; 0.2) + (customer efficiency &times;
-                  0.2) + (friendliness &times; 0.2) + (coffee efficiency &times; 0.1) + (average wait &times; 0.1)</div>
-                <p>The values in this formula are component points, not the original source results. The raw score is
-                  rounded to one decimal place.</p>
+                          <div class="formula formula--score">raw score = (NPS &times; 0.2) + (quality &times; 0.2) +
+                            (customer efficiency &times;
+                            0.2) + (friendliness &times; 0.2) + (coffee efficiency &times; 0.1) + (average wait &times;
+                            0.1)</div>
+                          <p>The values in this formula are component points, not the original source results. The raw
+                            score is
+                            rounded to one decimal place.</p>
 
                         </div>
 
-                <div class="method-example" data-example-score="62">
-                  <h4>Worked example</h4>
-                  <p>A bakery has at least 15 responses, so no low-volume adjustment applies. Its source results are:
-                    NPS 50; quality 88%; customer-rated efficiency 85%; friendliness 92%; 65% within 2 minutes; 88%
-                    within 3 minutes; 1.2% over 5 minutes; and a 122-second average wait.</p>
-                  <p>These convert to component points of 50, 80, 50, 100, 0 and 60 respectively. The coffee efficiency
-                    tests all fall just short of their targets (65% &lt; 70%, 88% &lt; 90%, 1.2% &gt; 1%), so that
-                    component scores 0 under the pass/fail rule.</p>
-                  <p><strong>(50 &times; 0.2) + (80 &times; 0.2) + (50 &times; 0.2) + (100 &times; 0.2) + (0 &times; 0.1) + (60 &times;
-                      0.1) = 62.0.</strong></p>
-                </div>
+                        <div class="method-example" data-example-score="62">
+                          <h4>Worked example</h4>
+                          <p>A bakery has at least 15 responses, so no low-volume adjustment applies. Its source results
+                            are:
+                            NPS 50; quality 88%; customer-rated efficiency 85%; friendliness 92%; 65% within 2 minutes;
+                            88%
+                            within 3 minutes; 1.2% over 5 minutes; and a 122-second average wait.</p>
+                          <p>These convert to component points of 50, 80, 50, 100, 0 and 60 respectively. The coffee
+                            efficiency
+                            tests all fall just short of their targets (65% &lt; 70%, 88% &lt; 90%, 1.2% &gt; 1%), so
+                            that
+                            component scores 0 under the pass/fail rule.</p>
+                          <p><strong>(50 &times; 0.2) + (80 &times; 0.2) + (50 &times; 0.2) + (100 &times; 0.2) + (0
+                              &times; 0.1) + (60 &times;
+                              0.1) = 62.0.</strong></p>
+                        </div>
                       </div>
                     </section>
 
@@ -1063,52 +1382,55 @@
                           <h3>Apply the response-volume adjustment</h3>
                         </div>
                       </header>
-                <p>Low response counts make a score more sensitive to one response. To reduce that effect, the raw
-                  score is blended with the mean raw score of all scored bakeries in the same company cohort.</p>
-                <div class="formula">published score = (raw score &times; bakery share) + (cohort mean &times; cohort share)</div>
+                      <p>Low response counts make a score more sensitive to one response. To reduce that effect, the raw
+                        score is blended with the mean raw score of all scored bakeries in the same company cohort.</p>
+                      <div class="formula">published score = (raw score &times; bakery share) + (cohort mean &times;
+                        cohort share)</div>
 
-                <div class="method-table-wrap" tabindex="0" role="region"
-                  aria-label="Response-volume adjustment rules; scroll horizontally if needed">
-                  <table class="method-table method-table--compact" data-table-fullscreen="off">
-                    <caption>Shares used in the response-volume adjustment</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Responses</th>
-                        <th scope="col">Historic or multi-month period</th>
-                        <th scope="col">Single current month, normal volume</th>
-                        <th scope="col">Single current month, late low-volume case</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <th scope="row">15 or more</th>
-                        <td>100% raw</td>
-                        <td>100% raw</td>
-                        <td>100% raw</td>
-                      </tr>
-                      <tr>
-                        <th scope="row">8&ndash;14</th>
-                        <td>75% raw + 25% cohort mean</td>
-                        <td>100% raw</td>
-                        <td>85% raw + 15% cohort mean</td>
-                      </tr>
+                      <div class="method-table-wrap" tabindex="0" role="region"
+                        aria-label="Response-volume adjustment rules; scroll horizontally if needed">
+                        <table class="method-table method-table--compact" data-table-fullscreen="off">
+                          <caption>Shares used in the response-volume adjustment</caption>
+                          <thead>
+                            <tr>
+                              <th scope="col">Responses</th>
+                              <th scope="col">Historic or multi-month period</th>
+                              <th scope="col">Single current month, normal volume</th>
+                              <th scope="col">Single current month, late low-volume case</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <th scope="row">15 or more</th>
+                              <td>100% raw</td>
+                              <td>100% raw</td>
+                              <td>100% raw</td>
+                            </tr>
+                            <tr>
+                              <th scope="row">8&ndash;14</th>
+                              <td>75% raw + 25% cohort mean</td>
+                              <td>100% raw</td>
+                              <td>85% raw + 15% cohort mean</td>
+                            </tr>
 
-                      <tr>
-                        <th scope="row">1&ndash;7</th>
-                        <td>35% raw + 65% cohort mean</td>
-                        <td>100% raw</td>
-                        <td>55% raw + 45% cohort mean</td>
-                      </tr>
-                      <tr>
-                        <th scope="row">0</th>
-                        <td colspan="3">Not scored</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p class="method-note">A current-month record is a <strong>late low-volume case</strong> only on or
-                  after the later of day 21 and seven days before month-end, and only when its response count is below
-                  half of the cohort median. The adjusted score is rounded to one decimal place.</p>
+                            <tr>
+                              <th scope="row">1&ndash;7</th>
+                              <td>35% raw + 65% cohort mean</td>
+                              <td>100% raw</td>
+                              <td>55% raw + 45% cohort mean</td>
+                            </tr>
+                            <tr>
+                              <th scope="row">0</th>
+                              <td colspan="3">Not scored</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <p class="method-note">A current-month record is a <strong>late low-volume case</strong> only on
+                        or
+                        after the later of day 21 and seven days before month-end, and only when its response count is
+                        below
+                        half of the cohort median. The adjusted score is rounded to one decimal place.</p>
 
                     </section>
 
@@ -1121,96 +1443,115 @@
                         </div>
                       </header>
 
-                <div class="method-audit-grid">
-                  <section>
-                    <h4>More than one month selected</h4>
-                    <p>Each KPI is the simple arithmetic mean of the bakery's scored monthly values; it is not weighted
-                      by monthly response volume, and months with no scored data are left out of the average rather than
-                      counted as zero. Response volume and drink counts are summed over the same scored months. A bakery
-                      is scored for the period once it has three scored months and is still reporting &mdash; at least
-                      one of those months falls in the final three months present in the period. Below that floor, or
-                      where the data stops before the period closes, the result is marked incomplete and is not ranked.
-                      Periods of three months or fewer therefore still require every month present.</p>
-                  </section>
-                  <section>
-                    <h4>Missing source values</h4>
-                    <p>Zero responses means no score. Blank core rating or timing fields are imported as 0. A blank
-                      average wait remains missing; the current calculation gives it 100 benchmark component points
-                      and the neutral 50th percentile in the peer calculation. Auditors should therefore check blank
-                      wait fields before relying on a result.</p>
-                  </section>
+                      <div class="method-audit-grid">
+                        <section>
+                          <h4>More than one month selected</h4>
+                          <p>Each KPI is the simple arithmetic mean of the bakery's scored monthly values; it is not
+                            weighted
+                            by monthly response volume, and months with no scored data are left out of the average
+                            rather than
+                            counted as zero. Response volume and drink counts are summed over the same scored months. A
+                            bakery
+                            is scored for the period once it has three scored months and is still reporting &mdash; at
+                            least
+                            one of those months falls in the final three months present in the period. Below that floor,
+                            or
+                            where the data stops before the period closes, the result is marked incomplete and is not
+                            ranked.
+                            Periods of three months or fewer therefore still require every month present.</p>
+                        </section>
+                        <section>
+                          <h4>Missing source values</h4>
+                          <p>Zero responses means no score. Blank core rating or timing fields are imported as 0. A
+                            blank
+                            average wait remains missing; the current calculation gives it 100 benchmark component
+                            points
+                            and the neutral 50th percentile in the peer calculation. Auditors should therefore check
+                            blank
+                            wait fields before relying on a result.</p>
+                        </section>
 
-                  <section>
-                    <h4>Company rank</h4>
-                    <p>Eligible bakeries are ordered by adjusted Benchmark Score, highest first. An adjusted peer score
-                      breaks a benchmark-score tie; bakery name breaks any remaining tie. Region, ops-area and bakery
-                      filters are applied after the company score and rank are fixed, so filtering does not change
-                      company rank.</p>
-                  </section>
-                  <section>
-                    <h4>Published bands</h4>
-                    <p>The adjusted Benchmark Score sets the band. Decimal values are compared with the exact cut-offs
-                      before any whole-number display rounding.</p>
-                  </section>
-                </div>
+                        <section>
+                          <h4>Company rank</h4>
+                          <p>Eligible bakeries are ordered by adjusted Benchmark Score, highest first. An adjusted peer
+                            score
+                            breaks a benchmark-score tie; bakery name breaks any remaining tie. Region, ops-area and
+                            bakery
+                            filters are applied after the company score and rank are fixed, so filtering does not change
+                            company rank.</p>
+                        </section>
+                        <section>
+                          <h4>Published bands</h4>
+                          <p>The adjusted Benchmark Score sets the band. Decimal values are compared with the exact
+                            cut-offs
+                            before any whole-number display rounding.</p>
+                        </section>
+                      </div>
 
-                <div class="benchmarks benchmarks--quad" aria-label="Benchmark Score bands">
-                  <div class="benchmark exc">
-                    <div class="bval">90&ndash;100</div>
-                    <div class="blabel">Exceeding</div>
-                  </div>
-                  <div class="benchmark gd">
-                    <div class="bval">75&ndash;&lt;90</div>
-                    <div class="blabel">Meeting</div>
-                  </div>
-                  <div class="benchmark dev">
-                    <div class="bval">60&ndash;&lt;75</div>
-                    <div class="blabel">Approaching</div>
-                  </div>
-                  <div class="benchmark na">
-                    <div class="bval">Below 60</div>
-                    <div class="blabel">Below Standard</div>
-                  </div>
-                </div>
+                      <div class="benchmarks benchmarks--quad" aria-label="Benchmark Score bands">
+                        <div class="benchmark exc">
+                          <div class="bval">90&ndash;100</div>
+                          <div class="blabel">Exceeding</div>
+                        </div>
+                        <div class="benchmark gd">
+                          <div class="bval">75&ndash;&lt;90</div>
+                          <div class="blabel">Meeting</div>
+                        </div>
+                        <div class="benchmark dev">
+                          <div class="bval">60&ndash;&lt;75</div>
+                          <div class="blabel">Approaching</div>
+                        </div>
+                        <div class="benchmark na">
+                          <div class="bval">Below 60</div>
+                          <div class="blabel">Below Standard</div>
+                        </div>
+                      </div>
 
-                <details class="method-details">
-                  <summary>Peer tie-break calculation</summary>
-                  <div class="method-details__body">
-                    <p>The peer score is not the headline performance measure. It is retained to compare relative
-                      position and to break ties in company rank.</p>
-                    <p>For a monthly result, each of the same six measures is converted to a percentile within the
-                      scored company cohort. The lowest result receives 0 and the highest receives 100; lower wait time
-                      is better. Ties use the average tied position. A one-bakery cohort receives 50. The six
-                      percentiles use the same 20%, 20%, 20%, 20%, 10% and 10% weights, followed by the same
-                      response-volume adjustment.</p>
-                    <p>For a multi-month result, the quality, customer-efficiency and friendliness peer components are
-                      averages of their monthly percentiles. NPS, within-2-minute performance and average-wait
-                      percentiles are recalculated from the period averages.</p>
-                  </div>
-                </details>
+                      <details class="method-details">
+                        <summary>Peer tie-break calculation</summary>
+                        <div class="method-details__body">
+                          <p>The peer score is not the headline performance measure. It is retained to compare relative
+                            position and to break ties in company rank.</p>
+                          <p>For a monthly result, each of the same six measures is converted to a percentile within the
+                            scored company cohort. The lowest result receives 0 and the highest receives 100; lower wait
+                            time
+                            is better. Ties use the average tied position. A one-bakery cohort receives 50. The six
+                            percentiles use the same 20%, 20%, 20%, 20%, 10% and 10% weights, followed by the same
+                            response-volume adjustment.</p>
+                          <p>For a multi-month result, the quality, customer-efficiency and friendliness peer components
+                            are
+                            averages of their monthly percentiles. NPS, within-2-minute performance and average-wait
+                            percentiles are recalculated from the period averages.</p>
+                        </div>
+                      </details>
 
-                <details class="method-details">
-                  <summary>KPI card labels</summary>
-                  <div class="method-details__body">
-                    <p>Card labels help with scanning and do not add points to the index. They use these display
-                      thresholds:</p>
-                    <ul class="method-list">
-                      <li><strong>Drink + Meal NPS:</strong> Exceeding above 60; On Target 55&ndash;60; Watch
-                        45&ndash;&lt;55; Below under 45.</li>
-                      <li><strong>Quality, customer-rated efficiency and friendliness:</strong> Exceeding above 92%;
-                        On Target 90&ndash;92%; Watch 80&ndash;&lt;90%; Below under 80%.</li>
-                      <li><strong>Coffee efficiency headline:</strong> Exceeding above 80%; On Target 70&ndash;80%;
-                        Watch 60&ndash;&lt;70%; Below under 60%.</li>
-                      <li><strong>Average wait:</strong> On Target at 120 seconds or less; Watch above 120 and below 125
-                        seconds; Below at 125 seconds or more.</li>
-                      <li><strong>Orders over 5 minutes:</strong> Exceeding under 0.5%; On Target 0.5&ndash;1.0%; Watch
-                        above 1.0% and below 2.5%; Below at 2.5% or more.</li>
-                    </ul>
-                    <p>The Benchmark Score card uses a separate display label: Exceeding above 92, Meeting from 75
-                      through 92, Approaching from 60 to under 75, and Below Standard under 60. The formal score bands
-                      used in tables, maps and rankings are the published bands shown above.</p>
-                  </div>
-                </details>
+                      <details class="method-details">
+                        <summary>KPI card labels</summary>
+                        <div class="method-details__body">
+                          <p>Card labels help with scanning and do not add points to the index. They use these display
+                            thresholds:</p>
+                          <ul class="method-list">
+                            <li><strong>Drink + Meal NPS:</strong> Exceeding above 60; On Target 55&ndash;60; Watch
+                              45&ndash;&lt;55; Below under 45.</li>
+                            <li><strong>Quality, customer-rated efficiency and friendliness:</strong> Exceeding above
+                              92%;
+                              On Target 90&ndash;92%; Watch 80&ndash;&lt;90%; Below under 80%.</li>
+                            <li><strong>Coffee efficiency headline:</strong> Exceeding above 80%; On Target
+                              70&ndash;80%;
+                              Watch 60&ndash;&lt;70%; Below under 60%.</li>
+                            <li><strong>Average wait:</strong> On Target at 120 seconds or less; Watch above 120 and
+                              below 125
+                              seconds; Below at 125 seconds or more.</li>
+                            <li><strong>Orders over 5 minutes:</strong> Exceeding under 0.5%; On Target 0.5&ndash;1.0%;
+                              Watch
+                              above 1.0% and below 2.5%; Below at 2.5% or more.</li>
+                          </ul>
+                          <p>The Benchmark Score card uses a separate display label: Exceeding above 92, Meeting from 75
+                            through 92, Approaching from 60 to under 75, and Below Standard under 60. The formal score
+                            bands
+                            used in tables, maps and rankings are the published bands shown above.</p>
+                        </div>
+                      </details>
 
                     </section>
 
@@ -1222,17 +1563,20 @@
                           <h3>How to reproduce a result</h3>
                         </div>
                       </header>
-                <ol class="method-list method-list--num">
-                  <li>Choose the same period and use the full, unfiltered company cohort.</li>
-                  <li>Confirm the bakery's six source inputs and response volume. For a multi-month period, confirm
-                    that every expected month is present.</li>
-                  <li>Convert the six inputs to component points using the targets, floors and timing guardrail above.
-                  </li>
-                  <li>Apply the six weights and round the raw score to one decimal place.</li>
-                  <li>Calculate the cohort mean of raw scores, apply the response-volume blend where required, and round
-                    the published score to one decimal place.</li>
-                  <li>Assign the score band and rank the complete cohort before applying dashboard filters.</li>
-                </ol>
+                      <ol class="method-list method-list--num">
+                        <li>Choose the same period and use the full, unfiltered company cohort.</li>
+                        <li>Confirm the bakery's six source inputs and response volume. For a multi-month period,
+                          confirm
+                          that every expected month is present.</li>
+                        <li>Convert the six inputs to component points using the targets, floors and timing guardrail
+                          above.
+                        </li>
+                        <li>Apply the six weights and round the raw score to one decimal place.</li>
+                        <li>Calculate the cohort mean of raw scores, apply the response-volume blend where required, and
+                          round
+                          the published score to one decimal place.</li>
+                        <li>Assign the score band and rank the complete cohort before applying dashboard filters.</li>
+                      </ol>
 
                     </section>
                   </div>
@@ -1383,64 +1727,6 @@
           <!-- FOCUS BAKERIES -->
           <div class="tab-content" id="tab-target">
             <div class="target-subtabs" id="targetTabWorkspace">
-              <div class="target-subtabs__nav" role="tablist" aria-label="Focus bakery views">
-                <button class="target-subtab active" type="button" data-target-subtab="summary">
-                  <span class="target-subtab__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <circle cx="12" cy="12" r="7"></circle>
-                      <circle cx="12" cy="12" r="2.6"></circle>
-                    </svg>
-                  </span>
-                  <span>Priorities</span>
-                </button>
-                <button class="target-subtab" type="button" data-target-subtab="priority">
-                  <span class="target-subtab__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path d="M7 12.5 10 15.5 17 8.5"></path>
-                    </svg>
-                  </span>
-                  <span>All bakery data</span>
-                </button>
-                <button class="target-subtab" type="button" data-target-subtab="table">
-                  <span class="target-subtab__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path d="M5 7h14"></path>
-                      <path d="M5 12h14"></path>
-                      <path d="M5 17h14"></path>
-                    </svg>
-                  </span>
-                  <span>Monthly results</span>
-                </button>
-                <button class="target-subtab" type="button" data-target-subtab="graphs">
-                  <span class="target-subtab__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path d="M5 16 10 11 13 14 19 8"></path>
-                      <path d="M19 8h-4"></path>
-                    </svg>
-                  </span>
-                  <span>Charts</span>
-                </button>
-                <button class="target-subtab" type="button" data-target-subtab="map">
-                  <span class="target-subtab__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path d="M12 20s-4.5-4-4.5-8.3a4.5 4.5 0 1 1 9 0C16.5 16 12 20 12 20Z"></path>
-                      <circle cx="12" cy="11.5" r="1.7"></circle>
-                    </svg>
-                  </span>
-                  <span>Map</span>
-                </button>
-                <button class="target-subtab" type="button" data-target-subtab="feedback">
-                  <span class="target-subtab__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M6.5 7.5h11a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H11l-3.5 3v-3H6.5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2Z">
-                      </path>
-                    </svg>
-                  </span>
-                  <span>Customer comments</span>
-                </button>
-              </div>
-
               <div class="target-subtab-panel active" data-target-subtab-panel="summary">
                 <div class="section">
                   <div class="focus-page-intro">
@@ -1576,8 +1862,8 @@
                           </span>
                           <div class="map-segmented-control" role="group" aria-label="Toggle map area boundaries"
                             id="targetMapAreaToggle">
-                            <button type="button" class="map-segmented-control__btn active"
-                              data-target-map-area="off" aria-pressed="true">Off</button>
+                            <button type="button" class="map-segmented-control__btn active" data-target-map-area="off"
+                              aria-pressed="true">Off</button>
                             <button type="button" class="map-segmented-control__btn" data-target-map-area="on"
                               aria-pressed="false">On</button>
                           </div>
@@ -1592,8 +1878,8 @@
                           </span>
                           <div class="map-segmented-control" role="group" aria-label="Filter map by visited status"
                             id="targetMapVisitToggle">
-                            <button type="button" class="map-segmented-control__btn active"
-                              data-target-map-visit="all" aria-pressed="true">All</button>
+                            <button type="button" class="map-segmented-control__btn active" data-target-map-visit="all"
+                              aria-pressed="true">All</button>
                             <button type="button" class="map-segmented-control__btn" data-target-map-visit="visited"
                               aria-pressed="false">Visited</button>
                             <button type="button" class="map-segmented-control__btn" data-target-map-visit="unvisited"
@@ -1791,55 +2077,24 @@
 
           <!-- VISIT LOG -->
           <div class="tab-content" id="tab-visit-log">
-            <!-- VIEW NAV — same segmented bar as the Focus Bakeries sub-tabs -->
-            <div id="visitLogViewToggle" class="target-subtabs__nav visit-log-subtabs" role="group"
-              aria-label="Bakery Reports view">
-              <button type="button" class="target-subtab active" data-view="bakeries">
-                <span class="target-subtab__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M4 9.5 12 4l8 5.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5Z"></path>
-                    <path d="M9 20v-5h6v5"></path>
-                  </svg>
-                </span>
-                <span>Bakery List</span>
-              </button>
-              <button type="button" class="target-subtab" data-view="history">
-                <span class="target-subtab__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <circle cx="12" cy="12" r="8"></circle>
-                    <path d="M12 7.5V12l3 1.8"></path>
-                  </svg>
-                </span>
-                <span>Visit History</span>
-              </button>
-              <button type="button" class="target-subtab" data-view="unvisited">
-                <span class="target-subtab__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M12 20s-4.5-4-4.5-8.3a4.5 4.5 0 1 1 9 0C16.5 16 12 20 12 20Z"></path>
-                    <path d="M10.3 11.2 12 12.9l2.4-2.9"></path>
-                  </svg>
-                </span>
-                <span>Unvisited Sites</span>
-              </button>
-              <button type="button" class="target-subtab" data-view="followups">
-                <span class="target-subtab__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M4.5 7.5 6 9l2.5-2.5"></path>
-                    <path d="M4.5 15.5 6 17l2.5-2.5"></path>
-                    <path d="M11.5 8h8"></path>
-                    <path d="M11.5 16h8"></path>
-                  </svg>
-                </span>
-                <span>Follow-up Tasks</span>
-              </button>
-            </div>
-
             <div class="section">
               <!-- Section title on the left, primary actions pinned top-right.
                    The title names the active view, so the card always says what
                    it is currently showing. -->
               <div class="visit-log-section-header">
                 <h2 class="visit-log-section-title" id="visitLogSectionTitle">Visit History</h2>
+                <!-- FOLLOW-UPS STATUS SUB-FILTER (only shown in the Follow-ups
+                     view). On the title row rather than a band of its own: it
+                     says which slice of the list is on screen, so it reads as
+                     part of the heading — "Follow-up Tasks: Open" — and the
+                     counts bar below stays a clean statement of the result. -->
+                <div id="followUpStatusToggle" class="visit-log-toggle follow-up-status-toggle" role="group"
+                  aria-label="Follow-up status" style="display:none; gap:8px;">
+                  <button type="button" class="visit-log-toggle-btn active" data-status="open">Open</button>
+                  <button type="button" class="visit-log-toggle-btn" data-status="overdue">Overdue</button>
+                  <button type="button" class="visit-log-toggle-btn" data-status="done">Done</button>
+                  <button type="button" class="visit-log-toggle-btn" data-status="all">All</button>
+                </div>
                 <!-- One primary action per view (see syncVisitLogActions in
                      js/visit-report.js), plus the external form as a quiet
                      link — it hands off to Google Forms, so it should not
@@ -1857,192 +2112,6 @@
                       <path d="M20 4 11 13" />
                       <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
                     </svg></a>
-                </div>
-              </div>
-
-              <!-- FOLLOW-UPS STATUS SUB-FILTER (only shown in the Follow-ups view) -->
-              <div id="followUpStatusToggle" class="visit-log-toggle follow-up-status-toggle" role="group"
-                aria-label="Follow-up status" style="margin-bottom:10px; display:none; gap:8px;">
-                <button type="button" class="visit-log-toggle-btn active" data-status="open">Open</button>
-                <button type="button" class="visit-log-toggle-btn" data-status="overdue">Overdue</button>
-                <button type="button" class="visit-log-toggle-btn" data-status="done">Done</button>
-                <button type="button" class="visit-log-toggle-btn" data-status="all">All</button>
-              </div>
-
-              <!-- STANDALONE VISIT LOG FILTERS -->
-              <div class="visit-log-filters">
-                <div class="visit-log-filter-control">
-                  <label for="visitLogSearch">Search</label>
-                  <input type="search" id="visitLogSearch" placeholder="Bakery or partner&hellip;"
-                    class="visit-log-input" autocomplete="off">
-                </div>
-                <button type="button" id="visitLogMobileFilterBtn" class="visit-log-mobile-filter-btn"
-                  aria-controls="visitLogFilterPanel" aria-expanded="false">
-                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round">
-                    <path d="M3 7h18M7 12h10M11 17h2" />
-                  </svg>
-                  <span>Filters</span>
-                  <span id="visitLogFilterBadge" class="visit-log-filter-badge" hidden></span>
-                </button>
-                <div id="visitLogFilterBackdrop" class="visit-log-filter-backdrop" hidden></div>
-                <div id="visitLogFilterPanel" class="visit-log-filter-panel" aria-label="Visit report filters">
-                  <div class="visit-log-filter-panel__header">
-                    <strong>Filters</strong>
-                    <button type="button" id="visitLogFilterCloseBtn" class="visit-log-filter-panel__close"
-                      aria-label="Close filters">
-                      <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
-                        stroke-width="2" stroke-linecap="round">
-                        <path d="M1 1l12 12M13 1L1 13" />
-                      </svg>
-                    </button>
-                  </div>
-                  <div class="visit-log-filter-panel__body">
-                    <div class="visit-log-filter-control">
-                      <label for="visitLogRegion">Region</label>
-                      <select id="visitLogRegion" class="visit-log-select">
-                        <option value="">All Regions</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control">
-                      <label for="visitLogOps">Ops Area</label>
-                      <select id="visitLogOps" class="visit-log-select">
-                        <option value="">All Areas</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control" id="followUpAssigneeControl" style="display:none;">
-                      <label for="followUpAssignee">Assigned To</label>
-                      <select id="followUpAssignee" class="visit-log-select" data-searchable="true">
-                        <option value="">All</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact"
-                      id="followUpGroupControl" style="display:none;">
-                      <label for="followUpGroup">Group By</label>
-                      <select id="followUpGroup" class="visit-log-select">
-                        <option value="bakery">Bakery</option>
-                        <option value="region">Region</option>
-                        <option value="ops">Ops Area</option>
-                        <option value="priority">Priority</option>
-                        <option value="status">Status</option>
-                        <option value="none">None</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact"
-                      id="followUpSortControl" style="display:none;">
-                      <label for="followUpSort">Sort By</label>
-                      <select id="followUpSort" class="visit-log-select">
-                        <option value="dueAsc">Due Date (Soonest)</option>
-                        <option value="priority">Priority (High-Low)</option>
-                        <option value="createdDesc">Date Added (Newest)</option>
-                        <option value="bakeryAsc">Bakery Name (A-Z)</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control" id="visitLogBakeryControl" style="display:none;">
-                      <label for="visitLogBakery">Bakery</label>
-                      <select id="visitLogBakery" class="visit-log-select" data-searchable="true">
-                        <option value="">All Bakeries</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact"
-                      id="visitLogDirectorySortControl" style="display:none;">
-                      <label for="visitLogDirectorySort">Sort By</label>
-                      <select id="visitLogDirectorySort" class="visit-log-select">
-                        <option value="nameAsc">Bakery Name (A-Z)</option>
-                        <option value="nameDesc">Bakery Name (Z-A)</option>
-                        <option value="region">Region</option>
-                        <option value="ops">Ops Area</option>
-                        <option value="partner">Coffee Partner</option>
-                        <option value="trainer">Coffee Trainer</option>
-                        <option value="barista">Area Head Barista</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact"
-                      id="visitLogDirectoryGroupControl" style="display:none;">
-                      <label for="visitLogDirectoryGroup">Group By</label>
-                      <select id="visitLogDirectoryGroup" class="visit-log-select">
-                        <option value="none">None</option>
-                        <option value="region">Region</option>
-                        <option value="ops">Ops Area</option>
-                        <option value="partner">Coffee Partner</option>
-                        <option value="trainer">Coffee Trainer</option>
-                        <option value="barista">Area Head Barista</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact">
-                      <label for="visitLogGroup">Group By</label>
-                      <select id="visitLogGroup" class="visit-log-select">
-                        <option value="ops">Ops Area</option>
-                        <option value="region" selected>Region</option>
-                        <option value="type">Visit Type</option>
-                        <option value="none">None</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact">
-                      <label for="visitLogPeriod">Period</label>
-                      <select id="visitLogPeriod" class="visit-log-select">
-                        <option value="0">All Time</option>
-                        <option value="currentMonth">This Month</option>
-                        <option value="1">Last Month</option>
-                        <option value="2">Last 2 Months</option>
-                        <option value="3">Last 3 Months</option>
-                        <option value="6">Last 6 Months</option>
-                        <option value="12">Last 12 Months</option>
-                        <option value="thisQuarter" selected>This Quarter</option>
-                        <option value="lastQuarter">Last Quarter</option>
-                        <option value="thisYear">This Year</option>
-                        <option value="lastYear">Last Year</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact">
-                      <label for="visitLogSort">Sort By</label>
-                      <select id="visitLogSort" class="visit-log-select">
-                        <option value="date">Date</option>
-                        <option value="nameAsc">Alphabetical (A-Z)</option>
-                        <option value="nameDesc">Alphabetical (Z-A)</option>
-                        <option value="type">Visit Type</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control">
-                      <label for="visitLogType">Visit Type</label>
-                      <select id="visitLogType" class="visit-log-select">
-                        <option value="">All Types</option>
-                        <option value="routine">Routine Coffee Visit</option>
-                        <option value="siteVisit">Check-in</option>
-                        <option value="nboOpening">NBO: Opening</option>
-                        <option value="nboVisit1">NBO: Coffee Visit 1</option>
-                        <option value="nboVisit2">NBO: Coffee Visit 2</option>
-                        <option value="cqv">CQV</option>
-                        <option value="cqvFollowUp">CQV Follow-Up</option>
-                      </select>
-                    </div>
-                    <div class="visit-log-filter-control visit-log-filter-control--compact" id="visitLogRatingControl"
-                      style="display:none;">
-                      <label for="visitLogRating">Rating</label>
-                      <select id="visitLogRating" class="visit-log-select">
-                        <option value="">All Ratings</option>
-                        <option value="Green">Green</option>
-                        <option value="Yellow">Yellow</option>
-                        <option value="Red">Red</option>
-                      </select>
-                    </div>
-                    <button type="button" id="visitLogResetBtn" class="visit-log-reset-btn" title="Reset filters"
-                      aria-label="Reset filters">
-                      <svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true"
-                        focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
-                      </svg>
-                      <svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true"
-                        focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
-                        <path d="m22 3-5 5" />
-                        <path d="m17 3 5 5" />
-                      </svg>
-                      <span class="visit-log-reset-btn__label">Reset</span>
-                    </button>
-                  </div>
                 </div>
               </div>
 
@@ -2273,7 +2342,8 @@
                   <label class="form-field__label" for="addVisitPartner">Coffee Partner</label>
                   <input type="text" id="addVisitPartner" placeholder="Start typing a name" class="visit-log-input"
                     autocomplete="off" data-mention-field>
-                  <small class="mention-field-hint">Choose a name, then press <strong>Space</strong> to add another. <strong>Backspace</strong> removes the last person.</small>
+                  <small class="mention-field-hint">Choose a name, then press <strong>Space</strong> to add another.
+                    <strong>Backspace</strong> removes the last person.</small>
                 </div>
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitMod">Barista</label>
@@ -2349,9 +2419,10 @@
             </div>
             <div class="filter-control form-field">
               <label class="form-field__label" for="followUpAssignees">Assigned to</label>
-              <input type="text" id="followUpAssignees" placeholder="Start typing a name"
-                class="visit-log-input" autocomplete="off" data-mention-field>
-              <small class="mention-field-hint">You're selected automatically. Press <strong>Space</strong> to add another person;
+              <input type="text" id="followUpAssignees" placeholder="Start typing a name" class="visit-log-input"
+                autocomplete="off" data-mention-field>
+              <small class="mention-field-hint">You're selected automatically. Press <strong>Space</strong> to add
+                another person;
                 <strong>Backspace</strong> removes the last.</small>
             </div>
             <div class="form-field-row">
@@ -2425,8 +2496,8 @@
     <!-- SAVE CONFIRMATION MODAL -->
     <div id="saveConfirmModal" class="drill-modal" style="display:none;"
       onclick="if(event.target===this)GAILS.closeSaveConfirmModal()">
-      <div class="drillInner"
-        role="alertdialog" aria-modal="true" aria-labelledby="saveConfirmTitle" aria-describedby="saveConfirmMessage"
+      <div class="drillInner" role="alertdialog" aria-modal="true" aria-labelledby="saveConfirmTitle"
+        aria-describedby="saveConfirmMessage"
         style="max-width: 440px; height: auto; background: var(--card); border: 1px solid var(--card-border-h); box-shadow: var(--shadow-md);">
         <div class="drill-modal-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
           <div>
@@ -2444,8 +2515,8 @@
           </p>
 
           <div style="display:flex; gap:12px; justify-content: flex-end;">
-            <button type="button" class="drill-close-btn" data-save-confirm-cancel onclick="GAILS.closeSaveConfirmModal()"
-              style="padding: 9px 15px;">Cancel</button>
+            <button type="button" class="drill-close-btn" data-save-confirm-cancel
+              onclick="GAILS.closeSaveConfirmModal()" style="padding: 9px 15px;">Cancel</button>
             <button type="button" id="saveConfirmBtn" class="btn" style="padding: 10px 22px;">Confirm</button>
           </div>
         </div>
@@ -2500,21 +2571,21 @@
   <script defer src="js/mentions.js"></script>
   <script defer src="js/mention-field.js"></script>
   <script defer src="js/visit-schema.js"></script>
-  <script defer src="js/utils.js?v=20260728-notification-centre-05"></script>
+  <script defer src="js/utils.js?v=20260811-fullbleed-modals-01"></script>
   <script defer src="js/cei.js"></script>
   <script defer src="js/parser.js"></script>
   <script defer src="js/periods.js"></script>
   <script defer src="js/filters.js"></script>
   <script defer src="js/focus-data.js"></script>
   <script defer src="js/tables.js"></script>
-  <script defer src="js/drilldown.js"></script>
-  <script defer src="js/charts.js"></script>
+  <script defer src="js/drilldown.js?v=20260811-fullbleed-modals-01"></script>
+  <script defer src="js/charts.js?v=20260811-fullbleed-modals-01"></script>
   <script defer src="js/support-score.js"></script>
   <script defer src="js/targets.js?v=20260720-focus-run-threshold-12"></script>
   <script defer src="js/cqv-criticals.js"></script>
   <script defer src="js/cqv-shared.js"></script>
   <script defer src="js/nbo-shared.js"></script>
-  <script defer src="js/visit-report.js?v=20260728-notification-centre-05"></script>
+  <script defer src="js/visit-report.js?v=20260811-fullbleed-modals-01"></script>
   <script defer src="js/upload.js"></script>
   <script defer src="js/custom-selects.js"></script>
   <script defer src="js/wordcloud.js"></script>

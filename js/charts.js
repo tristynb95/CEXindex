@@ -180,7 +180,9 @@ window.GAILS.renderOverviewCharts = function (data) {
         ? data.filter(isUnscored)
         : data.filter(function (d) { return d[bandKey] === band; });
       if (!bakeries.length) return;
-      G.showDrillDown(band, bakeries.length + ' bakeries in this band', bakeries, 'absolute');
+      // The count is already the header badge and the Bakeries stat card, so
+      // the subtitle says what to do with the band rather than restating it.
+      G.showDrillDown(band, 'Compare the bakeries in this band and open any bakery profile.', bakeries, 'absolute');
     };
   }
 

@@ -215,6 +215,14 @@ test('filters the directory across bakery, ops, region, partner and trainer', ()
     ['Alpha']
   );
   assert.deepEqual(
+    plain(GAILS.buildBakeryDirectoryRows({ region: ['South Region', 'North Region'] })).map((row) => row.bakery),
+    ['Alpha', 'Beta']
+  );
+  assert.deepEqual(
+    plain(GAILS.buildBakeryDirectoryRows({ ops: ['Ops Two'], bakery: ['Alpha', 'Beta'] })).map((row) => row.bakery),
+    ['Beta']
+  );
+  assert.deepEqual(
     plain(GAILS.buildBakeryDirectoryRows({ bakery: 'Beta' })).map((row) => row.bakery),
     ['Beta']
   );
@@ -247,6 +255,27 @@ test('provides the complete bakery directory filter set and table grouping contr
   assert.match(source, /Download the filtered bakery directory as a formatted Excel workbook/);
   assert.match(source, /<th scope="col">Area Head Barista<\/th>/);
   assert.match(source, /data-label="Area Head Barista">.*row\.areaHeadBarista \|\| '-'/);
+});
+
+test('Bakery Reports region, ops area, and bakery filters use shared multi-select controls', () => {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const source = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
+  const customSelects = fs.readFileSync(path.join(root, 'js', 'custom-selects.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+
+  ['Region', 'Ops', 'Bakery'].forEach((key) => {
+    assert.match(html, new RegExp('id="visitLog' + key + '"[^>]*multiple[^>]*hidden'));
+    assert.match(html, new RegExp('id="visitLog' + key + 'Multiselect"'));
+    assert.match(html, new RegExp('id="visitLog' + key + 'MsList"[^>]*aria-multiselectable="true"'));
+  });
+  assert.match(source, /function createVisitLogMultiSelect\(config\)/);
+  assert.match(source, /var regionVal = getVisitLogFilterValues\('visitLogRegion'\)/);
+  assert.match(source, /visitLogFilterMatches\(regionVal,/);
+  assert.match(source, /event\.composedPath \? event\.composedPath\(\) : \[\][\s\S]*?if \(isOpen && !clickedInside\) close\(\)/);
+  assert.match(customSelects, /if \(!select \|\| select\.multiple \|\| select\.dataset\.customSelectReady/);
+  assert.match(styles, /\.bakery-ms__search\s*\{[^}]*flex:\s*1 1 0;[^}]*width:\s*0;[^}]*min-width:\s*0;/s);
+  assert.match(styles, /\.visit-log-filters \.visit-log-ms \.bakery-ms__dropdown\s*\{[^}]*padding:\s*6px;[^}]*border-radius:\s*14px;/s);
+  assert.match(styles, /\.visit-log-filters \.visit-log-ms \.bakery-ms__option\s*\{[^}]*padding:\s*8px 9px;[^}]*font-size:\s*0\.82rem;/s);
 });
 
 test('uses a hyphen for unassigned area head baristas in directory exports', () => {

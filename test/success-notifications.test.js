@@ -27,12 +27,20 @@ test('success notifications are subtle, accessible, bounded, and dismissible', (
 });
 
 test('every page that can surface the shared workflow loads the notification assets', () => {
-  ['index.html', 'my-activity.html', 'bakery-profile.html', 'admin.html', 'my-team.html']
-    .forEach((file) => {
-      const html = read(file);
-      assert.match(html, /css\/styles\.css\?v=20260728-notification-centre-05/, file + ' styles');
-      assert.match(html, /js\/utils\.js\?v=20260728-notification-centre-05/, file + ' utility');
+  // Both assets are cache-busted by version string. A page left on an older
+  // one serves stale CSS or a stale utils.js to that page alone, so the check
+  // is that every page asks for the same version rather than for a literal
+  // that has to be re-pinned here on each bump.
+  const files = ['index.html', 'my-activity.html', 'bakery-profile.html', 'admin.html', 'my-team.html'];
+  ['css/styles.css', 'js/utils.js'].forEach((asset) => {
+    const pattern = new RegExp(asset.replace(/[/.]/g, '\\$&') + '\\?v=([^"\']+)');
+    const versions = files.map((file) => {
+      const match = pattern.exec(read(file));
+      assert.ok(match, file + ' must cache-bust ' + asset);
+      return match[1];
     });
+    assert.equal(new Set(versions).size, 1, 'pages disagree on ' + asset + ': ' + versions.join(', '));
+  });
 });
 
 // The gaps allow for the notification event each write also records
