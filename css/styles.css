@@ -2230,6 +2230,17 @@ canvas {
   overflow: visible;
 }
 
+/* Groups the head (title + collapse control) and the nav list so they can be
+   pinned together as one unit on the desktop shell (see #dashboardContent
+   .dashboard-sidebar__pinned) without losing the stacked spacing they had as
+   direct children of .dashboard-sidebar on mobile. */
+.dashboard-sidebar__pinned {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
 /* Single row: title on the left, compact collapse control on the right */
 .dashboard-sidebar__head {
   display: flex;
@@ -3091,10 +3102,24 @@ canvas {
 .league-table-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 20px;
+}
+
+/* Pushes everything after the title — Sort by, then the JS-appended
+   fullscreen button — into a single group on the right, instead of spacing
+   every flex child evenly. Extra specificity (vs. the shared .focus-subtab-title
+   margin:0 reset, which is declared later in the cascade) so it reliably wins. */
+.league-table-toolbar .league-table-toolbar__title {
+  margin-right: auto;
+}
+
+/* .table-fullscreen-toolbar--inline's own margin-left: auto would otherwise
+   fight the title's margin-right: auto for the same free space, splitting
+   Sort by away from the button instead of keeping them adjacent. */
+.league-table-toolbar .table-fullscreen-toolbar--inline {
+  margin-left: 0;
 }
 
 .league-table-toolbar__label {
@@ -3282,6 +3307,19 @@ canvas {
   background: var(--bg-2);
 }
 
+/* League Table page: match the Focus Bakeries tables' single white surface
+   now that the page no longer nests this inside its own .section card. */
+#tab-table .table-wrap--league {
+  background: var(--card);
+  border-color: var(--card-border-h);
+  box-shadow: var(--shadow-sm);
+}
+
+#tab-table .league-table td:first-child,
+#tab-table .league-table td:nth-child(2) {
+  background: var(--card);
+}
+
 .league-table {
   border-collapse: collapse;
 }
@@ -3366,7 +3404,14 @@ canvas {
 .table-wrap--support-priority {
   position: relative;
   isolation: isolate;
-  background: var(--bg-2);
+  background: var(--card);
+}
+
+/* Focus Bakery List sits on the flattened white workspace shell (see
+   FLATTENED LIST-VIEW SHELLS), matching Priority Overview's .focus-qlist:
+   a plain border reads as the row list's edge, no floating-card shadow. */
+#tab-target [data-target-subtab-panel="priority"] .table-wrap--support-priority {
+  border-color: var(--card-border);
 }
 
 .support-priority-table {
@@ -3393,14 +3438,14 @@ canvas {
   width: var(--support-priority-rank-width);
   min-width: var(--support-priority-rank-width);
   max-width: var(--support-priority-rank-width);
-  background: var(--bg-2);
+  background: var(--card);
 }
 
 .support-priority-table th:nth-child(2),
 .support-priority-table td:nth-child(2) {
   position: sticky;
   left: var(--support-priority-rank-width);
-  background: var(--bg-2);
+  background: var(--card);
   box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
 }
 
@@ -3521,7 +3566,14 @@ canvas {
 .table-wrap--trend-detail {
   position: relative;
   isolation: isolate;
-  background: var(--bg-2);
+  background: var(--card);
+}
+
+/* Improving vs Dipping sits on the flattened white workspace shell (see
+   FLATTENED LIST-VIEW SHELLS), matching Priority Overview's .focus-qlist:
+   a plain border reads as the row list's edge, no floating-card shadow. */
+#tab-target [data-target-subtab-panel="table"] .table-wrap--trend-detail {
+  border-color: var(--card-border);
 }
 
 .trend-detail-table {
@@ -3533,7 +3585,7 @@ canvas {
   position: sticky;
   left: 0;
   min-width: 160px;
-  background: var(--bg-2);
+  background: var(--card);
   box-shadow: 1px 0 0 var(--card-border), 10px 0 14px -10px rgba(48, 36, 22, 0.18);
 }
 
@@ -9101,6 +9153,43 @@ body.table-fullscreen-lock {
 }
 
 /* ── Focus Bakeries Redesign ─────────────────── */
+/* Focus Bakery List, Improving vs Dipping and Charts now carry the page
+   heading themselves (the generic .section-page-title is hidden for these
+   subtabs — see FLATTENED LIST-VIEW SHELLS), so size their own headings like
+   Priority Overview's .focus-page-intro h1 rather than a smaller in-card
+   title. */
+[data-target-subtab-panel="priority"] .tracker-table-header__title,
+[data-target-subtab-panel="table"] .tracker-table-header__title,
+.focus-subtab-title {
+  font-size: 1.28rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.focus-subtab-title {
+  font-family: var(--font-display);
+  margin: 0;
+  color: var(--text);
+}
+
+/* Sits as the first item in .map-control-bar. The auto margin pushes
+   everything after it — both toggle groups, then the JS-appended fullscreen
+   button — into one group on the right, instead of stacking above them like
+   the other flattened subtab titles. */
+.map-panel-title {
+  margin-right: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* .map-fullscreen-btn's own margin-left: auto (below) would otherwise fight
+   the title's margin-right: auto for the same free space and split the two
+   toggle groups away from the button instead of keeping them adjacent. */
+#tab-map .map-fullscreen-btn,
+#tab-target [data-target-subtab-panel="map"] .map-fullscreen-btn {
+  margin-left: 0;
+}
+
 #tab-target .section {
   --section-pad-x: 20px;
   padding: 16px var(--section-pad-x);
@@ -9125,7 +9214,7 @@ body.table-fullscreen-lock {
 .target-stat-card {
   background:
     linear-gradient(180deg, rgba(34, 31, 26, 0.022) 0%, rgba(34, 31, 26, 0.008) 100%),
-    rgba(255, 255, 255, 0.75);
+    var(--card);
   border: 1px solid rgba(34, 31, 26, 0.07);
   border-radius: 14px;
   padding: 13px 14px;
@@ -9333,6 +9422,17 @@ body.table-fullscreen-lock {
   border-radius: 12px;
   overflow: hidden;
   background: var(--card);
+}
+
+/* The Focus Bakeries map and the main Map tab both lost their outer .section
+   card (see FLATTENED LIST-VIEW SHELLS) so they now sit directly on the white
+   workspace shell — give the canvas its own border so it still reads as a
+   container, and let it claim the extra vertical room the removed card
+   padding freed up. */
+#tab-target [data-target-subtab-panel="map"] #targetMap,
+#tab-map #networkMap {
+  height: clamp(460px, calc(100vh - 260px), 720px);
+  border: 1px solid var(--card-border);
 }
 
 .target-map-status {
@@ -12801,11 +12901,6 @@ body.map-fullscreen-active .dashboard-workspace__main {
     margin: 0 -18px;
   }
 
-  #tab-target [data-target-subtab-panel="map"] .map-canvas-wrap {
-    margin-right: calc(-1 * var(--section-pad-x));
-    margin-left: calc(-1 * var(--section-pad-x));
-  }
-
   #tab-map #networkMap,
   #tab-target [data-target-subtab-panel="map"] #targetMap {
     height: clamp(420px, 68dvh, 600px);
@@ -14847,11 +14942,12 @@ body.visit-log-filter-open .mobile-bottom-nav {
   font-size: 0.8rem;
 }
 
-/* League Table "Sort by" — a standalone toolbar control with no field beside
-   it, so it takes the same 36px trigger as the dashboard filter bar. */
+/* League Table "Sort by" sits directly beside the 32px fullscreen button, so
+   the trigger matches its height instead of the 36px dashboard filter bar
+   size. */
 .league-table-toolbar .filter-select__trigger {
-  min-height: 36px;
-  padding: 8px 12px;
+  min-height: 32px;
+  padding: 5px 12px;
 }
 
 .league-table-toolbar .filter-select__menu {
@@ -18933,10 +19029,9 @@ body.profile-modal-open {
 
 .focus-page-intro {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 20px;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 0;
 }
 
 .focus-page-intro h1 {
@@ -18944,13 +19039,6 @@ body.profile-modal-open {
   font-size: 1.28rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-}
-
-.focus-page-intro>div>p:last-child {
-  margin: 6px 0 0;
-  color: var(--muted-l);
-  font-size: 0.84rem;
-  line-height: 1.5;
 }
 
 .focus-data-status {
@@ -19077,32 +19165,32 @@ body.profile-modal-open {
   box-shadow: var(--shadow-md);
 }
 
-/* Priority help is a real control rather than an underlined text link. It sits
-   on the far edge of the intro and opens a compact, anchored explanation
-   without changing the height of the overview. */
+/* Priority help is a single red question-mark circle at the far edge of the
+   intro. The invisible summary keeps the control semantic and clickable. */
 .focus-priority-help,
 .focus-priority-help[open] {
-  margin-left: auto;
-  align-self: flex-start;
+  margin-left: 0;
+  align-self: center;
 }
 
 .focus-priority-help summary {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px 8px 9px;
-  border: 1px solid rgba(77, 70, 60, 0.18);
-  border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--text-2);
-  box-shadow: 0 2px 8px rgba(48, 36, 22, 0.06);
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  box-shadow: none;
   font-size: 0.74rem;
   font-weight: 700;
   line-height: 1.2;
   list-style: none;
   text-decoration: none;
-  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease,
-    box-shadow 0.18s ease, transform 0.18s ease;
+  transition: transform 0.18s ease;
 }
 
 .focus-priority-help summary::marker {
@@ -19114,10 +19202,6 @@ body.profile-modal-open {
 }
 
 .focus-priority-help summary:hover {
-  border-color: rgba(178, 42, 36, 0.34);
-  background: #fff;
-  color: var(--accent);
-  box-shadow: 0 5px 14px rgba(48, 36, 22, 0.1);
   transform: translateY(-1px);
 }
 
@@ -19127,23 +19211,29 @@ body.profile-modal-open {
 }
 
 .focus-priority-help[open] summary {
-  border-color: rgba(178, 42, 36, 0.28);
-  background: rgba(178, 42, 36, 0.07);
-  color: var(--accent);
+  background: transparent;
+  color: #fff;
   text-decoration: none;
 }
 
 .focus-priority-help__icon {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   border-radius: 50%;
-  background: rgba(178, 42, 36, 0.1);
-  color: var(--accent);
-  font-size: 0.73rem;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.78rem;
   font-weight: 800;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.focus-priority-help summary:hover .focus-priority-help__icon,
+.focus-priority-help[open] .focus-priority-help__icon {
+  background: var(--accent-hover);
+  box-shadow: 0 3px 9px rgba(178, 42, 36, 0.24);
 }
 
 .focus-priority-help .focus-priority-help__tooltip {
@@ -19166,14 +19256,14 @@ body.profile-modal-open {
 .focus-priority-help .focus-priority-help__tooltip::after {
   content: '';
   position: absolute;
-  right: 22px;
+  right: 6px;
   bottom: 100%;
   border: 8px solid transparent;
   border-bottom-color: var(--card-border-h);
 }
 
 .focus-priority-help .focus-priority-help__tooltip::after {
-  right: 23px;
+  right: 7px;
   border-width: 7px;
   border-bottom-color: var(--card);
 }
@@ -19245,33 +19335,11 @@ body.profile-modal-open {
   outline-offset: 2px;
 }
 
-/* ── Action list heading, summary and filters ── */
-.focus-queue__heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
-  margin: 0 0 12px;
-}
-
-.focus-queue__heading .focus-section-title {
-  margin: 0 0 3px;
-  color: var(--text);
-  font-size: 1.02rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  text-transform: none;
-}
-
-.focus-queue__heading p:last-child {
-  margin: 0;
-  color: var(--muted-l);
-  font-size: 0.8rem;
-}
-
+/* ── Action list summary and filters ── */
 .focus-queue__summary {
   flex: 0 1 auto;
   max-width: 460px;
+  margin-left: auto;
   color: var(--text-2);
   font-size: 0.74rem;
   line-height: 1.45;
@@ -19686,7 +19754,6 @@ body.profile-modal-open {
 @media (max-width: 1100px) {
   .focus-page-intro {
     position: relative;
-    flex-direction: column;
   }
 
   .focus-method {
@@ -19720,14 +19787,14 @@ body.profile-modal-open {
     margin-top: 8px;
   }
 
-  /* Keep the priority help button on the right even after the intro stacks.
-     Its tooltip stays right-anchored to the control and within the viewport. */
+  /* The compact help button remains on the title row and its tooltip stays
+     right-anchored to the control and within the viewport. */
   .focus-page-intro .focus-priority-help,
   .focus-page-intro .focus-priority-help[open] {
     position: relative;
-    margin-left: auto;
+    margin-left: 0;
     margin-right: 0;
-    align-self: flex-end;
+    align-self: center;
   }
 
   .focus-page-intro .focus-priority-help .focus-priority-help__tooltip {
@@ -19817,14 +19884,23 @@ body.profile-modal-open {
 }
 
 @media (max-width: 640px) {
-  .focus-queue__heading {
-    align-items: stretch;
-    flex-direction: column;
+  .focus-page-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .focus-queue__summary {
+  .focus-page-intro .focus-queue__summary {
+    grid-column: 1 / -1;
+    grid-row: 2;
     max-width: none;
+    margin-left: 0;
     text-align: left;
+  }
+
+  .focus-page-intro .focus-priority-help,
+  .focus-page-intro .focus-priority-help[open] {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .focus-queue__bar,
@@ -23701,14 +23777,20 @@ body[data-dash-tab="cei"] .methodology {
     grid-template-rows: auto minmax(0, 1fr);
     column-gap: clamp(12px, 1vw, 20px);
     row-gap: 12px;
-    align-items: start;
+    align-items: stretch;
     min-width: 0;
+    /* Give the grid area itself a floor of one viewport tall, so short-content
+       tabs (Overview) still give the stretched sidebar (below) something
+       viewport-tall to fill. */
+    min-height: calc(100vh - var(--dashboard-header-h));
+    min-height: calc(100dvh - var(--dashboard-header-h));
   }
 
   #dashboardContent > .filter-bar,
   #dashboardContent > .visit-log-filter-bar {
     grid-column: 2;
     grid-row: 1;
+    align-self: start;
     min-width: 0;
     margin: 12px 0 0;
   }
@@ -23720,27 +23802,49 @@ body[data-dash-tab="cei"] .methodology {
   #dashboardContent .dashboard-sidebar {
     grid-column: 1;
     grid-row: 1 / span 2;
-    position: sticky;
-    top: var(--dashboard-header-h);
-    align-self: start;
-    height: calc(100vh - var(--dashboard-header-h));
-    height: calc(100dvh - var(--dashboard-header-h));
+    /* Stretch to the row's real rendered height (filter bar + main content)
+       — a plain equal-height column, not an independent height:100dvh. The
+       nav inside (below) is what actually stays fixed on screen; the rail
+       itself just needs to reach as far down as the content next to it does,
+       so its background and right border read as one continuous column no
+       matter how short or tall the current tab's content is. */
+    align-self: stretch;
     min-height: 0;
+    /* The base rule sets overflow:hidden for the collapsed-width transition.
+       A sticky-positioned descendant can never escape an ancestor whose
+       overflow isn't visible, so left as-is it would silently cancel the
+       nav's stickiness below. */
+    overflow: visible;
     border: 0;
     border-right: 1px solid rgba(34, 31, 26, 0.08);
     border-radius: 0;
     box-shadow: none;
+  }
+
+  /* The title/collapse head plus the nav list are what actually need to stay
+     on screen while a long tab scrolls — sticking the rail itself (above)
+     caused it to be shoved behind the header once the page's remaining
+     scroll ran out before the rail's own height did. Sticking this
+     (much shorter) wrapper instead has no such ceiling to hit: its
+     containing block is the rail, which — now that it's stretched to match
+     the content column — is virtually always taller than the wrapper's own
+     content. */
+  #dashboardContent .dashboard-sidebar__pinned {
+    position: sticky;
+    top: var(--dashboard-header-h);
+    max-height: calc(100vh - var(--dashboard-header-h));
+    max-height: calc(100dvh - var(--dashboard-header-h));
     overflow-x: hidden;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(34, 31, 26, 0.18) transparent;
   }
 
-  #dashboardContent .dashboard-sidebar::-webkit-scrollbar {
+  #dashboardContent .dashboard-sidebar__pinned::-webkit-scrollbar {
     width: 6px;
   }
 
-  #dashboardContent .dashboard-sidebar::-webkit-scrollbar-thumb {
+  #dashboardContent .dashboard-sidebar__pinned::-webkit-scrollbar-thumb {
     border-radius: 999px;
     background: rgba(34, 31, 26, 0.16);
   }
@@ -23748,6 +23852,7 @@ body[data-dash-tab="cei"] .methodology {
   #dashboardContent .dashboard-workspace__main {
     grid-column: 2;
     grid-row: 2;
+    align-self: start;
     width: 100%;
     min-width: 0;
     padding: clamp(18px, 1.5vw, 26px);
@@ -23771,12 +23876,27 @@ body[data-dash-tab="cei"] .methodology {
    untouched.
    ========================================================================== */
 body[data-dash-tab="visit-log"] .section-page-title,
-body[data-dash-tab="target"][data-target-subtab="summary"] .section-page-title {
+body[data-dash-tab="map"] .section-page-title,
+body[data-dash-tab="table"] .section-page-title,
+body[data-dash-tab="feedback"] .section-page-title,
+body[data-dash-tab="target"][data-target-subtab="summary"] .section-page-title,
+body[data-dash-tab="target"][data-target-subtab="priority"] .section-page-title,
+body[data-dash-tab="target"][data-target-subtab="table"] .section-page-title,
+body[data-dash-tab="target"][data-target-subtab="graphs"] .section-page-title,
+body[data-dash-tab="target"][data-target-subtab="map"] .section-page-title,
+body[data-dash-tab="target"][data-target-subtab="feedback"] .section-page-title {
   display: none;
 }
 
 body[data-dash-tab="visit-log"] #dashboardContent .dashboard-workspace__main,
-body[data-dash-tab="target"][data-target-subtab="summary"] #dashboardContent .dashboard-workspace__main {
+body[data-dash-tab="table"] #dashboardContent .dashboard-workspace__main,
+body[data-dash-tab="map"] #dashboardContent .dashboard-workspace__main,
+body[data-dash-tab="feedback"] #dashboardContent .dashboard-workspace__main,
+body[data-dash-tab="target"][data-target-subtab="summary"] #dashboardContent .dashboard-workspace__main,
+body[data-dash-tab="target"][data-target-subtab="priority"] #dashboardContent .dashboard-workspace__main,
+body[data-dash-tab="target"][data-target-subtab="table"] #dashboardContent .dashboard-workspace__main,
+body[data-dash-tab="target"][data-target-subtab="map"] #dashboardContent .dashboard-workspace__main,
+body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .dashboard-workspace__main {
   background: #fff;
 }
 

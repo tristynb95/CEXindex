@@ -722,24 +722,28 @@
       <div id="dashboardWorkspaceShell" class="dashboard-workspace" data-sidebar-collapsed="false"
         data-sidebar-open="false">
         <aside class="dashboard-sidebar" aria-label="Main dashboard menu">
-          <div class="dashboard-sidebar__head">
-            <div>
-              <p class="dashboard-sidebar__label">Main Menu</p>
-              <h2 class="dashboard-sidebar__title">Menu</h2>
+          <!-- Head + nav are pinned together (see .dashboard-sidebar__pinned)
+               so the menu title and collapse control stay on screen with the
+               nav items instead of scrolling away above them. -->
+          <div class="dashboard-sidebar__pinned">
+            <div class="dashboard-sidebar__head">
+              <div>
+                <p class="dashboard-sidebar__label">Main Menu</p>
+                <h2 class="dashboard-sidebar__title">Menu</h2>
+              </div>
+              <button type="button" id="dashboardSidebarToggle" class="dashboard-sidebar__toggle"
+                aria-controls="dashboardNav" aria-expanded="true" aria-label="Collapse menu">
+                <span class="dashboard-sidebar__toggle-icon" aria-hidden="true"></span>
+                <span class="dashboard-sidebar__toggle-label" data-dashboard-sidebar-toggle-label>Collapse</span>
+              </button>
             </div>
-            <button type="button" id="dashboardSidebarToggle" class="dashboard-sidebar__toggle"
-              aria-controls="dashboardNav" aria-expanded="true" aria-label="Collapse menu">
-              <span class="dashboard-sidebar__toggle-icon" aria-hidden="true"></span>
-              <span class="dashboard-sidebar__toggle-label" data-dashboard-sidebar-toggle-label>Collapse</span>
-            </button>
-          </div>
 
-          <!-- Grouped nav: Overview sits above the headings because it is the
-               home view, not a category member. The three groups run in the
-               order people work — how are we scoring, why, then what we filed.
-               Group headings replace the old per-item eyebrows, so the rail is
-               no taller than it was with seven flat entries. -->
-          <nav class="dashboard-nav" id="dashboardNav">
+            <!-- Grouped nav: Overview sits above the headings because it is the
+                 home view, not a category member. The three groups run in the
+                 order people work — how are we scoring, why, then what we filed.
+                 Group headings replace the old per-item eyebrows, so the rail is
+                 no taller than it was with seven flat entries. -->
+            <nav class="dashboard-nav" id="dashboardNav">
             <button type="button" class="tab dashboard-nav__btn dashboard-nav__btn--home active" data-tab="overview"
               aria-label="Overview">
               <span class="dashboard-nav__icon" aria-hidden="true">
@@ -897,6 +901,7 @@
               </div>
             </div>
           </nav>
+          </div>
         </aside>
 
         <div class="dashboard-workspace__main">
@@ -1588,139 +1593,137 @@
 
           <!-- LEAGUE TABLE -->
           <div class="tab-content" id="tab-table">
-            <div class="section">
-              <div class="league-table-toolbar" data-table-fullscreen-anchor="true">
-                <label class="league-table-toolbar__label">Sort by: <select id="sortBy"
-                    class="league-table-toolbar__select">
-                    <option value="ac" selected>Benchmark Score</option>
-                    <option value="n">NPS (Drink + Meal)</option>
-                    <option value="dr">Quality</option>
-                    <option value="ef">Overall Efficiency</option>
-                    <option value="fr">Friendliness</option>
-                    <option value="s30">&le; 30 Sec</option>
-                    <option value="s2">&le; 2 Min</option>
-                    <option value="o5">Over 5 Min</option>
-                    <option value="at">Avg Wait</option>
-                    <option value="td">Total Drinks</option>
-                    <option value="nc">NPS Coffee Only</option>
-                    <option value="nm">NPS Meal</option>
-                    <option value="na">NPS (All)</option>
-                  </select></label>
-              </div>
-              <div class="table-wrap table-wrap--league table-wrap--floating">
-                <table class="league-table nps-splits-collapsed" data-nps-splits data-rank-follows-sort="true"
-                  data-rank-col="0" data-rank-percent-col="2">
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Bakery</th>
-                      <th>Top %</th>
-                      <th>Region</th>
-                      <th>Ops Area</th>
-                      <th>Benchmark Score</th>
-                      <th>Benchmark Band</th>
-                      <th>Conf</th>
-                      <th>NPS (Drink &amp; Meal) <button type="button" class="nps-split-toggle" data-nps-split-toggle
-                          aria-expanded="false" aria-label="Show the NPS Coffee / Meal / All columns"
-                          title="Show the NPS Coffee / Meal / All columns">+</button></th>
-                      <th class="nps-split-col">NPS Coffee</th>
-                      <th class="nps-split-col">NPS Meal</th>
-                      <th class="nps-split-col">NPS (All)</th>
-                      <th>Vol</th>
-                      <th>Quality</th>
-                      <th>Efficiency</th>
-                      <th>Friendliness</th>
-                      <th>Overall</th>
-                      <th>&le;30s</th>
-                      <th>&le;2m</th>
-                      <th>&gt;5m</th>
-                      <th>Avg Wait</th>
-                      <th>Drinks</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tableBody"></tbody>
-                </table>
-              </div>
+            <div class="league-table-toolbar" data-table-fullscreen-anchor="true">
+              <h1 class="focus-subtab-title league-table-toolbar__title">League Table</h1>
+              <label class="league-table-toolbar__label">Sort by: <select id="sortBy"
+                  class="league-table-toolbar__select">
+                  <option value="ac" selected>Benchmark Score</option>
+                  <option value="n">NPS (Drink + Meal)</option>
+                  <option value="dr">Quality</option>
+                  <option value="ef">Overall Efficiency</option>
+                  <option value="fr">Friendliness</option>
+                  <option value="s30">&le; 30 Sec</option>
+                  <option value="s2">&le; 2 Min</option>
+                  <option value="o5">Over 5 Min</option>
+                  <option value="at">Avg Wait</option>
+                  <option value="td">Total Drinks</option>
+                  <option value="nc">NPS Coffee Only</option>
+                  <option value="nm">NPS Meal</option>
+                  <option value="na">NPS (All)</option>
+                </select></label>
+            </div>
+            <div class="table-wrap table-wrap--league table-wrap--floating">
+              <table class="league-table nps-splits-collapsed" data-nps-splits data-rank-follows-sort="true"
+                data-rank-col="0" data-rank-percent-col="2">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Bakery</th>
+                    <th>Top %</th>
+                    <th>Region</th>
+                    <th>Ops Area</th>
+                    <th>Benchmark Score</th>
+                    <th>Benchmark Band</th>
+                    <th>Conf</th>
+                    <th>NPS (Drink &amp; Meal) <button type="button" class="nps-split-toggle" data-nps-split-toggle
+                        aria-expanded="false" aria-label="Show the NPS Coffee / Meal / All columns"
+                        title="Show the NPS Coffee / Meal / All columns">+</button></th>
+                    <th class="nps-split-col">NPS Coffee</th>
+                    <th class="nps-split-col">NPS Meal</th>
+                    <th class="nps-split-col">NPS (All)</th>
+                    <th>Vol</th>
+                    <th>Quality</th>
+                    <th>Efficiency</th>
+                    <th>Friendliness</th>
+                    <th>Overall</th>
+                    <th>&le;30s</th>
+                    <th>&le;2m</th>
+                    <th>&gt;5m</th>
+                    <th>Avg Wait</th>
+                    <th>Drinks</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+              </table>
             </div>
           </div>
 
           <!-- MAP -->
           <div class="tab-content" id="tab-map">
-            <div class="section">
-              <div class="map-panel" id="networkMapPanel" data-map-key="network">
-                <div class="map-section-header" style="margin-bottom:12px;">
-                  <div class="map-control-bar">
-                    <div class="map-toggle-group">
-                      <span class="map-toggle-label">
-                        <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
-                          <path d="M2.5 4.5 6 2.5l4 2 3.5-2v9L10 13.5l-4-2-3.5 2v-9Z"></path>
-                          <path d="M6 2.5v9M10 4.5v9"></path>
-                        </svg>
-                        <span>Area boundaries</span>
-                      </span>
-                      <div class="map-segmented-control" role="group" aria-label="Toggle map area boundaries"
-                        id="networkMapAreaToggle">
-                        <button type="button" class="map-segmented-control__btn active" data-map-area="off"
-                          aria-pressed="true">Off</button>
-                        <button type="button" class="map-segmented-control__btn" data-map-area="on"
-                          aria-pressed="false">On</button>
-                      </div>
-                    </div>
-                    <div class="map-toggle-group">
-                      <span class="map-toggle-label">
-                        <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
-                          <path d="M8 14s4-3.9 4-7.5a4 4 0 1 0-8 0C4 10.1 8 14 8 14Z"></path>
-                          <circle cx="8" cy="6.5" r="1.4"></circle>
-                        </svg>
-                        <span>Bakery visits</span>
-                      </span>
-                      <div class="map-segmented-control" role="group" aria-label="Filter map by visited status"
-                        id="networkMapVisitToggle">
-                        <button type="button" class="map-segmented-control__btn active" data-map-visit="all"
-                          aria-pressed="true">All</button>
-                        <button type="button" class="map-segmented-control__btn" data-map-visit="visited"
-                          aria-pressed="false">Visited</button>
-                        <button type="button" class="map-segmented-control__btn" data-map-visit="unvisited"
-                          aria-pressed="false">Unvisited</button>
-                      </div>
-                    </div>
-                    <p class="map-legend-key" id="networkMapLegendHint"><span
-                        style="color:var(--blue);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp;
-                      <span style="color:var(--green);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp;
-                      <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp;
-                      <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp;
-                      <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span>
-                    </p>
-                    <button type="button" class="fullscreen-toggle-btn map-fullscreen-btn" data-map-fullscreen="network"
-                      aria-label="Open full screen map view" aria-pressed="false" title="Open full screen">
-                      <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__expand"
-                        viewBox="0 0 20 20" aria-hidden="true">
-                        <path d="M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12" fill="none" stroke="currentColor"
-                          stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
+            <div class="map-panel" id="networkMapPanel" data-map-key="network">
+              <div class="map-section-header" style="margin-bottom:12px;">
+                <div class="map-control-bar">
+                  <h1 class="focus-subtab-title map-panel-title">Map</h1>
+                  <div class="map-toggle-group">
+                    <span class="map-toggle-label">
+                      <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M2.5 4.5 6 2.5l4 2 3.5-2v9L10 13.5l-4-2-3.5 2v-9Z"></path>
+                        <path d="M6 2.5v9M10 4.5v9"></path>
                       </svg>
-                      <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__collapse"
-                        viewBox="0 0 20 20" aria-hidden="true">
-                        <path d="M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4" fill="none" stroke="currentColor"
-                          stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
+                      <span>Area boundaries</span>
+                    </span>
+                    <div class="map-segmented-control" role="group" aria-label="Toggle map area boundaries"
+                      id="networkMapAreaToggle">
+                      <button type="button" class="map-segmented-control__btn active" data-map-area="off"
+                        aria-pressed="true">Off</button>
+                      <button type="button" class="map-segmented-control__btn" data-map-area="on"
+                        aria-pressed="false">On</button>
+                    </div>
+                  </div>
+                  <div class="map-toggle-group">
+                    <span class="map-toggle-label">
+                      <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M8 14s4-3.9 4-7.5a4 4 0 1 0-8 0C4 10.1 8 14 8 14Z"></path>
+                        <circle cx="8" cy="6.5" r="1.4"></circle>
                       </svg>
-                      <span
-                        class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open
-                        full
-                        screen</span><span
-                        class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit
-                        full
-                        screen</span>
-                    </button>
+                      <span>Bakery visits</span>
+                    </span>
+                    <div class="map-segmented-control" role="group" aria-label="Filter map by visited status"
+                      id="networkMapVisitToggle">
+                      <button type="button" class="map-segmented-control__btn active" data-map-visit="all"
+                        aria-pressed="true">All</button>
+                      <button type="button" class="map-segmented-control__btn" data-map-visit="visited"
+                        aria-pressed="false">Visited</button>
+                      <button type="button" class="map-segmented-control__btn" data-map-visit="unvisited"
+                        aria-pressed="false">Unvisited</button>
+                    </div>
                   </div>
+                  <p class="map-legend-key" id="networkMapLegendHint"><span
+                      style="color:var(--blue);font-weight:600">&#9679; Exceeding</span> &nbsp;&middot;&nbsp;
+                    <span style="color:var(--green);font-weight:600">&#9679; Meeting</span> &nbsp;&middot;&nbsp;
+                    <span style="color:var(--amber);font-weight:600">&#9679; Approaching</span> &nbsp;&middot;&nbsp;
+                    <span style="color:var(--red);font-weight:600">&#9679; Below Standard</span> &nbsp;&middot;&nbsp;
+                    <span style="color:#8d8d8d;font-weight:600">&#9679; Not Scored</span>
+                  </p>
+                  <button type="button" class="fullscreen-toggle-btn map-fullscreen-btn" data-map-fullscreen="network"
+                    aria-label="Open full screen map view" aria-pressed="false" title="Open full screen">
+                    <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__expand"
+                      viewBox="0 0 20 20" aria-hidden="true">
+                      <path d="M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12" fill="none" stroke="currentColor"
+                        stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
+                    </svg>
+                    <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__collapse"
+                      viewBox="0 0 20 20" aria-hidden="true">
+                      <path d="M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4" fill="none" stroke="currentColor"
+                        stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
+                    </svg>
+                    <span
+                      class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open
+                      full
+                      screen</span><span
+                      class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit
+                      full
+                      screen</span>
+                  </button>
                 </div>
-                <div class="map-body">
-                  <div class="map-canvas-wrap">
-                    <div id="networkMap"></div>
-                  </div>
-                  <div class="map-filter-summary" id="networkMapFilterSummary" aria-hidden="true"></div>
-                </div>
-                <div id="networkMapStatus" class="target-map-status"></div>
               </div>
+              <div class="map-body">
+                <div class="map-canvas-wrap">
+                  <div id="networkMap"></div>
+                </div>
+                <div class="map-filter-summary" id="networkMapFilterSummary" aria-hidden="true"></div>
+              </div>
+              <div id="networkMapStatus" class="target-map-status"></div>
             </div>
           </div>
 
@@ -1730,13 +1733,12 @@
               <div class="target-subtab-panel active" data-target-subtab-panel="summary">
                 <div class="section">
                   <div class="focus-page-intro">
-                    <div>
-                      <h1>Priority Overview</h1>
-                    </div>
+                    <h1 id="focusPriorityOverviewTitle">Priority Overview</h1>
+                    <span id="focusQueueSummary" class="focus-queue__summary" role="status" aria-live="polite"></span>
                     <details class="focus-method focus-method--overlay focus-priority-help">
-                      <summary aria-controls="supportPriorityExplanation">
+                      <summary aria-controls="supportPriorityExplanation" aria-label="How is support priority calculated?"
+                        title="How is support priority calculated?">
                         <span class="focus-priority-help__icon" aria-hidden="true">?</span>
-                        <span>How is support priority calculated?</span>
                       </summary>
                       <div class="focus-priority-help__tooltip" id="supportPriorityExplanation" role="tooltip">
                         <strong>Support priority combines four signals</strong>
@@ -1774,214 +1776,205 @@
               </div>
 
               <div class="target-subtab-panel" data-target-subtab-panel="priority">
-                <div class="section">
-                  <div id="targetTable"></div>
-                </div>
+                <div id="targetTable"></div>
               </div>
 
               <div class="target-subtab-panel" data-target-subtab-panel="table">
-                <div class="section">
-                  <div id="targetTrendTableEmpty" class="target-tab-empty" style="display:none"></div>
-                  <div id="targetTrendTableContent">
-                    <div id="targetTrendTable"></div>
-                  </div>
+                <div id="targetTrendTableEmpty" class="target-tab-empty" style="display:none"></div>
+                <div id="targetTrendTableContent">
+                  <div id="targetTrendTable"></div>
                 </div>
               </div>
 
               <div class="target-subtab-panel" data-target-subtab-panel="graphs">
-                <div class="section">
-                  <h2>Performance Trends &mdash; Graphs</h2>
-                  <p class="target-hint"><span style="color:var(--green);font-weight:600">&uarr; Improving</span> =
-                    +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&darr; Dipping</span> =
-                    &minus;3pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">&harr;
-                      Steady</span> = &plusmn;3pts</p>
-                  <div id="targetTrendGraphsEmpty" class="target-tab-empty" style="display:none"></div>
-                  <div id="targetTrendGraphsContent">
-                    <div id="trendSummaryCards" class="target-stat-grid"></div>
-                    <div class="section" style="margin-bottom:10px">
-                      <h2 style="font-size:0.88rem">Average Score &mdash; Focus vs All Bakeries</h2>
-                      <canvas id="targetAvgTrend" style="max-height:260px"></canvas>
+                <h1 class="focus-subtab-title">Charts</h1>
+                <p class="target-hint"><span style="color:var(--green);font-weight:600">&uarr; Improving</span> =
+                  +3pts &nbsp;&middot;&nbsp; <span style="color:var(--red);font-weight:600">&darr; Dipping</span> =
+                  &minus;3pts &nbsp;&middot;&nbsp; <span style="color:var(--muted-l);font-weight:600">&harr;
+                    Steady</span> = &plusmn;3pts</p>
+                <div id="targetTrendGraphsEmpty" class="target-tab-empty" style="display:none"></div>
+                <div id="targetTrendGraphsContent">
+                  <div id="trendSummaryCards" class="target-stat-grid"></div>
+                  <div class="section" style="margin-bottom:10px">
+                    <h2 style="font-size:0.88rem">Average Score &mdash; Focus vs All Bakeries</h2>
+                    <canvas id="targetAvgTrend" style="max-height:260px"></canvas>
+                  </div>
+                  <div class="grid-2" style="margin-bottom:10px">
+                    <div class="section" style="margin-bottom:0">
+                      <h2 style="font-size:0.88rem">Improving vs Dipping</h2>
+                      <p class="chart-caption">Monthly movement uses completed calendar months only; a missing month
+                        is left as a gap rather than silently skipped.</p>
+                      <canvas id="targetMomentumChart" style="max-height:300px"></canvas>
                     </div>
-                    <div class="grid-2" style="margin-bottom:10px">
-                      <div class="section" style="margin-bottom:0">
-                        <h2 style="font-size:0.88rem">Improving vs Dipping</h2>
-                        <p class="chart-caption">Monthly movement uses completed calendar months only; a missing month
-                          is left as a gap rather than silently skipped.</p>
-                        <canvas id="targetMomentumChart" style="max-height:300px"></canvas>
-                      </div>
-                      <div class="section" style="margin-bottom:0">
-                        <h2 style="font-size:0.88rem">Band Movement Over Time</h2><canvas id="targetBandFlow"
-                          style="max-height:300px"></canvas>
-                      </div>
+                    <div class="section" style="margin-bottom:0">
+                      <h2 style="font-size:0.88rem">Band Movement Over Time</h2><canvas id="targetBandFlow"
+                        style="max-height:300px"></canvas>
                     </div>
-                    <div class="section" style="margin-bottom:10px">
-                      <h2 style="font-size:0.88rem">Ops Area Momentum &mdash; Focus Bakeries</h2>
-                      <p class="chart-caption">Average score change of each area&rsquo;s focus bakeries across completed
-                        history. Areas with the biggest average score drop appear first.</p>
-                      <div id="targetAreaMomentumWrap" style="position:relative">
-                        <canvas id="targetAreaMomentum"></canvas>
-                      </div>
+                  </div>
+                  <div class="section" style="margin-bottom:10px">
+                    <h2 style="font-size:0.88rem">Ops Area Momentum &mdash; Focus Bakeries</h2>
+                    <p class="chart-caption">Average score change of each area&rsquo;s focus bakeries across completed
+                      history. Areas with the biggest average score drop appear first.</p>
+                    <div id="targetAreaMomentumWrap" style="position:relative">
+                      <canvas id="targetAreaMomentum"></canvas>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="target-subtab-panel" data-target-subtab-panel="map">
-                <div class="section">
-                  <div class="map-panel" id="targetMapPanel" data-map-key="target">
-                    <div class="map-section-header" style="margin-bottom:16px;">
-                      <div class="map-control-bar">
-                        <div class="map-toggle-group">
-                          <span class="map-toggle-label">
-                            <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
-                              <path d="M2.5 4.5 6 2.5l4 2 3.5-2v9L10 13.5l-4-2-3.5 2v-9Z"></path>
-                              <path d="M6 2.5v9M10 4.5v9"></path>
-                            </svg>
-                            <span>Area boundaries</span>
-                          </span>
-                          <div class="map-segmented-control" role="group" aria-label="Toggle map area boundaries"
-                            id="targetMapAreaToggle">
-                            <button type="button" class="map-segmented-control__btn active" data-target-map-area="off"
-                              aria-pressed="true">Off</button>
-                            <button type="button" class="map-segmented-control__btn" data-target-map-area="on"
-                              aria-pressed="false">On</button>
-                          </div>
-                        </div>
-                        <div class="map-toggle-group">
-                          <span class="map-toggle-label">
-                            <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
-                              <path d="M8 14s4-3.9 4-7.5a4 4 0 1 0-8 0C4 10.1 8 14 8 14Z"></path>
-                              <circle cx="8" cy="6.5" r="1.4"></circle>
-                            </svg>
-                            <span>Bakery visits</span>
-                          </span>
-                          <div class="map-segmented-control" role="group" aria-label="Filter map by visited status"
-                            id="targetMapVisitToggle">
-                            <button type="button" class="map-segmented-control__btn active" data-target-map-visit="all"
-                              aria-pressed="true">All</button>
-                            <button type="button" class="map-segmented-control__btn" data-target-map-visit="visited"
-                              aria-pressed="false">Visited</button>
-                            <button type="button" class="map-segmented-control__btn" data-target-map-visit="unvisited"
-                              aria-pressed="false">Unvisited</button>
-                          </div>
-                        </div>
-                        <p class="target-hint map-legend-key" id="targetMapLegendHint"><span
-                            style="color:#B22A24;font-weight:600">&#9679; High</span>
-                          &nbsp;&middot;&nbsp;
-                          <span style="color:#E3A130;font-weight:600">&#9679; Medium</span>
-                          &nbsp;&middot;&nbsp;
-                          <span style="color:#78909C;font-weight:600">&#9679; Monitor</span>
-                          <span class="map-legend-key__note">Colour shows support priority, not performance band. Tap a
-                            pin for details.</span>
-                        </p>
-                        <button type="button" class="fullscreen-toggle-btn map-fullscreen-btn"
-                          data-map-fullscreen="target" aria-label="Open full screen map view" aria-pressed="false"
-                          title="Open full screen">
-                          <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__expand"
-                            viewBox="0 0 20 20" aria-hidden="true">
-                            <path d="M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12" fill="none" stroke="currentColor"
-                              stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
+                <div class="map-panel" id="targetMapPanel" data-map-key="target">
+                  <div class="map-section-header" style="margin-bottom:16px;">
+                    <div class="map-control-bar">
+                      <h1 class="focus-subtab-title map-panel-title">Focus Bakery &mdash; Map</h1>
+                      <div class="map-toggle-group">
+                        <span class="map-toggle-label">
+                          <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M2.5 4.5 6 2.5l4 2 3.5-2v9L10 13.5l-4-2-3.5 2v-9Z"></path>
+                            <path d="M6 2.5v9M10 4.5v9"></path>
                           </svg>
-                          <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__collapse"
-                            viewBox="0 0 20 20" aria-hidden="true">
-                            <path d="M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4" fill="none" stroke="currentColor"
-                              stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
+                          <span>Area boundaries</span>
+                        </span>
+                        <div class="map-segmented-control" role="group" aria-label="Toggle map area boundaries"
+                          id="targetMapAreaToggle">
+                          <button type="button" class="map-segmented-control__btn active" data-target-map-area="off"
+                            aria-pressed="true">Off</button>
+                          <button type="button" class="map-segmented-control__btn" data-target-map-area="on"
+                            aria-pressed="false">On</button>
+                        </div>
+                      </div>
+                      <div class="map-toggle-group">
+                        <span class="map-toggle-label">
+                          <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M8 14s4-3.9 4-7.5a4 4 0 1 0-8 0C4 10.1 8 14 8 14Z"></path>
+                            <circle cx="8" cy="6.5" r="1.4"></circle>
                           </svg>
-                          <span
-                            class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open
-                            full
-                            screen</span><span
-                            class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit
-                            full screen</span>
-                        </button>
+                          <span>Bakery visits</span>
+                        </span>
+                        <div class="map-segmented-control" role="group" aria-label="Filter map by visited status"
+                          id="targetMapVisitToggle">
+                          <button type="button" class="map-segmented-control__btn active" data-target-map-visit="all"
+                            aria-pressed="true">All</button>
+                          <button type="button" class="map-segmented-control__btn" data-target-map-visit="visited"
+                            aria-pressed="false">Visited</button>
+                          <button type="button" class="map-segmented-control__btn" data-target-map-visit="unvisited"
+                            aria-pressed="false">Unvisited</button>
+                        </div>
                       </div>
+                      <p class="target-hint map-legend-key" id="targetMapLegendHint"><span
+                          style="color:#B22A24;font-weight:600">&#9679; High</span>
+                        &nbsp;&middot;&nbsp;
+                        <span style="color:#E3A130;font-weight:600">&#9679; Medium</span>
+                        &nbsp;&middot;&nbsp;
+                        <span style="color:#78909C;font-weight:600">&#9679; Monitor</span>
+                        <span class="map-legend-key__note">Colour shows support priority, not performance band. Tap a
+                          pin for details.</span>
+                      </p>
+                      <button type="button" class="fullscreen-toggle-btn map-fullscreen-btn"
+                        data-map-fullscreen="target" aria-label="Open full screen map view" aria-pressed="false"
+                        title="Open full screen">
+                        <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__expand"
+                          viewBox="0 0 20 20" aria-hidden="true">
+                          <path d="M4 8V4H8M12 4H16V8M16 12V16H12M8 16H4V12" fill="none" stroke="currentColor"
+                            stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
+                        </svg>
+                        <svg class="fullscreen-toggle-btn__icon map-fullscreen-btn__icon map-fullscreen-btn__collapse"
+                          viewBox="0 0 20 20" aria-hidden="true">
+                          <path d="M4 7H7V4M13 4V7H16M16 13H13V16M7 16V13H4" fill="none" stroke="currentColor"
+                            stroke-linecap="square" stroke-linejoin="miter" stroke-width="2.4"></path>
+                        </svg>
+                        <span
+                          class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--enter">Open
+                          full
+                          screen</span><span
+                          class="fullscreen-toggle-btn__label map-fullscreen-btn__label map-fullscreen-btn__label--exit">Exit
+                          full screen</span>
+                      </button>
                     </div>
-                    <div class="map-body">
-                      <div class="map-canvas-wrap">
-                        <div id="targetMap"></div>
-                      </div>
-                      <div class="map-filter-summary" id="targetMapFilterSummary" aria-hidden="true"></div>
-                    </div>
-                    <div id="targetMapStatus" class="target-map-status"></div>
                   </div>
+                  <div class="map-body">
+                    <div class="map-canvas-wrap">
+                      <div id="targetMap"></div>
+                    </div>
+                    <div class="map-filter-summary" id="targetMapFilterSummary" aria-hidden="true"></div>
+                  </div>
+                  <div id="targetMapStatus" class="target-map-status"></div>
                 </div>
               </div>
 
               <div class="target-subtab-panel" data-target-subtab-panel="feedback">
-                <div class="section">
-                  <h2>Comment Cloud</h2>
-                  <p class="target-hint">Words drawn from customer reviews for <strong>Low Performance</strong> &amp;
-                    <strong>Below Average</strong> bakeries only. Defaults to the latest completed month &mdash; use
-                    the slider to widen the window and see how comments have shifted over time.
-                  </p>
+                <h1 class="focus-subtab-title">Focus Bakery &mdash; Comment Cloud</h1>
+                <p class="target-hint">Words drawn from customer reviews for <strong>Low Performance</strong> &amp;
+                  <strong>Below Average</strong> bakeries only. Defaults to the latest completed month &mdash; use
+                  the slider to widen the window and see how comments have shifted over time.
+                </p>
 
-                  <div id="wcTargetMonthRange" class="wc-month-range" hidden>
-                    <div class="wc-month-range__header">
-                      <span class="wc-month-range__label">Showing <strong
-                          id="wcTargetMonthRangeLabel">&mdash;</strong></span>
-                      <div class="wc-month-range__presets" role="group" aria-label="Month range presets">
-                        <button type="button" class="wc-month-range__preset" data-months="1">Latest month</button>
-                        <button type="button" class="wc-month-range__preset" data-months="3">Last 3</button>
-                        <button type="button" class="wc-month-range__preset" data-months="6">Last 6</button>
-                        <button type="button" class="wc-month-range__preset" data-months="all">All time</button>
-                      </div>
+                <div id="wcTargetMonthRange" class="wc-month-range" hidden>
+                  <div class="wc-month-range__header">
+                    <span class="wc-month-range__label">Showing <strong
+                        id="wcTargetMonthRangeLabel">&mdash;</strong></span>
+                    <div class="wc-month-range__presets" role="group" aria-label="Month range presets">
+                      <button type="button" class="wc-month-range__preset" data-months="1">Latest month</button>
+                      <button type="button" class="wc-month-range__preset" data-months="3">Last 3</button>
+                      <button type="button" class="wc-month-range__preset" data-months="6">Last 6</button>
+                      <button type="button" class="wc-month-range__preset" data-months="all">All time</button>
                     </div>
-                    <input type="range" id="wcTargetMonthSlider" class="wc-month-range__slider" min="1" max="1" step="1"
-                      value="1" aria-label="Number of recent months to include">
                   </div>
+                  <input type="range" id="wcTargetMonthSlider" class="wc-month-range__slider" min="1" max="1" step="1"
+                    value="1" aria-label="Number of recent months to include">
+                </div>
 
-                  <div id="wcTargetStatus" class="status" style="margin-bottom:10px"></div>
-                  <div class="wc-canvas-wrap">
-                    <canvas id="wcTargetCanvas"></canvas>
-                    <div id="wcTargetEmpty" style="display:none" class="wc-empty">
-                      <div class="wc-empty__icon">&#128172;</div>
-                      <p>No feedback data found for these bakeries.</p>
-                    </div>
-                    <div id="wcTargetSentimentTag" class="wc-sentiment-tag" hidden>
-                      <span class="wc-sentiment-tag__dot" id="wcTargetSentimentTagDot"></span>
-                      <span class="wc-sentiment-tag__label">Sentiment</span>
-                      <span id="wcTargetSentimentTagValue"></span>
-                    </div>
+                <div id="wcTargetStatus" class="status" style="margin-bottom:10px"></div>
+                <div class="wc-canvas-wrap">
+                  <canvas id="wcTargetCanvas"></canvas>
+                  <div id="wcTargetEmpty" style="display:none" class="wc-empty">
+                    <div class="wc-empty__icon">&#128172;</div>
+                    <p>No feedback data found for these bakeries.</p>
                   </div>
-                  <div id="wcTargetSentimentBar" class="wc-sentiment-bar" hidden>
-                    <div class="wc-sentiment-bar__header">
-                      <span class="wc-sentiment-bar__title">Overall Sentiment</span>
-                    </div>
-                    <div class="wc-sentiment-bar__track"></div>
+                  <div id="wcTargetSentimentTag" class="wc-sentiment-tag" hidden>
+                    <span class="wc-sentiment-tag__dot" id="wcTargetSentimentTagDot"></span>
+                    <span class="wc-sentiment-tag__label">Sentiment</span>
+                    <span id="wcTargetSentimentTagValue"></span>
                   </div>
-                  <div class="wc-legend" aria-label="Word cloud sentiment legend">
-                    <span class="wc-legend__item"><span
-                        class="wc-legend__dot wc-legend__dot--positive"></span>Positive</span>
-                    <span class="wc-legend__item"><span
-                        class="wc-legend__dot wc-legend__dot--neutral"></span>Neutral</span>
-                    <span class="wc-legend__item"><span
-                        class="wc-legend__dot wc-legend__dot--negative"></span>Negative</span>
+                </div>
+                <div id="wcTargetSentimentBar" class="wc-sentiment-bar" hidden>
+                  <div class="wc-sentiment-bar__header">
+                    <span class="wc-sentiment-bar__title">Overall Sentiment</span>
                   </div>
+                  <div class="wc-sentiment-bar__track"></div>
+                </div>
+                <div class="wc-legend" aria-label="Word cloud sentiment legend">
+                  <span class="wc-legend__item"><span
+                      class="wc-legend__dot wc-legend__dot--positive"></span>Positive</span>
+                  <span class="wc-legend__item"><span
+                      class="wc-legend__dot wc-legend__dot--neutral"></span>Neutral</span>
+                  <span class="wc-legend__item"><span
+                      class="wc-legend__dot wc-legend__dot--negative"></span>Negative</span>
+                </div>
 
-                  <div id="wcTargetSignalsPanel" class="wc-sig-panel" hidden>
-                    <div class="wc-sig__header">Top Signals</div>
-                    <div class="wc-sig__cols">
-                      <div class="wc-sig__col">
-                        <div class="wc-sig__col-label wc-sig__col-label--pos">&#10003; Strengths</div>
-                        <div id="wcTargetSigPosList" class="wc-sig__list"></div>
-                      </div>
-                      <div class="wc-sig__col">
-                        <div class="wc-sig__col-label wc-sig__col-label--neg">&#10007; Concerns</div>
-                        <div id="wcTargetSigNegList" class="wc-sig__list"></div>
-                      </div>
+                <div id="wcTargetSignalsPanel" class="wc-sig-panel" hidden>
+                  <div class="wc-sig__header">Top Signals</div>
+                  <div class="wc-sig__cols">
+                    <div class="wc-sig__col">
+                      <div class="wc-sig__col-label wc-sig__col-label--pos">&#10003; Strengths</div>
+                      <div id="wcTargetSigPosList" class="wc-sig__list"></div>
+                    </div>
+                    <div class="wc-sig__col">
+                      <div class="wc-sig__col-label wc-sig__col-label--neg">&#10007; Concerns</div>
+                      <div id="wcTargetSigNegList" class="wc-sig__list"></div>
                     </div>
                   </div>
+                </div>
 
-                  <div id="wcTargetDriftPanel" class="wc-drift-panel" hidden>
-                    <div class="wc-drift__header">Changes vs <span id="wcTargetDriftPrevLabel"></span></div>
-                    <div class="wc-drift__cols">
-                      <div class="wc-drift__col">
-                        <div class="wc-drift__col-label wc-drift__col-label--up">&#8593; Rising</div>
-                        <div id="wcTargetDriftRising" class="wc-drift__items"></div>
-                      </div>
-                      <div class="wc-drift__col">
-                        <div class="wc-drift__col-label wc-drift__col-label--down">&#8595; Falling</div>
-                        <div id="wcTargetDriftFalling" class="wc-drift__items"></div>
-                      </div>
+                <div id="wcTargetDriftPanel" class="wc-drift-panel" hidden>
+                  <div class="wc-drift__header">Changes vs <span id="wcTargetDriftPrevLabel"></span></div>
+                  <div class="wc-drift__cols">
+                    <div class="wc-drift__col">
+                      <div class="wc-drift__col-label wc-drift__col-label--up">&#8593; Rising</div>
+                      <div id="wcTargetDriftRising" class="wc-drift__items"></div>
+                    </div>
+                    <div class="wc-drift__col">
+                      <div class="wc-drift__col-label wc-drift__col-label--down">&#8595; Falling</div>
+                      <div id="wcTargetDriftFalling" class="wc-drift__items"></div>
                     </div>
                   </div>
                 </div>
@@ -1991,63 +1984,62 @@
 
           <!-- CUSTOMER FEEDBACK WORD CLOUD -->
           <div class="tab-content" id="tab-feedback">
-            <div class="section">
-              <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0">Words drawn from customer reviews. Larger
-                words appear more frequently. Shows data for the latest completed month.</p>
+            <h1 class="focus-subtab-title">Comment Cloud</h1>
+            <p class="target-hint">Words drawn from customer reviews. Larger
+              words appear more frequently. Shows data for the latest completed month.</p>
 
-              <div id="wcStatus" class="status" style="margin-bottom:10px"></div>
+            <div id="wcStatus" class="status" style="margin-bottom:10px"></div>
 
-              <div class="wc-canvas-wrap">
-                <canvas id="wcCanvas"></canvas>
-                <div id="wcEmpty" style="display:none" class="wc-empty">
-                  <div class="wc-empty__icon">&#128172;</div>
-                  <p>No feedback data found for this selection.</p>
+            <div class="wc-canvas-wrap">
+              <canvas id="wcCanvas"></canvas>
+              <div id="wcEmpty" style="display:none" class="wc-empty">
+                <div class="wc-empty__icon">&#128172;</div>
+                <p>No feedback data found for this selection.</p>
+              </div>
+              <div id="wcSentimentTag" class="wc-sentiment-tag" hidden>
+                <span class="wc-sentiment-tag__dot" id="wcSentimentTagDot"></span>
+                <span class="wc-sentiment-tag__label">Sentiment</span>
+                <span id="wcSentimentTagValue"></span>
+              </div>
+            </div>
+            <div id="wcSentimentBar" class="wc-sentiment-bar" hidden>
+              <div class="wc-sentiment-bar__header">
+                <span class="wc-sentiment-bar__title">Overall Sentiment</span>
+              </div>
+              <div class="wc-sentiment-bar__track"></div>
+            </div>
+            <div class="wc-legend" aria-label="Word cloud sentiment legend">
+              <span class="wc-legend__item"><span
+                  class="wc-legend__dot wc-legend__dot--positive"></span>Positive</span>
+              <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--neutral"></span>Neutral</span>
+              <span class="wc-legend__item"><span
+                  class="wc-legend__dot wc-legend__dot--negative"></span>Negative</span>
+            </div>
+
+            <div id="wcSignalsPanel" class="wc-sig-panel" hidden>
+              <div class="wc-sig__header">Top Signals</div>
+              <div class="wc-sig__cols">
+                <div class="wc-sig__col">
+                  <div class="wc-sig__col-label wc-sig__col-label--pos">&#10003; Strengths</div>
+                  <div id="wcSigPosList" class="wc-sig__list"></div>
                 </div>
-                <div id="wcSentimentTag" class="wc-sentiment-tag" hidden>
-                  <span class="wc-sentiment-tag__dot" id="wcSentimentTagDot"></span>
-                  <span class="wc-sentiment-tag__label">Sentiment</span>
-                  <span id="wcSentimentTagValue"></span>
+                <div class="wc-sig__col">
+                  <div class="wc-sig__col-label wc-sig__col-label--neg">&#10007; Concerns</div>
+                  <div id="wcSigNegList" class="wc-sig__list"></div>
                 </div>
               </div>
-              <div id="wcSentimentBar" class="wc-sentiment-bar" hidden>
-                <div class="wc-sentiment-bar__header">
-                  <span class="wc-sentiment-bar__title">Overall Sentiment</span>
-                </div>
-                <div class="wc-sentiment-bar__track"></div>
-              </div>
-              <div class="wc-legend" aria-label="Word cloud sentiment legend">
-                <span class="wc-legend__item"><span
-                    class="wc-legend__dot wc-legend__dot--positive"></span>Positive</span>
-                <span class="wc-legend__item"><span class="wc-legend__dot wc-legend__dot--neutral"></span>Neutral</span>
-                <span class="wc-legend__item"><span
-                    class="wc-legend__dot wc-legend__dot--negative"></span>Negative</span>
-              </div>
+            </div>
 
-              <div id="wcSignalsPanel" class="wc-sig-panel" hidden>
-                <div class="wc-sig__header">Top Signals</div>
-                <div class="wc-sig__cols">
-                  <div class="wc-sig__col">
-                    <div class="wc-sig__col-label wc-sig__col-label--pos">&#10003; Strengths</div>
-                    <div id="wcSigPosList" class="wc-sig__list"></div>
-                  </div>
-                  <div class="wc-sig__col">
-                    <div class="wc-sig__col-label wc-sig__col-label--neg">&#10007; Concerns</div>
-                    <div id="wcSigNegList" class="wc-sig__list"></div>
-                  </div>
+            <div id="wcDriftPanel" class="wc-drift-panel" hidden>
+              <div class="wc-drift__header">Changes vs <span id="wcDriftPrevLabel"></span></div>
+              <div class="wc-drift__cols">
+                <div class="wc-drift__col">
+                  <div class="wc-drift__col-label wc-drift__col-label--up">&#8593; Rising</div>
+                  <div id="wcDriftRising" class="wc-drift__items"></div>
                 </div>
-              </div>
-
-              <div id="wcDriftPanel" class="wc-drift-panel" hidden>
-                <div class="wc-drift__header">Changes vs <span id="wcDriftPrevLabel"></span></div>
-                <div class="wc-drift__cols">
-                  <div class="wc-drift__col">
-                    <div class="wc-drift__col-label wc-drift__col-label--up">&#8593; Rising</div>
-                    <div id="wcDriftRising" class="wc-drift__items"></div>
-                  </div>
-                  <div class="wc-drift__col">
-                    <div class="wc-drift__col-label wc-drift__col-label--down">&#8595; Falling</div>
-                    <div id="wcDriftFalling" class="wc-drift__items"></div>
-                  </div>
+                <div class="wc-drift__col">
+                  <div class="wc-drift__col-label wc-drift__col-label--down">&#8595; Falling</div>
+                  <div id="wcDriftFalling" class="wc-drift__items"></div>
                 </div>
               </div>
             </div>

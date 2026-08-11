@@ -21,7 +21,7 @@
     target: 'Focus Bakeries',
     speed: 'Speed vs NPS',
     cei: 'Coffee Experience Index Methodology',
-    feedback: 'Customer Feedback',
+    feedback: 'Comment Cloud',
     'visit-log': 'Bakery Reports'
   };
   var dashboardMobileTabLabels = {
@@ -2325,6 +2325,10 @@
       var bounds = { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
       for (var node = el.parentElement; node && node !== document.body; node = node.parentElement) {
         var style = window.getComputedStyle(node);
+        // display:contents generates no box (.dashboard-workspace is one, on
+        // desktop widths) — it clips nothing, and its getBoundingClientRect()
+        // is an empty rect that would collapse the bounds to zero if used.
+        if (style.display === 'contents') continue;
         if (style.overflow === 'visible' && style.overflowX === 'visible' && style.overflowY === 'visible') continue;
         var rect = node.getBoundingClientRect();
         bounds.top = Math.max(bounds.top, rect.top);

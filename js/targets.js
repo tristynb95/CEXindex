@@ -24,6 +24,12 @@ function _setTargetTrendState(hasData, message) {
   if (tableContent) tableContent.style.display = hasData ? '' : 'none';
 }
 
+function _focusTitleWithReferencePeriod(title) {
+  var focusContext = GAILS._focusDataContext;
+  var referencePeriod = focusContext && focusContext.latestClosedMonth;
+  return title + (referencePeriod ? ' \u2014 ' + referencePeriod : '');
+}
+
 // ══════════ FOCUS BAKERY HUB (Summary tab) ══════════
 // Ranked triage view of every focus bakery plus a per-bakery deep-dive modal.
 // The queue uses an internal priority score for ordering. The deep-dive shows
@@ -311,6 +317,8 @@ function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
   var escapeLine = isAbsolute ? 75 : 50;
   var severeLine = isAbsolute ? 60 : 25;
   var queueEl = document.getElementById('targetHubQueue');
+  var priorityOverviewTitle = document.getElementById('focusPriorityOverviewTitle');
+  if (priorityOverviewTitle) priorityOverviewTitle.textContent = _focusTitleWithReferencePeriod('Priority Overview');
 
   var rows = targets.map(function (rec) {
     var trend = _computeBakeryTrend(rec.b, cf, FM);
@@ -424,12 +432,15 @@ function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
   if (!queueEl) return;
 
   if (!rows.length) {
+    var emptySummaryEl = document.getElementById('focusQueueSummary');
+    if (emptySummaryEl) {
+      emptySummaryEl.innerHTML = 'Showing <strong>0</strong> of 0 matching bakeries<span>No additional filters</span>';
+    }
     queueEl.innerHTML = '<div class="focus-queue__empty">No eligible bakeries are in the ' + esc(highBand) + ' or ' + esc(lowBand) + ' bands through the latest completed month — nothing needs focus right now.</div>';
     return;
   }
 
   queueEl.innerHTML =
-    '<div class="focus-queue__heading"><div><p class="focus-section-title">Bakery action list</p><p>Ranked by support priority. Every row explains why the bakery needs attention.</p></div><span id="focusQueueSummary" class="focus-queue__summary" role="status" aria-live="polite"></span></div>' +
     // Every control is a direct child of the tray: .focus-queue__chips and
     // .focus-queue__quick are display:contents, so what they hold lays out in
     // the tray's own flex row. Wrapping them in a real container instead gave
@@ -2529,7 +2540,7 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
   var pctOrDash = function (v) { return hasVal(v) ? v + '%' : '—'; };
   document.getElementById('targetTable').innerHTML = targets.length === 0
     ? '<p style="text-align:center;color:var(--muted);padding:32px 0">No eligible bakeries in ' + highBand + ' or adjacent bands through the latest completed month.</p>'
-    : '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">\ud83c\udf31 Support Priority List</h3><p class="tracker-table-header__copy"><strong>Priority</strong> is ranked by the same support-priority calculation as Priorities: performance gap (50 points), recent falls (25), time in focus (15), and routine-visit recency (10). <strong>Biggest Lever</strong> = each bakery&rsquo;s area furthest from its company benchmark. Click a bakery name for its full performance breakdown.</p></div></div><div class="table-wrap table-wrap--support-priority table-wrap--floating"><table data-nps-splits class="support-priority-table ' + (G.npsSplitsExpanded ? '' : 'nps-splits-collapsed') + '"><thead><tr><th><span class="th-label-full">Priority</span><span class="th-label-short">#</span></th><th>Bakery</th><th>Region</th><th>Ops Area</th><th>' + ceiHeader + '</th><th>' + bandHeader + '</th><th>NPS (DRINK &amp; MEAL) ' + G.npsSplitToggleHtml() + '</th><th class="nps-split-col">NPS Coffee</th><th class="nps-split-col">NPS Meal</th><th class="nps-split-col">NPS (All)</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>&le;30s</th><th>&le;2m</th><th>&gt;5m</th><th>Avg Wait</th><th>Average Drinks Per Month</th><th>Biggest Lever</th></tr></thead><tbody>' +
+    : '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">Focus Bakery List</h3><p class="tracker-table-header__copy"><strong>Priority</strong> is ranked by the same support-priority calculation as Priorities: performance gap (50 points), recent falls (25), time in focus (15), and routine-visit recency (10). <strong>Biggest Lever</strong> = each bakery&rsquo;s area furthest from its company benchmark. Click a bakery name for its full performance breakdown.</p></div></div><div class="table-wrap table-wrap--support-priority table-wrap--floating"><table data-nps-splits class="support-priority-table ' + (G.npsSplitsExpanded ? '' : 'nps-splits-collapsed') + '"><thead><tr><th><span class="th-label-full">Priority</span><span class="th-label-short">#</span></th><th>Bakery</th><th>Region</th><th>Ops Area</th><th>' + ceiHeader + '</th><th>' + bandHeader + '</th><th>NPS (DRINK &amp; MEAL) ' + G.npsSplitToggleHtml() + '</th><th class="nps-split-col">NPS Coffee</th><th class="nps-split-col">NPS Meal</th><th class="nps-split-col">NPS (All)</th><th>Vol</th><th>Conf</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>&le;30s</th><th>&le;2m</th><th>&gt;5m</th><th>Avg Wait</th><th>Average Drinks Per Month</th><th>Biggest Lever</th></tr></thead><tbody>' +
     tableTargets.map(function (b, i) {
       var focus = getFocus(b);
       var focusColor = focus && focus.attainment < 60 ? 'var(--red)' : 'var(--amber)';
@@ -2566,6 +2577,8 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
         '<td>' + numOrDash(b.tdMonthlyAvg) + '</td>' +
         '<td style="font-weight:600;color:' + focusColor + '">' + (focus ? focus.label + ' &mdash; ' + benchmarkFocusLabel(focus) : benchmarkFocusLabel(null)) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
+  var focusBakeryListTitle = document.getElementById('targetTable').querySelector('.tracker-table-header__title');
+  if (focusBakeryListTitle) focusBakeryListTitle.textContent = _focusTitleWithReferencePeriod('Focus Bakery List');
   G.makeSortable(document.getElementById('targetTable'));
   G.syncNpsSplitTables();
 }
@@ -2717,7 +2730,7 @@ function _renderTargetTrends(targets, bf, cf, highBand, lowBand, isAbsolute) {
   trendData.sort(function (a, b) { var order = { down: 0, flat: 1, up: 2, new: 3 }; if (order[a.direction] !== order[b.direction]) return order[a.direction] - order[b.direction]; return a.ceiChange - b.ceiChange; });
 
   var trendCeiHeader = (isAbsolute ? 'Benchmark' : 'Peer') + ' Score';
-  document.getElementById('targetTrendTable').innerHTML = '<div class="tracker-table-header tracker-table-header--with-legend" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">Performance Trends \u2014 Table</h3><details class="focus-method focus-method--inline focus-method--overlay"><summary>Columns Explained</summary><p><span style="color:var(--green);font-weight:600">&uarr; Improving</span> means the score climbed 3 or more points since last month, <span style="color:var(--red);font-weight:600">&darr; Dipping</span> means it fell by that much, and <span style="color:var(--muted-l);font-weight:600">&harr; Steady</span> is everything in between. &Delta; Score and &Delta; NPS compare this month to last; 3m Trend and 3m &Delta; look back three months instead. Period &Delta; covers the bakery&rsquo;s whole time in focus so far, and Streak counts how many months running it&rsquo;s been dipping. Peak and Low are its best and worst months on record. The last four columns show how quality, efficiency, friendliness and coffee speed have moved since last month. Click a bakery&rsquo;s name for its full story.</p></details></div></div><div class="table-wrap table-wrap--floating table-wrap--trend-detail"><table class="trend-detail-table"><thead><tr><th>Bakery</th><th>Ops Area</th><th>' + trendCeiHeader + '</th><th>&Delta; Score</th><th>Direction</th><th>&Delta; NPS</th><th>3m Trend</th><th>3m &Delta;</th><th>Period &Delta;</th><th>Streak</th><th>Peak</th><th>Low</th><th>Quality</th><th>Efficiency</th><th>Friendliness</th><th>Coffee Eff.</th></tr></thead><tbody>' +
+  document.getElementById('targetTrendTable').innerHTML = '<div class="tracker-table-header tracker-table-header--with-legend" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">Improving vs Dipping</h3><details class="focus-method focus-method--inline focus-method--overlay"><summary>Columns Explained</summary><p><span style="color:var(--green);font-weight:600">&uarr; Improving</span> means the score climbed 3 or more points, <span style="color:var(--red);font-weight:600">&darr; Dipping</span> means it fell by that much, and <span style="color:var(--muted-l);font-weight:600">&harr; Steady</span> is everything in between &mdash; used for both the This Month and 3-Month Trend columns. Streak counts consecutive dipping months. Best/Worst Month are this bakery&rsquo;s highest and lowest scores on record. The last four columns show how quality, efficiency, friendliness and coffee speed moved since last month. Click a bakery&rsquo;s name for its full story.</p></details></div></div><div class="table-wrap table-wrap--floating table-wrap--trend-detail"><table class="trend-detail-table"><thead><tr><th>Bakery</th><th>Ops Area</th><th>' + trendCeiHeader + '</th><th title="How much the score changed since last month">Score Change</th><th title="Improving = up 3+ points, Dipping = down 3+ points, Steady = in between">This Month</th><th title="How much the NPS changed since last month">NPS Change</th><th title="Same as This Month, but comparing to 3 months ago">3-Month Trend</th><th title="How much the score changed over the last 3 months">3-Month Change</th><th title="How much the score has changed since this bakery joined the focus list">Change Since Joining</th><th title="Consecutive months the score has been dipping">Dipping Streak</th><th title="Best score on record">Best Month</th><th title="Worst score on record">Worst Month</th><th title="Change in quality score vs last month">Quality</th><th title="Change in efficiency score vs last month">Efficiency</th><th title="Change in friendliness score vs last month">Friendliness</th><th title="Change in coffee speed score vs last month">Coffee Eff.</th></tr></thead><tbody>' +
     trendData.map(function (t) {
       var streakWarn = t.streak >= 3 ? 'color:#6B4FA8;font-weight:700' : t.streak >= 2 ? 'color:var(--red);font-weight:600' : '';
       return '<tr><td>' + G.bakeryProfileLink(t.name, {
@@ -2726,5 +2739,7 @@ function _renderTargetTrends(targets, bf, cf, highBand, lowBand, isAbsolute) {
         returnLabel: 'Focus Bakeries'
       }) + '</td><td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(t.name) + '</td><td style="font-weight:700">' + (t.latest ? t.latest[cf] : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best[cf] + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst[cf] + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';
     }).join('') + '</tbody></table></div>';
+  var improvingDippingTitle = document.getElementById('targetTrendTable').querySelector('.tracker-table-header__title');
+  if (improvingDippingTitle) improvingDippingTitle.textContent = _focusTitleWithReferencePeriod('Improving vs Dipping');
   G.makeSortable(document.getElementById('targetTrendTable'));
 }

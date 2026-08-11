@@ -94,13 +94,16 @@ test('puts the recommendation and action list before secondary analysis', () => 
 
   assert.ok(summary.indexOf('id="targetHubQueue"') < summary.indexOf('id="focusAreaDetails"'));
   assert.ok(summary.indexOf('id="focusAreaDetails"') < summary.indexOf('id="focusInsightsDetails"'));
-  assert.match(summary, /How is support priority calculated\?/);
+  assert.match(summary, /aria-label="How is support priority calculated\?"/);
+  assert.doesNotMatch(summary, /<span>How is support priority calculated\?<\/span>/);
   assert.match(summary, /class="focus-method focus-method--overlay focus-priority-help"/);
   assert.match(summary, /class="focus-priority-help__tooltip"[^>]*role="tooltip"/);
-  assert.match(styles, /\.focus-priority-help,\s*\.focus-priority-help\[open\] \{[\s\S]*?margin-left: auto/);
+  assert.match(styles, /\.focus-priority-help__icon \{[\s\S]*?width: 28px;[\s\S]*?height: 28px;[\s\S]*?background: var\(--accent\);[\s\S]*?color: #fff;/);
+  assert.match(summary, /<h1 id="focusPriorityOverviewTitle">Priority Overview<\/h1>\s*<span id="focusQueueSummary"/);
+  assert.doesNotMatch(targets, /Bakery action list<\/p>|Ranked by support priority/);
   assert.match(html, /<span>Priority Overview<\/span>/);
   assert.doesNotMatch(html, /<span>Where to focus<\/span>/);
-  assert.match(summary, /<h1>Priority Overview<\/h1>/);
+  assert.match(summary, /<h1 id="focusPriorityOverviewTitle">Priority Overview<\/h1>/);
   assert.doesNotMatch(summary, /Focus bakery action plan|Focus bakery priorities/);
   assert.doesNotMatch(summary, /top priority highlighted below/);
   assert.doesNotMatch(summary, /Start with the recommended bakery/);
@@ -120,6 +123,14 @@ test('uses plain-language performance, priority, trend and visit labels', () => 
   assert.doesNotMatch(targets, /Dipping MoM/);
   assert.doesNotMatch(targets, /safe at/);
   assert.doesNotMatch(targets, /bakeries'\) \+ ' excluded/);
+});
+
+test('adds the latest completed reference month to all three Focus titles', () => {
+  assert.match(targets, /referencePeriod = focusContext && focusContext\.latestClosedMonth/);
+  assert.match(targets, /priorityOverviewTitle\.textContent = _focusTitleWithReferencePeriod\('Priority Overview'\)/);
+  assert.match(targets, /focusBakeryListTitle\.textContent = _focusTitleWithReferencePeriod\('Focus Bakery List'\)/);
+  assert.match(targets, /improvingDippingTitle\.textContent = _focusTitleWithReferencePeriod\('Improving vs Dipping'\)/);
+  assert.doesNotMatch(targets, /Support Priority List|Performance Trends \\u2014 Table/);
 });
 
 test('keeps performance and activity filters independent and reports results', () => {
@@ -366,6 +377,16 @@ test('renders a plain-language action card and accurate filtered count', () => {
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(root, 'js', 'support-score.js'), 'utf8'), context);
   vm.runInContext(targets, context);
+
+  context.GAILS._focusDataContext = { latestClosedMonth: 'Jul 26' };
+  assert.equal(
+    context._focusTitleWithReferencePeriod('Improving vs Dipping'),
+    'Improving vs Dipping \u2014 Jul 26'
+  );
+  assert.equal(
+    context._focusTitleWithReferencePeriod('Focus Bakery List'),
+    'Focus Bakery List \u2014 Jul 26'
+  );
 
   assert.equal(context._countFocusStreak(
     Array.from({ length: 9 }, () => ({ cb: 'Low Performance' })),
