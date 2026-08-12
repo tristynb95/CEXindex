@@ -13,6 +13,14 @@
   var sectionPageTitle = document.getElementById('sectionPageTitle');
   var compactDashboardSidebarMedia = window.matchMedia('(max-width: 980px)');
   var desktopDashboardSidebarCollapsed = false;
+  // Bottom-nav quick-access popover: reuses the sidebar's own submenu panels
+  // (see openDashboardNavPopoverFor) rather than duplicating their buttons,
+  // so there is exactly one set of listeners for Focus Bakeries / Bakery
+  // Reports subviews regardless of which trigger opened them.
+  var dashboardNavPopoverHost = document.createElement('div');
+  dashboardNavPopoverHost.className = 'dashboard-nav-popover-host';
+  document.body.appendChild(dashboardNavPopoverHost);
+  var openDashboardNavPopover = null;
   var dashboardTabLabels = {
     overview: 'Overview',
     trends: 'Trends',
@@ -372,6 +380,7 @@
 
   function setDashboardSidebarOpen(open) {
     if (!dashboardWorkspaceShell) return;
+    closeDashboardNavPopover();
     dashboardWorkspaceShell.dataset.sidebarOpen = open ? 'true' : 'false';
     syncDashboardSidebarControls();
   }
@@ -416,6 +425,83 @@
     }
     dashboardWorkspaceShell.dataset.sidebarOpen = 'true';
     setDashboardSidebarCollapsed(desktopDashboardSidebarCollapsed);
+  }
+
+  // Positions a popover panel above the bottom-nav icon that opened it,
+  // clamped to the viewport, and points its arrow back at the icon's center.
+  function positionDashboardNavPopover(panel, trigger) {
+    var r = trigger.getBoundingClientRect();
+    panel.style.left = '0px';
+    panel.style.bottom = (window.innerHeight - r.top + 10) + 'px';
+    var panelWidth = panel.offsetWidth;
+    var maxLeft = Math.max(10, window.innerWidth - panelWidth - 10);
+    var left = Math.min(Math.max(10, r.left + r.width / 2 - panelWidth / 2), maxLeft);
+    panel.style.left = left + 'px';
+    var arrowLeft = Math.min(Math.max(18, r.left + r.width / 2 - left), panelWidth - 18);
+    panel.style.setProperty('--popover-arrow-left', arrowLeft + 'px');
+  }
+
+  function onDashboardNavPopoverOutsideClick(event) {
+    if (!openDashboardNavPopover) return;
+    if (openDashboardNavPopover.panel.contains(event.target) ||
+      openDashboardNavPopover.trigger.contains(event.target)) return;
+    closeDashboardNavPopover();
+  }
+
+  function onDashboardNavPopoverEscape(event) {
+    if (event.key === 'Escape') closeDashboardNavPopover();
+  }
+
+  // Bottom-nav popovers borrow the sidebar's own submenu panel for the
+  // duration they're open (see the doc comment on openDashboardNavPopover
+  // above) and hand it back to its original spot in the drawer on close, so
+  // the accordion in the full drawer is never left without its panel.
+  function closeDashboardNavPopover() {
+    if (!openDashboardNavPopover) return;
+    var open = openDashboardNavPopover;
+    openDashboardNavPopover = null;
+    open.panel.classList.remove('dashboard-nav__submenu--popover');
+    open.panel.style.cssText = '';
+    open.panel.hidden = true;
+    if (open.anchorNext && open.anchorNext.parentNode === open.anchorParent) {
+      open.anchorParent.insertBefore(open.panel, open.anchorNext);
+    } else {
+      open.anchorParent.appendChild(open.panel);
+    }
+    open.trigger.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', onDashboardNavPopoverOutsideClick, true);
+    document.removeEventListener('keydown', onDashboardNavPopoverEscape, true);
+    window.removeEventListener('resize', closeDashboardNavPopover);
+  }
+
+  function openDashboardNavPopoverFor(name, trigger) {
+    var panelId = name === 'target' ? 'dashboardNavTargetSubmenu' : 'visitLogViewToggle';
+    var panel = document.getElementById(panelId);
+    if (!panel) return;
+    openDashboardNavPopover = {
+      name: name,
+      panel: panel,
+      anchorParent: panel.parentNode,
+      anchorNext: panel.nextSibling,
+      trigger: trigger
+    };
+    dashboardNavPopoverHost.appendChild(panel);
+    panel.hidden = false;
+    panel.classList.add('dashboard-nav__submenu--popover');
+    positionDashboardNavPopover(panel, trigger);
+    trigger.setAttribute('aria-expanded', 'true');
+    document.addEventListener('click', onDashboardNavPopoverOutsideClick, true);
+    document.addEventListener('keydown', onDashboardNavPopoverEscape, true);
+    window.addEventListener('resize', closeDashboardNavPopover);
+  }
+
+  function toggleDashboardNavPopover(name, trigger) {
+    if (openDashboardNavPopover && openDashboardNavPopover.name === name) {
+      closeDashboardNavPopover();
+      return;
+    }
+    closeDashboardNavPopover();
+    openDashboardNavPopoverFor(name, trigger);
   }
 
   function activateTargetSubtab(name, options) {
@@ -1796,6 +1882,12 @@
   // Tabs
   document.querySelectorAll('.tab').forEach(function (t) {
     t.addEventListener('click', function () {
+      var popoverName = t.dataset.navPopoverToggle;
+      if (popoverName) {
+        toggleDashboardNavPopover(popoverName, t);
+        return;
+      }
+      closeDashboardNavPopover();
       var accordionName = t.dataset.navAccordionToggle;
       if (accordionName) {
         var railIsCollapsed = !compactDashboardSidebarMedia.matches &&
@@ -1871,6 +1963,10 @@
 
   document.querySelectorAll('[data-target-subtab]').forEach(function (tab) {
     tab.addEventListener('click', function () {
+      // Hand the panel back to the drawer before activateTargetSubtab below
+      // scrollIntoViews the clicked button — it needs to be back in its
+      // normal (non-fixed) position in the layout for that to behave.
+      closeDashboardNavPopover();
       activateDashboardTab('target', { keepSidebarOpen: true });
       setDashboardNavAccordion('target');
       activateTargetSubtab(tab.dataset.targetSubtab);
@@ -1887,6 +1983,7 @@
   // can reset its default safely before that listener applies the chosen view.
   document.querySelectorAll('#visitLogViewToggle [data-view]').forEach(function (tab) {
     tab.addEventListener('click', function () {
+      closeDashboardNavPopover();
       activateDashboardTab('visit-log', { keepSidebarOpen: true });
       setDashboardNavAccordion('visit-log');
       if (compactDashboardSidebarMedia.matches) {

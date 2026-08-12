@@ -2513,6 +2513,62 @@ canvas {
   box-shadow: none;
 }
 
+/* Bottom-nav quick-access popover: the mobile bottom bar's Focus Bakeries and
+   Bakery Reports icons borrow this same submenu panel (see
+   openDashboardNavPopoverFor in app.js) rather than duplicating its buttons,
+   so it needs a floating-card look distinct from its in-drawer/rail styling.
+   The two extra class selectors below beat the mobile min-height/padding
+   override further down regardless of source order. */
+.dashboard-nav__submenu.dashboard-nav__submenu--popover {
+  position: fixed;
+  z-index: 60;
+  width: min(250px, calc(100vw - 20px));
+  margin: 0;
+  padding: 7px;
+  gap: 2px;
+  border-radius: 16px;
+  background: #FFFFFF;
+  border: 1px solid var(--card-border-h, rgba(34, 31, 26, 0.1));
+  box-shadow: 0 18px 40px rgba(48, 36, 22, 0.22);
+  animation: dashboardNavPopoverIn 0.16s var(--ease);
+}
+
+.dashboard-nav__submenu.dashboard-nav__submenu--popover::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: var(--popover-arrow-left, 50%);
+  width: 12px;
+  height: 12px;
+  background: #FFFFFF;
+  border-right: 1px solid var(--card-border-h, rgba(34, 31, 26, 0.1));
+  border-bottom: 1px solid var(--card-border-h, rgba(34, 31, 26, 0.1));
+  transform: translateX(-50%) rotate(45deg);
+}
+
+@keyframes dashboardNavPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard-nav__submenu.dashboard-nav__submenu--popover .target-subtab {
+  min-height: 42px;
+  padding: 9px 12px;
+  font-size: 0.78rem;
+  border-radius: 10px;
+}
+
+.mobile-bottom-nav__btn[aria-expanded="true"] {
+  color: var(--accent);
+}
+
 /* Overview is the home view, so it keeps a hair more separation from the
    first heading than the groups keep from each other. */
 .dashboard-nav__btn--home {
@@ -2826,6 +2882,13 @@ canvas {
 @media (max-width: 980px) {
   .dashboard-workspace {
     overflow: visible;
+    /* Desktop uses isolation to keep the rail's internal z-index scale from
+       leaking out. On mobile the drawer (z-index:40, fixed) needs to compare
+       directly against the backdrop (z-index:34, a sibling outside this
+       element) — isolation would trap the drawer inside this element's own
+       stacking context, letting the backdrop's z-index win and cover the
+       drawer, making every nav item underneath untappable. */
+    isolation: auto;
   }
 
   .dashboard-sidebar,
@@ -12098,13 +12161,12 @@ a,
    Based on real-device review
    ══════════════════════════════════════════════════════ */
 
-/* 1. Hide the redundant toolbar (Menu btn + "Active view" label) on mobile.
-      Bottom nav handles all tab switching, so this row is pure noise. */
-@media (max-width: 980px) {
-  .dashboard-workspace__toolbar {
-    display: none;
-  }
-}
+/* 1. The bottom nav only covers top-level destinations — Focus Bakeries and
+      Bakery Reports each hide several submenu-only views (Charts, Map,
+      Customer Comments; Visit History, Unvisited Sites, Follow-up Tasks) that
+      are only reachable through the sidebar drawer's accordion. Keep the
+      toolbar's Menu button on mobile so the drawer — and those submenus —
+      stay reachable. */
 
 /* 2. Compact header on mobile — collapse to a single tight row:
       [Dashboard title/sub]  [Sign Out]  (Admin hidden in kebab)
