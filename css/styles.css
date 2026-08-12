@@ -18586,7 +18586,12 @@ body.profile-modal-open {
   display: grid;
   grid-template-columns: minmax(180px, 0.75fr) minmax(0, 3.25fr);
   margin: 0;
-  overflow: hidden;
+  /* visible, not hidden: the Score box's .kpi-info__panel is an absolutely
+     positioned descendant that needs to float outside this row when open.
+     Safe to leave uncropped either way — every child here is a flat rect
+     sharing this card's own background, with no border reaching the outer
+     corners, so there's nothing for the rounded corners to clip against. */
+  overflow: visible;
   border: 1px solid var(--card-border-h);
   border-radius: 14px;
   background: var(--card);
@@ -18668,6 +18673,27 @@ body.profile-modal-open {
 
 .focus-review-summary__fact--down strong {
   color: var(--red);
+}
+
+/* The Score box's own "i" reuses the Overview benchmark KPI card's .kpi-info
+   pattern (same <details> markup, same delegated open/close/position JS in
+   app.js) so the breakdown behaves identically in both places. This box is
+   far shorter than a KPI card, though, so instead of a bottom-right icon
+   floating over the value text, a reserved right-hand gutter (padding-right)
+   holds a smaller icon centered on the box's vertical middle. */
+.focus-review-summary__fact--score {
+  position: relative;
+  padding-right: 28px;
+}
+
+.focus-review-summary__fact--score .kpi-info summary {
+  top: 50%;
+  right: 6px;
+  bottom: auto;
+  width: 16px;
+  height: 16px;
+  font-size: 0.56rem;
+  transform: translateY(-50%);
 }
 
 .focus-reasons {

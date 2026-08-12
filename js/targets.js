@@ -965,11 +965,15 @@ window.GAILS.openFocusDetail = function (name) {
 
   // Keep this summary deliberately terse. The detailed opportunity and target
   // values already appear in the driver section below.
+  // rec already carries the six weighted component fields (dr/ef/fr/n/ats/at)
+  // benchmarkScoreInfoHtml needs — it's the same per-bakery weighted snapshot
+  // shape as the records behind the Overview benchmark score, just one of them.
+  var scoreInfoHtml = (score !== null && G.benchmarkScoreInfoHtml) ? G.benchmarkScoreInfoHtml([rec], score) : '';
   var summaryHtml = '<section class="focus-review-summary focus-at-a-glance" aria-label="Bakery support summary">' +
     '<div class="focus-review-summary__lead"><span class="focus-review-summary__eyebrow">At a glance</span>' +
     '<h3>' + esc(supportHeading) + '</h3></div>' +
     '<div class="focus-review-summary__facts">' +
-    '<span class="focus-review-summary__fact"><small>Score</small><strong>' + (score !== null ? score + ' / 100' : 'Not available') + '</strong></span>' +
+    '<span class="focus-review-summary__fact focus-review-summary__fact--score"><small>Score</small><strong>' + (score !== null ? score + ' / 100' : 'Not available') + '</strong>' + scoreInfoHtml + '</span>' +
     '<span class="focus-review-summary__fact"><small>To next band</small><strong>' + (scoreGap !== null && scoreGap > 0 ? scoreGap.toFixed(1) + ' pts' : 'In band') + '</strong></span>' +
     '<span class="focus-review-summary__fact' + movementClass + '"><small>Latest change</small><strong>' + movementText + '</strong></span>' +
     '<span class="focus-review-summary__fact"><small>Focus run</small><strong>' + row.focusStreak + ' ' + (row.focusStreak === 1 ? 'month' : 'months') + '</strong></span>' +

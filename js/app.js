@@ -115,6 +115,10 @@
       + '</div>'
       + '</details>';
   }
+  // Shared with the Focus Bakery modal's own Score info icon (js/targets.js),
+  // so both breakdowns come from the exact same weighting/points logic.
+  G.benchmarkComponentScore = benchmarkComponentScore;
+  G.benchmarkScoreInfoHtml = benchmarkScoreInfoHtml;
 
 
   function formatSelectedPeriod() {
