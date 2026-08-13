@@ -144,3 +144,35 @@ test('grouped rows are ranked against the group cohort, not the bakery cohort', 
   const ranks = rows.map((r) => r.companyRank).sort();
   assert.equal(ranks.join(','), '1,2,3');
 });
+
+test('Benchmark Band filters the groups\' own aggregate, not the bakeries under them', () => {
+  const G = createGroupingContext();
+  G.state.bandFilter = 'abs:Exceeding';
+  const rows = G.getGroupedViewData('ops');
+  // North Ops A's real average, (Alpha 80 + Bravo 90) / 2 = 85, is Meeting —
+  // not Exceeding, even though Bravo alone is. Filtering the bakeries first
+  // (the old, buggy behaviour) would have built North Ops A from Bravo alone
+  // and shown it as Exceeding; no ops area's own aggregate actually reaches
+  // Exceeding, so none should be returned.
+  assert.equal(rows.length, 0);
+});
+
+test('Benchmark Band still returns groups whose own aggregate matches', () => {
+  const G = createGroupingContext();
+  G.state.bandFilter = 'abs:Approaching';
+  const names = G.getGroupedViewData('ops').map((r) => r.b).sort();
+  // North Ops B (Charlie, 60) and South Ops (Delta, 70) land in Approaching
+  // on their own aggregate; North Ops A (85, Meeting) does not.
+  assert.equal(names.join(','), 'North Ops B,South Ops');
+});
+
+test('getGroupedAvailableBands reflects the groups\' own bands, not their bakeries\'', () => {
+  const G = createGroupingContext();
+  const available = G.getGroupedAvailableBands('ops');
+  // No ops area's own aggregate reaches Exceeding, even though Bravo alone
+  // does, so it must not be offered as a selectable option here — matching
+  // getGroupedViewData actually returning nothing for it above.
+  assert.equal(available.absolute.has('Exceeding'), false);
+  assert.equal(available.absolute.has('Meeting'), true);
+  assert.equal(available.absolute.has('Approaching'), true);
+});

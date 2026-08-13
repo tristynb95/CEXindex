@@ -269,20 +269,33 @@ window.GAILS.getRollingMonths = function() {
     return { absolute: absolute, relative: new Set() };
   };
 
-  G.getData = function() {
-    var state = G.state;
-    var benchmarkBand = benchmarkBandValue(state.bandFilter);
-    var records = buildCompanyPeriodData().filter(passesNonBandFilters);
-
-    if (benchmarkBand) {
-      records = records.filter(function(record) { return record.acb === benchmarkBand; });
-    }
-
+  function sortByRank(records) {
     return records.sort(function(first, second) {
       if (isRankable(first) !== isRankable(second)) return isRankable(first) ? -1 : 1;
       if (!isRankable(first)) return String(first.b || '').localeCompare(String(second.b || ''), 'en-GB');
       return first.companyRank - second.companyRank;
     });
+  }
+
+  // Region/Ops/search-filtered rows, before Benchmark Band narrows anything
+  // further. Band has to apply AFTER grouping (see G.getGroupedViewData) so
+  // it filters whichever rows are actually on screen — ops areas/regions
+  // when grouped, bakeries otherwise — rather than always filtering the
+  // bakeries underneath a group before they're rolled up, which would leave
+  // a group's own displayed band not matching the band it was filtered to.
+  function getRegionOpsFilteredData() {
+    return buildCompanyPeriodData().filter(passesNonBandFilters);
+  }
+
+  G.getData = function() {
+    var benchmarkBand = benchmarkBandValue(G.state.bandFilter);
+    var records = getRegionOpsFilteredData();
+
+    if (benchmarkBand) {
+      records = records.filter(function(record) { return record.acb === benchmarkBand; });
+    }
+
+    return sortByRank(records);
   };
 
   // A plain mean, matching G.avg — the same function the Overview KPI row
@@ -359,22 +372,54 @@ window.GAILS.getRollingMonths = function() {
     return aggregate;
   }
 
-  // The display-only counterpart to G.getData(): same period/region/ops/band/
-  // search-filtered rows, rolled up to one row per ops area or region. Kept
-  // separate from G.getData() itself so every other consumer (Focus Bakeries,
-  // Speed vs NPS, the word cloud, exports) is unaffected — only refresh()
-  // calls this, and only for the three views that offer the View toggle.
-  G.getGroupedViewData = function(groupBy) {
+  // Ranked ops-area/region rows before Benchmark Band narrows anything —
+  // shared by G.getGroupedViewData (which then applies Band) and
+  // G.getGroupedAvailableBands (which needs the full, unfiltered set to know
+  // what's selectable at all).
+  function buildRankedGroups(groupBy) {
     var keyFn = groupBy === 'region' ? G.getBakeryRegion : G.getBakeryOps;
     var groups = {};
-    G.getData().forEach(function(record) {
+    getRegionOpsFilteredData().forEach(function(record) {
       var key = (keyFn ? keyFn(record.b) : null) || 'Unknown';
       if (!groups[key]) groups[key] = [];
       groups[key].push(record);
     });
-    var aggregated = Object.keys(groups).map(function(key) {
+    return assignCompanyRanking(Object.keys(groups).map(function(key) {
       return buildGroupAggregate(key, groups[key], groupBy);
+    }));
+  }
+
+  // The display-only counterpart to G.getData(): same period/region/ops/
+  // search-filtered rows, rolled up to one row per ops area or region. Kept
+  // separate from G.getData() itself so every other consumer (Focus Bakeries,
+  // Speed vs NPS, the word cloud, exports) is unaffected — only refresh()
+  // calls this, and only for the three views that offer the View toggle.
+  //
+  // Benchmark Band filters the groups themselves (an ops area's/region's own
+  // band), not the bakeries feeding into them, so it's applied here, after
+  // aggregation and ranking, rather than inherited pre-applied at bakery
+  // level. Ranking runs on every group in the region/ops-filtered scope
+  // first, so "3 of 23 ops areas" still means all 23 — Band then narrows
+  // which of those already-ranked rows are returned.
+  G.getGroupedViewData = function(groupBy) {
+    var aggregated = buildRankedGroups(groupBy);
+    var benchmarkBand = benchmarkBandValue(G.state.bandFilter);
+    if (benchmarkBand) {
+      aggregated = aggregated.filter(function(record) { return record.acb === benchmarkBand; });
+    }
+    return aggregated;
+  };
+
+  // The Benchmark Band dropdown's available-options counterpart to
+  // G.getAvailableBands(), scoped to the groups themselves rather than the
+  // bakeries under them — otherwise a band with no ops area/region actually
+  // in it (common: an area's average rarely lands in the same band every one
+  // of its bakeries does) would stay selectable and silently return nothing.
+  G.getGroupedAvailableBands = function(groupBy) {
+    var absolute = new Set();
+    buildRankedGroups(groupBy).forEach(function(record) {
+      if (record.acb) absolute.add(record.acb);
     });
-    return assignCompanyRanking(aggregated);
+    return { absolute: absolute, relative: new Set() };
   };
 }());

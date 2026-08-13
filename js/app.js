@@ -988,16 +988,21 @@
         info: !!config.info
       };
     };
-    var nps = G.avg(scoredData, 'n');
-    var acei = G.avg(scoredData, 'ac');
-    var dr = G.avg(scoredData, 'dr');
-    var ef = G.avg(scoredData, 'ef');
-    var fr = G.avg(scoredData, 'fr');
-    var ts = G.avg(scoredData, 'ts');
-    var o5 = G.avg(scoredData, 'o5');
+    // scoredViewData, not scoredData — the KPI row sits directly under the
+    // League Table/scatter chart it shares the Overview tab with, so it has
+    // to average the same rows they do (ops areas/regions when grouped) or
+    // its headline numbers silently describe a different population than
+    // what's drawn right below them.
+    var nps = G.avg(scoredViewData, 'n');
+    var acei = G.avg(scoredViewData, 'ac');
+    var dr = G.avg(scoredViewData, 'dr');
+    var ef = G.avg(scoredViewData, 'ef');
+    var fr = G.avg(scoredViewData, 'fr');
+    var ts = G.avg(scoredViewData, 'ts');
+    var o5 = G.avg(scoredViewData, 'o5');
     // Avg wait is null on records that predate the KV avg-time columns, so
     // average only the bakeries that have it.
-    var atRows = scoredData.filter(function (r) { return typeof r.at === 'number' && !isNaN(r.at); });
+    var atRows = scoredViewData.filter(function (r) { return typeof r.at === 'number' && !isNaN(r.at); });
     var at = atRows.length ? atRows.reduce(function (a, r) { return a + r.at; }, 0) / atRows.length : null;
     var atCard = at === null
       ? {
@@ -1028,7 +1033,7 @@
         compare: Math.round(acei),
         display: Math.round(acei).toString(),
         eyebrow: 'Index',
-        title: 'Benchmark Score',
+        title: state.dashboardView === 'bakeries' ? 'Benchmark Score' : 'Benchmark Score (' + (state.dashboardView === 'region' ? 'Regions' : 'Ops Areas') + ')',
         meta: 'Target: ' + BENCHMARK_MEETING_SCORE,
         priorKey: 'ac',
         bands: [
@@ -1614,9 +1619,12 @@
 
     var activePanel = document.querySelector('.tab-content.active');
     var currentTab = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
+    var isGroupedView = DASHBOARD_VIEW_SCOPED_TABS[currentTab] && state.dashboardView !== 'bakeries';
     var available = currentTab === 'target' && G.getFocusAvailableBands
       ? G.getFocusAvailableBands()
-      : G.getAvailableBands();
+      : isGroupedView && G.getGroupedAvailableBands
+        ? G.getGroupedAvailableBands(state.dashboardView)
+        : G.getAvailableBands();
     var currentValue = state.bandFilter;
 
     // Rebuild select from original structure, omitting unavailable options
@@ -1646,6 +1654,11 @@
       });
     });
 
+    // Plain "Benchmark Band" regardless of View: the select sits in the same
+    // row as View, and the header chip/KPI title already say "Ops Areas" —
+    // a fourth callout here was redundant with those, and cost a two-line
+    // label wrap. Region/Ops Area/Bakery don't get suffixed either; they
+    // signal via disabling instead, so this keeps Band consistent with them.
     var bandFilterLabelEl = document.getElementById('bandFilterLabel');
     if (bandFilterLabelEl) bandFilterLabelEl.textContent = 'Benchmark Band';
 
