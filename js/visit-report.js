@@ -503,7 +503,7 @@ window.GAILS = window.GAILS || {};
       { label: 'Barista', value: record.mod || '—' },
       { label: 'Head Barista Present', value: record.headBaristaPresent || '—' },
       { label: 'Staff on Shift', value: record.numberOfStaff != null ? record.numberOfStaff : '—' },
-      { label: 'Visited', value: visitDaysAgoLabel(record) }
+      { label: 'Completed', value: visitDaysAgoLabel(record) }
     ];
     return '<dl class="drill-summary visit-report-overview" aria-label="Report overview">' + cards.map(function (c, index) {
       var classes = 'drill-card visit-report-stat' + (index === 0 ? ' visit-report-stat--primary' : '');
@@ -589,7 +589,7 @@ window.GAILS = window.GAILS || {};
       { label: 'Rating', value: band || '—', color: bandColor },
       { label: 'Points', value: (record.score != null) ? record.score + ' / ' + (record.scoreMax != null ? record.scoreMax : '—') : '—' },
       { label: 'Coffee Partner', value: record.auditorName || '—' },
-      { label: 'Visited', value: visitDaysAgoLabel(record) }
+      { label: 'Completed', value: visitDaysAgoLabel(record) }
     ];
     return buildReportOverviewHtml(cards);
   }
@@ -733,7 +733,7 @@ window.GAILS = window.GAILS || {};
       { label: 'Met', value: scorable.yes + ' of ' + scorable.total },
       { label: 'To Work On', value: String(counts.no || 0), color: (counts.no ? '#B22A24' : null) },
       { label: 'Coffee Partner', value: record.auditorName || '—' },
-      { label: 'Visited', value: visitDaysAgoLabel(record) }
+      { label: 'Completed', value: visitDaysAgoLabel(record) }
     ];
     return buildReportOverviewHtml(cards);
   }
@@ -1022,7 +1022,7 @@ window.GAILS = window.GAILS || {};
           '<div><dt>Visited by</dt><dd>' + siteVisitCoffeePartnerHtml(record) + '</dd></div>' +
           '<div><dt>Barista</dt><dd>' + escapeHtml(record.mod || '—') + '</dd></div>' +
           '<div><dt>Region · Ops</dt><dd>' + escapeHtml(area.join(' · ') || '—') + '</dd></div>' +
-          '<div><dt>Visited</dt><dd>' + escapeHtml(visitDaysAgoLabel(record)) + '</dd></div>' +
+          '<div><dt>Completed</dt><dd>' + escapeHtml(visitDaysAgoLabel(record)) + '</dd></div>' +
         '</dl>' +
       '</section>' +
       buildVisitMonthHtml(record) +
@@ -1999,7 +1999,17 @@ window.GAILS = window.GAILS || {};
 
   function syncVisitLogSectionTitle(view) {
     var el = document.getElementById('visitLogSectionTitle');
-    if (el) el.textContent = VISIT_LOG_VIEW_TITLES[view] || VISIT_LOG_VIEW_TITLES.history;
+    if (!el) return;
+    var baseTitle = VISIT_LOG_VIEW_TITLES[view] || VISIT_LOG_VIEW_TITLES.history;
+    // History and Unvisited Sites are the two views scoped by the Period
+    // filter, so their title names the period in view alongside them.
+    if (view === 'history' || view === 'unvisited') {
+      var periodEl = document.getElementById('visitLogPeriod');
+      var periodVal = periodEl ? periodEl.value : getVisitLogDefaultPeriod(view);
+      el.textContent = baseTitle + ' - ' + getPeriodLabel(periodVal);
+    } else {
+      el.textContent = baseTitle;
+    }
   }
 
   // One primary action per view, in the card's header slot.

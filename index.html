@@ -1593,7 +1593,7 @@
           <!-- LEAGUE TABLE -->
           <div class="tab-content" id="tab-table">
             <div class="league-table-toolbar" data-table-fullscreen-anchor="true">
-              <h1 class="focus-subtab-title league-table-toolbar__title">League Table</h1>
+              <h1 class="focus-subtab-title league-table-toolbar__title" id="leagueTableSectionTitle">League Table</h1>
               <label class="league-table-toolbar__label">Sort by: <select id="sortBy"
                   class="league-table-toolbar__select">
                   <option value="ac" selected>Benchmark Score</option>
@@ -1652,7 +1652,7 @@
             <div class="map-panel" id="networkMapPanel" data-map-key="network">
               <div class="map-section-header" style="margin-bottom:12px;">
                 <div class="map-control-bar">
-                  <h1 class="focus-subtab-title map-panel-title">Map</h1>
+                  <h1 class="focus-subtab-title map-panel-title" id="mapSectionTitle">Map</h1>
                   <div class="map-toggle-group">
                     <span class="map-toggle-label">
                       <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
@@ -1983,9 +1983,9 @@
 
           <!-- CUSTOMER FEEDBACK WORD CLOUD -->
           <div class="tab-content" id="tab-feedback">
-            <h1 class="focus-subtab-title">Comment Cloud</h1>
+            <h1 class="focus-subtab-title" id="feedbackSectionTitle">Comment Cloud</h1>
             <p class="target-hint">Words drawn from customer reviews. Larger
-              words appear more frequently. Shows data for the latest completed month.</p>
+              words appear more frequently. Shows data for the selected period.</p>
 
             <div id="wcStatus" class="status" style="margin-bottom:10px"></div>
 

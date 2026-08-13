@@ -23,7 +23,6 @@ window.GAILS = window.GAILS || {};
   var lastTargetPrevWcParamsKey = null;
   var lastTargetPrevPeriodLabel = '';
   var resizeTimer = null;
-  var MAIN_MONTH_COUNT = 1;       // main comment cloud always shows the latest completed month only
   var targetMonthCount = 1;       // how many of the most recent closed months to include (default: latest month only)
   var targetMonthSliderBound = false;
 
@@ -738,21 +737,19 @@ window.GAILS = window.GAILS || {};
       if (bakeries.length > 0) body.bakery_locations = bakeries;
     }
 
-    var allClosedMonths = (G && typeof G.getFocusClosedMonths === 'function' && state)
-      ? G.getFocusClosedMonths(new Date(), state.ALL)
-      : [];
-    var wcMonths = allClosedMonths.length
-      ? allClosedMonths.slice(Math.max(0, allClosedMonths.length - MAIN_MONTH_COUNT))
-      : [];
+    // Follows the shared Period / Month filter, same as every other dashboard
+    // tab — state.selectedMonths is already resolved from #rollingWindow (or
+    // pinned to one explicit month via #monthSelect) in refresh().
+    var wcMonths = (state && state.selectedMonths) ? state.selectedMonths : [];
     if (wcMonths.length) {
       body.start_date = monthLabelToIso(wcMonths[0], false);
       body.end_date   = monthLabelToIso(wcMonths[wcMonths.length - 1], true);
     }
 
     var paramsKey = buildWcParamsKey(body);
-    // Compare against the equivalent preceding window (e.g. latest month vs the
+    // Compare against the equivalent preceding window (e.g. this month vs the
     // month before it) so the drift panel shows how comments have shifted.
-    var prevInfo  = buildPrevPeriodInfo(wcMonths, allClosedMonths);
+    var prevInfo  = buildPrevPeriodInfo(wcMonths, (state && state.MONTHS) || []);
 
     // Skip the API call if filters haven't changed and we already have a result
     if (!force && paramsKey === lastWcParamsKey && lastWordData !== null) {

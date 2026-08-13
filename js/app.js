@@ -334,6 +334,36 @@
 
   syncMobileFilterIndexLabel();
 
+  // The five tabs whose data is scoped by the shared Period/Month filter.
+  // Their heading names the period in view, mirroring Bakery Reports' own
+  // Visit History / Unvisited Sites titles (js/visit-report.js).
+  var periodScopedTabTitleEls = {
+    overview: null, // shares #sectionPageTitle, resolved lazily below
+    trends: null,   // shares #sectionPageTitle, resolved lazily below
+    table: 'leagueTableSectionTitle',
+    map: 'mapSectionTitle',
+    feedback: 'feedbackSectionTitle'
+  };
+
+  // #monthSelect pins one explicit month and always wins over #rollingWindow
+  // (picking either resets the other — see their change listeners below).
+  function getDashboardPeriodLabel() {
+    var monthEl = document.getElementById('monthSelect');
+    if (monthEl && monthEl.value) return monthEl.value;
+    var periodEl = document.getElementById('rollingWindow');
+    var opt = periodEl ? periodEl.options[periodEl.selectedIndex] : null;
+    return opt ? opt.textContent : '';
+  }
+
+  function syncPeriodScopedTitle(name) {
+    if (!(name in periodScopedTabTitleEls)) return;
+    var base = dashboardTabLabels[name] || name;
+    var text = base + ' - ' + getDashboardPeriodLabel();
+    var elId = periodScopedTabTitleEls[name];
+    var el = elId ? document.getElementById(elId) : sectionPageTitle;
+    if (el) el.textContent = text;
+  }
+
   function updateDashboardActiveView(name) {
     if (dashboardActiveViewLabel) {
       dashboardActiveViewLabel.textContent = dashboardTabLabels[name] || name;
@@ -341,6 +371,7 @@
     if (sectionPageTitle) {
       sectionPageTitle.textContent = dashboardTabLabels[name] || name;
     }
+    syncPeriodScopedTitle(name);
     updateDashboardActiveIndex(name);
     syncMobileFilterIndexLabel();
     // Expose the active tab so tab-specific layout tweaks can be scoped in CSS.
@@ -856,6 +887,11 @@
     if (state.ALL.length === 0) return;
     updateDashboardActiveIndex();
     updateBandFilterOptions();
+    // Period/Month filter changes call refresh() directly, without going
+    // through updateDashboardActiveView, so the active tab's period-scoped
+    // title needs its own sync here to stay live.
+    var activePanel = document.querySelector('.tab-content.active');
+    syncPeriodScopedTitle(activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview');
     var data = G.getData();
     var scoredData = data.filter(function (r) { return r && !r.noData; });
     var n = scoredData.length;
