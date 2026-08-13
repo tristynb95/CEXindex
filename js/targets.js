@@ -1621,6 +1621,8 @@ document.addEventListener('keydown', function (event) {
   }
 
   function getPopupHtml(item, color, bandField, colorMode) {
+    if (item.isGroup) return getGroupPopupHtml(item, color, bandField);
+
     var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b;
     var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
     var region = GAILS.getBakeryRegion ? GAILS.getBakeryRegion(item.b) : 'Unknown';
@@ -1676,13 +1678,40 @@ document.addEventListener('keydown', function (event) {
       '</div>';
   }
 
+  // A grouped marker (View = Ops Areas/Regions) has no single site to visit
+  // and no ops/region lookup of its own \u2014 it IS the ops area/region \u2014 so this
+  // skips the visit-report button and swaps the mgr/meta lines for a member count.
+  function getGroupPopupHtml(item, color, bandField) {
+    var memberLabel = item.memberCount + (item.memberCount === 1 ? ' bakery' : ' bakeries');
+    if (item.noData) {
+      return '<div class="map-popup">' +
+        '<div class="map-popup__name">' + escapeHtml(item.b) + '</div>' +
+        '<span class="map-popup__band" style="background:' + color + '">Not Scored</span>' +
+        '<div class="map-popup__stats">No performance data is available for this period</div>' +
+        '<div class="map-popup__mgr">' + escapeHtml(memberLabel) + '</div>' +
+        '</div>';
+    }
+    var band = item[(bandField || 'cb')];
+    var isAbs = bandField === 'acb';
+    var score = isAbs ? item.ac : item.c;
+    var cei = score != null ? score : '\u2014';
+    var nps = item.n != null ? item.n : '\u2014';
+    var volume = item.v != null ? item.v : '\u2014';
+    return '<div class="map-popup">' +
+      '<div class="map-popup__name">' + escapeHtml(item.b) + '</div>' +
+      '<span class="map-popup__band" style="background:' + color + '">' + escapeHtml(band || 'Unknown') + '</span>' +
+      '<div class="map-popup__stats">Index <strong>' + escapeHtml(cei) + '</strong> &nbsp;&middot;&nbsp; NPS ' + escapeHtml(nps) + ' &nbsp;&middot;&nbsp; Vol ' + escapeHtml(volume) + '</div>' +
+      '<div class="map-popup__mgr">' + escapeHtml(memberLabel) + '</div>' +
+      '</div>';
+  }
+
   // Hover-intent delay before the at-a-glance marker tooltip appears.
   var GLANCE_TOOLTIP_DELAY_MS = 350;
 
   // Compact hover tooltip: bakery name plus the headline score, so users can
   // scan sites without clicking. The click popup remains the full detail view.
   function getGlanceHtml(item, color, bandField) {
-    var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b;
+    var siteLabel = item.isGroup ? item.b : (GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b);
     var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px"></span>';
     var scoreStr;
     if (item.noData) {
@@ -2102,7 +2131,9 @@ document.addEventListener('keydown', function (event) {
 
     items.forEach(function (item) {
       var meta = GAILS.getBakeryMeta ? GAILS.getBakeryMeta(item.b) : GAILS.BAKERY_META[item.b];
-      var ll = meta && meta.ll;
+      // A grouped row (View = Ops Areas/Regions) carries its own precomputed
+      // centroid — there's no directory entry for a group's synthetic name.
+      var ll = item.ll || (meta && meta.ll);
       if (!ll) {
         missing.push(item.b);
         return;

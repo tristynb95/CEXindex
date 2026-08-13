@@ -437,11 +437,22 @@ window.GAILS.renderTrendCharts = function (data) {
     return trendScopeLabel ? base + ' \u2014 ' + trendScopeLabel : base;
   }
 
+  // When the dashboard View is set to Ops Areas/Regions, the two headline
+  // charts below compare groups instead of metrics \u2014 one line per group, on
+  // a single metric each. The band-mix and timing-mix charts stay as a
+  // single aggregate across whatever's in scope; splitting those further by
+  // group as well would be unreadable.
+  var trendGroupBy = state.dashboardView;
+  var isGroupedTrend = trendGroupBy === 'ops' || trendGroupBy === 'region';
+  var trendGroupKeyFn = trendGroupBy === 'region' ? G.getBakeryRegion : G.getBakeryOps;
+  var trendGroupLabel = trendGroupBy === 'region' ? 'Regions' : 'Ops Areas';
+  var TREND_GROUP_PALETTE = ['#1E70C4', '#1D9E5C', '#C97F12', '#6B4FA8', '#B22A24', '#0E8074', '#C9508B', '#4C6B8A', '#9C7A1E', '#2F8F6B', '#8A4FA8', '#5A6B3D'];
+
   // Update h2 titles
   var el;
-  el = document.getElementById('trendCXTitle'); if (el) el.textContent = trendTitle('Average CX Scores by Month');
+  el = document.getElementById('trendCXTitle'); if (el) el.textContent = isGroupedTrend ? ('Benchmark Score by Month \u2014 ' + trendGroupLabel) : trendTitle('Average CX Scores by Month');
   el = document.getElementById('trendAbsBandsTitle'); if (el) el.textContent = trendTitle('Benchmark Score Bands by Month');
-  el = document.getElementById('trendNpsSplitTitle'); if (el) el.textContent = trendTitle('Average NPS by Month');
+  el = document.getElementById('trendNpsSplitTitle'); if (el) el.textContent = isGroupedTrend ? ('Average NPS by Month \u2014 ' + trendGroupLabel) : trendTitle('Average NPS by Month');
   el = document.getElementById('trendWaitPressureTitle'); if (el) el.textContent = trendTitle('Coffee Timing Mix by Month');
 
   function rowsForMonth(month) {
@@ -463,10 +474,48 @@ window.GAILS.renderTrendCharts = function (data) {
   // split chart below, and returned here for callers that want the raw series.
   var trendNPS = RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.reduce(function (a, r) { return a + r.n; }, 0) / mr.length : null; });
 
+  // One line per ops area/region on a single metric, replacing the usual
+  // one-line-per-metric view. A simple (not volume-weighted) monthly mean,
+  // matching how every trend line on this tab already averages its scope.
+  function groupedMonthlySeries(metricKey) {
+    var namesSeen = {};
+    trendScopedAll.forEach(function (r) {
+      namesSeen[(trendGroupKeyFn ? trendGroupKeyFn(r.b) : null) || 'Unknown'] = true;
+    });
+    var groupNames = Object.keys(namesSeen).sort();
+    return groupNames.map(function (name, idx) {
+      var color = TREND_GROUP_PALETTE[idx % TREND_GROUP_PALETTE.length];
+      return {
+        label: name,
+        data: RM.map(function (m) {
+          var monthRows = rowsForMonth(m).filter(function (r) {
+            return ((trendGroupKeyFn ? trendGroupKeyFn(r.b) : null) || 'Unknown') === name;
+          });
+          return monthRows.length ? round1OrNull(avgDefined(monthRows, metricKey)) : null;
+        }),
+        borderColor: color,
+        backgroundColor: color + '18',
+        tension: 0.3,
+        pointRadius: 2.5,
+        borderWidth: 2
+      };
+    });
+  }
+
   var trendKeys = [{ k: 'dr', l: 'Quality', c: '#1E70C4' }, { k: 'ef', l: 'Overall Efficiency', c: '#1D9E5C' }, { k: 'fr', l: 'Friendliness', c: '#C97F12' }, { k: 'ov', l: 'Overall', c: '#6B4FA8' }];
-  G.makeChart('trendCX', { type: 'line', data: { labels: RM, datasets: trendKeys.map(function (tk) { return { label: tk.l, data: RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.reduce(function (a, r) { return a + r[tk.k]; }, 0) / mr.length : null; }), borderColor: tk.c, tension: 0.3, pointRadius: 3, borderWidth: 2 }; }) }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Score %' } } } } });
+  G.makeChart('trendCX', {
+    type: 'line',
+    data: {
+      labels: RM,
+      datasets: isGroupedTrend
+        ? groupedMonthlySeries('ac')
+        : trendKeys.map(function (tk) { return { label: tk.l, data: RM.map(function (m) { var mr = rowsForMonth(m); return mr.length ? mr.reduce(function (a, r) { return a + r[tk.k]; }, 0) / mr.length : null; }), borderColor: tk.c, tension: 0.3, pointRadius: 3, borderWidth: 2 }; })
+    },
+    options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { title: { display: true, text: 'Score %' } } } }
+  });
 
   // NPS split trend: exposes the newer Coffee / Meal / All-response columns.
+  // Grouped mode swaps this for one line per group on headline (Drink+Meal) NPS.
   var npsSplitKeys = [
     { k: 'n', l: 'Drink + Meal', c: '#315FA8', dash: [], pointStyle: 'circle', pointFill: '#315FA8', width: 2.75 },
     { k: 'nc', l: 'Coffee Only', c: '#0E8074', dash: [7, 4], pointStyle: 'triangle', pointFill: '#FFFFFF', width: 2.25 },
@@ -477,7 +526,7 @@ window.GAILS.renderTrendCharts = function (data) {
     type: 'line',
     data: {
       labels: RM,
-      datasets: npsSplitKeys.map(function (tk) {
+      datasets: isGroupedTrend ? groupedMonthlySeries('n') : npsSplitKeys.map(function (tk) {
         return {
           label: tk.l,
           data: RM.map(function (m) {
@@ -601,6 +650,25 @@ window.GAILS.renderTrendCharts = function (data) {
     var trackerStatusEl = document.getElementById('bakeryTrackerStatus');
     var trackerCanvas = document.getElementById('bakeryTracker');
     var trackerTableEl = document.getElementById('bakeryTrackerTable');
+    var trackerTitleEl = document.getElementById('bakeryTrackerTitle');
+    var trackerHintEl = document.getElementById('bakeryTrackerHint');
+
+    // The View toggle disables the Bakery filter (and Ops Area, for Regions)
+    // once rows are grouped past it, so this tracker has nothing to select
+    // and instead names the level it's showing everything at.
+    var subject = state.dashboardView === 'region'
+      ? { singular: 'Region', plural: 'Regions', lower: 'regions' }
+      : state.dashboardView === 'ops'
+        ? { singular: 'Ops Area', plural: 'Ops Areas', lower: 'ops areas' }
+        : { singular: 'Bakery', plural: 'Bakeries', lower: 'bakeries' };
+    var isGroupedTracker = state.dashboardView === 'ops' || state.dashboardView === 'region';
+    if (trackerTitleEl) trackerTitleEl.textContent = subject.singular + ' Tracker';
+    if (trackerHintEl) {
+      trackerHintEl.textContent = isGroupedTracker
+        ? 'Shows combined monthly trends across every ' + subject.lower + ' in the current filter scope.'
+        : 'Use the bakery filter above to compare monthly trends. One bakery shows actual datapoints; multiple bakeries show a combined average; no selection shows the all-bakeries average.';
+    }
+
     var selectedBakeries = Array.isArray(state.searchBakery) ? state.searchBakery.slice() : [];
     var scopedRows = state.ALL.filter(function (r) {
       if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(r.b))) return false;
@@ -645,7 +713,7 @@ window.GAILS.renderTrendCharts = function (data) {
 
     var scopeLabel = selectedBakeries.length
       ? (selectedBakeries.length === 1 ? selectedBakeries[0] : selectedBakeries.length + ' selected bakeries')
-      : 'All bakeries';
+      : 'All ' + subject.lower;
     var trackerRows = RM.map(function (m) {
       var scopedMonthRows = scopedRows.filter(function (r) { return r.m === m; });
       var benchmarkMonthRows = benchmarkRows.filter(function (r) { return r.m === m; });
@@ -691,7 +759,7 @@ window.GAILS.renderTrendCharts = function (data) {
         ? 'Showing monthly datapoints for ' + scopeLabel + '.'
         : selectedBakeries.length
           ? 'Showing combined monthly averages for ' + scopeLabel + '.'
-          : 'Showing all-bakeries monthly averages.';
+          : 'Showing all-' + subject.lower.replace(' ', '-') + ' monthly averages.';
       trackerStatusEl.className = 'status success';
     }
 
@@ -700,12 +768,12 @@ window.GAILS.renderTrendCharts = function (data) {
         ? scopeLabel + ' Monthly Performance'
         : selectedBakeries.length
           ? 'Combined Monthly Performance for ' + scopeLabel
-          : 'All Bakeries Monthly Average Performance';
+          : 'All ' + subject.plural + ' Monthly Average Performance';
       var tableDescription = isSingleBakery
         ? 'Actual monthly datapoints for ' + scopeLabel + ', with all-bakeries average NPS (Drink + Meal) shown for context.'
         : selectedBakeries.length
           ? 'Monthly average scores across the selected bakeries, with all-bakeries average NPS (Drink + Meal) shown for context.'
-          : 'Monthly average scores across every bakery in the current filter scope.';
+          : 'Monthly average scores across every ' + subject.singular.toLowerCase() + ' in the current filter scope.';
       trackerTableEl.innerHTML = trackerTableRows.length
         ? '<div class="tracker-table-header" data-table-fullscreen-anchor="true"><div class="tracker-table-header__content"><h3 class="tracker-table-header__title">'
         + tableTitle

@@ -563,13 +563,30 @@ h4 {
 
 .filter-controls {
   display: grid;
-  grid-template-columns: repeat(6, 1fr) auto;
+  grid-template-columns: repeat(7, 1fr) auto;
   gap: 12px;
   align-items: end;
 }
 
 .filter-control {
   min-width: 0;
+}
+
+/* Focus Bakeries has no notion of Ops Area/Region rollups — it always
+   triages individual bakeries — so the View filter is irrelevant there and
+   would otherwise sit inert. Hiding it needs the desktop grid dropped back
+   to 6 equal columns so Reset doesn't inherit its empty 1fr track — but
+   only at the width the unqualified 7-column rule above actually applies;
+   the narrower breakpoints below already reflow around any item count on
+   their own and must not be fought with a higher-specificity override. */
+@media (min-width: 1321px) {
+  body[data-dash-tab="target"] .filter-controls {
+    grid-template-columns: repeat(6, 1fr) auto;
+  }
+}
+
+body[data-dash-tab="target"] .filter-control--view {
+  display: none;
 }
 
 /* Single-line uppercase, so the line box need not reserve the descender room
@@ -937,6 +954,22 @@ h4 {
 .bakery-ms__trigger.is-open .bakery-ms__trigger-icon {
   border-color: var(--accent);
   transform: rotate(-135deg) translateY(-1px);
+}
+
+/* The View toggle disables Ops Area/Bakery once their filter is superseded
+   by a coarser grouping — mirrors .filter-select__trigger:disabled. */
+.bakery-ms__trigger:disabled,
+.bakery-ms__trigger:disabled:hover {
+  cursor: not-allowed;
+  color: var(--muted);
+  border-color: var(--card-border);
+  background: rgba(146, 137, 120, 0.08);
+  box-shadow: none;
+  opacity: 0.82;
+}
+
+.bakery-ms__trigger:disabled .bakery-ms__trigger-icon {
+  opacity: 0.45;
 }
 
 /* Dropdown panel */

@@ -542,11 +542,12 @@ window.GAILS.renderLeagueTable = function (data) {
       '<td style="font-weight:600">&mdash;</td>' +
       '<td style="font-weight:500">' + G.bakeryProfileLink(b.b, {
         returnUrl: 'index.html#table',
-        returnLabel: 'League Table'
+        returnLabel: 'League Table',
+        isGroup: b.isGroup
       }) + '</td>' +
       '<td style="font-weight:600">&mdash;</td>' +
-      '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryRegion(b.b) + '</td>' +
-      '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(b.b) + '</td>' +
+      '<td style="font-size:0.68rem;color:var(--muted)">' + (b.isGroup ? G.escapeHtml(b.region || '—') : G.getBakeryRegion(b.b)) + '</td>' +
+      '<td style="font-size:0.68rem;color:var(--muted)">' + (b.isGroup ? (b.groupType === 'ops' ? (b.memberCount + (b.memberCount === 1 ? ' bakery' : ' bakeries')) : '—') : G.getBakeryOps(b.b)) + '</td>' +
       '<td style="font-weight:600">' + numOrDash(b.ac) + '</td>' +
       '<td><span class="band ' + absBandClass(b.acb) + '">' + b.acb + '</span></td>' +
       '<td><span class="conf ' + G.bc(b.co) + '"' + coverageNote + '>' + b.co + '</span></td>' +

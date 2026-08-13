@@ -171,7 +171,8 @@ window.GAILS = window.GAILS || {};
         render: function(row) {
           return '<span class="drill-cell-strong">' + GAILS.bakeryProfileLink(row.b, {
             returnUrl: 'index.html#overview',
-            returnLabel: 'Overview'
+            returnLabel: 'Overview',
+            isGroup: row.isGroup
           }) + '</span>';
         }
       },
@@ -179,13 +180,18 @@ window.GAILS = window.GAILS || {};
         label: 'Region',
         detail: true,
         render: function(row, index, G) {
-          return '<span class="drill-cell-meta">' + escapeHtml(G.getBakeryRegion(row.b)) + '</span>';
+          var region = row.isGroup ? (row.region || '—') : G.getBakeryRegion(row.b);
+          return '<span class="drill-cell-meta">' + escapeHtml(region) + '</span>';
         }
       },
       {
         label: 'Ops Area',
         detail: true,
         render: function(row, index, G) {
+          if (row.isGroup) {
+            var opsLabel = row.groupType === 'ops' ? (row.memberCount + (row.memberCount === 1 ? ' bakery' : ' bakeries')) : '—';
+            return '<span class="drill-cell-meta">' + escapeHtml(opsLabel) + '</span>';
+          }
           return '<span class="drill-cell-meta">' + escapeHtml(G.getBakeryOps(row.b)) + '</span>';
         }
       }

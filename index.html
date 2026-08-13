@@ -316,6 +316,11 @@
                 <option value="thisYear">This Year</option>
                 <option value="lastYear">Last Year</option>
               </select></div>
+            <div class="filter-control filter-control--view"><label>View</label><br><select id="dashboardView">
+                <option value="bakeries" selected>Bakeries</option>
+                <option value="ops">Ops Areas</option>
+                <option value="region">Regions</option>
+              </select></div>
             <div class="filter-control">
               <label>Region</label><br>
               <div class="bakery-ms" id="regionMultiselect">
@@ -970,8 +975,8 @@
               </div>
             </div>
             <div class="section trends-tracker">
-              <h2>Bakery Tracker</h2>
-              <p class="chart-caption">Use the bakery filter above to compare monthly trends. One bakery shows actual
+              <h2 id="bakeryTrackerTitle">Bakery Tracker</h2>
+              <p class="chart-caption" id="bakeryTrackerHint">Use the bakery filter above to compare monthly trends. One bakery shows actual
                 datapoints; multiple bakeries show a combined average; no selection shows the all-bakeries average.</p>
               <div id="bakeryTrackerStatus" class="status trends-tracker__status">Showing all-bakeries averages.</div>
               <div class="trend-chart trend-chart--tracker"><canvas id="bakeryTracker"></canvas></div>

@@ -11,6 +11,7 @@ window.GAILS.state = {
   bandFilter: '',
   regionFilter: [],
   opsFilter: [],
+  dashboardView: 'bakeries', // 'bakeries' | 'ops' | 'region' — League Table/Map/Trends/Overview grouping
   dataLastUpdated: null, // ISO timestamp from the workbook's "Last Updated" tab
 
   PERIODS: {},

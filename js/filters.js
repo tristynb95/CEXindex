@@ -284,4 +284,102 @@ window.GAILS.getRollingMonths = function() {
       return first.companyRank - second.companyRank;
     });
   };
+
+  // Averaged across differently-sized bakeries (unlike aggregatePeriodRecords,
+  // which averages one bakery's own months), so a plain mean would let several
+  // small sites dilute one large site's real result. Weighting by each row's
+  // response volume keeps the group's headline numbers representative.
+  var GROUP_WEIGHTED_FIELDS = [
+    'n', 's2', 's3', 's4', 'o5', 'ov', 'fr', 'dr', 'ef', 'ep', 'dp', 'fp',
+    'np', 'c', 's2w', 'ac', 'ats', 'a_at', 'c_raw', 'ac_raw', 's30',
+    'at', 'at12', 'at9', 'nc', 'nm', 'nd', 'na'
+  ];
+  var GROUP_SUMMED_FIELDS = ['v', 'td', 'vc', 'vf', 'va'];
+
+  function groupCentroid(rows) {
+    var pts = [];
+    rows.forEach(function(r) {
+      var meta = G.getBakeryMeta ? G.getBakeryMeta(r.b) : null;
+      if (meta && meta.ll) pts.push(meta.ll);
+    });
+    if (!pts.length) return null;
+    return [
+      pts.reduce(function(total, p) { return total + p[0]; }, 0) / pts.length,
+      pts.reduce(function(total, p) { return total + p[1]; }, 0) / pts.length
+    ];
+  }
+
+  function buildGroupAggregate(groupName, rows, groupBy) {
+    var scoredRows = rows.filter(isScoredRow);
+    var statRows = scoredRows.length ? scoredRows : rows;
+    var round1 = function(value) {
+      return value === null || value === undefined ? null : Math.round(value * 10) / 10;
+    };
+    // Volume-weighted mean, falling back to a plain mean over defined values
+    // if every contributing row's volume is zero/unknown.
+    var wavg = function(key) {
+      var totalWeight = 0, totalValue = 0;
+      statRows.forEach(function(record) {
+        var value = record[key], weight = record.v;
+        if (typeof value === 'number' && !isNaN(value) && typeof weight === 'number' && weight > 0) {
+          totalValue += value * weight;
+          totalWeight += weight;
+        }
+      });
+      if (totalWeight > 0) return totalValue / totalWeight;
+      var defined = statRows
+        .map(function(record) { return record[key]; })
+        .filter(function(value) { return typeof value === 'number' && !isNaN(value); });
+      return defined.length ? defined.reduce(function(total, value) { return total + value; }, 0) / defined.length : null;
+    };
+    var sum = function(key) {
+      var total = 0, count = 0;
+      rows.forEach(function(record) {
+        var value = record[key];
+        if (typeof value === 'number' && !isNaN(value)) { total += value; count++; }
+      });
+      return count ? Math.round(total) : 0;
+    };
+
+    var aggregate = {
+      b: groupName,
+      isGroup: true,
+      groupType: groupBy,
+      region: groupBy === 'region' ? groupName : (G.getBakeryRegion(rows[0].b) || 'Unknown'),
+      memberCount: rows.length,
+      m: rows[0] ? rows[0].m : '',
+      incompletePeriod: scoredRows.length === 0,
+      partialPeriod: false,
+      ll: groupCentroid(rows)
+    };
+    GROUP_WEIGHTED_FIELDS.forEach(function(key) { aggregate[key] = round1(wavg(key)); });
+    GROUP_SUMMED_FIELDS.forEach(function(key) { aggregate[key] = sum(key); });
+    // markDataCoverage/ensureBands seed sane placeholders; recomputeTimelinessRanks
+    // (called once over the whole cohort below, same as aggregatePeriodRecords)
+    // overwrites the score-dependent fields with values ranked against the
+    // group cohort rather than the bakery cohort.
+    G.markDataCoverage(aggregate);
+    G.ensureBands(aggregate);
+    return aggregate;
+  }
+
+  // The display-only counterpart to G.getData(): same period/region/ops/band/
+  // search-filtered rows, rolled up to one row per ops area or region. Kept
+  // separate from G.getData() itself so every other consumer (Focus Bakeries,
+  // Speed vs NPS, the word cloud, exports) is unaffected — only refresh()
+  // calls this, and only for the four views that offer the View toggle.
+  G.getGroupedViewData = function(groupBy) {
+    var keyFn = groupBy === 'region' ? G.getBakeryRegion : G.getBakeryOps;
+    var groups = {};
+    G.getData().forEach(function(record) {
+      var key = (keyFn ? keyFn(record.b) : null) || 'Unknown';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(record);
+    });
+    var aggregated = Object.keys(groups).map(function(key) {
+      return buildGroupAggregate(key, groups[key], groupBy);
+    });
+    G.recomputeTimelinessRanks(aggregated);
+    return assignCompanyRanking(aggregated);
+  };
 }());

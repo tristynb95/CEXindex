@@ -244,6 +244,13 @@
     if (currentTab === 'target') coreConfigText = 'All Time \u00b7 ' + bakeryLabel;
     pills.push('<span class="header-pill-core">' + escapeHtml(coreConfigText) + '</span>');
 
+    // Optional bubble: View — only on the tabs the toggle actually governs,
+    // and only when it's grouping (its "Bakeries" default needs no chip).
+    if (DASHBOARD_VIEW_SCOPED_TABS[currentTab] && state.dashboardView !== 'bakeries') {
+      var viewText = 'View: ' + (state.dashboardView === 'region' ? 'Regions' : 'Ops Areas');
+      pills.push('<span class="header-pill-filter">' + escapeHtml(viewText) + '</span>');
+    }
+
     // Optional bubble: Region
     var selRegions = state.regionFilter || [];
     if (selRegions.length > 0) {
@@ -619,6 +626,7 @@
     updateDashboardActiveView(name);
     syncDashboardKpis(name);
     syncFocusPeriodControls(name);
+    syncDashboardViewFilterAvailability();
     renderHeaderSummary();
     updateBandFilterOptions();
 
@@ -896,7 +904,13 @@
     var scoredData = data.filter(function (r) { return r && !r.noData; });
     var n = scoredData.length;
     updateHeaderSummary(data.length);
-    G.storeDashboardMapData(data);
+    // League Table / Map / Overview / (part of) Trends read this instead of
+    // `data` directly, so the View toggle (Bakeries/Ops Areas/Regions) only
+    // ever touches those four — Focus Bakeries, Speed vs NPS, and the word
+    // cloud keep working off individual bakeries regardless of its setting.
+    var viewData = state.dashboardView === 'bakeries' ? data : G.getGroupedViewData(state.dashboardView);
+    var scoredViewData = viewData === data ? scoredData : viewData.filter(function (r) { return r && !r.noData; });
+    G.storeDashboardMapData(viewData);
     if (data.length === 0 || n === 0) {
       // Two rows of four: Benchmark leads the SHINE trio, NPS leads the KV Link trio.
       var dashMetrics = [
@@ -927,12 +941,12 @@
       }).join('');
       fitKpiValues();
       publishKpiBlockHeight();
-      G.renderOverviewCharts(data);
+      G.renderOverviewCharts(viewData);
       G._lastData = data;
       renderOrDeferPanels({
-        trends: function () { G.renderTrendCharts(scoredData); },
+        trends: function () { G.renderTrendCharts(scoredViewData); },
         speed: function () { G.renderSpeedCharts(scoredData); },
-        table: function () { G.renderLeagueTable(data); },
+        table: function () { G.renderLeagueTable(viewData); },
         // The no-data path has always drawn Focus from the scored rows.
         target: function () { G.renderTargets(scoredData); }
       });
@@ -1157,12 +1171,12 @@
     fitKpiValues();
     publishKpiBlockHeight();
 
-    G.renderOverviewCharts(data);
+    G.renderOverviewCharts(viewData);
     G._lastData = data;
     renderOrDeferPanels({
-      trends: function () { G.renderTrendCharts(scoredData); },
+      trends: function () { G.renderTrendCharts(scoredViewData); },
       speed: function () { G.renderSpeedCharts(scoredData); },
-      table: function () { G.renderLeagueTable(data); },
+      table: function () { G.renderLeagueTable(viewData); },
       target: function () { G.renderTargets(data); }
     });
     renderHeaderSummary();
@@ -1249,6 +1263,55 @@
       G.syncCustomSelect('rollingWindow');
       refresh();
     }
+  });
+
+  // ========== DASHBOARD VIEW SELECT (Bakeries / Ops Areas / Regions) ==========
+  // Only League Table, Map, Trends and Overview read state.dashboardView
+  // (via refresh()'s viewData) — every other tab keeps working off individual
+  // bakeries regardless of this setting.
+  //
+  // Filtering to one bakery/ops area/region stops making sense once rows are
+  // rolled up to or past it, so each grouping level disables and clears the
+  // filter at its own level and every level finer than it: Ops Areas view
+  // disables Ops Area and Bakery (Region stays usable — it's coarser, and
+  // still narrows which ops areas appear); Regions view disables Region,
+  // Ops Area, and Bakery.
+  //
+  // Only on the four tabs the View select actually governs — everywhere
+  // else (Focus Bakeries first among them) always triages individual
+  // bakeries regardless of state.dashboardView, so the filters there must
+  // never be left locked by a grouping picked on a different tab.
+  var DASHBOARD_VIEW_SCOPED_TABS = { overview: true, trends: true, table: true, map: true };
+  function syncDashboardViewFilterAvailability() {
+    var viewApplies = !!DASHBOARD_VIEW_SCOPED_TABS[document.body.dataset.dashTab];
+    var view = viewApplies ? state.dashboardView : 'bakeries';
+    var regionDisabled = view === 'region';
+    var opsDisabled = view === 'ops' || view === 'region';
+    var bakeryDisabled = view === 'ops' || view === 'region';
+
+    function applyDisabled(triggerId, dropdownId, disabled, selectedArray, resync) {
+      var trigger = document.getElementById(triggerId);
+      if (!trigger) return;
+      if (disabled) {
+        var dropdown = document.getElementById(dropdownId);
+        if (dropdown) dropdown.style.display = 'none';
+        trigger.classList.remove('is-open');
+        trigger.setAttribute('aria-expanded', 'false');
+        if (selectedArray.length) selectedArray.splice(0, selectedArray.length);
+        if (resync) resync();
+      }
+      trigger.disabled = disabled;
+    }
+
+    applyDisabled('regionMsTrigger', 'regionDropdown', regionDisabled, state.regionFilter, G.rebuildRegionMultiselect);
+    applyDisabled('opsMsTrigger', 'opsDropdown', opsDisabled, state.opsFilter, G.rebuildOpsMultiselect);
+    applyDisabled('bakeryMsTrigger', 'bakeryDropdown', bakeryDisabled, state.searchBakery, G.resetBakeryMultiselect);
+  }
+
+  document.getElementById('dashboardView').addEventListener('change', function (e) {
+    state.dashboardView = e.target.value;
+    syncDashboardViewFilterAvailability();
+    refresh();
   });
 
   // Benchmark is the single performance lens. Maps retain their internal
@@ -1899,6 +1962,9 @@
       renderSelected();
     };
   })();
+  // state.dashboardView defaults to 'bakeries', so this is a no-op today —
+  // kept for when the View select's starting value stops being a constant.
+  syncDashboardViewFilterAvailability();
   document.getElementById('sortBy').addEventListener('change', function () {
     var leagueTableBody = document.getElementById('tableBody');
     var leagueTable = leagueTableBody ? leagueTableBody.closest('table') : null;
@@ -2099,6 +2165,13 @@
     state.opsFilter.splice(0, state.opsFilter.length);
     state.searchBakery.splice(0, state.searchBakery.length);
     state.bandFilter = '';
+    state.dashboardView = 'bakeries';
+    var dashboardViewSelect = document.getElementById('dashboardView');
+    if (dashboardViewSelect) {
+      dashboardViewSelect.value = 'bakeries';
+      G.syncCustomSelect(dashboardViewSelect);
+    }
+    syncDashboardViewFilterAvailability();
 
     if (rollingWindow) {
       rollingWindow.value = '1';

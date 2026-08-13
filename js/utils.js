@@ -276,6 +276,12 @@ window.GAILS.getBakeryProfileUrl = function(name, options) {
 window.GAILS.bakeryProfileLink = function(name, options) {
   options = options || {};
   var label = options.label || name;
+  // Ops-area/region rows from the dashboard View toggle have no profile page
+  // to link to — render the name as plain text instead of a dead link.
+  if (options.isGroup) {
+    return '<span class="bakery-profile-link bakery-profile-link--group">' +
+      window.GAILS.escapeHtml(label) + '</span>';
+  }
   var className = ['bakery-profile-link', options.className || ''].filter(Boolean).join(' ');
   var url = window.GAILS.getBakeryProfileUrl(name, options);
   return '<a class="' + window.GAILS.escapeHtml(className) + '" href="' +
