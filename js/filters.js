@@ -285,11 +285,14 @@ window.GAILS.getRollingMonths = function() {
     });
   };
 
-  // Averaged across differently-sized bakeries (unlike aggregatePeriodRecords,
-  // which averages one bakery's own months), so a plain mean would let several
-  // small sites dilute one large site's real result. Weighting by each row's
-  // response volume keeps the group's headline numbers representative.
-  var GROUP_WEIGHTED_FIELDS = [
+  // A plain mean, matching G.avg — the same function the Overview KPI row
+  // already uses to show one number for however many bakeries the current
+  // filters leave in scope. Switching View to Ops Areas/Regions has to land
+  // on that same number for the same bakeries, or "76 in Bakery view,
+  // filtered to Bobby Holmes" and "76 in Ops Areas view" stop agreeing —
+  // which volume-weighting broke, since a handful of small sites can pull
+  // a weighted mean well away from the plain one every other view shows.
+  var GROUP_AVERAGED_FIELDS = [
     'n', 's2', 's3', 's4', 'o5', 'ov', 'fr', 'dr', 'ef', 'ep', 'dp', 'fp',
     'np', 'c', 's2w', 'ac', 'ats', 'a_at', 'c_raw', 'ac_raw', 's30',
     'at', 'at12', 'at9', 'nc', 'nm', 'nd', 'na'
@@ -315,18 +318,7 @@ window.GAILS.getRollingMonths = function() {
     var round1 = function(value) {
       return value === null || value === undefined ? null : Math.round(value * 10) / 10;
     };
-    // Volume-weighted mean, falling back to a plain mean over defined values
-    // if every contributing row's volume is zero/unknown.
-    var wavg = function(key) {
-      var totalWeight = 0, totalValue = 0;
-      statRows.forEach(function(record) {
-        var value = record[key], weight = record.v;
-        if (typeof value === 'number' && !isNaN(value) && typeof weight === 'number' && weight > 0) {
-          totalValue += value * weight;
-          totalWeight += weight;
-        }
-      });
-      if (totalWeight > 0) return totalValue / totalWeight;
+    var avg = function(key) {
       var defined = statRows
         .map(function(record) { return record[key]; })
         .filter(function(value) { return typeof value === 'number' && !isNaN(value); });
@@ -352,12 +344,16 @@ window.GAILS.getRollingMonths = function() {
       partialPeriod: false,
       ll: groupCentroid(rows)
     };
-    GROUP_WEIGHTED_FIELDS.forEach(function(key) { aggregate[key] = round1(wavg(key)); });
+    GROUP_AVERAGED_FIELDS.forEach(function(key) { aggregate[key] = round1(avg(key)); });
     GROUP_SUMMED_FIELDS.forEach(function(key) { aggregate[key] = sum(key); });
-    // markDataCoverage/ensureBands seed sane placeholders; recomputeTimelinessRanks
-    // (called once over the whole cohort below, same as aggregatePeriodRecords)
-    // overwrites the score-dependent fields with values ranked against the
-    // group cohort rather than the bakery cohort.
+    // ac/c are the plain average of each member bakery's OWN already-
+    // confidence-adjusted score — deliberately NOT recomputed via
+    // G.recomputeTimelinessRanks, which re-derives ac/c from raw component
+    // inputs and re-applies confidence adjustment against the group's own
+    // pooled volume (almost always >=15, so it comes back near-unadjusted —
+    // a group reading well above what its own bakeries averaged, purely
+    // because pooling volume switched off shrinkage every bakery's own
+    // score had applied). Bands are derived from these already-final ac/c.
     G.markDataCoverage(aggregate);
     G.ensureBands(aggregate);
     return aggregate;
@@ -367,7 +363,7 @@ window.GAILS.getRollingMonths = function() {
   // search-filtered rows, rolled up to one row per ops area or region. Kept
   // separate from G.getData() itself so every other consumer (Focus Bakeries,
   // Speed vs NPS, the word cloud, exports) is unaffected — only refresh()
-  // calls this, and only for the four views that offer the View toggle.
+  // calls this, and only for the three views that offer the View toggle.
   G.getGroupedViewData = function(groupBy) {
     var keyFn = groupBy === 'region' ? G.getBakeryRegion : G.getBakeryOps;
     var groups = {};
@@ -379,7 +375,6 @@ window.GAILS.getRollingMonths = function() {
     var aggregated = Object.keys(groups).map(function(key) {
       return buildGroupAggregate(key, groups[key], groupBy);
     });
-    G.recomputeTimelinessRanks(aggregated);
     return assignCompanyRanking(aggregated);
   };
 }());

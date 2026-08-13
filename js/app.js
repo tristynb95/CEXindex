@@ -904,13 +904,15 @@
     var scoredData = data.filter(function (r) { return r && !r.noData; });
     var n = scoredData.length;
     updateHeaderSummary(data.length);
-    // League Table / Map / Overview / (part of) Trends read this instead of
-    // `data` directly, so the View toggle (Bakeries/Ops Areas/Regions) only
-    // ever touches those four — Focus Bakeries, Speed vs NPS, and the word
-    // cloud keep working off individual bakeries regardless of its setting.
+    // League Table / Overview / (part of) Trends read this instead of `data`
+    // directly, so the View toggle (Bakeries/Ops Areas/Regions) only ever
+    // touches those three — the Map, Focus Bakeries, Speed vs NPS, and the
+    // word cloud keep working off individual bakeries regardless of its
+    // setting (a marker's position is a bakery's, not a group's, so the Map
+    // is fixed to Bakery rather than plotting a synthetic centroid).
     var viewData = state.dashboardView === 'bakeries' ? data : G.getGroupedViewData(state.dashboardView);
     var scoredViewData = viewData === data ? scoredData : viewData.filter(function (r) { return r && !r.noData; });
-    G.storeDashboardMapData(viewData);
+    G.storeDashboardMapData(data);
     if (data.length === 0 || n === 0) {
       // Two rows of four: Benchmark leads the SHINE trio, NPS leads the KV Link trio.
       var dashMetrics = [
@@ -1266,9 +1268,13 @@
   });
 
   // ========== DASHBOARD VIEW SELECT (Bakeries / Ops Areas / Regions) ==========
-  // Only League Table, Map, Trends and Overview read state.dashboardView
-  // (via refresh()'s viewData) — every other tab keeps working off individual
-  // bakeries regardless of this setting.
+  // Only League Table, Trends and Overview read state.dashboardView (via
+  // refresh()'s viewData) — every other tab keeps working off individual
+  // bakeries regardless of this setting. The Map and Comment Cloud are
+  // fixed to Bakery: a marker needs one bakery's coordinates, not a group's,
+  // and the word cloud is sourced per bakery from its own API — so both are
+  // excluded the same way Focus Bakeries, Speed vs NPS, and Bakery Reports
+  // are, rather than being taught to synthesize a group-level stand-in.
   //
   // Filtering to one bakery/ops area/region stops making sense once rows are
   // rolled up to or past it, so each grouping level disables and clears the
@@ -1277,11 +1283,11 @@
   // still narrows which ops areas appear); Regions view disables Region,
   // Ops Area, and Bakery.
   //
-  // Only on the four tabs the View select actually governs — everywhere
-  // else (Focus Bakeries first among them) always triages individual
-  // bakeries regardless of state.dashboardView, so the filters there must
-  // never be left locked by a grouping picked on a different tab.
-  var DASHBOARD_VIEW_SCOPED_TABS = { overview: true, trends: true, table: true, map: true };
+  // Only on the tabs the View select actually governs — everywhere else
+  // always triages individual bakeries regardless of state.dashboardView,
+  // so the filters there must never be left locked by a grouping picked on
+  // a different tab.
+  var DASHBOARD_VIEW_SCOPED_TABS = { overview: true, trends: true, table: true };
   function syncDashboardViewFilterAvailability() {
     var viewApplies = !!DASHBOARD_VIEW_SCOPED_TABS[document.body.dataset.dashTab];
     var view = viewApplies ? state.dashboardView : 'bakeries';

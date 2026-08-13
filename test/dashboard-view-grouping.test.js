@@ -35,6 +35,15 @@ function createGroupingContext() {
       regionFilter: [],
       opsFilter: []
     },
+    // Real G.avg (js/utils.js) — used both by buildGroupAggregate and by
+    // these tests, so a test's expectation is computed the exact same way
+    // production computes the Overview KPI it must agree with.
+    avg(arr, k) {
+      const vs = (arr || [])
+        .map((r) => (r ? r[k] : undefined))
+        .filter((v) => typeof v === 'number' && !isNaN(v));
+      return vs.length ? vs.reduce((a, v) => a + v, 0) / vs.length : 0;
+    },
     recomputeTimelinessRanks(records) {
       records.forEach((record) => this.ensureBands(record));
     },
@@ -69,7 +78,7 @@ function createGroupingContext() {
   return GAILS;
 }
 
-test('getGroupedViewData rolls bakeries up to volume-weighted ops-area rows', () => {
+test('getGroupedViewData rolls bakeries up to plain-average ops-area rows', () => {
   const G = createGroupingContext();
   const rows = G.getGroupedViewData('ops').sort((a, b) => a.b.localeCompare(b.b));
 
@@ -80,9 +89,9 @@ test('getGroupedViewData rolls bakeries up to volume-weighted ops-area rows', ()
   assert.equal(northA.groupType, 'ops');
   assert.equal(northA.region, 'North');
   assert.equal(northA.memberCount, 2);
-  assert.equal(northA.v, 40); // 10 + 30, summed
-  assert.equal(northA.ac, 87.5); // (80*10 + 90*30) / 40
-  assert.equal(northA.n, 65); // (50*10 + 70*30) / 40
+  assert.equal(northA.v, 40); // 10 + 30, still summed
+  assert.equal(northA.ac, 85); // (80 + 90) / 2 — plain mean, not weighted by v
+  assert.equal(northA.n, 60); // (50 + 70) / 2
   // Cross-vm-realm arrays aren't assert.deepEqual-comparable, so check elements.
   assert.equal(northA.ll[0], 15); // centroid of [10,10] and [20,20]
   assert.equal(northA.ll[1], 15);
@@ -97,7 +106,7 @@ test('getGroupedViewData rolls bakeries up to volume-weighted ops-area rows', ()
   assert.equal(south.ac, 70);
 });
 
-test('getGroupedViewData rolls bakeries up to volume-weighted region rows', () => {
+test('getGroupedViewData rolls bakeries up to plain-average region rows', () => {
   const G = createGroupingContext();
   const rows = G.getGroupedViewData('region').sort((a, b) => a.b.localeCompare(b.b));
 
@@ -106,9 +115,9 @@ test('getGroupedViewData rolls bakeries up to volume-weighted region rows', () =
   const north = rows.find((r) => r.b === 'North');
   assert.equal(north.groupType, 'region');
   assert.equal(north.memberCount, 3);
-  assert.equal(north.v, 45); // 10 + 30 + 5
-  assert.equal(north.ac, 84.4); // (80*10 + 90*30 + 60*5) / 45, rounded to 1dp
-  assert.equal(north.n, 62.2); // (50*10 + 70*30 + 40*5) / 45, rounded to 1dp
+  assert.equal(north.v, 45); // 10 + 30 + 5, still summed
+  assert.equal(north.ac, 76.7); // (80 + 90 + 60) / 3, rounded to 1dp
+  assert.equal(north.n, 53.3); // (50 + 70 + 40) / 3, rounded to 1dp
 
   const south = rows.find((r) => r.b === 'South');
   assert.equal(south.memberCount, 1);
@@ -116,15 +125,16 @@ test('getGroupedViewData rolls bakeries up to volume-weighted region rows', () =
   assert.equal(south.ac, 70);
 });
 
-test('a single large bakery is not diluted by several small ones in the same group', () => {
-  // A plain (unweighted) mean of [80, 90, 60] would read 76.7 — this asserts
-  // the actual result (87.5, weighted toward Bravo's 30-response volume) is
-  // what a volume-weighted rollup is supposed to produce, not that mean.
+test('a group\'s score matches the same G.avg an Overview KPI would show for its bakeries', () => {
+  // This is the exact bug report: switching View to Ops Areas read a higher
+  // Benchmark Score than filtering Bakery view down to that same ops area.
+  // The two have to agree, since a user reasonably expects them to be two
+  // views of the same number, not two different formulas.
   const G = createGroupingContext();
+  const northAMembers = G.state.ALL.filter((r) => r.b === 'Alpha' || r.b === 'Bravo');
+  const overviewKpiWouldShow = Math.round(G.avg(northAMembers, 'ac')); // KPI rounds for display
   const northA = G.getGroupedViewData('ops').find((r) => r.b === 'North Ops A');
-  const naivePlainMean = (80 + 90) / 2;
-  assert.notEqual(northA.ac, naivePlainMean);
-  assert.equal(northA.ac, 87.5);
+  assert.equal(Math.round(northA.ac), overviewKpiWouldShow);
 });
 
 test('grouped rows are ranked against the group cohort, not the bakery cohort', () => {

@@ -106,12 +106,12 @@ test('the Focus map is fed by the Focus render, and the network map is not', () 
   assert.match(renderTargets.slice(0, renderTargets.indexOf('\n};')), /G\.storeMapTargets\(targets\)/);
 
   // The network map on the Map tab is fed separately and unconditionally, so it
-  // never depended on the Focus render. It reads viewData (data, or the
-  // View-toggle's grouped rollup) rather than data directly, since the Map
-  // tab is one of the four views the Bakeries/Ops Areas/Regions toggle covers.
-  assert.match(app, /G\.storeDashboardMapData\(viewData\);/);
+  // never depended on the Focus render. It reads data directly rather than
+  // viewData — the Map is fixed to Bakery and excluded from the View toggle's
+  // Ops Areas/Regions rollup, since a marker needs one bakery's coordinates.
+  assert.match(app, /G\.storeDashboardMapData\(data\);/);
   const refresh = app.slice(app.indexOf('function refresh()'));
-  const mapFeedAt = refresh.indexOf('G.storeDashboardMapData(viewData)');
+  const mapFeedAt = refresh.indexOf('G.storeDashboardMapData(data)');
   const firstDeferAt = refresh.indexOf('renderOrDeferPanels({');
   assert.ok(mapFeedAt > 0 && mapFeedAt < firstDeferAt, 'the network map feed moved behind the defer helper');
 });

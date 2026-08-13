@@ -572,20 +572,25 @@ h4 {
   min-width: 0;
 }
 
-/* Focus Bakeries has no notion of Ops Area/Region rollups — it always
-   triages individual bakeries — so the View filter is irrelevant there and
-   would otherwise sit inert. Hiding it needs the desktop grid dropped back
-   to 6 equal columns so Reset doesn't inherit its empty 1fr track — but
-   only at the width the unqualified 7-column rule above actually applies;
-   the narrower breakpoints below already reflow around any item count on
-   their own and must not be fought with a higher-specificity override. */
+/* Focus Bakeries, the Map, and Comment Cloud have no notion of Ops Area/
+   Region rollups — they're fixed to Bakery — so the View filter is
+   irrelevant on those tabs and would otherwise sit inert. Hiding it needs
+   the desktop grid dropped back to 6 equal columns so Reset doesn't inherit
+   its empty 1fr track — but only at the width the unqualified 7-column rule
+   above actually applies; the narrower breakpoints below already reflow
+   around any item count on their own and must not be fought with a
+   higher-specificity override. */
 @media (min-width: 1321px) {
-  body[data-dash-tab="target"] .filter-controls {
+  body[data-dash-tab="target"] .filter-controls,
+  body[data-dash-tab="map"] .filter-controls,
+  body[data-dash-tab="feedback"] .filter-controls {
     grid-template-columns: repeat(6, 1fr) auto;
   }
 }
 
-body[data-dash-tab="target"] .filter-control--view {
+body[data-dash-tab="target"] .filter-control--view,
+body[data-dash-tab="map"] .filter-control--view,
+body[data-dash-tab="feedback"] .filter-control--view {
   display: none;
 }
 
