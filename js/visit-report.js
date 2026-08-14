@@ -3115,7 +3115,7 @@ window.GAILS = window.GAILS || {};
   }
 
   function getVisitLogDefaultPeriod() {
-    return 'thisQuarter';
+    return '0';
   }
 
   function getVisitLogDefaultGroup() {
