@@ -2193,7 +2193,7 @@
     syncDashboardViewFilterAvailability();
 
     if (rollingWindow) {
-      rollingWindow.value = '1';
+      rollingWindow.value = '0';
       G.syncCustomSelect(rollingWindow);
     }
 
@@ -2208,7 +2208,7 @@
     }
 
     state.selectedMonths = (state.MONTHS && state.MONTHS.length)
-      ? G.resolvePeriodMonths(rollingWindow ? rollingWindow.value : '1', state.MONTHS, state.ALL)
+      ? G.resolvePeriodMonths(rollingWindow ? rollingWindow.value : '0', state.MONTHS, state.ALL)
       : [];
 
     if (G.rebuildRegionMultiselect) G.rebuildRegionMultiselect();
