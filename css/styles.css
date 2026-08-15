@@ -25667,9 +25667,139 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
   }
 }
 
+/* ── Check-in / NBO opening reports: print ──────────────────────────────────
+   The on-screen workspace (details rail, notes, map+weather support) above is
+   scoped to @media screen, so without this a printed check-in report falls
+   back to the raw markup — a flat, unstyled run of <dt>/<dd> pairs with no
+   card framing, dividers or label/value alignment. This rebuilds it as a
+   single print column: a compact visit-details + monthly-snapshot block,
+   then the visit note as the main, most-read content. */
 @media print {
   #visitReportModal .visit-report-checkin-context {
     display: none !important;
+  }
+
+  #visitReportModal .visit-report-checkin-workspace {
+    display: block !important;
+  }
+
+  #visitReportModal .visit-report-checkin-rail {
+    display: block !important;
+    margin: 0 0 14px;
+  }
+
+  #visitReportModal .visit-report-checkin-details,
+  #visitReportModal .visit-context-monthly {
+    display: block !important;
+    border: 1px solid #ccc !important;
+    border-radius: 6px;
+    background: #fff !important;
+    margin: 0 0 10px;
+    page-break-inside: avoid;
+  }
+
+  #visitReportModal .visit-report-checkin-details > h4,
+  #visitReportModal .visit-context-monthly-heading {
+    display: flex !important;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+    padding: 6px 12px;
+    border-bottom: 1px solid #ccc;
+    background: #f2f2f2 !important;
+    color: #111 !important;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-context-monthly-heading > span {
+    color: #444 !important;
+  }
+
+  #visitReportModal .visit-context-monthly-heading h5 {
+    margin: 0;
+    color: #111 !important;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: none;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list,
+  #visitReportModal .visit-context-monthly-stats {
+    display: block !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list > div,
+  #visitReportModal .visit-context-monthly-stat {
+    display: flex !important;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 12px;
+    border: 0;
+    border-bottom: 1px solid #e4e4e4;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list > div:last-child,
+  #visitReportModal .visit-context-monthly-stat:last-child {
+    border-bottom: 0;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list dt,
+  #visitReportModal .visit-context-monthly-stat dt {
+    margin: 0;
+    color: #555 !important;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list dd,
+  #visitReportModal .visit-context-monthly-stat dd {
+    margin: 0;
+    color: #111 !important;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  #visitReportModal .visit-report-section--comments {
+    display: block !important;
+    border: 1px solid #ccc !important;
+    border-radius: 6px;
+    background: #fff !important;
+    page-break-inside: avoid;
+  }
+
+  #visitReportModal .visit-report-comments-heading {
+    display: block !important;
+    margin: 0;
+    padding: 8px 14px;
+    border-bottom: 1px solid #ccc;
+    background: #f2f2f2 !important;
+  }
+
+  #visitReportModal .visit-report-comments-heading h4 {
+    margin: 0;
+    color: #111 !important;
+    font-size: 0.82rem;
+  }
+
+  #visitReportModal .visit-report-notes {
+    display: block !important;
+    padding: 14px 16px 16px;
+  }
+
+  #visitReportModal .visit-report-comment--primary {
+    font-size: 0.85rem;
+    font-style: normal;
+    white-space: pre-wrap;
   }
 }
 

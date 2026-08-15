@@ -173,6 +173,27 @@ test('the print stylesheet hides host pages structurally, not by dashboard id', 
   }
 });
 
+test('the check-in / NBO opening workspace has its own print layout, not the bare markup fallback', () => {
+  // The on-screen 3-column workspace (details rail, notes, map+weather) is
+  // scoped to @media screen, so without a dedicated print block the report
+  // prints as unstyled <dt>/<dd> pairs with no cards, dividers or label/value
+  // alignment. Pin the print rules that rebuild it into a readable page.
+  const printBlocks = Array.from(styles.matchAll(/@media print \{/g)).map((match) => match.index);
+  const checkinPrintBlock = printBlocks
+    .map((start) => styles.slice(start, styles.indexOf('\n}\n', start)))
+    .find((block) => block.includes('.visit-report-checkin-details-list'));
+
+  assert.ok(checkinPrintBlock, 'a print block covering the check-in details list should exist');
+  assert.match(checkinPrintBlock, /\.visit-report-checkin-context\s*\{[^}]*display:\s*none\s*!important/);
+  assert.match(checkinPrintBlock, /\.visit-report-checkin-details,\s*\n\s*#visitReportModal \.visit-context-monthly\s*\{[^}]*border:\s*1px solid #ccc/);
+  assert.match(checkinPrintBlock, /\.visit-report-checkin-details-list > div,\s*\n\s*#visitReportModal \.visit-context-monthly-stat\s*\{[^}]*display:\s*flex\s*!important/);
+  assert.match(checkinPrintBlock, /\.visit-report-section--comments\s*\{[^}]*display:\s*block\s*!important/);
+  // The redesigned rail reads upright (see the "Upright, not italic" comment
+  // on .visit-report-comment) — an older, unconditional rule sets the primary
+  // comment to italic, so print must explicitly cancel it back out.
+  assert.match(checkinPrintBlock, /\.visit-report-comment--primary\s*\{[^}]*font-style:\s*normal/);
+});
+
 test('every page hosting the report keeps it out of the printable page shell', () => {
   for (const page of HOST_PAGES) {
     const html = fs.readFileSync(path.join(root, page), 'utf8');
