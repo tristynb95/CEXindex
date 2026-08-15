@@ -363,7 +363,7 @@ test('standalone follow-ups default attribution to their creator and can be reas
   assert.match(visitReport, /return window\.GAILS\.currentPerson \? \[window\.GAILS\.currentPerson\] : \[\]/);
   assert.match(visitReport, /MentionField\.assigneesFor\(assigneeField\)/);
   assert.match(visitReport, /assignedTo: followUpAssignees\.length \? followUpAssignees : null/);
-  assert.match(visitReport, /class="follow-up-item__assignee"><strong>Assigned to:<\/strong>/);
+  assert.match(visitReport, /<td data-label="Assigned To">' \+ escapeHtml\(attributionLabel\)/);
   assert.match(visitReport, /\{ label: 'Assigned To', type: 'text', width: 24 \}/);
 });
 

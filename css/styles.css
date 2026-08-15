@@ -15202,8 +15202,32 @@ body.visit-log-filter-open .mobile-bottom-nav {
   color: var(--teal);
 }
 
-.follow-up-item--done .follow-up-priority {
-  color: var(--muted-l);
+/* Circular done-checkbox — shared by the My Activity next-actions list and
+   the Follow-up Tasks table's Actions column. */
+.follow-up-item__check {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 2px solid var(--card-border-h, var(--muted-l));
+  background: var(--card);
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.follow-up-item__check:hover {
+  border-color: var(--teal);
+}
+
+.follow-up-item__check.checked {
+  background: var(--teal);
+  border-color: var(--teal);
 }
 
 /* Log Visit modal: tick-off checklist for existing open tasks. */
@@ -15346,202 +15370,111 @@ body.visit-log-filter-open .mobile-bottom-nav {
   text-decoration: underline;
 }
 
-/* Follow-ups view: the task list. Tasks are scanned in bulk, so the card runs
-   tight: small type steps, minimal gaps between the metadata lines, and the
-   card is two rows — "bakery · action" over one footnote line of context —
-   with priority, the due pill and the actions sharing the row opposite. */
-.follow-up-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+@media (max-width: 560px) {
+
+  /* The builder row already stacks its meta line, so it needs no change here;
+     only the priority/date pair collapses to one column on narrow screens. */
+  .follow-up-builder__meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
-.follow-up-item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: start;
-  padding: 9px 12px;
-  border: 1px solid var(--card-border);
-  border-radius: 10px;
-  background: var(--card);
-  box-shadow: var(--shadow-sm, 0 1px 2px rgba(34, 31, 26, 0.04));
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+/* Follow-up Tasks uses the Bakery Directory's semantic table surface and
+   compact row rhythm, like Visit History and Unvisited Sites. Its own column
+   proportions leave room for a due/priority pair of at-a-glance tags plus a
+   per-row done/edit/delete action cluster. */
+.table-wrap--follow-ups .follow-up-table {
+  min-width: 980px;
 }
 
-.follow-up-item:hover {
-  border-color: var(--card-border-h, var(--card-border));
-  box-shadow: var(--shadow-md, 0 4px 14px rgba(34, 31, 26, 0.08));
+.follow-up-table thead th:nth-child(1) {
+  width: 16%;
 }
 
-.follow-up-item--done {
-  background: rgba(34, 31, 26, 0.015);
-  box-shadow: none;
+.follow-up-table thead th:nth-child(2) {
+  width: 26%;
 }
 
-.follow-up-item--done .follow-up-item__title {
+.follow-up-table thead th:nth-child(3) {
+  width: 10%;
+}
+
+.follow-up-table thead th:nth-child(4) {
+  width: 14%;
+}
+
+.follow-up-table thead th:nth-child(5) {
+  width: 15%;
+}
+
+.follow-up-table thead th:nth-child(6) {
+  width: 19%;
+}
+
+/* Matches Visit History's row-header sizing rather than the larger default
+   .visit-log-row__bakery used elsewhere (e.g. bakery profile pages). */
+.follow-up-table .visit-log-row__bakery {
+  font-size: 0.8rem;
+}
+
+.follow-up-table__row--done .follow-up-table__title {
   color: var(--muted-l);
   text-decoration: line-through;
 }
 
-.follow-up-item__check {
-  margin-top: 1px;
-  width: 19px;
-  height: 19px;
-  border-radius: 50%;
-  border: 2px solid var(--card-border-h, var(--muted-l));
-  background: var(--card);
-  color: #fff;
-  font-size: 0.8rem;
-  line-height: 1;
-  cursor: pointer;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-
-.follow-up-item__check:hover {
-  border-color: var(--teal);
-}
-
-.follow-up-item__check.checked {
-  background: var(--teal);
-  border-color: var(--teal);
-}
-
-.follow-up-item__body {
-  min-width: 0;
-}
-
-/* Bakery and action share the headline: the bakery is the anchor you scan
-   down the column, the action is what you read across. Wrapping is allowed,
-   so a long action drops to its own line rather than being truncated. */
-.follow-up-item__headline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 6px;
-  line-height: 1.45;
-}
-
-.follow-up-item__bakery {
-  color: var(--text);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.follow-up-item__title {
-  font-size: 0.89rem;
-  font-weight: 500;
-  color: var(--text);
-}
-
-/* The separator hangs off the bakery rather than leading the action, so a
-   headline that wraps breaks after the dot instead of starting a line with
-   one. It disappears with the bakery when the list is grouped by bakery. */
-.follow-up-item__bakery::after {
-  content: '·';
-  margin-left: 6px;
+.follow-up-table__row--done td,
+.follow-up-table__row--done th {
   color: var(--muted-l);
 }
 
-/* One footnote line: location context, who owns it, when it was raised —
-   all dot-separated so the card costs a single extra line of height. The
-   values carry the contrast; the labels below step back out of the way. */
-.follow-up-item__footnotes {
+.follow-up-table__task {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 8px;
-  margin-top: 1px;
-  color: var(--text-2);
-  font-size: 0.75rem;
-  line-height: 1.5;
-}
-
-.follow-up-item__context {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 8px;
-}
-
-.follow-up-item__context-item {
-  color: inherit;
-}
-
-/* "Region:" / "Assigned to:" are scaffolding for the value that follows, so
-   they read lighter than it rather than heavier — the old bold-label,
-   grey-value pairing had the hierarchy the wrong way round. */
-.follow-up-item__context-item strong,
-.follow-up-item__assignee strong {
-  font-weight: 400;
-  color: var(--muted-l);
-}
-
-/* Who owns the task is the most-scanned footnote, so its value sits at full
-   text contrast while the rest of the line stays a step back. */
-.follow-up-item__assignee {
-  color: var(--text);
-  font-weight: 500;
-}
-
-/* Dot separators trail their own item and stop at the last one, so the line
-   wraps cleanly however many context bits a task happens to have. */
-.follow-up-item__footnotes > *:not(:last-child)::after,
-.follow-up-item__context > *:not(:last-child)::after {
-  content: '·';
-  margin-left: 8px;
-  color: var(--muted-l);
-  font-weight: 400;
-  opacity: 0.55;
-}
-
-.follow-up-item__detail {
-  font-size: 0.8rem;
-  color: var(--text-2);
-  margin-top: 2px;
-  line-height: 1.45;
-  white-space: pre-wrap;
-}
-
-.follow-up-item__meta {
-  color: var(--muted-l);
-}
-
-/* Priority, due pill and actions all sit on one row level with the headline,
-   so the side costs a single line. It still wraps if the window is narrow. */
-.follow-up-item__side {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 5px 8px;
-  flex-shrink: 0;
-  padding-top: 1px;
-}
-
-/* The pill and priority tag are sized for the Log Visit checklist, where they
-   sit against short lines. On a task row they carry real information at a
-   glance, so they step up to match the footnote line's size. */
-.follow-up-item .follow-up-pill,
-.follow-up-item .follow-up-priority {
-  font-size: 0.69rem;
-}
-
-.follow-up-item .follow-up-pill {
-  padding: 3px 10px;
-}
-
-.follow-up-item__actions {
-  display: flex;
+  flex-direction: column;
   gap: 2px;
 }
 
-/* Ghost buttons: the labels stay legible but carry no border weight until
-   hovered, so nine stacked cards don't read as eighteen buttons. */
-.follow-up-item__action {
+.follow-up-table__title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.follow-up-table__detail {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.follow-up-table__due-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.follow-up-table__meta {
+  font-size: 0.68rem;
+  color: var(--muted-l);
+}
+
+.follow-up-table__muted {
+  color: var(--muted-l);
+}
+
+.follow-up-table__action-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.follow-up-table__action-col .follow-up-item__check {
+  width: 22px;
+  height: 22px;
+}
+
+.follow-up-table__btn {
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-2);
@@ -15550,44 +15483,25 @@ body.visit-log-filter-open .mobile-bottom-nav {
   padding: 3px 9px;
   border-radius: 6px;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
 
-.follow-up-item__action:hover {
+.follow-up-table__btn:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-light);
 }
 
-.follow-up-item__action--danger:hover {
+.follow-up-table__btn--danger:hover {
   color: var(--red);
   border-color: var(--red);
   background: var(--red-d);
 }
 
-@media (max-width: 560px) {
-
-  /* The builder row already stacks its meta line, so it needs no change here;
-     only the priority/date pair collapses to one column on narrow screens. */
-  .follow-up-builder__meta {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .follow-up-item {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  /* Too narrow for a side column, so the row moves under the body: priority
-     and due pill lead, the actions stay pinned to the right edge. */
-  .follow-up-item__side {
-    grid-column: 2 / 3;
-    justify-content: flex-start;
-    width: 100%;
-    margin-top: 5px;
-  }
-
-  .follow-up-item__actions {
-    margin-left: auto;
+@media (max-width: 640px) {
+  .table-wrap--follow-ups .follow-up-table {
+    min-width: 920px;
   }
 }
 
@@ -15660,55 +15574,6 @@ body.visit-log-filter-open .mobile-bottom-nav {
   transform: rotate(180deg);
 }
 
-/* ── Collapsible, sticky group headers (history + unvisited views) ── */
-.unvisited-manager-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--gold);
-  border: none;
-  background: var(--card, #fff);
-  cursor: pointer;
-  padding: 8px 0;
-  margin: 0 0 8px;
-  position: sticky;
-  top: var(--visit-sticky-top, 64px);
-  z-index: 5;
-}
-
-.unvisited-manager-title:hover {
-  color: var(--accent);
-}
-
-.unvisited-manager-title__chevron {
-  width: 12px;
-  height: 12px;
-  flex: 0 0 auto;
-  transition: transform 0.2s ease;
-}
-
-.unvisited-manager-section.collapsed .unvisited-manager-title__chevron {
-  transform: rotate(-90deg);
-}
-
-/* Visit rows sit in here, not directly in .visit-log-list, so this gap — not
-   the list's — is what actually separates one row from the next. Both read
-   --row-gap so they can't drift apart. */
-.unvisited-manager-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--row-gap);
-}
-
-.unvisited-manager-section.collapsed .unvisited-manager-body {
-  display: none;
-}
-
 /* ── Unvisited site cards: last-visited stamp + quick action ── */
 .unvisited-bakery-item {
   display: flex;
@@ -15772,22 +15637,6 @@ body.visit-log-filter-open .mobile-bottom-nav {
 }
 
 /* ── Unvisited list grouping styles ── */
-.unvisited-manager-section {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  margin-bottom: 30px;
-}
-
-.unvisited-manager-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--gold);
-  margin-bottom: 12px;
-  margin-top: 0;
-}
-
 .unvisited-bakeries-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

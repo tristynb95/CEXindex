@@ -111,19 +111,14 @@ test('the bakery directory reports its own list controls, not the view you came 
   assert.ok(headerAt < emptyGuardAt, 'breadcrumb must be written before the no-visits guard returns');
 });
 
-test('follow-up task cards promote bakery context and do not repeat their group heading', () => {
+test('follow-up rows always show their real bakery and ops area, matching Visit History', () => {
   const source = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
-  const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
 
-  assert.match(source, /function followUpTaskBakeryHtml\(task, groupVal\)[\s\S]*?if \(groupVal === 'bakery'\) return ''/);
   assert.match(source, /function followUpBakeryLabel\(task\)\s*\{\s*return getDirectoryBakeryLabel\(task\.bakery\)/);
-  assert.match(source, /class="follow-up-item__bakery"/);
-  assert.match(source, /function followUpTaskContextHtml\(task, groupVal\)/);
-  assert.match(source, /key: 'ops',[\s\S]*?label: 'Ops Area'[\s\S]*?key: 'region',[\s\S]*?label: 'Region'/);
-  assert.match(source, /return item\.key !== groupVal/);
-  assert.match(source, /followUpTaskBakeryHtml\(t, followUpGroupVal\)[\s\S]*?class="follow-up-item__title"/);
-  assert.match(source, /followUpTaskContextHtml\(t, followUpGroupVal\)/);
-  assert.match(styles, /\.follow-up-item__bakery\s*\{/);
-  assert.match(styles, /\.follow-up-item__context\s*\{/);
-  assert.match(styles, /\.follow-up-item__context-item\s*\{/);
+  // Table rows show the true bakery/ops area regardless of the active
+  // Group By value — the row shouldn't rely on the group heading for
+  // identity when read out of context (same convention as Visit History).
+  assert.match(source, /function followUpRowHtml\(t, groupName, hidden\)[\s\S]*?var bakeryLabel = followUpBakeryLabel\(t\)/);
+  assert.match(source, /var opsLabel = \(G\.getBakeryOps \? G\.getBakeryOps\(t\.bakery\) : ''\)/);
+  assert.match(source, /class="visit-log-row__bakery-col"/);
 });

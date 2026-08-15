@@ -502,14 +502,14 @@ test('the follow-up modal uses the same multi-person attribution field', () => {
   assert.match(visitReport, /MentionField\.refresh\(assigneeInput\)/);
 });
 
-test('follow-up cards show their assignees and can be filtered by assigned person', () => {
+test('follow-up rows show their assignees and can be filtered by assigned person', () => {
   assert.match(indexHtml, /id="followUpAssigneeControl"[\s\S]{0,260}<label for="followUpAssignee">Assigned To<\/label>/);
   assert.match(indexHtml, /id="followUpAssignee"[\s\S]{0,160}<option value="">All<\/option>/);
   assert.match(visitReport, /getFollowUpList\(\)\.forEach\(function \(task\)[\s\S]{0,240}followUpResponsiblePeople\(task\)/);
   assert.match(visitReport, /if \(!followUpTaskMatchesAssignee\(t, followUpAssigneeVal\)\) return false/);
   assert.match(visitReport, /followUpAssignee:\s*followUpAssigneeVal/);
-  assert.match(visitReport, /class="follow-up-item__assignee"><strong>Assigned to:<\/strong>/);
-  assert.match(styles, /\.follow-up-item__assignee\s*\{/);
+  assert.match(visitReport, /<th scope="col">Assigned To<\/th>/);
+  assert.match(visitReport, /<td data-label="Assigned To">' \+ escapeHtml\(attributionLabel\)/);
 });
 
 test('a new check-in prefills the signed-in person as an editable selection', () => {

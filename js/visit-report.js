@@ -2278,38 +2278,6 @@ window.GAILS = window.GAILS || {};
     return followUpBakeryLabel(task);
   }
 
-  function followUpTaskBakeryHtml(task, groupVal) {
-    if (groupVal === 'bakery') return '';
-    return '<span class="follow-up-item__bakery">' +
-      escapeHtml(followUpBakeryLabel(task) || 'Unknown bakery') + '</span>';
-  }
-
-  // Keep the card's supporting location context useful without repeating the
-  // value that already appears in its group heading. Bakery is promoted to a
-  // heading above the task whenever it is not already the group heading.
-  function followUpTaskContextHtml(task, groupVal) {
-    var G = window.GAILS;
-    var context = [
-      {
-        key: 'ops',
-        label: 'Ops Area',
-        value: (G.getBakeryOps ? G.getBakeryOps(task.bakery) : '') || 'Unknown ops area'
-      },
-      {
-        key: 'region',
-        label: 'Region',
-        value: (G.getBakeryRegion ? G.getBakeryRegion(task.bakery) : '') || 'Unknown region'
-      }
-    ].filter(function (item) {
-      return item.key !== groupVal;
-    });
-
-    return '<div class="follow-up-item__context">' + context.map(function (item) {
-      return '<span class="follow-up-item__context-item"><strong>' + item.label + ':</strong> ' +
-        escapeHtml(item.value) + '</span>';
-    }).join('') + '</div>';
-  }
-
   function followUpAttributionLabel(task) {
     var people = followUpResponsiblePeople(task);
     if (window.GAILS.Attribution) return window.GAILS.Attribution.label(people);
@@ -3793,14 +3761,6 @@ window.GAILS = window.GAILS || {};
       else delete collapsedGroups[name];
     });
 
-    document.querySelectorAll('#visitLogList .unvisited-manager-section').forEach(function (section) {
-      var name = section.getAttribute('data-group-name') || '';
-      if (groupNames.indexOf(name) === -1) return;
-      section.classList.toggle('collapsed', shouldCollapse);
-      var title = section.querySelector('.unvisited-manager-title');
-      if (title) title.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
-    });
-
     // Bakery Directory groups are table rows, not a section div, so the
     // rows themselves need hiding rather than a collapsible container.
     document.querySelectorAll('#visitLogList .bakery-directory__group-row').forEach(function (groupRow) {
@@ -3821,12 +3781,6 @@ window.GAILS = window.GAILS || {};
 
   window.GAILS.resetVisitLogCollapsedGroups = function () {
     window.GAILS._visitLogCollapsedGroups = {};
-
-    document.querySelectorAll('#visitLogList .unvisited-manager-section').forEach(function (section) {
-      section.classList.remove('collapsed');
-      var title = section.querySelector('.unvisited-manager-title');
-      if (title) title.setAttribute('aria-expanded', 'true');
-    });
 
     document.querySelectorAll('#visitLogList .bakery-directory__group-row').forEach(function (groupRow) {
       groupRow.classList.remove('collapsed');
@@ -4064,20 +4018,6 @@ window.GAILS = window.GAILS || {};
       if (listEl) {
         listEl.addEventListener('click', function (e) {
           var closest = e.target.closest ? function (sel) { return e.target.closest(sel); } : function () { return null; };
-
-          var groupBtn = closest('.unvisited-manager-title');
-          if (groupBtn) {
-            var section = groupBtn.closest('.unvisited-manager-section');
-            if (!section) return;
-            var name = section.getAttribute('data-group-name') || '';
-            var collapsedGroups = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
-            if (collapsedGroups[name]) delete collapsedGroups[name];
-            else collapsedGroups[name] = true;
-            section.classList.toggle('collapsed');
-            groupBtn.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
-            syncVisitLogGroupToggle();
-            return;
-          }
 
           var dirGroupBtn = closest('.bakery-directory__group-toggle');
           if (dirGroupBtn) {
@@ -5135,70 +5075,90 @@ window.GAILS = window.GAILS || {};
         return;
       }
 
-      window.GAILS._visitLogCurrentGroupNames = taskGroupsSorted.slice();
-      renderFollowUpSummary(filteredTasks.length, openCount, overdueCount, true);
+      var flatten = followUpGroupVal === 'none';
+      window.GAILS._visitLogCurrentGroupNames = flatten ? [] : taskGroupsSorted.slice();
+      renderFollowUpSummary(filteredTasks.length, openCount, overdueCount, !flatten);
 
       var collapsedTasks = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
-      var html = taskGroupsSorted.map(function (groupName) {
-        var tasks = taskGroups[groupName];
-        var itemsHtml = tasks.map(function (t) {
-          var done = followUpIsDone(t);
-          var m = dueMeta(t.dueDate);
-          var pill = done
-            ? '<span class="follow-up-pill follow-up-pill--done">Done</span>'
-            : (t.dueDate ? '<span class="follow-up-pill follow-up-pill--' + m.state + '">' + escapeHtml(m.label) + '</span>' : '');
 
-          var metaBits = [];
-          var attributionLabel = followUpAttributionLabel(t);
-          var assigneeHtml = '<span class="follow-up-item__assignee"><strong>Assigned to:</strong> ' +
-            escapeHtml(attributionLabel || 'Unassigned') + '</span>';
-          if (t.createdAt) metaBits.push('Added ' + formatFollowUpDate(t.createdAt));
-          if (done && t.completedAt) metaBits.push('Completed ' + formatFollowUpDate(t.completedAt));
+      // Table row for one task. Bakery + Ops Area always show the real site
+      // (not the active group heading) so the row still identifies itself
+      // when read out of context — same convention as the Visit History table.
+      function followUpRowHtml(t, groupName, hidden) {
+        var done = followUpIsDone(t);
+        var m = dueMeta(t.dueDate);
+        var bakeryLabel = followUpBakeryLabel(t) || 'Unknown bakery';
+        var opsLabel = (G.getBakeryOps ? G.getBakeryOps(t.bakery) : '') || 'Unknown ops area';
+        var detailText = t.detail || '';
+        if (detailText.length > 140) detailText = detailText.slice(0, 140) + '…';
+        var attributionLabel = followUpAttributionLabel(t) || 'Unassigned';
+        var groupAttr = groupName ? ' data-group="' + escapeHtml(groupName) + '"' : '';
 
-          // Two rows: bakery + action on the headline, everything else on a
-          // single footnote line. Both wrap, so a long action or a narrow
-          // window simply spills to another line instead of forcing every
-          // card to reserve the height.
-          return '<div class="follow-up-item' + (done ? ' follow-up-item--done' : '') + '" data-task-id="' + escapeHtml(t.id) + '">' +
-            '<button type="button" class="follow-up-item__check' + (done ? ' checked' : '') + '" role="checkbox" aria-checked="' + done + '"' +
-            ' data-followup-toggle="' + escapeHtml(t.id) + '" title="' + (done ? 'Mark as open' : 'Mark as done') + '">' +
-            (done ? '&#10003;' : '') + '</button>' +
-            '<div class="follow-up-item__body">' +
-            '<div class="follow-up-item__headline">' +
-            followUpTaskBakeryHtml(t, followUpGroupVal) +
-            '<span class="follow-up-item__title">' + escapeHtml(t.title || 'Untitled task') + '</span>' +
-            '</div>' +
-            (t.detail ? '<div class="follow-up-item__detail">' + escapeHtml(t.detail) + '</div>' : '') +
-            '<div class="follow-up-item__footnotes">' +
-            followUpTaskContextHtml(t, followUpGroupVal) +
-            assigneeHtml +
-            (metaBits.length ? '<span class="follow-up-item__meta">' + escapeHtml(metaBits.join(' · ')) + '</span>' : '') +
-            '</div>' +
-            '</div>' +
-            '<div class="follow-up-item__side">' +
-            priorityTagHtml(t) +
-            pill +
-            '<div class="follow-up-item__actions">' +
-            '<button type="button" class="follow-up-item__action" data-followup-edit="' + escapeHtml(t.id) + '">Edit</button>' +
-            '<button type="button" class="follow-up-item__action follow-up-item__action--danger" data-followup-delete="' + escapeHtml(t.id) + '">Delete</button>' +
-            '</div>' +
-            '</div>' +
-            '</div>';
+        var dueHtml = done
+          ? '<span class="follow-up-pill follow-up-pill--done">Done</span>' +
+            (t.completedAt ? '<span class="follow-up-table__meta">Completed ' + escapeHtml(formatFollowUpDate(t.completedAt)) + '</span>' : '')
+          : (t.dueDate
+            ? '<span class="follow-up-pill follow-up-pill--' + m.state + '">' + escapeHtml(m.label) + '</span>' +
+              (t.createdAt ? '<span class="follow-up-table__meta">Added ' + escapeHtml(formatFollowUpDate(t.createdAt)) + '</span>' : '')
+            : '<span class="follow-up-table__muted">No deadline</span>');
+
+        return '<tr class="follow-up-table__row' + (done ? ' follow-up-table__row--done' : '') + '"' + groupAttr + (hidden ? ' hidden' : '') + '>' +
+          '<th scope="row" data-label="Bakery"><div class="visit-log-row__bakery-col">' +
+          '<h3 class="visit-log-row__bakery">' + escapeHtml(bakeryLabel) + '</h3>' +
+          '<span class="visit-log-row__manager">Ops Area: ' + escapeHtml(opsLabel) + '</span>' +
+          '</div></th>' +
+          '<td data-label="Action"><div class="follow-up-table__task">' +
+          '<span class="follow-up-table__title">' + escapeHtml(t.title || 'Untitled task') + '</span>' +
+          (detailText ? '<span class="follow-up-table__detail">' + escapeHtml(detailText) + '</span>' : '') +
+          '</div></td>' +
+          '<td data-label="Priority">' + (priorityTagHtml(t) || '<span class="follow-up-table__muted">—</span>') + '</td>' +
+          '<td data-label="Due"><div class="follow-up-table__due-col">' + dueHtml + '</div></td>' +
+          '<td data-label="Assigned To">' + escapeHtml(attributionLabel) + '</td>' +
+          '<td data-label="Actions"><div class="follow-up-table__action-col">' +
+          '<button type="button" class="follow-up-item__check' + (done ? ' checked' : '') + '" role="checkbox" aria-checked="' + done + '"' +
+          ' data-followup-toggle="' + escapeHtml(t.id) + '" title="' + (done ? 'Mark as open' : 'Mark as done') + '" aria-label="' + (done ? 'Mark as open' : 'Mark as done') + '">' +
+          (done ? '&#10003;' : '') + '</button>' +
+          '<button type="button" class="follow-up-table__btn" data-followup-edit="' + escapeHtml(t.id) + '">Edit</button>' +
+          '<button type="button" class="follow-up-table__btn follow-up-table__btn--danger" data-followup-delete="' + escapeHtml(t.id) + '">Delete</button>' +
+          '</div></td>' +
+          '</tr>';
+      }
+
+      var bodyHtml;
+      if (flatten) {
+        bodyHtml = (taskGroups[taskGroupsSorted[0]] || []).map(function (t) {
+          return followUpRowHtml(t, null, false);
         }).join('');
+      } else {
+        bodyHtml = taskGroupsSorted.map(function (groupName) {
+          var tasks = taskGroups[groupName];
+          var isCollapsed = !!collapsedTasks[groupName];
+          var rowsHtml = tasks.map(function (t) { return followUpRowHtml(t, groupName, isCollapsed); }).join('');
+          return '<tr class="bakery-directory__group-row' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
+            '<th scope="rowgroup" colspan="6">' +
+            '<button type="button" class="bakery-directory__group-toggle" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
+            '<svg class="bakery-directory__group-chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
+            '<span>' + escapeHtml(groupName) + '</span>' +
+            '<em>' + tasks.length + ' follow-up' + (tasks.length === 1 ? '' : 's') + '</em>' +
+            '</button>' +
+            '</th>' +
+            '</tr>' + rowsHtml;
+        }).join('');
+      }
 
-        var isCollapsed = !!collapsedTasks[groupName];
-        return '<div class="unvisited-manager-section' + (isCollapsed ? ' collapsed' : '') + '" data-group-name="' + escapeHtml(groupName) + '">' +
-          '<button type="button" class="unvisited-manager-title" aria-expanded="' + (isCollapsed ? 'false' : 'true') + '">' +
-          '<svg class="unvisited-manager-title__chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>' +
-          '<span>' + escapeHtml(groupName) + ' (' + tasks.length + ')</span>' +
-          '</button>' +
-          '<div class="unvisited-manager-body">' +
-          '<div class="follow-up-list">' + itemsHtml + '</div>' +
-          '</div>' +
-          '</div>';
-      }).join('');
-
-      container.innerHTML = html;
+      container.innerHTML =
+        '<div class="table-wrap table-wrap--league table-wrap--floating table-wrap--directory table-wrap--follow-ups">' +
+        '<table class="bakery-directory follow-up-table" data-table-fullscreen="off">' +
+        '<caption>Follow-up tasks</caption>' +
+        '<thead><tr>' +
+        '<th scope="col">Bakery</th>' +
+        '<th scope="col">Action</th>' +
+        '<th scope="col">Priority</th>' +
+        '<th scope="col">Due</th>' +
+        '<th scope="col">Assigned To</th>' +
+        '<th scope="col"><span class="sr-only">Actions</span></th>' +
+        '</tr></thead>' +
+        '<tbody>' + bodyHtml + '</tbody></table></div>';
       syncVisitLogGroupToggle();
     }
 
