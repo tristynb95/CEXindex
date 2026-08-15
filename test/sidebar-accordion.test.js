@@ -69,7 +69,7 @@ test('one shared state update closes every accordion except the requested branch
 
 test('the accordion stays usable in the collapsed rail and mobile drawer', () => {
   assert.match(app, /if \(railIsCollapsed\) setDashboardSidebarCollapsed\(false\)/);
-  assert.match(app, /document\.querySelectorAll\('\[data-target-subtab\]'\)/);
+  assert.match(app, /document\.querySelectorAll\('\.target-subtab\[data-target-subtab\]'\)/);
   assert.match(app, /document\.querySelectorAll\('#visitLogViewToggle \[data-view\]'\)/);
   assert.match(app, /activateDashboardTab\('visit-log', \{ keepSidebarOpen: true \}\)/);
   assert.match(app, /#visitLogViewToggle \[data-view\][\s\S]*?\}, true\);/);

@@ -552,7 +552,7 @@
     var shouldScrollNav = !(options && options.scrollNav === false);
     activeTargetSubtab = name;
     document.body.dataset.targetSubtab = name;
-    document.querySelectorAll('[data-target-subtab]').forEach(function (btn) {
+    document.querySelectorAll('.target-subtab[data-target-subtab]').forEach(function (btn) {
       var isActive = btn.dataset.targetSubtab === name;
       btn.classList.toggle('active', isActive);
       if (isActive && shouldScrollNav) {
@@ -2086,7 +2086,7 @@
     });
   });
 
-  document.querySelectorAll('[data-target-subtab]').forEach(function (tab) {
+  document.querySelectorAll('.target-subtab[data-target-subtab]').forEach(function (tab) {
     tab.addEventListener('click', function () {
       // Hand the panel back to the drawer before activateTargetSubtab below
       // scrollIntoViews the clicked button — it needs to be back in its
