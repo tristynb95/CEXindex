@@ -3416,7 +3416,20 @@ function renderPortal() {
 
 // ── Navigation ──
 function switchPanel(panelName) {
+  var previousPanel = state.activePanel;
   state.activePanel = panelName;
+  if (previousPanel !== panelName) {
+    if (siteSearchInput && siteSearchInput.value) {
+      siteSearchInput.value = '';
+      state.siteSearch = '';
+      renderSites();
+    }
+    if (visitSearchInput && visitSearchInput.value) {
+      visitSearchInput.value = '';
+      state.visitSearch = '';
+      renderVisits();
+    }
+  }
   var activeButton = null;
   Array.from(nav.querySelectorAll('[data-admin-panel]')).forEach(function(btn) {
     var isActive = btn.dataset.adminPanel === panelName;

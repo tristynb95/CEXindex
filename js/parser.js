@@ -154,11 +154,12 @@ window.GAILS.parseExcelFile = function(data) {
         return secs === null || isNaN(secs) ? null : Math.round(secs * 10) / 10;
       };
 
-      // Headline NPS policy: use the Drink + Meal Retail split when the sheet
-      // provides it (cuts food-only ratings out of the score), and net the
-      // food-only responses out of the volume to match. The raw all-ratings
-      // score/volume are kept on the record (na/va) for reference. Old-format
-      // sheets have no splits, so they fall back to the raw values unchanged.
+      // Headline NPS policy: the score is Drink + Meal only — food-only ratings
+      // are cut out, and the food-only responses are netted out of the volume to
+      // match. Every sheet now carries the split (the back catalogue was
+      // reworked to it), so the raw all-ratings fallback below only exists for
+      // an old sheet re-uploaded by mistake; na/va keep the raw figures for
+      // reference either way.
       var ndVal = numOrNull(colMap.nd);
       var vfVal = numOrNull(colMap.vf);
       var rawN = Math.round(num(colMap.nps) * 10) / 10;

@@ -1617,11 +1617,10 @@ function restoreFilters() {
     actionsStatus = saved.actionsStatus;
     setToggleActive(actionsFilter, 'status', actionsStatus);
   }
-  if (rosterSearch && typeof saved.rosterSearch === 'string') rosterSearch.value = saved.rosterSearch;
+  // Search text is deliberately not restored — every new page session
+  // starts with an empty search box.
   if (rosterSort && saved.rosterSort) rosterSort.value = saved.rosterSort;
-  if (actionsSearch && typeof saved.actionsSearch === 'string') actionsSearch.value = saved.actionsSearch;
   if (actionsSort && saved.actionsSort) actionsSort.value = saved.actionsSort;
-  if (visitsSearch && typeof saved.visitsSearch === 'string') visitsSearch.value = saved.visitsSearch;
   if (visitsSort && saved.visitsSort) visitsSort.value = saved.visitsSort;
   // A remembered person who is no longer on the team must not silently filter
   // the whole page down to nothing.

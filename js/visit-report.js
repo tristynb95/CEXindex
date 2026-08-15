@@ -371,6 +371,23 @@ window.GAILS = window.GAILS || {};
     return '<span class="' + cls + '">' + (flag ? '&#9888; ' : '') + escapeHtml(v) + '</span>';
   }
 
+  // A section's write-up is the only long-form prose on a card otherwise made
+  // of one-line checklist rows, so it gets its own labelled block rather than
+  // trailing off the last row. Line breaks the Coffee Partner typed become
+  // paragraphs — their numbered recommendations were being flattened into one
+  // unbroken run of text.
+  function renderSectionNotes(value) {
+    var paragraphs = String(value).split(/\r?\n+/).map(function (para) {
+      var text = para.trim();
+      return text ? '<p class="visit-report-comment">' + escapeHtml(text) + '</p>' : '';
+    }).join('');
+    if (!paragraphs) return '';
+    return '<div class="visit-report-section-notes">' +
+      '<span class="visit-report-section-notes__label">Notes</span>' +
+      paragraphs +
+      '</div>';
+  }
+
   function renderPhotoLinks(urls) {
     if (!Array.isArray(urls) || !urls.length) return '';
     return '<div class="visit-report-photos">' + urls.map(function (url) {
@@ -420,7 +437,7 @@ window.GAILS = window.GAILS || {};
           '</div>'
         );
       } else if (field.type === 'textarea') {
-        if (value) comments = '<p class="visit-report-comment">' + escapeHtml(value) + '</p>';
+        if (value) comments = renderSectionNotes(value);
       } else if (field.type === 'photos') {
         photos = renderPhotoLinks(value);
       }
@@ -3475,21 +3492,18 @@ window.GAILS = window.GAILS || {};
   // restored, so a new page session always starts with the complete visit
   // list. Rating depends on visit type, so it also starts clear. Period is
   // also excluded so every new session starts at All Time rather than
-  // whatever range was last narrowed to. Runs once, right after the filter
-  // dropdowns are populated and before the first filtered render reads them.
+  // whatever range was last narrowed to. Search text is excluded too — every
+  // new session (and every tab switch, via resetVisitLogView) starts with an
+  // empty search box rather than silently re-filtering on a stale term. Runs
+  // once, right after the filter dropdowns are populated and before the
+  // first filtered render reads them.
   function restoreVisitLogFilters() {
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(VISIT_LOG_FILTER_STORAGE_KEY) || 'null'); } catch (e) { /* corrupt/unavailable */ }
     if (!saved || typeof saved !== 'object') return;
 
-    var searchEl = document.getElementById('visitLogSearch');
     var regionEl = document.getElementById('visitLogRegion');
 
-    if (searchEl) {
-      searchEl.value = saved.view === 'bakeries'
-        ? ''
-        : (typeof saved.search === 'string' ? saved.search : '');
-    }
     setVisitLogFilterValues(regionEl, saved.region);
     // Ops options depend on every selected region, so rebuild them first.
     populateDropdown('visitLogOps', new Set(getVisitLogOps(getVisitLogFilterValues(regionEl))), 'All Areas');
@@ -3837,6 +3851,12 @@ window.GAILS = window.GAILS || {};
     document.querySelectorAll('#visitLogViewToggle .target-subtab').forEach(function (b) {
       b.classList.toggle('active', b.dataset.view === 'bakeries');
     });
+
+    var searchEl = document.getElementById('visitLogSearch');
+    if (searchEl && searchEl.value) {
+      searchEl.value = '';
+      if (window.GAILS._visitLogFiltersInited) window.GAILS.renderVisitLog();
+    }
   };
 
   function renderVisitLogSummary(shownCount, showGroupToggle) {

@@ -901,8 +901,9 @@ function restoreFilters() {
   } catch { stored = null; }
   if (!stored) return;
 
+  // Search text is deliberately not restored — every new page session (and
+  // every switch between sections) starts with an empty search box.
   var v = stored.visits || {};
-  if (visitsSearch && v.search) visitsSearch.value = v.search;
   if (visitsPeriod && v.period) visitsPeriod.value = v.period;
   if (visitsFrom && v.from) visitsFrom.value = v.from;
   if (visitsTo && v.to) visitsTo.value = v.to;
@@ -913,7 +914,6 @@ function restoreFilters() {
   if (visitsBakery) visitsBakery.dataset.pendingValue = v.bakery || '';
 
   var a = stored.actions || {};
-  if (actionsSearch && a.search) actionsSearch.value = a.search;
   if (actionsSort && a.sort) actionsSort.value = a.sort;
   if (actionsOps) actionsOps.dataset.pendingValue = a.ops || '';
   if (actionsBakery) actionsBakery.dataset.pendingValue = a.bakery || '';
@@ -925,9 +925,6 @@ function restoreFilters() {
   if (stored.timelineKind) {
     timelineKind = stored.timelineKind;
     setToggleActive(timelineFilter, 'kind', timelineKind);
-  }
-  if (timelineSearch && typeof stored.timelineSearch === 'string') {
-    timelineSearch.value = stored.timelineSearch;
   }
   syncCustomRangeVisibility();
   if (typeof G.syncCustomSelect === 'function') {
@@ -2816,6 +2813,30 @@ function activateActivitySection(sectionId, options) {
   var settings = options || {};
   var validIds = activityPanels.map(function (panel) { return panel.id; });
   var targetId = validIds.indexOf(sectionId) !== -1 ? sectionId : 'section-brief';
+  var previousPanel = activityPanels.find(function (panel) { return !panel.hidden; });
+  var previousId = previousPanel ? previousPanel.id : null;
+
+  if (previousId && previousId !== targetId) {
+    if (actionsSearch && actionsSearch.value) {
+      actionsSearch.value = '';
+      syncActionResetState();
+      saveFilters();
+      renderActions();
+    }
+    if (visitsSearch && visitsSearch.value) {
+      visitsSearch.value = '';
+      syncVisitResetState();
+      saveFilters();
+      resetVisitsScroll();
+      renderVisits();
+    }
+    if (timelineSearch && timelineSearch.value) {
+      timelineSearch.value = '';
+      timelineLimit = TIMELINE_CHUNK;
+      saveFilters();
+      renderTimeline();
+    }
+  }
 
   activityPanels.forEach(function (panel) {
     var active = panel.id === targetId;

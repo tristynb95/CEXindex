@@ -1111,11 +1111,9 @@
                     <p class="method-hero__eyebrow">Coffee Experience Index</p>
                     <h2>How the score is calculated</h2>
                     <p class="methodology__lead">The headline result is the <strong>Benchmark Score</strong>: a number
-                      from
-                      0 to 100 showing how closely a bakery met six fixed company standards. Other bakeries do not
-                      change
-                      the raw result. Response volume can change the published result through the low-volume adjustment
-                      described below.</p>
+                      from 0 to 100 showing how closely a bakery met six fixed company standards. Each standard earns
+                      points out of 100, and the points are weighted into one score. Other bakeries do not change the
+                      raw result. Response volume can change the published result through the low-volume adjustment.</p>
 
                     <div class="method-overview" aria-label="Method summary">
                       <div class="method-overview__item">
@@ -1152,443 +1150,495 @@
                   </div>
                 </header>
 
-                <div class="method-layout">
-                  <nav class="method-toc" aria-label="Methodology sections">
-                    <span class="method-toc__label">On this page</span>
-                    <button type="button" data-method-anchor="method-inputs"><span>01</span>Inputs and weights</button>
-                    <button type="button" data-method-anchor="method-components"><span>02</span>Component
-                      points</button>
-                    <button type="button" data-method-anchor="method-raw-score"><span>03</span>Raw score</button>
-                    <button type="button" data-method-anchor="method-volume"><span>04</span>Volume adjustment</button>
-                    <button type="button" data-method-anchor="method-periods"><span>05</span>Periods and
-                      ranking</button>
-                    <button type="button" data-method-anchor="method-reproduce"><span>06</span>Reproduce a
-                      result</button>
-                    <div class="method-toc__stamp">
-                      <span aria-hidden="true">&#10003;</span>
-                      <p><strong>Auditable specification</strong>Values and examples are checked against the live
-                        scoring code.</p>
+                <div class="method-body">
+                  <section class="method-chapter" id="method-parts" tabindex="-1">
+                    <header class="method-chapter__header">
+                      <span class="method-chapter__number">01</span>
+                      <div>
+                        <p>What goes in</p>
+                        <h3>The six parts of the score</h3>
+                      </div>
+                    </header>
+                    <p>Everything comes from the uploaded <strong>NPS + Coffee Data</strong> workbook &mdash; one row per
+                      bakery per month. Each part is turned into points out of 100, then multiplied by its weight.</p>
+
+                    <div class="method-weight-map"
+                      aria-label="Score weights: NPS 20%, quality 20%, customer-rated efficiency 20%, friendliness 20%, coffee efficiency 10%, average wait 10%">
+                      <div class="method-weight-map__segment method-weight-map__segment--nps">
+                        <strong>20%</strong><span>NPS</span></div>
+                      <div class="method-weight-map__segment method-weight-map__segment--quality">
+                        <strong>20%</strong><span>Quality</span></div>
+                      <div class="method-weight-map__segment method-weight-map__segment--efficiency">
+                        <strong>20%</strong><span>Efficiency</span></div>
+                      <div class="method-weight-map__segment method-weight-map__segment--friendly">
+                        <strong>20%</strong><span>Friendliness</span></div>
+                      <div class="method-weight-map__segment method-weight-map__segment--timing">
+                        <strong>10%</strong><span>Coffee<br>Efficiency</span></div>
+                      <div class="method-weight-map__segment method-weight-map__segment--wait">
+                        <strong>10%</strong><span>Avg Wait<br>Time</span></div>
                     </div>
-                  </nav>
 
-                  <div class="method-body">
-                    <section class="method-chapter" id="method-inputs" tabindex="-1">
-                      <header class="method-chapter__header">
-                        <span class="method-chapter__number">01</span>
-                        <div>
-                          <p>Source and weighting</p>
-                          <h3>Inputs and weights</h3>
-                        </div>
-                      </header>
-                      <p>The source is the uploaded <strong>NPS + Coffee Data</strong> workbook. Each monthly sheet
-                        supplies
-                        one row per bakery. Ratings and timing percentages are held on a 0&ndash;100 scale; average wait
-                        is
-                        held in seconds.</p>
-                      <div class="method-weight-map"
-                        aria-label="Score weights: quality 20%, customer-rated efficiency 20%, friendliness 20%, NPS 20%, coffee efficiency 10%, average wait 10%">
-                        <div class="method-weight-map__segment method-weight-map__segment--quality">
-                          <strong>20%</strong><span>Quality</span></div>
-                        <div class="method-weight-map__segment method-weight-map__segment--efficiency">
-                          <strong>20%</strong><span>Efficiency</span></div>
-                        <div class="method-weight-map__segment method-weight-map__segment--friendly">
-                          <strong>20%</strong><span>Friendliness</span></div>
-                        <div class="method-weight-map__segment method-weight-map__segment--nps">
-                          <strong>20%</strong><span>NPS</span></div>
-                        <div class="method-weight-map__segment method-weight-map__segment--timing">
-                          <strong>10%</strong><span>Coffee<br>Efficiency</span></div>
-                        <div class="method-weight-map__segment method-weight-map__segment--wait">
-                          <strong>10%</strong><span>Avg Wait<br>Time</span></div>
-                      </div>
-                      <div class="method-table-wrap" tabindex="0" role="region"
-                        aria-label="Score inputs and weights; scroll horizontally if needed">
-                        <table class="method-table" data-table-fullscreen="off">
-                          <caption>Inputs used in the Benchmark Score</caption>
-                          <thead>
-                            <tr>
-                              <th scope="col">Measure</th>
-                              <th scope="col">What is read from the source</th>
-                              <th scope="col">Weight</th>
-                              <th scope="col">100 component points</th>
-                              <th scope="col">0 component points</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr data-methodology-key="nps" data-weight="0.2" data-target="55" data-floor="45">
-                              <th scope="row">Drink + Meal NPS</th>
-                              <td>Recommendation score for drink and meal responses</td>
-                              <td><strong>20%</strong></td>
-                              <td>55 or higher</td>
-                              <td>45 or lower</td>
-                            </tr>
-                            <tr data-methodology-key="dr" data-weight="0.2" data-target="90" data-floor="80">
-                              <th scope="row">Drink quality</th>
-                              <td>Customer rating</td>
-                              <td><strong>20%</strong></td>
-                              <td>90% or higher</td>
-                              <td>80% or lower</td>
-                            </tr>
-                            <tr data-methodology-key="ef" data-weight="0.2" data-target="90" data-floor="80">
-                              <th scope="row">Customer-rated efficiency</th>
-                              <td>Customer rating</td>
-                              <td><strong>20%</strong></td>
-                              <td>90% or higher</td>
-                              <td>80% or lower</td>
-                            </tr>
-                            <tr data-methodology-key="fr" data-weight="0.2" data-target="90" data-floor="80">
-                              <th scope="row">Friendliness</th>
-                              <td>Customer rating</td>
-                              <td><strong>20%</strong></td>
-                              <td>90% or higher</td>
-                              <td>80% or lower</td>
-                            </tr>
-                            <tr data-methodology-key="time" data-weight="0.1">
-                              <th scope="row">Coffee efficiency</th>
-                              <td>Within 2 minutes, within 3 minutes and over 5 minutes</td>
-                              <td><strong>10%</strong></td>
-                              <td colspan="2">Calculated from three timing tests below</td>
-                            </tr>
-                            <tr data-methodology-key="at" data-weight="0.1" data-target="120" data-floor="125">
-                              <th scope="row">Average wait time</th>
-                              <td>Mean drink wait in seconds</td>
-                              <td><strong>10%</strong></td>
-                              <td>2:00 (120s) or less</td>
-                              <td>125 seconds or more</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                      <p class="method-note"><strong>NPS field choice:</strong> where the workbook contains a Drink +
-                        Meal
-                        split, that value is used and food-only responses are removed from response volume. Older
-                        workbooks
-                        without the split use the all-response NPS and volume.</p>
-
-                    </section>
-
-                    <section class="method-chapter" id="method-components" tabindex="-1">
-                      <header class="method-chapter__header">
-                        <span class="method-chapter__number">02</span>
-                        <div>
-                          <p>From source value to score value</p>
-                          <h3>Convert each input to component points</h3>
-                        </div>
-                      </header>
-                      <p>Every measure is first converted to a component score from 0 to 100. In the formulas,
-                        <strong>clamp</strong> means that a result below 0 is set to 0 and a result above 100 is set to
-                        100.
-                      </p>
-
-                      <div class="method-rule-grid">
-                        <section class="method-rule">
-                          <h4>NPS, quality, efficiency and friendliness</h4>
-                          <p>Values between the floor and target move in a straight line.</p>
-                          <div class="formula">component = clamp((actual &minus; floor) &divide; (target &minus; floor)
-                            &times; 100)</div>
-                          <p>For example, a quality result of 85% is halfway between the 80% floor and 90% target, so it
-                            receives 50 component points.</p>
-                        </section>
-
-                        <section class="method-rule">
-                          <h4>Average wait time</h4>
-                          <p>Lower is better. A wait between 120 and 125 seconds loses 20 points for each additional
-                            second.
-                          </p>
-                          <div class="formula">wait points = clamp((125 &minus; seconds) &divide; 5 &times; 100)</div>
-                          <p>For example, 122 seconds receives 60 component points.</p>
-                        </section>
-
-                        <section class="method-rule method-rule--wide">
-                          <h4>Coffee efficiency</h4>
-                          <p>Three timing tests make up this component:</p>
-                          <div class="method-table-wrap method-table-wrap--nested" tabindex="0" role="region"
-                            aria-label="Coffee efficiency sub-score rules; scroll horizontally if needed">
-                            <table class="method-table method-table--compact" data-table-fullscreen="off">
-                              <thead>
-                                <tr>
-                                  <th scope="col">Timing test</th>
-                                  <th scope="col">Share of component</th>
-                                  <th scope="col">100 points</th>
-                                  <th scope="col">0 points</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  <th scope="row">Orders within 2 minutes</th>
-                                  <td>25%</td>
-                                  <td>70% or higher</td>
-                                  <td>under 70%</td>
-                                </tr>
-                                <tr>
-                                  <th scope="row">Orders within 3 minutes</th>
-                                  <td>25%</td>
-                                  <td>90% or higher</td>
-                                  <td>under 90%</td>
-                                </tr>
-                                <tr>
-                                  <th scope="row">Orders over 5 minutes</th>
-                                  <td>50%</td>
-                                  <td>1% or lower</td>
-                                  <td>over 1%</td>
-                                </tr>
-                              </tbody>
-                            </table>
+                    <div class="method-parts">
+                      <article class="method-part method-part--nps" data-methodology-key="nps" data-weight="0.2"
+                        data-target="55" data-floor="45">
+                        <header class="method-part__head">
+                          <span class="method-part__weight">20%</span>
+                          <div>
+                            <h4>Drink + Meal NPS</h4>
+                            <p>Recommendation score from drink and meal responses.</p>
                           </div>
-                          <div class="formula">coffee efficiency points = (2-minute points &times; 0.25) + (3-minute
-                            points &times;
-                            0.25) + (over-5-minute points &times; 0.50)</div>
-                          <p>Each test is pass/fail: it earns full points if it clears its target and zero points if it
-                            doesn&rsquo;t. There is no partial credit within a test.</p>
-                        </section>
+                        </header>
+                        <div class="method-part__scale">
+                          <div class="method-part__mark"><strong>0 pts</strong><span>45 or lower</span></div>
+                          <i class="method-part__track" aria-hidden="true"></i>
+                          <div class="method-part__mark method-part__mark--full"><strong>100 pts</strong><span>55 or
+                              higher</span></div>
+                        </div>
+                        <p class="method-part__rule">In between, points rise in a straight line.</p>
+                      </article>
+
+                      <article class="method-part method-part--quality" data-methodology-key="dr" data-weight="0.2"
+                        data-target="90" data-floor="80">
+                        <header class="method-part__head">
+                          <span class="method-part__weight">20%</span>
+                          <div>
+                            <h4>Drink quality</h4>
+                            <p>Customer rating of the drink they were served.</p>
+                          </div>
+                        </header>
+                        <div class="method-part__scale">
+                          <div class="method-part__mark"><strong>0 pts</strong><span>80% or lower</span></div>
+                          <i class="method-part__track" aria-hidden="true"></i>
+                          <div class="method-part__mark method-part__mark--full"><strong>100 pts</strong><span>90% or
+                              higher</span></div>
+                        </div>
+                        <p class="method-part__rule">85% sits halfway, so it scores 50 points.</p>
+                      </article>
+
+                      <article class="method-part method-part--efficiency" data-methodology-key="ef" data-weight="0.2"
+                        data-target="90" data-floor="80">
+                        <header class="method-part__head">
+                          <span class="method-part__weight">20%</span>
+                          <div>
+                            <h4>Customer-rated efficiency</h4>
+                            <p>Customer rating of how quickly they were served.</p>
+                          </div>
+                        </header>
+                        <div class="method-part__scale">
+                          <div class="method-part__mark"><strong>0 pts</strong><span>80% or lower</span></div>
+                          <i class="method-part__track" aria-hidden="true"></i>
+                          <div class="method-part__mark method-part__mark--full"><strong>100 pts</strong><span>90% or
+                              higher</span></div>
+                        </div>
+                        <p class="method-part__rule">In between, points rise in a straight line.</p>
+                      </article>
+
+                      <article class="method-part method-part--friendly" data-methodology-key="fr" data-weight="0.2"
+                        data-target="90" data-floor="80">
+                        <header class="method-part__head">
+                          <span class="method-part__weight">20%</span>
+                          <div>
+                            <h4>Friendliness</h4>
+                            <p>Customer rating of the team who served them.</p>
+                          </div>
+                        </header>
+                        <div class="method-part__scale">
+                          <div class="method-part__mark"><strong>0 pts</strong><span>80% or lower</span></div>
+                          <i class="method-part__track" aria-hidden="true"></i>
+                          <div class="method-part__mark method-part__mark--full"><strong>100 pts</strong><span>90% or
+                              higher</span></div>
+                        </div>
+                        <p class="method-part__rule">In between, points rise in a straight line.</p>
+                      </article>
+
+                      <article class="method-part method-part--timing" data-methodology-key="time" data-weight="0.1">
+                        <header class="method-part__head">
+                          <span class="method-part__weight">10%</span>
+                          <div>
+                            <h4>Coffee efficiency</h4>
+                            <p>Three recorded speed checks from KVLink.</p>
+                          </div>
+                        </header>
+                        <ul class="method-part__tests">
+                          <li><strong>70%+</strong><span>served within 2 minutes</span><em>25%</em></li>
+                          <li><strong>90%+</strong><span>served within 3 minutes</span><em>25%</em></li>
+                          <li><strong>1% or fewer</strong><span>orders over 5 minutes</span><em>50%</em></li>
+                        </ul>
+                        <p class="method-part__rule">Each test is pass or fail &mdash; full marks or nothing, with no
+                          partial credit.</p>
+                      </article>
+
+                      <article class="method-part method-part--wait" data-methodology-key="at" data-weight="0.1"
+                        data-target="120" data-floor="125">
+                        <header class="method-part__head">
+                          <span class="method-part__weight">10%</span>
+                          <div>
+                            <h4>Average wait time</h4>
+                            <p>Mean drink wait in seconds. Lower is better.</p>
+                          </div>
+                        </header>
+                        <div class="method-part__scale">
+                          <div class="method-part__mark"><strong>0 pts</strong><span>125s or more</span></div>
+                          <i class="method-part__track method-part__track--reverse" aria-hidden="true"></i>
+                          <div class="method-part__mark method-part__mark--full"><strong>100 pts</strong>
+                            <span>2:00 (120s) or less</span>
+                          </div>
+                        </div>
+                        <p class="method-part__rule">Every second above 2:00 costs 20 points.</p>
+                      </article>
+                    </div>
+
+                    <p class="method-note"><strong>NPS source:</strong> the score uses Drink + Meal NPS throughout, and
+                      food-only responses are removed from response volume to match. Food-only NPS does not feed the
+                      Benchmark Score. The Coffee-only, Meal-only and all-response figures are still read from the
+                      workbook and shown for comparison, but they earn no points.</p>
+                  </section>
+
+                  <section class="method-chapter method-chapter--calc" id="method-calculator" tabindex="-1">
+                    <header class="method-chapter__header">
+                      <span class="method-chapter__number">02</span>
+                      <div>
+                        <p>Try it with real numbers</p>
+                        <h3>Benchmark Score calculator</h3>
+                      </div>
+                    </header>
+                    <p>Type or drag any KPI and the score updates as you go &mdash; on the same scoring code the dashboard
+                      runs.</p>
+
+                    <div class="calc" data-benchmark-calculator data-example-score="62">
+                      <div class="calc__inputs">
+                        <div class="calc__group">
+                          <h4 class="calc__group-title">Customer feedback <span>80% of the score</span></h4>
+
+                          <div class="calc__fields">
+                          <div class="calc__field" data-calc-part="nps">
+                            <div class="calc__field-head">
+                              <label for="calcNps">Drink + Meal NPS</label>
+                              <div class="calc__value"><input type="number" id="calcNps" data-calc-input="nps"
+                                  min="-100" max="100" step="1" value="50" inputmode="numeric"></div>
+                            </div>
+                            <input type="range" class="calc__slider" data-calc-slider="nps" min="-100" max="100"
+                              step="1" value="50" aria-label="Drink + Meal NPS slider" tabindex="-1">
+                            <div class="calc__field-foot">
+                              <span class="calc__hint">0 pts at 45 &middot; 100 pts at 55</span>
+                              <span class="calc__points" data-calc-points="nps">50 pts</span>
+                            </div>
+                          </div>
+
+                          <div class="calc__field" data-calc-part="dr">
+                            <div class="calc__field-head">
+                              <label for="calcDr">Drink quality</label>
+                              <div class="calc__value"><input type="number" id="calcDr" data-calc-input="dr" min="0"
+                                  max="100" step="0.1" value="88" inputmode="decimal"><span>%</span></div>
+                            </div>
+                            <input type="range" class="calc__slider" data-calc-slider="dr" min="0" max="100" step="0.1"
+                              value="88" aria-label="Drink quality slider" tabindex="-1">
+                            <div class="calc__field-foot">
+                              <span class="calc__hint">0 pts at 80% &middot; 100 pts at 90%</span>
+                              <span class="calc__points" data-calc-points="dr">80 pts</span>
+                            </div>
+                          </div>
+
+                          <div class="calc__field" data-calc-part="ef">
+                            <div class="calc__field-head">
+                              <label for="calcEf">Customer-rated efficiency</label>
+                              <div class="calc__value"><input type="number" id="calcEf" data-calc-input="ef" min="0"
+                                  max="100" step="0.1" value="85" inputmode="decimal"><span>%</span></div>
+                            </div>
+                            <input type="range" class="calc__slider" data-calc-slider="ef" min="0" max="100" step="0.1"
+                              value="85" aria-label="Customer-rated efficiency slider" tabindex="-1">
+                            <div class="calc__field-foot">
+                              <span class="calc__hint">0 pts at 80% &middot; 100 pts at 90%</span>
+                              <span class="calc__points" data-calc-points="ef">50 pts</span>
+                            </div>
+                          </div>
+
+                          <div class="calc__field" data-calc-part="fr">
+                            <div class="calc__field-head">
+                              <label for="calcFr">Friendliness</label>
+                              <div class="calc__value"><input type="number" id="calcFr" data-calc-input="fr" min="0"
+                                  max="100" step="0.1" value="92" inputmode="decimal"><span>%</span></div>
+                            </div>
+                            <input type="range" class="calc__slider" data-calc-slider="fr" min="0" max="100" step="0.1"
+                              value="92" aria-label="Friendliness slider" tabindex="-1">
+                            <div class="calc__field-foot">
+                              <span class="calc__hint">0 pts at 80% &middot; 100 pts at 90%</span>
+                              <span class="calc__points" data-calc-points="fr">100 pts</span>
+                            </div>
+                          </div>
+                          </div>
+                        </div>
+
+                        <div class="calc__group">
+                          <h4 class="calc__group-title">Recorded timing <span>20% of the score</span></h4>
+
+                          <div class="calc__fields">
+                          <div class="calc__field calc__field--tests" data-calc-part="time">
+                            <div class="calc__field-head">
+                              <span class="calc__field-title">Coffee efficiency</span>
+                              <span class="calc__hint calc__hint--inline">25 / 25 / 50</span>
+                              <span class="calc__points" data-calc-points="time">0 pts</span>
+                            </div>
+                            <div class="calc__test" data-calc-test="s2">
+                              <label for="calcS2">Within 2 minutes</label>
+                              <div class="calc__value"><input type="number" id="calcS2" data-calc-input="s2" min="0"
+                                  max="100" step="0.1" value="65" inputmode="decimal"><span>%</span></div>
+                              <span class="calc__verdict" data-calc-verdict="s2">needs 70%+</span>
+                            </div>
+                            <div class="calc__test" data-calc-test="s3">
+                              <label for="calcS3">Within 3 minutes</label>
+                              <div class="calc__value"><input type="number" id="calcS3" data-calc-input="s3" min="0"
+                                  max="100" step="0.1" value="88" inputmode="decimal"><span>%</span></div>
+                              <span class="calc__verdict" data-calc-verdict="s3">needs 90%+</span>
+                            </div>
+                            <div class="calc__test" data-calc-test="o5">
+                              <label for="calcO5">Over 5 minutes</label>
+                              <div class="calc__value"><input type="number" id="calcO5" data-calc-input="o5" min="0"
+                                  max="100" step="0.1" value="1.2" inputmode="decimal"><span>%</span></div>
+                              <span class="calc__verdict" data-calc-verdict="o5">needs 1% or less</span>
+                            </div>
+                          </div>
+
+                          <div class="calc__field" data-calc-part="at">
+                            <div class="calc__field-head">
+                              <label for="calcAt">Average wait time</label>
+                              <div class="calc__value"><input type="number" id="calcAt" data-calc-input="at" min="0"
+                                  max="600" step="1" value="122" inputmode="numeric"><span>s</span></div>
+                            </div>
+                            <input type="range" class="calc__slider" data-calc-slider="at" min="60" max="240" step="1"
+                              value="122" aria-label="Average wait time slider" tabindex="-1">
+                            <div class="calc__field-foot">
+                              <span class="calc__hint">100 pts at 120s &middot; 0 pts at 125s</span>
+                              <span class="calc__points" data-calc-points="at">60 pts</span>
+                            </div>
+                          </div>
+                          </div>
+                        </div>
+
+                        <div class="formula formula--score">raw score = (NPS &times; 0.2) + (quality &times; 0.2) +
+                          (customer efficiency &times; 0.2) + (friendliness &times; 0.2) + (coffee efficiency &times;
+                          0.1) + (average wait &times; 0.1)
+                          <span class="formula__note">Those are component points, not the source results. Raw and
+                            published scores are both rounded to one decimal place.</span>
+                        </div>
                       </div>
 
-                    </section>
+                      <div class="calc__side">
+                        <aside class="calc__result">
+                          <p class="calc__result-label">Benchmark Score</p>
+                          <div class="calc__score">
+                            <strong data-calc-score>&mdash;</strong>
+                            <span class="calc__band" data-calc-band>&mdash;</span>
+                          </div>
+                          <div class="calc__stack" data-calc-stack aria-hidden="true"></div>
+                          <ul class="calc__rows" data-calc-rows aria-label="Points earned by each part"></ul>
+                          <p class="calc__adjustment" data-calc-adjustment hidden></p>
+                          <p class="calc__result-live" data-calc-live role="status" aria-live="polite"></p>
+                          <div class="benchmarks benchmarks--quad calc__bands" aria-label="Benchmark Score bands">
+                            <div class="benchmark exc" data-calc-band-cell="Exceeding">
+                              <div class="bval">90&ndash;100</div>
+                              <div class="blabel">Exceeding</div>
+                            </div>
+                            <div class="benchmark gd" data-calc-band-cell="Meeting">
+                              <div class="bval">75&ndash;&lt;90</div>
+                              <div class="blabel">Meeting</div>
+                            </div>
+                            <div class="benchmark dev" data-calc-band-cell="Approaching">
+                              <div class="bval">60&ndash;&lt;75</div>
+                              <div class="blabel">Approaching</div>
+                            </div>
+                            <div class="benchmark na" data-calc-band-cell="Below Standard">
+                              <div class="bval">Below 60</div>
+                              <div class="blabel">Below Standard</div>
+                            </div>
+                          </div>
+                        </aside>
 
-                    <section class="method-chapter" id="method-raw-score" tabindex="-1">
-                      <header class="method-chapter__header">
-                        <span class="method-chapter__number">03</span>
-                        <div>
-                          <p>Combine the six components</p>
-                          <h3>Calculate the raw Benchmark Score</h3>
-                        </div>
-                      </header>
-                      <div class="method-score-build">
-                        <div class="method-score-build__formula">
-                          <div class="formula formula--score">raw score = (NPS &times; 0.2) + (quality &times; 0.2) +
-                            (customer efficiency &times;
-                            0.2) + (friendliness &times; 0.2) + (coffee efficiency &times; 0.1) + (average wait &times;
-                            0.1)</div>
-                          <p>The values in this formula are component points, not the original source results. The raw
-                            score is
-                            rounded to one decimal place.</p>
-
-                        </div>
-
-                        <div class="method-example" data-example-score="62">
-                          <h4>Worked example</h4>
-                          <p>A bakery has at least 15 responses, so no low-volume adjustment applies. Its source results
-                            are:
-                            NPS 50; quality 88%; customer-rated efficiency 85%; friendliness 92%; 65% within 2 minutes;
-                            88%
-                            within 3 minutes; 1.2% over 5 minutes; and a 122-second average wait.</p>
-                          <p>These convert to component points of 50, 80, 50, 100, 0 and 60 respectively. The coffee
-                            efficiency
-                            tests all fall just short of their targets (65% &lt; 70%, 88% &lt; 90%, 1.2% &gt; 1%), so
-                            that
-                            component scores 0 under the pass/fail rule.</p>
-                          <p><strong>(50 &times; 0.2) + (80 &times; 0.2) + (50 &times; 0.2) + (100 &times; 0.2) + (0
-                              &times; 0.1) + (60 &times;
-                              0.1) = 62.0.</strong></p>
-                        </div>
-                      </div>
-                    </section>
-
-                    <section class="method-chapter" id="method-volume" tabindex="-1">
-                      <header class="method-chapter__header">
-                        <span class="method-chapter__number">04</span>
-                        <div>
-                          <p>Reduce low-sample volatility</p>
-                          <h3>Apply the response-volume adjustment</h3>
-                        </div>
-                      </header>
-                      <p>Low response counts make a score more sensitive to one response. To reduce that effect, the raw
-                        score is blended with the mean raw score of all scored bakeries in the same company cohort.</p>
-                      <div class="formula">published score = (raw score &times; bakery share) + (cohort mean &times;
-                        cohort share)</div>
-
-                      <div class="method-table-wrap" tabindex="0" role="region"
-                        aria-label="Response-volume adjustment rules; scroll horizontally if needed">
-                        <table class="method-table method-table--compact" data-table-fullscreen="off">
-                          <caption>Shares used in the response-volume adjustment</caption>
-                          <thead>
-                            <tr>
-                              <th scope="col">Responses</th>
-                              <th scope="col">Historic or multi-month period</th>
-                              <th scope="col">Single current month, normal volume</th>
-                              <th scope="col">Single current month, late low-volume case</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <th scope="row">15 or more</th>
-                              <td>100% raw</td>
-                              <td>100% raw</td>
-                              <td>100% raw</td>
-                            </tr>
-                            <tr>
-                              <th scope="row">8&ndash;14</th>
-                              <td>75% raw + 25% cohort mean</td>
-                              <td>100% raw</td>
-                              <td>85% raw + 15% cohort mean</td>
-                            </tr>
-
-                            <tr>
-                              <th scope="row">1&ndash;7</th>
-                              <td>35% raw + 65% cohort mean</td>
-                              <td>100% raw</td>
-                              <td>55% raw + 45% cohort mean</td>
-                            </tr>
-                            <tr>
-                              <th scope="row">0</th>
-                              <td colspan="3">Not scored</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                      <p class="method-note">A current-month record is a <strong>late low-volume case</strong> only on
-                        or
-                        after the later of day 21 and seven days before month-end, and only when its response count is
-                        below
-                        half of the cohort median. The adjusted score is rounded to one decimal place.</p>
-
-                    </section>
-
-                    <section class="method-chapter" id="method-periods" tabindex="-1">
-                      <header class="method-chapter__header">
-                        <span class="method-chapter__number">05</span>
-                        <div>
-                          <p>Coverage, labels and comparison</p>
-                          <h3>Periods, missing data and ranking</h3>
-                        </div>
-                      </header>
-
-                      <div class="method-audit-grid">
-                        <section>
-                          <h4>More than one month selected</h4>
-                          <p>Each KPI is the simple arithmetic mean of the bakery's scored monthly values; it is not
-                            weighted
-                            by monthly response volume, and months with no scored data are left out of the average
-                            rather than
-                            counted as zero. Response volume and drink counts are summed over the same scored months. A
-                            bakery
-                            is scored for the period once it has three scored months and is still reporting &mdash; at
-                            least
-                            one of those months falls in the final three months present in the period. Below that floor,
-                            or
-                            where the data stops before the period closes, the result is marked incomplete and is not
-                            ranked.
-                            Periods of three months or fewer therefore still require every month present.</p>
-                        </section>
-                        <section>
-                          <h4>Missing source values</h4>
-                          <p>Zero responses means no score. Blank core rating or timing fields are imported as 0. A
-                            blank
-                            average wait remains missing; the current calculation gives it 100 benchmark component
-                            points
-                            and the neutral 50th percentile in the peer calculation. Auditors should therefore check
-                            blank
-                            wait fields before relying on a result.</p>
-                        </section>
-
-                        <section>
-                          <h4>Company rank</h4>
-                          <p>Eligible bakeries are ordered by adjusted Benchmark Score, highest first. An adjusted peer
-                            score
-                            breaks a benchmark-score tie; bakery name breaks any remaining tie. Region, ops-area and
-                            bakery
-                            filters are applied after the company score and rank are fixed, so filtering does not change
-                            company rank.</p>
-                        </section>
-                        <section>
-                          <h4>Published bands</h4>
-                          <p>The adjusted Benchmark Score sets the band. Decimal values are compared with the exact
-                            cut-offs
-                            before any whole-number display rounding.</p>
-                        </section>
-                      </div>
-
-                      <div class="benchmarks benchmarks--quad" aria-label="Benchmark Score bands">
-                        <div class="benchmark exc">
-                          <div class="bval">90&ndash;100</div>
-                          <div class="blabel">Exceeding</div>
-                        </div>
-                        <div class="benchmark gd">
-                          <div class="bval">75&ndash;&lt;90</div>
-                          <div class="blabel">Meeting</div>
-                        </div>
-                        <div class="benchmark dev">
-                          <div class="bval">60&ndash;&lt;75</div>
-                          <div class="blabel">Approaching</div>
-                        </div>
-                        <div class="benchmark na">
-                          <div class="bval">Below 60</div>
-                          <div class="blabel">Below Standard</div>
+                        <div class="calc__group calc__group--volume">
+                          <h4 class="calc__group-title">Response volume <span>confidence adjustment</span></h4>
+                          <div class="calc__field calc__field--inline">
+                            <label for="calcVol">Responses in the period</label>
+                            <div class="calc__value"><input type="number" id="calcVol" data-calc-input="v" min="0"
+                                max="9999" step="1" value="40" inputmode="numeric"></div>
+                          </div>
+                          <div class="calc__field calc__field--inline" data-calc-cohort hidden>
+                            <label for="calcCohort">Company mean raw score</label>
+                            <div class="calc__value"><input type="number" id="calcCohort" data-calc-input="cohort"
+                                min="0" max="100" step="0.1" value="70" inputmode="decimal"></div>
+                          </div>
+                          <p class="calc__hint" data-calc-volume-hint>15 or more responses, so the raw score is
+                            published as it stands.</p>
+                          <button type="button" class="calc__reset" data-calc-reset>Reset to the worked example</button>
                         </div>
                       </div>
+                    </div>
+                  </section>
 
-                      <details class="method-details">
-                        <summary>Peer tie-break calculation</summary>
-                        <div class="method-details__body">
-                          <p>The peer score is not the headline performance measure. It is retained to compare relative
-                            position and to break ties in company rank.</p>
-                          <p>For a monthly result, each of the same six measures is converted to a percentile within the
-                            scored company cohort. The lowest result receives 0 and the highest receives 100; lower wait
-                            time
-                            is better. Ties use the average tied position. A one-bakery cohort receives 50. The six
-                            percentiles use the same 20%, 20%, 20%, 20%, 10% and 10% weights, followed by the same
-                            response-volume adjustment.</p>
-                          <p>For a multi-month result, the quality, customer-efficiency and friendliness peer components
-                            are
-                            averages of their monthly percentiles. NPS, within-2-minute performance and average-wait
-                            percentiles are recalculated from the period averages.</p>
+                  <section class="method-chapter" id="method-detail" tabindex="-1">
+                    <header class="method-chapter__header">
+                      <span class="method-chapter__number">03</span>
+                      <div>
+                        <p>Audit trail</p>
+                        <h3>The rules behind the number</h3>
+                      </div>
+                    </header>
+                    <p>Everything an auditor needs to reproduce a published result, kept out of the way until it is
+                      needed.</p>
+
+                    <details class="method-details">
+                      <summary>Low response volume adjustment</summary>
+                      <div class="method-details__body">
+                        <p>Low response counts make a score more sensitive to one response. To reduce that effect, the
+                          raw score is blended with the mean raw score of all scored bakeries in the same company
+                          cohort.</p>
+                        <div class="formula">published score = (raw score &times; bakery share) + (cohort mean &times;
+                          cohort share)</div>
+                        <div class="method-table-wrap" tabindex="0" role="region"
+                          aria-label="Response-volume adjustment rules; scroll horizontally if needed">
+                          <table class="method-table method-table--compact" data-table-fullscreen="off">
+                            <caption>Shares used in the response-volume adjustment</caption>
+                            <thead>
+                              <tr>
+                                <th scope="col">Responses</th>
+                                <th scope="col">Historic or multi-month period</th>
+                                <th scope="col">Single current month, normal volume</th>
+                                <th scope="col">Single current month, late low-volume case</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <th scope="row">15 or more</th>
+                                <td>100% raw</td>
+                                <td>100% raw</td>
+                                <td>100% raw</td>
+                              </tr>
+                              <tr>
+                                <th scope="row">8&ndash;14</th>
+                                <td>75% raw + 25% cohort mean</td>
+                                <td>100% raw</td>
+                                <td>85% raw + 15% cohort mean</td>
+                              </tr>
+                              <tr>
+                                <th scope="row">1&ndash;7</th>
+                                <td>35% raw + 65% cohort mean</td>
+                                <td>100% raw</td>
+                                <td>55% raw + 45% cohort mean</td>
+                              </tr>
+                              <tr>
+                                <th scope="row">0</th>
+                                <td colspan="3">Not scored</td>
+                              </tr>
+                            </tbody>
+                          </table>
                         </div>
-                      </details>
+                        <p class="method-note">A current-month record is a <strong>late low-volume case</strong> only on
+                          or after the later of day 21 and seven days before month-end, and only when its response count
+                          is below half of the cohort median. The calculator above uses the historic / multi-month
+                          column.</p>
+                      </div>
+                    </details>
 
-                      <details class="method-details">
-                        <summary>KPI card labels</summary>
-                        <div class="method-details__body">
-                          <p>Card labels help with scanning and do not add points to the index. They use these display
-                            thresholds:</p>
-                          <ul class="method-list">
-                            <li><strong>Drink + Meal NPS:</strong> Exceeding above 60; On Target 55&ndash;60; Watch
-                              45&ndash;&lt;55; Below under 45.</li>
-                            <li><strong>Quality, customer-rated efficiency and friendliness:</strong> Exceeding above
-                              92%;
-                              On Target 90&ndash;92%; Watch 80&ndash;&lt;90%; Below under 80%.</li>
-                            <li><strong>Coffee efficiency headline:</strong> Exceeding above 80%; On Target
-                              70&ndash;80%;
-                              Watch 60&ndash;&lt;70%; Below under 60%.</li>
-                            <li><strong>Average wait:</strong> On Target at 120 seconds or less; Watch above 120 and
-                              below 125
-                              seconds; Below at 125 seconds or more.</li>
-                            <li><strong>Orders over 5 minutes:</strong> Exceeding under 0.5%; On Target 0.5&ndash;1.0%;
-                              Watch
-                              above 1.0% and below 2.5%; Below at 2.5% or more.</li>
-                          </ul>
-                          <p>The Benchmark Score card uses a separate display label: Exceeding above 92, Meeting from 75
-                            through 92, Approaching from 60 to under 75, and Below Standard under 60. The formal score
-                            bands
-                            used in tables, maps and rankings are the published bands shown above.</p>
+                    <details class="method-details">
+                      <summary>Periods, missing data and ranking</summary>
+                      <div class="method-details__body">
+                        <div class="method-audit-grid">
+                          <section>
+                            <h4>More than one month selected</h4>
+                            <p>Each KPI is the simple arithmetic mean of the bakery's scored monthly values; it is not
+                              weighted by monthly response volume, and months with no scored data are left out of the
+                              average rather than counted as zero. Response volume and drink counts are summed over the
+                              same scored months. A bakery is scored for the period once it has three scored months and
+                              is still reporting &mdash; at least one of those months falls in the final three months
+                              present in the period. Below that floor, or where the data stops before the period closes,
+                              the result is marked incomplete and is not ranked. Periods of three months or fewer
+                              therefore still require every month present.</p>
+                          </section>
+                          <section>
+                            <h4>Missing source values</h4>
+                            <p>Zero responses means no score. Blank core rating or timing fields are imported as 0. A
+                              blank average wait remains missing; the current calculation gives it 100 benchmark
+                              component points and the neutral 50th percentile in the peer calculation. Auditors should
+                              therefore check blank wait fields before relying on a result.</p>
+                          </section>
+                          <section>
+                            <h4>Company rank</h4>
+                            <p>Eligible bakeries are ordered by adjusted Benchmark Score, highest first. An adjusted
+                              peer score breaks a benchmark-score tie; bakery name breaks any remaining tie. Region,
+                              ops-area and bakery filters are applied after the company score and rank are fixed, so
+                              filtering does not change company rank.</p>
+                          </section>
+                          <section>
+                            <h4>Published bands</h4>
+                            <p>The adjusted Benchmark Score sets the band, shown alongside the calculator above.
+                              Decimal values are compared with the exact cut-offs before any whole-number display
+                              rounding.</p>
+                          </section>
                         </div>
-                      </details>
+                      </div>
+                    </details>
 
-                    </section>
+                    <details class="method-details">
+                      <summary>Peer tie-break calculation</summary>
+                      <div class="method-details__body">
+                        <p>The peer score is not the headline performance measure. It is retained to compare relative
+                          position and to break ties in company rank.</p>
+                        <p>For a monthly result, each of the same six measures is converted to a percentile within the
+                          scored company cohort. The lowest result receives 0 and the highest receives 100; lower wait
+                          time is better. Ties use the average tied position. A one-bakery cohort receives 50. The six
+                          percentiles use the same 20%, 20%, 20%, 20%, 10% and 10% weights, followed by the same
+                          response-volume adjustment.</p>
+                        <p>For a multi-month result, the quality, customer-efficiency and friendliness peer components
+                          are averages of their monthly percentiles. NPS, within-2-minute performance and average-wait
+                          percentiles are recalculated from the period averages.</p>
+                      </div>
+                    </details>
 
-                    <section class="method-chapter method-chapter--checklist" id="method-reproduce" tabindex="-1">
-                      <header class="method-chapter__header">
-                        <span class="method-chapter__number">06</span>
-                        <div>
-                          <p>Independent verification</p>
-                          <h3>How to reproduce a result</h3>
-                        </div>
-                      </header>
-                      <ol class="method-list method-list--num">
-                        <li>Choose the same period and use the full, unfiltered company cohort.</li>
-                        <li>Confirm the bakery's six source inputs and response volume. For a multi-month period,
-                          confirm
-                          that every expected month is present.</li>
-                        <li>Convert the six inputs to component points using the targets, floors and timing guardrail
-                          above.
-                        </li>
-                        <li>Apply the six weights and round the raw score to one decimal place.</li>
-                        <li>Calculate the cohort mean of raw scores, apply the response-volume blend where required, and
-                          round
-                          the published score to one decimal place.</li>
-                        <li>Assign the score band and rank the complete cohort before applying dashboard filters.</li>
-                      </ol>
+                    <details class="method-details">
+                      <summary>KPI card labels</summary>
+                      <div class="method-details__body">
+                        <p>Card labels help with scanning and do not add points to the index. They use these display
+                          thresholds:</p>
+                        <ul class="method-list">
+                          <li><strong>Drink + Meal NPS:</strong> Exceeding above 60; On Target 55&ndash;60; Watch
+                            45&ndash;&lt;55; Below under 45.</li>
+                          <li><strong>Quality, customer-rated efficiency and friendliness:</strong> Exceeding above
+                            92%; On Target 90&ndash;92%; Watch 80&ndash;&lt;90%; Below under 80%.</li>
+                          <li><strong>Coffee efficiency headline:</strong> Exceeding above 80%; On Target 70&ndash;80%;
+                            Watch 60&ndash;&lt;70%; Below under 60%.</li>
+                          <li><strong>Average wait:</strong> On Target at 120 seconds or less; Watch above 120 and
+                            below 125 seconds; Below at 125 seconds or more.</li>
+                          <li><strong>Orders over 5 minutes:</strong> Exceeding under 0.5%; On Target 0.5&ndash;1.0%;
+                            Watch above 1.0% and below 2.5%; Below at 2.5% or more.</li>
+                        </ul>
+                        <p>The Benchmark Score card uses a separate display label: Exceeding above 92, Meeting from 75
+                          through 92, Approaching from 60 to under 75, and Below Standard under 60. The formal score
+                          bands used in tables, maps and rankings are the published bands shown above.</p>
+                      </div>
+                    </details>
 
-                    </section>
-                  </div>
+                    <details class="method-details">
+                      <summary>How to reproduce a result</summary>
+                      <div class="method-details__body">
+                        <ol class="method-list method-list--num">
+                          <li>Choose the same period and use the full, unfiltered company cohort.</li>
+                          <li>Confirm the bakery's six source inputs and response volume. For a multi-month period,
+                            confirm that every expected month is present.</li>
+                          <li>Enter those inputs in the calculator above, or convert them by hand using the targets and
+                            floors in section 01.</li>
+                          <li>Apply the six weights and round the raw score to one decimal place.</li>
+                          <li>Calculate the cohort mean of raw scores, apply the response-volume blend where required,
+                            and round the published score to one decimal place.</li>
+                          <li>Assign the score band and rank the complete cohort before applying dashboard filters.</li>
+                        </ol>
+                      </div>
+                    </details>
+
+                    <div class="method-stamp">
+                      <span aria-hidden="true">&#10003;</span>
+                      <p><strong>Auditable specification</strong>The calculator and the examples on this page run the
+                        live scoring code, with targets, floors and weights read from the dashboard configuration.</p>
+                    </div>
+                  </section>
                 </div>
 
               </div>
@@ -2553,6 +2603,7 @@
   <script defer src="js/visit-schema.js"></script>
   <script defer src="js/utils.js?v=20260811-fullbleed-modals-01"></script>
   <script defer src="js/cei.js"></script>
+  <script defer src="js/method-calc.js"></script>
   <script defer src="js/parser.js"></script>
   <script defer src="js/periods.js"></script>
   <script defer src="js/filters.js"></script>

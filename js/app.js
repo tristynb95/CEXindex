@@ -424,6 +424,11 @@
     if (!dashboardWorkspaceShell) return;
     closeDashboardNavPopover();
     dashboardWorkspaceShell.dataset.sidebarOpen = open ? 'true' : 'false';
+    // Lets the floating filter FAB (and its sheet) drop behind the nav
+    // drawer via CSS — those sit at a higher z-index than the drawer so it
+    // can float above filter controls when both are closed, which would
+    // otherwise leave the FAB visible/tappable over an open drawer.
+    document.body.classList.toggle('dashboard-nav-open', !!open);
     syncDashboardSidebarControls();
   }
 
@@ -2506,22 +2511,6 @@
   // it also covers the trend-table one, which is re-rendered on every refresh.
   (function () {
     var floatingDisclosureSelector = '.focus-method--overlay, .kpi-info';
-    document.addEventListener('click', function (e) {
-      var methodAnchor = e.target && e.target.closest ? e.target.closest('[data-method-anchor]') : null;
-      if (!methodAnchor) return;
-      var chapter = document.getElementById(methodAnchor.getAttribute('data-method-anchor'));
-      if (!chapter) return;
-      e.preventDefault();
-      document.querySelectorAll('[data-method-anchor].is-active').forEach(function (button) {
-        button.classList.remove('is-active');
-      });
-      methodAnchor.classList.add('is-active');
-      chapter.scrollIntoView({
-        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-        block: 'start'
-      });
-      chapter.focus({ preventScroll: true });
-    });
     document.addEventListener('click', function (e) {
       var methodologyLink = e.target && e.target.closest ? e.target.closest('[data-benchmark-methodology]') : null;
       if (!methodologyLink) return;
