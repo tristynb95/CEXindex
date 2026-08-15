@@ -3473,9 +3473,10 @@ window.GAILS = window.GAILS || {};
   // Restores the last-used filters (saved on every render) so the page opens
   // in the state the user last worked in. Visit type is deliberately not
   // restored, so a new page session always starts with the complete visit
-  // list. Rating depends on visit type, so it also starts clear. Runs once,
-  // right after the filter dropdowns are populated and before the first
-  // filtered render reads them.
+  // list. Rating depends on visit type, so it also starts clear. Period is
+  // also excluded so every new session starts at All Time rather than
+  // whatever range was last narrowed to. Runs once, right after the filter
+  // dropdowns are populated and before the first filtered render reads them.
   function restoreVisitLogFilters() {
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(VISIT_LOG_FILTER_STORAGE_KEY) || 'null'); } catch (e) { /* corrupt/unavailable */ }
@@ -3499,7 +3500,6 @@ window.GAILS = window.GAILS || {};
     setSelectValueIfPresent(document.getElementById('visitLogDirectoryGroup'), saved.directoryGroup);
     setSelectValueIfPresent(document.getElementById('visitLogGroup'), saved.group);
     setSelectValueIfPresent(document.getElementById('visitLogSort'), saved.sort);
-    setSelectValueIfPresent(document.getElementById('visitLogPeriod'), saved.period);
     window.GAILS._pendingFollowUpAssigneeFilter =
       typeof saved.followUpAssignee === 'string' ? saved.followUpAssignee : '';
     setSelectValueIfPresent(document.getElementById('followUpAssignee'), saved.followUpAssignee);

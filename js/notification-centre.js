@@ -23,7 +23,7 @@
 // which bakeries a person looks after is js/patch.js.
 import { auth, db } from './firebase-config.js';
 import { onValue, query, limitToLast, orderByChild, ref, update } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-import { notificationScopeOf } from './permissions.js';
+import { notificationScopeOf, hasAdminPanelAccess } from './permissions.js';
 
 // The panel is a recent-news surface, not an archive: the feed keeps growing
 // but nobody needs to scroll back through a quarter of it.
@@ -124,6 +124,7 @@ export function mountNotificationCentre(options) {
       scope: api
         ? api.resolveScope(notificationScopeOf(permissions), profile && profile.notificationScope)
         : 'area',
+      isAdmin: hasAdminPanelAccess(permissions),
       bakeries: resolved.bakeries,
       opsAreas: resolved.opsAreas.map(function (area) { return area.opsArea; }),
       regions: resolved.regions.map(function (region) { return region.region; })

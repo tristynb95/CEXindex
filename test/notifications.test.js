@@ -30,6 +30,7 @@ function viewer(overrides) {
   return Object.assign({
     uid: 'bobby',
     scope: 'area',
+    isAdmin: false,
     bakeries: BOBBYS_BAKERIES,
     opsAreas: ['Bobby Holmes'],
     regions: []
@@ -138,17 +139,20 @@ test('a task you raised reaching done tells you, wherever it was', () => {
   );
 });
 
-test('an admin data update reaches everyone, because it is nobody\'s area news', () => {
+test('an admin data update reaches admins only, not the whole estate by default', () => {
   const dataUpdate = Notifications.buildEvent('data.updated', {
     actorUid: 'admin',
     actorName: 'Ada Admin',
     subject: 'the shared dataset',
     detail: '4,000 rows from Coffee Data.xlsx'
   });
-  assert.equal(Notifications.shouldDeliver(dataUpdate, viewer()), true);
-  assert.equal(Notifications.shouldDeliver(dataUpdate, viewer({ scope: 'all' })), true);
+  // A non-admin hears nothing, even set to 'all'.
+  assert.equal(Notifications.shouldDeliver(dataUpdate, viewer()), false);
+  assert.equal(Notifications.shouldDeliver(dataUpdate, viewer({ scope: 'all' })), false);
+  // An admin hears it regardless of their own scope setting.
+  assert.equal(Notifications.shouldDeliver(dataUpdate, viewer({ isAdmin: true, scope: 'area' })), true);
   // Except the person who did it.
-  assert.equal(Notifications.shouldDeliver(dataUpdate, viewer({ uid: 'admin' })), false);
+  assert.equal(Notifications.shouldDeliver(dataUpdate, viewer({ uid: 'admin', isAdmin: true })), false);
 });
 
 test('a bakery outside the patch still matches on the region a regional manager holds', () => {
@@ -323,6 +327,11 @@ test('signing a task off tells the assignees and whoever raised it', () => {
 test('recording a notification can never break the change it describes', () => {
   assert.match(writer, /try \{[\s\S]*?\} catch \(error\) \{[\s\S]*?console\.warn/);
   assert.match(writer, /Could not record a notification for this change/);
+});
+
+test('the panel tells delivery whether this reader has admin panel access', () => {
+  assert.match(centre, /import \{ notificationScopeOf, hasAdminPanelAccess \} from '\.\/permissions\.js'/);
+  assert.match(centre, /isAdmin: hasAdminPanelAccess\(permissions\)/);
 });
 
 test('the panel is one shared feed read per person, capped server-side', () => {

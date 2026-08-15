@@ -66,8 +66,11 @@ window.GAILS = window.GAILS || {};
   //                 finds them wherever the bakery is. "Your task was completed"
   //                 is not area news.
   //   estateWide  — it is about the whole estate, so it is nobody's area news
-  //                 and everybody's news. An admin republishing the dataset
+  //                 rather than anybody's. An admin republishing the dataset
   //                 changes the numbers under every bakery at once.
+  //   adminOnly   — paired with estateWide: it is admin housekeeping rather
+  //                 than news for the floor, so by default only somebody with
+  //                 admin panel access hears about it.
   var TYPES = {
     'report.created': {
       icon: 'report',
@@ -106,11 +109,14 @@ window.GAILS = window.GAILS || {};
       }
     },
     // Something an admin changed for everybody: a new customer experience
-    // workbook, or a re-drawn site directory. `subject` says which.
+    // workbook, or a re-drawn site directory. `subject` says which. Admin
+    // housekeeping rather than floor news, so it stays out of everyone else's
+    // bell by default.
     'data.updated': {
       icon: 'data',
       personal: false,
       estateWide: true,
+      adminOnly: true,
       title: function (event) { return event.actorName + ' updated ' + (event.subject || 'the shared data'); },
       body: function (event) { return event.detail || ''; }
     }
@@ -206,6 +212,7 @@ window.GAILS = window.GAILS || {};
     return {
       uid: cleanText(source.uid),
       scope: normalizeScope(source.scope),
+      isAdmin: !!source.isAdmin,
       bakeries: bakeries,
       opsAreas: areas,
       regions: regions
@@ -228,8 +235,10 @@ window.GAILS = window.GAILS || {};
   //   - anything naming you personally always reaches you: your task, or a task
   //     you raised being closed by somebody else. There is no setting that
   //     turns this off;
-  //   - an estate-wide change reaches everyone, because it is not one area's
-  //     news to miss — the numbers under every bakery just moved;
+  //   - an admin-only estate-wide change (data.updated) reaches admins alone —
+  //     it is housekeeping, not news for the floor;
+  //   - any other estate-wide change reaches everyone, because it is not one
+  //     area's news to miss — the numbers under every bakery just moved;
   //   - 'all' takes the rest of the estate's activity too;
   //   - 'area' takes only activity at the bakeries you look after.
   function shouldDeliver(event, viewer) {
@@ -239,7 +248,7 @@ window.GAILS = window.GAILS || {};
     if (!reader.uid) return false;
     if (cleanText(event.actorUid) === reader.uid) return false;
     if (isTarget(event, reader.uid)) return true;
-    if (type.estateWide) return true;
+    if (type.estateWide) return type.adminOnly ? reader.isAdmin : true;
     if (reader.scope === 'all') return true;
     return inPatch(event, reader);
   }

@@ -268,7 +268,7 @@ Five things raise a notification:
 | `task.assigned` | a follow-up is raised, to the people it lands on |
 | `task.completed` | a follow-up is signed off, to its assignees **and** whoever raised it |
 | `note.added` | a note is added to a bakery profile |
-| `data.updated` | an admin republishes the dataset or the site directory |
+| `data.updated` | an admin republishes the dataset or the site directory — reaches admins only, not the floor |
 
 **One shared feed, filtered per reader.** Every event is written once to
 `notificationEvents/{id}` and every signed-in user reads the node — exactly how
@@ -284,8 +284,10 @@ The delivery rule (`js/notifications.js`), in order:
 - you are never told about your own action;
 - anything naming you personally always reaches you: your task, or a task you
   raised being closed by somebody else;
-- an estate-wide change reaches everyone, because it is not one area's news to
-  miss — the numbers under every bakery just moved;
+- an admin-only estate-wide change (`data.updated`) reaches admins alone — it
+  is housekeeping, not news for the floor;
+- any other estate-wide change reaches everyone, because it is not one area's
+  news to miss — the numbers under every bakery just moved;
 - **Everything** takes the rest of the estate's activity too;
 - **Just their bakeries** takes only activity at the bakeries in their patch.
 
