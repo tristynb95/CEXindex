@@ -34,9 +34,7 @@ const summaryCards    = document.getElementById('adminSummaryCards');
 const overviewGrid    = document.getElementById('adminOverviewGrid');
 const heroSummary     = document.getElementById('adminHeroSummary');
 const heroMeta        = document.getElementById('adminHeroMeta');
-const panelEyebrow    = document.getElementById('adminPanelEyebrow');
 const panelTitle      = document.getElementById('adminPanelTitle');
-const panelDescription = document.getElementById('adminPanelDescription');
 const userList        = document.getElementById('adminUserList');
 const createUserForm  = document.getElementById('createUserForm');
 const inviteUserBtn   = document.getElementById('inviteUserBtn');
@@ -55,6 +53,12 @@ const newManagerSelect = document.getElementById('newManagerSelect');
 const newOpsSelect    = document.getElementById('newOpsSelect');
 const createMsg       = document.getElementById('createMsg');
 const usersMsg        = document.getElementById('usersMsg');
+const userSearchInput = document.getElementById('userSearchInput');
+const userDepartmentFilter = document.getElementById('userDepartmentFilter');
+const userRoleFilter  = document.getElementById('userRoleFilter');
+const userStatusFilter = document.getElementById('userStatusFilter');
+const userSortSelect  = document.getElementById('userSortSelect');
+const userTableMeta   = document.getElementById('userTableMeta');
 
 // Person access modal — one person's whole access picture in one dialog.
 const userAccessModal   = document.getElementById('userAccessModal');
@@ -117,6 +121,8 @@ const siteMsg         = document.getElementById('siteMsg');
 const siteTableMeta   = document.getElementById('siteTableMeta');
 const saveSitesBtn    = document.getElementById('saveSitesBtn');
 const resetSitesBtn   = document.getElementById('resetSitesBtn');
+const saveSitesBar    = document.getElementById('adminSaveBar');
+const saveSitesBarDetail = document.getElementById('adminSaveBarDetail');
 const regionList      = document.getElementById('adminRegionList');
 const managerList     = document.getElementById('adminManagerList');
 const regionAssignmentList = document.getElementById('regionAssignmentList');
@@ -135,7 +141,7 @@ const datasetImportLoadedState = document.getElementById('datasetImportLoadedSta
 const datasetImportLoadedTitle = document.getElementById('datasetImportLoadedTitle');
 const datasetImportLoadedStats = document.getElementById('datasetImportLoadedStats');
 const datasetImportLoadedHint = document.getElementById('datasetImportLoadedHint');
-const portalUploadBtn = document.getElementById('portalUploadBtn');
+
 const clearDatasetBtn = document.getElementById('clearDatasetBtn');
 const restoreMetaBtn  = document.getElementById('restoreMetadataBtn');
 const syncCoordinatesBtn = document.getElementById('syncCoordinatesBtn');
@@ -144,6 +150,7 @@ const compactSidebarMedia = window.matchMedia('(max-width: 980px)');
 const activityLogList     = document.getElementById('activityLogList');
 const visitSearchInput    = document.getElementById('visitSearchInput');
 const visitTableMeta      = document.getElementById('visitTableMeta');
+const visitTypeFilter     = document.getElementById('visitTypeFilter');
 const visitMsg            = document.getElementById('visitMsg');
 const visitList           = document.getElementById('visitList');
 const visitDetailModal    = document.getElementById('visitDetailModal');
@@ -156,6 +163,8 @@ const deleteConfirmCancel     = document.getElementById('deleteConfirmCancel');
 const deleteConfirmInput      = document.getElementById('deleteConfirmInput');
 const deleteConfirmSubmitBtn  = document.getElementById('deleteConfirmSubmitBtn');
 const deleteConfirmPromptText = document.getElementById('deleteConfirmPromptText');
+const deleteConfirmTitle  = document.getElementById('deleteConfirmTitle');
+const deleteConfirmWord   = document.getElementById('deleteConfirmWord');
 
 const roleForm            = document.getElementById('roleForm');
 const roleEditorModal     = document.getElementById('roleEditorModal');
@@ -227,10 +236,18 @@ const state = {
   opsAreaAssignmentsDraft: [],
   siteMetaDirty: false,
   siteSearch: '',
+  // People table search, filters and sort. Held in state rather than read off the
+  // inputs so a re-render from a remote change cannot silently drop them.
+  userSearch: '',
+  userDepartment: '',
+  userRole: '',
+  userStatus: '',
+  userSort: 'name',
   datasetInfo: null,
   siteImportInfo: null,
   visits: [],
   visitSearch: '',
+  visitType: '',
   visitDetailId: null,
   cqvPending: null, // { record, warnings, file } awaiting confirmation in cqvConfirmModal
   roles: {},        // custom roles synced from roles/ in Firebase
@@ -822,10 +839,42 @@ function setDirty(flag) {
   updateSiteSaveControls();
 }
 
+// What actually differs from what is saved, counted per kind. The bar names it
+// so "Save changes" is a considered click rather than a hopeful one — and so a
+// draft left behind by an earlier edit cannot masquerade as nothing.
+function describeSiteChanges() {
+  var parts = [];
+  var savedSites = state.siteMetaSource || {};
+  var draftSites = state.siteMetaDraft || {};
+  var changedSites = 0;
+  Object.keys(draftSites).forEach(function(name) {
+    if (JSON.stringify(draftSites[name]) !== JSON.stringify(savedSites[name])) changedSites++;
+  });
+  var removedSites = Object.keys(savedSites).filter(function(name) {
+    return !(name in draftSites);
+  }).length;
+  if (changedSites) parts.push(formatCount(changedSites, 'bakery', 'bakeries'));
+  if (removedSites) parts.push(formatCount(removedSites, 'removal', 'removals'));
+
+  if (JSON.stringify(state.regionAssignmentsDraft) !== JSON.stringify(state.regionAssignmentsSource)) {
+    parts.push('region coffee team');
+  }
+  if (JSON.stringify(state.opsAreaAssignmentsDraft) !== JSON.stringify(state.opsAreaAssignmentsSource)) {
+    parts.push('area head baristas');
+  }
+  if (hasSiteEntryDraft()) parts.push('a part-typed new bakery');
+  return parts;
+}
+
 function updateSiteSaveControls() {
   var hasChanges = hasSiteChanges();
-  saveSitesBtn.textContent = hasChanges ? 'Save Site Data' : 'Site Data Saved';
+  if (saveSitesBar) saveSitesBar.hidden = !hasChanges;
   resetSitesBtn.disabled = !hasChanges;
+  if (!hasChanges || !saveSitesBarDetail) return;
+  var parts = describeSiteChanges();
+  saveSitesBarDetail.textContent = parts.length
+    ? 'Changed: ' + parts.join(' · ')
+    : 'Not published yet — nobody else can see them.';
 }
 
 function markDraftDirty(context, flag) {
@@ -1126,10 +1175,33 @@ function readFileAsBytes(file) {
   });
 }
 
-function confirmSiteImport() {
-  var hasDraft = Object.keys(state.siteMetaDraft).length > 0;
-  if (!hasDraft && !state.siteMetaDirty) return true;
+// Importing publishes straight to Firebase and then calls setDirty(false), so any
+// unsaved edits sitting in the draft below the dropzone are thrown away. The old
+// copy never said so — it led with what "will be kept", so an admin who had spent
+// ten minutes retyping ops areas lost the ten minutes and was reassured about it.
+//
+// A dirty draft is now a three-way decision (save first / discard / keep editing)
+// through the same dialog every other exit from a dirty state uses. A clean draft
+// still gets a plain confirm, because nothing of yours is at stake — only the
+// shared copy is being replaced.
+async function confirmSiteImport() {
+  if (hasSiteChanges()) {
+    var choice = await promptUnsavedChanges(
+      'You have unsaved site directory edits. Importing a workbook replaces the shared '
+      + 'directory for everyone and discards those edits. Save them first?'
+    );
+    if (choice === 'cancel') return false;
+    if (choice === 'save') {
+      var saved = await saveSiteData();
+      if (!saved) return false;
+    } else {
+      discardSiteChanges();
+    }
+    return true;
+  }
 
+  var hasDraft = Object.keys(state.siteMetaDraft).length > 0;
+  if (!hasDraft) return true;
   return confirm('Importing a workbook will immediately replace the shared site directory for all dashboard users. Coffee Partner and Coffee Trainer details for matching regions, and Area Head Barista details for matching ops areas, will be kept. Continue?');
 }
 
@@ -1139,7 +1211,7 @@ async function importSiteWorkbook(file) {
     setMessage(siteMsg, 'error', 'Please choose an Excel workbook ending in .xlsx or .xls.');
     return;
   }
-  if (!confirmSiteImport()) {
+  if (!(await confirmSiteImport())) {
     if (siteImportInput) siteImportInput.value = '';
     return;
   }
@@ -1353,18 +1425,129 @@ function renderSummary() {
     : 'No shared workbook currently synced';
 }
 
+// Everything the workspace can work out for itself that somebody needs to deal
+// with. This replaces four cards that restated the summary strip above them and
+// a "Current Session" card that showed you your own email address.
+//
+// Each check reports a count and the panel that fixes it. A check that finds
+// nothing is dropped rather than shown as a zero — an admin should be able to
+// read this list as a to-do, not scan it for the non-zero rows.
+function buildAttentionItems() {
+  var items = [];
+  var meta = state.siteMetaDraft || {};
+  var siteNames = Object.keys(meta);
+
+  if (hasSiteChanges()) {
+    items.push({
+      tone: 'warn', panel: 'sites', action: 'Review',
+      title: 'Unsaved site directory changes',
+      detail: 'Edits are held in this browser only. Nobody else sees them until you save.'
+    });
+  }
+
+  var unplaced = siteNames.filter(function(name) {
+    var entry = meta[name] || {};
+    return !String(entry.r || '').trim() || !String(entry.o || '').trim();
+  });
+  if (unplaced.length) {
+    items.push({
+      tone: 'warn', panel: 'sites', action: 'Fix',
+      title: formatCount(unplaced.length, 'bakery has', 'bakeries have') + ' no region or ops area',
+      detail: 'They drop out of the Region and Ops Area filters everywhere on the dashboard.'
+    });
+  }
+
+  var unpinned = siteNames.filter(function(name) {
+    var ll = (meta[name] || {}).ll;
+    return !Array.isArray(ll) || ll[0] == null || ll[1] == null;
+  });
+  if (unpinned.length) {
+    items.push({
+      tone: 'info', panel: 'sites', action: 'Fix',
+      title: formatCount(unpinned.length, 'bakery has', 'bakeries have') + ' no coordinates',
+      detail: 'They cannot be plotted on the dashboard map.'
+    });
+  }
+
+  var pending = state.users.filter(function(u) {
+    return u.invitation && u.invitation.status === 'pending';
+  });
+  if (pending.length) {
+    items.push({
+      tone: 'info', panel: 'access', action: 'View',
+      title: formatCount(pending.length, 'invitation is', 'invitations are') + ' still unaccepted',
+      detail: 'They have not chosen a password and confirmed their details yet.'
+    });
+  }
+
+  var bounced = state.users.filter(function(u) {
+    return u.invitation && u.invitation.status === 'delivery_failed';
+  });
+  if (bounced.length) {
+    items.push({
+      tone: 'danger', panel: 'access', action: 'Resend',
+      title: formatCount(bounced.length, 'invitation email', 'invitation emails') + ' bounced',
+      detail: 'Resend from that person’s access settings.'
+    });
+  }
+
+  // A manager who has been removed leaves their reports pointing at nothing, so
+  // those people quietly vanish from every My Team roster.
+  var orphaned = state.users.filter(function(u) {
+    return u.managerUid && !findUser(u.managerUid);
+  });
+  if (orphaned.length) {
+    items.push({
+      tone: 'danger', panel: 'access', action: 'Re-point',
+      title: formatCount(orphaned.length, 'person reports', 'people report') + ' to a deleted account',
+      detail: 'Their work no longer reaches anybody’s My Team page.'
+    });
+  }
+
+  var missingAuditors = typeof missingCqvAuditorVisits === 'function' ? missingCqvAuditorVisits() : [];
+  if (missingAuditors.length) {
+    items.push({
+      tone: 'info', panel: 'visits', action: 'Update',
+      title: formatCount(missingAuditors.length, 'visit report is', 'visit reports are') + ' missing an auditor',
+      detail: 'They are not credited to anyone’s activity until the name is filled in.'
+    });
+  }
+
+  if (!(state.datasetInfo && state.datasetInfo.recordCount)) {
+    items.push({
+      tone: 'danger', panel: 'data', action: 'Upload',
+      title: 'No shared workbook is synced',
+      detail: 'The dashboard has no customer experience data to show anyone.'
+    });
+  }
+
+  // Never point somebody at a panel their role cannot open. applyAdminAccessUI
+  // hides the static [data-admin-panel-target] cards, but it runs once at boot
+  // and these rows are built on every data change, so the filter belongs here.
+  return items.filter(function(item) {
+    var area = PANEL_AREAS[item.panel];
+    return !area || canView(area);
+  });
+}
+
 function renderOverview() {
-  var s = buildSummaryStats();
-  overviewGrid.innerHTML = [
-    { label: 'Access Health',    value: s.userCount ? s.userCount + ' total users'       : 'No users yet',          meta: s.adminCount + ' admin accounts can manage the portal.' },
-    { label: 'Site Directory',   value: s.siteCount + ' bakeries mapped',                                           meta: s.managerCount + ' ops areas across ' + s.regionCount + ' regions.' },
-    { label: 'Dataset Status',   value: s.recordCount ? 'Shared workbook active'         : 'No workbook synced',    meta: s.updatedAt ? 'Updated ' + formatDate(s.updatedAt) : 'Upload a workbook to populate the live dashboard.' },
-    { label: 'Current Session',  value: currentUserEmail(),                                                         meta: state.siteMetaDirty ? 'You have unsaved site mapping edits.' : 'All site metadata changes are saved.' }
-  ].map(function(c) {
-    return '<div class="admin-overview-card">'
-      + '<div class="admin-overview-card__label">' + escapeHtml(c.label) + '</div>'
-      + '<div class="admin-overview-card__value">' + escapeHtml(c.value) + '</div>'
-      + '<div class="admin-overview-card__meta">' + escapeHtml(c.meta) + '</div>'
+  if (!overviewGrid) return;
+  var items = buildAttentionItems();
+  if (!items.length) {
+    overviewGrid.innerHTML = '<div class="admin-attention__clear">'
+      + '<strong>Nothing needs attention.</strong>'
+      + '<span>The directory is complete, every invitation has landed, and the workbook is synced.</span>'
+      + '</div>';
+    return;
+  }
+  overviewGrid.innerHTML = items.map(function(item) {
+    return '<div class="admin-attention__row admin-attention__row--' + escapeHtml(item.tone) + '">'
+      + '<div class="admin-attention__body">'
+        + '<strong>' + escapeHtml(item.title) + '</strong>'
+        + '<span>' + escapeHtml(item.detail) + '</span>'
+      + '</div>'
+      + '<button type="button" class="admin-inline-btn" data-admin-panel-target="' + escapeHtml(item.panel) + '">'
+        + escapeHtml(item.action) + '</button>'
       + '</div>';
   }).join('');
 }
@@ -1426,14 +1609,86 @@ function userStatus(user) {
   return { label: 'Active', note: 'Managed through Firebase dashboard access rules.', tone: 'active' };
 }
 
+// Search, filter and sort for the People table. `userStatus` already derives the
+// tone every row shows, so the status filter reuses it rather than re-deriving
+// the same rules a second way.
+function getVisiblePeople() {
+  var search = String(state.userSearch || '').trim().toLowerCase();
+  var department = state.userDepartment || '';
+  var role = state.userRole || '';
+  var status = state.userStatus || '';
+  var sort = state.userSort || 'name';
+
+  var rows = state.users.filter(function(user) {
+    if (search) {
+      var haystack = (userLabel(user) + ' ' + (user.email || '')).toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    if (department && (user.department || 'unassigned') !== department) return false;
+    if (role && (user.role || 'viewer') !== role) return false;
+    if (status) {
+      var tone = userStatus(user).tone;
+      // "You" is an active account; it is only toned differently so the row can
+      // say so. Filtering by Active should not hide the signed-in admin.
+      if (tone === 'self') tone = 'active';
+      if (tone !== status) return false;
+    }
+    return true;
+  });
+
+  var by = {
+    name: function(u) { return userLabel(u).toLowerCase(); },
+    department: function(u) { return departmentName(u.department) + ' ' + userLabel(u); },
+    role: function(u) { return roleDisplayName(u.role) + ' ' + userLabel(u); },
+    status: function(u) { return userStatus(u).label + ' ' + userLabel(u); }
+  }[sort] || function(u) { return userLabel(u).toLowerCase(); };
+
+  return rows.sort(function(a, b) {
+    return String(by(a)).localeCompare(String(by(b)));
+  });
+}
+
+// The role filter's options follow whatever roles exist, custom ones included.
+function populateUserRoleFilter() {
+  if (!userRoleFilter) return;
+  var selected = state.userRole;
+  var options = ['<option value="">All roles</option>'].concat(allRolesList().map(function(role) {
+    return '<option value="' + escapeHtml(role.id) + '">' + escapeHtml(role.name) + '</option>';
+  }));
+  userRoleFilter.innerHTML = options.join('');
+  // A custom role can be deleted while it is the active filter; falling back to
+  // "All roles" is better than filtering by a role nobody holds any more.
+  if (selected && userRoleFilter.querySelector('option[value="' + CSS.escape(selected) + '"]')) {
+    userRoleFilter.value = selected;
+  } else {
+    state.userRole = '';
+    userRoleFilter.value = '';
+  }
+}
+
+function updateUserTableMeta(count) {
+  if (!userTableMeta) return;
+  userTableMeta.textContent = count === state.users.length
+    ? formatCount(count, 'person', 'people')
+    : count + ' of ' + formatCount(state.users.length, 'person', 'people');
+}
+
 function renderUsers() {
   if (!userList) return;
+  populateUserRoleFilter();
   if (!state.users.length) {
+    updateUserTableMeta(0);
     userList.innerHTML = '<tr><td colspan="7" class="admin-empty">Nobody has dashboard access yet.</td></tr>';
     return;
   }
+  var visible = getVisiblePeople();
+  updateUserTableMeta(visible.length);
+  if (!visible.length) {
+    userList.innerHTML = '<tr><td colspan="7" class="admin-empty">No one matches those filters.</td></tr>';
+    return;
+  }
   var canManageUsers = canEdit('users');
-  userList.innerHTML = state.users.map(function(user) {
+  userList.innerHTML = visible.map(function(user) {
     var isCurrent = currentUserId() === user.uid;
     var perms = permissionsForRole(user.role);
     var status = userStatus(user);
@@ -1453,7 +1708,11 @@ function renderUsers() {
     return '<tr>'
       + '<td>'
         + '<div class="admin-table__title">' + escapeHtml(userLabel(user)) + '</div>'
-        + '<div class="admin-status-note">' + escapeHtml(user.email || 'Unknown') + '</div>'
+        // The cell wraps at any character so long permission prose can fit, which
+        // broke email addresses mid-word ("amara.bellweather@gails.ex / ample").
+        // The address gets one line and an ellipsis, with the full value on hover.
+        + '<div class="admin-status-note admin-user-email" title="' + escapeHtml(user.email || 'Unknown') + '">'
+          + escapeHtml(user.email || 'Unknown') + '</div>'
         + '<div class="admin-status-note admin-status-note--' + escapeHtml(status.tone) + '">' + escapeHtml(status.label) + '</div>'
       + '</td>'
       + '<td><div class="admin-department-pill admin-department-pill--' + escapeHtml(user.department || 'unassigned') + '">'
@@ -2323,13 +2582,15 @@ function renderSites() {
   }).join('');
 }
 
+// Only facts about the dataset. This grid used to carry two cards that said
+// nothing — "Current Browser Session — Admin page, no session data", and a site
+// metadata count that belongs to (and is shown on) a different panel.
 function renderDataControls() {
   var s = buildSummaryStats();
   dataGrid.innerHTML = [
-    { label: 'Shared Workbook',          value: s.recordCount ? s.recordCount + ' records'   : 'No shared data',        meta: s.monthCount ? s.monthCount + ' synced month' + (s.monthCount === 1 ? '' : 's') : 'Upload needed' },
-    { label: 'Last Sync',                value: s.updatedAt ? formatDate(s.updatedAt)         : 'Not synced yet',        meta: s.updatedBy ? 'Updated by ' + s.updatedBy : 'No sync activity recorded' },
-    { label: 'Current Browser Session',  value: 'Admin page — no session data',                                         meta: 'Go to the dashboard to load or upload data.' },
-    { label: 'Site Metadata',            value: Object.keys(state.siteMetaDraft).length + ' mapped bakeries',           meta: state.siteMetaDirty ? 'Unsaved site edits pending' : 'Matches the shared portal data' }
+    { label: 'Shared Workbook', value: s.recordCount ? s.recordCount + ' records' : 'No shared data',   meta: s.monthCount ? formatCount(s.monthCount, 'synced month', 'synced months') : 'Upload needed' },
+    { label: 'Source File',     value: (state.datasetInfo && state.datasetInfo.sourceName) || 'None',   meta: s.recordCount ? 'Replaced whenever a new workbook is uploaded' : 'The dashboard has nothing to show' },
+    { label: 'Last Sync',       value: s.updatedAt ? formatDate(s.updatedAt) : 'Not synced yet',        meta: s.updatedBy ? 'Updated by ' + s.updatedBy : 'No sync activity recorded' }
   ].map(function(c) {
     return '<div class="admin-data-card">'
       + '<div class="admin-data-card__label">' + escapeHtml(c.label) + '</div>'
@@ -2352,6 +2613,13 @@ function getVisibleVisits() {
   var rows = state.visits.slice().sort(function(a, b) {
     return String(b.date || '').localeCompare(String(a.date || ''));
   });
+  if (state.visitType) {
+    rows = rows.filter(function(v) {
+      // A routine visit is the one kind with no `type` written on it.
+      var kind = v.type || 'routine';
+      return kind === state.visitType;
+    });
+  }
   if (!search) return rows;
   return rows.filter(function(v) {
     return String(v.bakery || '').toLowerCase().includes(search)
@@ -3329,26 +3597,38 @@ async function saveVisitDetail(id) {
   closeVisitDetail();
 }
 
-function openDeleteConfirmModal(promptText) {
+// The type-to-confirm dialog. It used to be hard-wired to one job — deleting a
+// single visit — while clearing the shared dataset for the whole company and
+// restoring the default site map went through a native confirm(), a grey OS box
+// where Enter defaults to OK. The severity ordering was exactly inverted, so the
+// dialog now takes what it is confirming.
+function openDeleteConfirmModal(promptText, options) {
+  var opts = options || {};
+  var word = (opts.confirmWord || 'delete record').toLowerCase();
+  var confirmLabel = opts.confirmLabel || 'Delete visit';
+  var pendingLabel = opts.pendingLabel || 'Deleting...';
   return new Promise((resolve) => {
     deleteConfirmPromptText.textContent = promptText;
+    if (deleteConfirmTitle) deleteConfirmTitle.textContent = opts.title || 'Delete visit record';
+    if (deleteConfirmWord) deleteConfirmWord.textContent = word;
     deleteConfirmInput.value = '';
+    deleteConfirmInput.placeholder = word;
     deleteConfirmSubmitBtn.disabled = true;
-    deleteConfirmSubmitBtn.textContent = 'Delete visit';
+    deleteConfirmSubmitBtn.textContent = confirmLabel;
     deleteConfirmModal.style.display = 'flex';
     window.requestAnimationFrame(function() {
       deleteConfirmInput.focus();
     });
-    
+
     function onInput() {
-      var matches = deleteConfirmInput.value.trim().toLowerCase() === 'delete record';
+      var matches = deleteConfirmInput.value.trim().toLowerCase() === word;
       deleteConfirmSubmitBtn.disabled = !matches;
     }
-    
+
     async function onSubmit() {
-      if (deleteConfirmInput.value.trim().toLowerCase() !== 'delete record') return;
+      if (deleteConfirmInput.value.trim().toLowerCase() !== word) return;
       deleteConfirmSubmitBtn.disabled = true;
-      deleteConfirmSubmitBtn.textContent = 'Deleting...';
+      deleteConfirmSubmitBtn.textContent = pendingLabel;
       cleanup();
       resolve(true);
     }
@@ -3415,21 +3695,21 @@ function renderPortal() {
 }
 
 // ── Navigation ──
+// The fallback when a panel is opened before its nav button exists (a deep link
+// resolved during boot). The nav button's own label wins when there is one, so
+// the two can never drift the way the old hard-coded banner default did.
+var PANEL_TITLES = {
+  overview: 'Overview',
+  access: 'People & Access',
+  sites: 'Site Data',
+  data: 'Dataset',
+  visits: 'Visits'
+};
+
 function switchPanel(panelName) {
-  var previousPanel = state.activePanel;
   state.activePanel = panelName;
-  if (previousPanel !== panelName) {
-    if (siteSearchInput && siteSearchInput.value) {
-      siteSearchInput.value = '';
-      state.siteSearch = '';
-      renderSites();
-    }
-    if (visitSearchInput && visitSearchInput.value) {
-      visitSearchInput.value = '';
-      state.visitSearch = '';
-      renderVisits();
-    }
-  }
+  // Searches deliberately survive a panel change. They used to be wiped here,
+  // so stepping over to check something and coming back cost you the query.
   var activeButton = null;
   Array.from(nav.querySelectorAll('[data-admin-panel]')).forEach(function(btn) {
     var isActive = btn.dataset.adminPanel === panelName;
@@ -3443,13 +3723,13 @@ function switchPanel(panelName) {
     panel.setAttribute('aria-hidden', String(!isActive));
   });
   if (activeButton) {
-    var eyebrow = activeButton.querySelector('.admin-pg-nav__eyebrow');
+    // The banner title is authored here rather than harvested out of the nav
+    // button's hidden eyebrow/meta spans, which is what it used to do — ten
+    // display:none spans maintained in admin.html purely to feed this line.
     var title = activeButton.querySelector('.admin-pg-nav__content strong');
-    var description = activeButton.querySelector('.admin-pg-nav__meta');
-    if (panelEyebrow) panelEyebrow.textContent = eyebrow ? eyebrow.textContent.trim() : 'Admin';
-    if (panelTitle) panelTitle.textContent = title ? title.textContent.trim() : 'Admin';
-    if (panelDescription) panelDescription.textContent = description ? description.textContent.trim() : '';
-    if (title) document.title = title.textContent.trim() + ' — GAIL’s Admin';
+    var label = title ? title.textContent.trim() : PANEL_TITLES[panelName] || 'Admin';
+    if (panelTitle) panelTitle.textContent = label;
+    document.title = label + ' — GAIL’s Admin';
   }
   if (panelName === 'overview') renderActivityLog();
 }
@@ -3630,8 +3910,12 @@ async function saveAccessModal() {
     managerUid: draft.managerUid,
     myActivity: draft.myActivity === true
   });
-  // Only full admins may write the admins/ mirror (rules enforce this too).
-  if (state.isAdmin) {
+  // Only full admins may write the admins/ mirror (rules enforce this too) — and
+  // that is state.isFullAdmin, read from the admins/ node itself. state.isAdmin is
+  // also true for a custom role holding admin areas, so gating on it sent a
+  // role-only admin into PERMISSION_DENIED *after* users/{uid} had been written,
+  // leaving the two records out of step with no way to tell from the UI.
+  if (state.isFullAdmin) {
     if (draft.role === 'admin') {
       await set(ref(db, 'admins/' + uid), true);
     } else {
@@ -3703,7 +3987,7 @@ async function revokeUser(uid) {
     : '';
   if (!confirm('Remove dashboard access for ' + (user.email || 'this person') + '?' + warning)) return;
   await remove(ref(db, 'users/' + uid));
-  if (state.isAdmin) {
+  if (state.isFullAdmin) {
     await remove(ref(db, 'admins/' + uid));
   }
   // Someone without dashboard access should not stay in the @mention picker,
@@ -4095,13 +4379,19 @@ function applyAdminAccessUI() {
       document.querySelector('.admin-site-import'),
       siteForm,
       saveSitesBtn,
-      resetSitesBtn
-    ],
-    dataset: [
-      document.querySelector('[data-admin-panel-content="data"] .admin-dataset-upload'),
-      clearDatasetBtn,
+      resetSitesBtn,
       restoreMetaBtn,
       syncCoordinatesBtn
+    ],
+    // Restore Default Site Map and Sync Coordinates Only both write the SITE
+    // DIRECTORY, not the dataset — portalData/siteMeta, which database.rules.json
+    // gates on admin.sites === 'edit'. Gating them on `dataset` showed them to a
+    // dataset-only role, whose click either failed with PERMISSION_DENIED after
+    // the local state had already been overwritten, or left the portal
+    // permanently dirty with the Save and Discard controls hidden.
+    dataset: [
+      document.querySelector('[data-admin-panel-content="data"] .admin-dataset-upload'),
+      clearDatasetBtn
     ],
     visits: [document.querySelector('[data-admin-panel-content="visits"] .admin-dataset-upload')]
   };
@@ -4212,6 +4502,105 @@ if (profileMenuBtn && profileMenuPopover) {
   });
 }
 
+// ── Modal focus management ──
+// Seven dialogs on this page declared aria-modal="true" and none of them behaved
+// modally: Tab walked straight out of the person access modal into the People
+// table behind it, closing dropped focus on <body>, and the wheel scrolled the
+// table under the overlay. js/drilldown.js — the Focus Bakery modal — already
+// solves all three; this is the same idea fitted to this page's shape.
+//
+// Every modal here is opened and closed by writing style.display, from a lot of
+// different call sites. Rather than find and wrap each one, this watches the
+// overlays for that attribute changing, so a modal opened from anywhere is
+// covered — including any added later.
+var modalOverlays = Array.from(document.querySelectorAll('.modal-overlay'));
+var modalReturnFocus = new WeakMap();
+var lockedWorkspaceScroll = null;
+
+function isModalOpen(modal) {
+  return !!modal && modal.style.display !== 'none' && modal.style.display !== '';
+}
+
+function openModals() {
+  return modalOverlays.filter(isModalOpen);
+}
+
+function focusableWithin(modal) {
+  return Array.prototype.slice.call(modal.querySelectorAll(
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]),'
+    + ' textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+  )).filter(function(el) {
+    return !el.hidden && el.offsetParent !== null;
+  });
+}
+
+function onModalOpened(modal) {
+  // Whatever had focus is where focus goes back to on close — usually the row
+  // button that opened the dialog, which is the row you want to carry on from.
+  modalReturnFocus.set(modal, document.activeElement);
+  // The page shell is fixed at 100dvh, so the thing that scrolls behind an
+  // overlay is .admin-workspace__main, not <body>.
+  if (workspaceMain && lockedWorkspaceScroll === null) {
+    lockedWorkspaceScroll = workspaceMain.scrollTop;
+    workspaceMain.style.overflow = 'hidden';
+  }
+}
+
+function onModalClosed(modal) {
+  var returnTo = modalReturnFocus.get(modal);
+  modalReturnFocus.delete(modal);
+  if (!openModals().length && workspaceMain && lockedWorkspaceScroll !== null) {
+    workspaceMain.style.overflow = '';
+    workspaceMain.scrollTop = lockedWorkspaceScroll;
+    lockedWorkspaceScroll = null;
+  }
+  // Take focus back when it is adrift — on <body>, on nothing, or still sitting
+  // on a control inside the dialog that has just been hidden. A close that
+  // deliberately moved focus somewhere else keeps it there.
+  //
+  // This runs from a MutationObserver, so the browser may not have moved focus
+  // off the hidden subtree yet; treating "still inside the closed modal" as
+  // adrift is what makes the restore reliable rather than timing-dependent.
+  if (!returnTo || !document.contains(returnTo)) return;
+  var active = document.activeElement;
+  var adrift = !active || active === document.body || modal.contains(active);
+  if (!adrift) return;
+  try { returnTo.focus(); } catch { /* element became unfocusable */ }
+}
+
+modalOverlays.forEach(function(modal) {
+  var wasOpen = isModalOpen(modal);
+  new MutationObserver(function() {
+    var nowOpen = isModalOpen(modal);
+    if (nowOpen === wasOpen) return;
+    wasOpen = nowOpen;
+    if (nowOpen) onModalOpened(modal);
+    else onModalClosed(modal);
+  }).observe(modal, { attributes: true, attributeFilter: ['style'] });
+});
+
+document.addEventListener('keydown', function(event) {
+  if (event.key !== 'Tab') return;
+  var stack = openModals();
+  if (!stack.length) return;
+  // The topmost dialog owns the tab ring, matching the Escape priority chain.
+  var modal = stack[stack.length - 1];
+  var focusable = focusableWithin(modal);
+  if (!focusable.length) return;
+  var first = focusable[0];
+  var last = focusable[focusable.length - 1];
+  if (!modal.contains(document.activeElement)) {
+    event.preventDefault();
+    first.focus();
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
 Array.from(document.querySelectorAll('a[href]')).forEach(function(anchor) {
   anchor.addEventListener('click', async function(event) {
     if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
@@ -4233,9 +4622,56 @@ signOutBtn.addEventListener('click', async function() {
   window.location.href = 'index.html';
 });
 
+// Every keystroke used to rebuild the whole table body — for the visits table
+// that means re-parsing mentions on every row, on every letter. A short debounce
+// keeps typing responsive without changing what the search matches.
+function debounce(fn, wait) {
+  var timer = null;
+  return function() {
+    var args = arguments;
+    var self = this;
+    window.clearTimeout(timer);
+    timer = window.setTimeout(function() { fn.apply(self, args); }, wait || 150);
+  };
+}
+
+var renderVisitsDebounced = debounce(renderVisits, 150);
+var renderUsersDebounced = debounce(renderUsers, 150);
+var renderSitesDebounced = debounce(renderSites, 150);
+
 visitSearchInput.addEventListener('input', function(e) {
   state.visitSearch = e.target.value;
-  renderVisits();
+  renderVisitsDebounced();
+});
+
+if (visitTypeFilter) {
+  visitTypeFilter.addEventListener('change', function(e) {
+    state.visitType = e.target.value;
+    renderVisits();
+  });
+}
+
+// ── People table controls ──
+if (userSearchInput) {
+  userSearchInput.addEventListener('input', function(e) {
+    state.userSearch = e.target.value;
+    renderUsersDebounced();
+  });
+}
+
+[
+  [userDepartmentFilter, 'userDepartment'],
+  [userRoleFilter, 'userRole'],
+  [userStatusFilter, 'userStatus'],
+  [userSortSelect, 'userSort']
+].forEach(function(pair) {
+  var el = pair[0];
+  var key = pair[1];
+  if (!el) return;
+  el.addEventListener('change', function(e) {
+    state[key] = e.target.value;
+    renderUsers();
+  });
 });
 
 visitList.addEventListener('click', async function(e) {
@@ -4404,7 +4840,7 @@ createUserForm.addEventListener('submit', async function(e) {
     } catch (profileErr) {
       console.warn('Could not mirror the user name to Firebase Auth:', profileErr);
     }
-    if (role === 'admin' && state.isAdmin) await set(ref(db, 'admins/' + uid), true);
+    if (role === 'admin' && state.isFullAdmin) await set(ref(db, 'admins/' + uid), true);
 
     var emailSent = false;
     try {
@@ -4819,7 +5255,7 @@ document.addEventListener('keydown', function(event) {
 
 siteSearchInput.addEventListener('input', function(e) {
   state.siteSearch = e.target.value;
-  renderSites();
+  renderSitesDebounced();
 });
 
 function stageSiteEntry() {
@@ -5035,8 +5471,16 @@ saveSitesBtn.addEventListener('click', function() {
   saveSiteData();
 });
 
-resetSitesBtn.addEventListener('click', function() {
-  discardSiteChanges();
+// "Discard changes" throws away the site directory draft, the region assignments
+// draft and the ops area assignments draft at once, and there is no undo. It used
+// to do that on a single unconfirmed click, while deleting one visit required
+// typing "delete record" — the severity ordering was inverted. It now routes
+// through the same three-way dialog every other exit from a dirty state uses.
+resetSitesBtn.addEventListener('click', async function() {
+  if (!hasSiteChanges()) return;
+  var choice = await promptUnsavedChanges('Discard your unsaved site directory changes? This cannot be undone.');
+  if (choice === 'discard') discardSiteChanges();
+  else if (choice === 'save') await saveSiteData();
 });
 
 if (siteImportBrowseBtn) {
@@ -5133,13 +5577,29 @@ if (datasetImportZone) {
   });
 }
 
-portalUploadBtn.addEventListener('click', async function() {
-  var canLeave = await resolveSiteChangesBeforeLeaving('Save the site directory changes before returning to the dashboard?');
-  if (canLeave) window.location.href = 'index.html';
-});
+// The "← Go to Dashboard" button that used to sit here duplicated the link in the
+// top bar, and shared its button chrome with "Clear Shared Dataset" one slot away.
+// The remaining top-bar link is an <a href>, and the click interceptor already
+// routes every anchor on the page through resolveSiteChangesBeforeLeaving, so the
+// unsaved-changes guard is unchanged.
 
 clearDatasetBtn.addEventListener('click', async function() {
-  if (!confirm('Clear the shared Firebase dataset for everyone?')) return;
+  var months = state.datasetInfo && state.datasetInfo.monthCount;
+  var records = state.datasetInfo && state.datasetInfo.recordCount;
+  var scale = records
+    ? records + ' records across ' + formatCount(months || 0, 'month', 'months')
+    : 'the shared workbook';
+  var ok = await openDeleteConfirmModal(
+    'This removes ' + scale + ' for every dashboard user. Until a new workbook is '
+    + 'uploaded, nobody in the business can see any customer experience data.',
+    {
+      title: 'Clear the shared dataset',
+      confirmWord: 'clear dataset',
+      confirmLabel: 'Clear dataset',
+      pendingLabel: 'Clearing…'
+    }
+  );
+  if (!ok) return;
   clearDatasetBtn.disabled = true;
   setMessage(dataMsg, 'info', 'Clearing shared dataset…');
   try {
@@ -5159,7 +5619,20 @@ clearDatasetBtn.addEventListener('click', async function() {
 });
 
 restoreMetaBtn.addEventListener('click', async function() {
-  if (!confirm('Restore the shared site directory back to the default mapping in this app?')) return;
+  var siteCount = Object.keys(state.siteMetaDraft || {}).length;
+  var ok = await openDeleteConfirmModal(
+    'This replaces the current directory of ' + formatCount(siteCount, 'bakery', 'bakeries')
+    + ' with the mapping built into this app. Every region and ops area you have imported '
+    + 'or edited is lost, along with the Coffee Team and Area Head Barista assignments '
+    + 'attached to them.',
+    {
+      title: 'Restore the default site map',
+      confirmWord: 'restore defaults',
+      confirmLabel: 'Restore defaults',
+      pendingLabel: 'Restoring…'
+    }
+  );
+  if (!ok) return;
   restoreMetaBtn.disabled = true;
   setMessage(dataMsg, 'info', 'Restoring default site map…');
   try {

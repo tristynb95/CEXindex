@@ -27,7 +27,7 @@
        than the rest of this page combined. js/lazy-lib.js now fetches them when
        an upload actually needs them (and sets pdf.js's worker URL on arrival). -->
   <link rel="stylesheet" href="css/styles.css?v=20260811-checkin-context-14-visit-history-table-01-unvisited-sites-table-01-audit-report-modals-03">
-  <link rel="stylesheet" href="css/admin.css?v=20260811-admin-password-01">
+  <link rel="stylesheet" href="css/admin.css?v=20260817-admin-overhaul-01">
 </head>
 
 <body class="admin-body">
@@ -48,14 +48,22 @@
 
   <div id="adminPage" class="admin-page" style="display:none;">
     <div class="admin-stage">
-      <main class="admin-workspace login-hero login-card__form-panel" aria-label="Admin workspace overview">
-        <div class="admin-workspace__hero">
+      <a class="admin-skip-link" href="#adminPanelTitle">Skip to panel</a>
+      <main class="admin-workspace login-hero login-card__form-panel" aria-label="Admin panels">
+        <header class="admin-workspace__hero">
           <div class="admin-workspace__head">
             <div class="login-hero__top admin-workspace__brandbar">
               <div class="login-card__logo-wrap">
                 <img class="login-card__logo" src="./GAILs%20Logo%20White.png" alt="GAIL's Bakery">
               </div>
-              <div class="login-hero__pill">Admin workspace</div>
+              <div class="login-hero__pill">Admin</div>
+              <!-- The live sync status used to own a 66px band of its own. It is
+                   one line of text, so it lives in the bar instead. -->
+              <div class="admin-topbar__status" aria-label="Workspace status">
+                <span class="admin-live-indicator" aria-hidden="true"></span>
+                <span id="adminHeroSummary" class="admin-topbar__status-value">Loading&hellip;</span>
+                <span id="adminHeroMeta" class="admin-topbar__status-meta">Checking Firebase workspace status</span>
+              </div>
             </div>
             <div class="admin-workspace__actions">
               <a href="index.html" class="admin-secondary-btn">&#8592; Dashboard</a>
@@ -127,47 +135,16 @@
               </div>
             </div>
           </div>
-
-
-        </div>
-
-        <div class="admin-command-strip" aria-label="Workspace status">
-          <div class="admin-portal__hero-card">
-            <span class="admin-live-indicator" aria-hidden="true"></span>
-            <div>
-              <div class="admin-portal__hero-label">Live workspace</div>
-              <div id="adminHeroSummary" class="admin-portal__hero-value">Loading&hellip;</div>
-              <div id="adminHeroMeta" class="admin-portal__hero-meta">Checking Firebase workspace status</div>
-            </div>
-          </div>
-          <div class="admin-portal__summary" id="adminSummaryCards"></div>
-        </div>
+        </header>
 
         <div id="adminWorkspaceShell" class="admin-workspace__shell" data-sidebar-collapsed="false">
             <aside class="admin-workspace__sidebar" aria-label="Admin panel menu">
-              <div class="admin-workspace__sidebar-head">
-                <div class="admin-workspace__sidebar-top">
-                  <div>
-                    <p class="admin-workspace__sidebar-label">Workspace</p>
-                    <h3 class="admin-workspace__sidebar-title">Admin tools</h3>
-                    <p class="admin-workspace__sidebar-copy">Choose a task area.</p>
-                  </div>
-                  <button
-                    type="button"
-                    id="adminSidebarToggle"
-                    class="admin-workspace__toggle"
-                    aria-controls="adminPortalNav"
-                    aria-expanded="true"
-                    aria-label="Collapse menu"
-                  >
-                    <span class="admin-workspace__toggle-icon" aria-hidden="true"></span>
-                    <span class="admin-workspace__toggle-label" data-admin-sidebar-toggle-label>Collapse</span>
-                  </button>
-                </div>
-              </div>
-
+              <!-- No sidebar header and no tip card. The rail used to spend ~150px
+                   on "Workspace / Admin tools / Choose a task area." and a note
+                   advising you to collapse it — advice for a problem the chrome
+                   created. The panels are the only thing here now. -->
               <nav class="admin-pg-nav admin-workspace__nav" id="adminPortalNav">
-                <button type="button" class="admin-pg-nav__btn active" data-admin-panel="overview" aria-label="Overview">
+                <button type="button" class="admin-pg-nav__btn active" data-admin-panel="overview">
                   <span class="admin-pg-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
                       <path d="M6 18V11"></path>
@@ -176,12 +153,10 @@
                     </svg>
                   </span>
                   <span class="admin-pg-nav__content">
-                    <span class="admin-pg-nav__eyebrow">Monitor</span>
                     <strong>Overview</strong>
-                    <span class="admin-pg-nav__meta">Workspace health, activity, and fast actions.</span>
                   </span>
                 </button>
-                <button type="button" class="admin-pg-nav__btn" data-admin-panel="access" aria-label="People and access">
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="access">
                   <span class="admin-pg-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
                       <circle cx="9" cy="9" r="2.5"></circle>
@@ -191,12 +166,10 @@
                     </svg>
                   </span>
                   <span class="admin-pg-nav__content">
-                    <span class="admin-pg-nav__eyebrow">Access</span>
                     <strong>People &amp; Access</strong>
-                    <span class="admin-pg-nav__meta">Who can see what, who can edit what, and who reports to whom.</span>
                   </span>
                 </button>
-                <button type="button" class="admin-pg-nav__btn" data-admin-panel="sites" aria-label="Site data">
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="sites">
                   <span class="admin-pg-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
                       <path d="M12 20s-4.5-4-4.5-8.3a4.5 4.5 0 1 1 9 0C16.5 16 12 20 12 20Z"></path>
@@ -204,12 +177,10 @@
                     </svg>
                   </span>
                   <span class="admin-pg-nav__content">
-                    <span class="admin-pg-nav__eyebrow">Directory</span>
                     <strong>Site Data</strong>
-                    <span class="admin-pg-nav__meta">Maintain bakery regions and ops area ownership.</span>
                   </span>
                 </button>
-                <button type="button" class="admin-pg-nav__btn" data-admin-panel="data" aria-label="Dataset">
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="data">
                   <span class="admin-pg-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
                       <ellipse cx="12" cy="6" rx="5.5" ry="2.5"></ellipse>
@@ -218,12 +189,10 @@
                     </svg>
                   </span>
                   <span class="admin-pg-nav__content">
-                    <span class="admin-pg-nav__eyebrow">Sync</span>
                     <strong>Dataset</strong>
-                    <span class="admin-pg-nav__meta">Inspect or reset the shared workbook and metadata.</span>
                   </span>
                 </button>
-                <button type="button" class="admin-pg-nav__btn" data-admin-panel="visits" aria-label="Bakery visits">
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="visits">
                   <span class="admin-pg-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
                       <path d="M6 3.5h9l3 3.2V20a.6.6 0 0 1-.6.6H6.6A.6.6 0 0 1 6 20V3.5Z"></path>
@@ -233,75 +202,80 @@
                     </svg>
                   </span>
                   <span class="admin-pg-nav__content">
-                    <span class="admin-pg-nav__eyebrow">Field visits</span>
                     <strong>Visits</strong>
-                    <span class="admin-pg-nav__meta">Log, edit, or remove routine coffee visit records.</span>
                   </span>
                 </button>
               </nav>
 
-              <div class="admin-workspace__sidebar-note">
-                <p class="admin-workspace__sidebar-note-label">Tip</p>
-                <strong>Collapse the menu to give wide tables more room.</strong>
-              </div>
+              <button
+                type="button"
+                id="adminSidebarToggle"
+                class="admin-workspace__toggle"
+                aria-controls="adminPortalNav"
+                aria-expanded="true"
+                aria-label="Collapse menu"
+              >
+                <span class="admin-workspace__toggle-icon" aria-hidden="true"></span>
+                <span class="admin-workspace__toggle-label" data-admin-sidebar-toggle-label>Collapse</span>
+              </button>
             </aside>
 
             <div class="admin-workspace__main">
+              <!-- The banner used to restate the highlighted sidebar item in three
+                   lines harvested out of hidden DOM: an eyebrow, the title, and a
+                   description sentence, two of which came from display:none spans.
+                   It is now one line — the page h1 — because the sidebar already
+                   shows which panel you are on, and each panel's first section
+                   header already explains what it is for. -->
               <div class="admin-workspace__banner">
-                <div>
-                  <p class="admin-workspace__banner-label" id="adminPanelEyebrow">Monitor</p>
-                  <h3 id="adminPanelTitle">Overview</h3>
-                  <p id="adminPanelDescription">Workspace health, recent activity, and common admin tasks.</p>
+                <h1 id="adminPanelTitle">Overview</h1>
+              </div>
+
+              <!-- The save controls used to sit in the Site Data section header,
+                   pinned to the top of a ~1600px scroll: to change one Area Head
+                   Barista you edited a row 700px down, then scrolled back up to
+                   find Save. The bar is pinned to the bottom of the workspace
+                   instead, appears only when there is something to commit, and
+                   names what changed so Save is not a leap of faith. -->
+              <div class="admin-save-bar" id="adminSaveBar" role="region" aria-label="Unsaved changes" hidden>
+                <div class="admin-save-bar__body">
+                  <span class="admin-save-bar__dot" aria-hidden="true"></span>
+                  <div class="admin-save-bar__text">
+                    <strong id="adminSaveBarTitle">Unsaved changes</strong>
+                    <span class="admin-save-bar__detail" id="adminSaveBarDetail"></span>
+                  </div>
+                </div>
+                <div class="admin-save-bar__actions">
+                  <button type="button" id="resetSitesBtn" class="admin-secondary-btn">Discard changes</button>
+                  <button type="button" id="saveSitesBtn" class="btn">Save changes</button>
                 </div>
               </div>
 
               <div class="admin-workspace__panels">
                 <section class="admin-portal__panel active" data-admin-panel-content="overview">
+              <!-- The one canonical stat row. These four numbers used to be
+                   rendered three times over — in the command strip, again here as
+                   "Access Health / Site Directory / Dataset Status", and again on
+                   the Dataset panel. They live here and nowhere else now. -->
+              <div class="admin-portal__summary" id="adminSummaryCards"></div>
+
+              <!-- Replaces the old "Fast Actions" grid, whose four cards only
+                   switched panel — something the sidebar already does. This asks
+                   the question an admin actually opens the page with. -->
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
-                    <h3>Workspace Overview</h3>
-                    <p>Quick health check of the shared dashboard setup.</p>
+                    <h2>Needs attention</h2>
+                    <p>Everything the workspace can tell is unfinished, out of date, or pointing at nothing.</p>
                   </div>
                 </div>
-                <div class="admin-overview-grid" id="adminOverviewGrid"></div>
+                <div class="admin-attention" id="adminOverviewGrid"></div>
               </div>
 
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
-                    <h3>Fast Actions</h3>
-                    <p>Common admin tasks for keeping the dashboard current.</p>
-                  </div>
-                </div>
-                <div class="admin-action-grid">
-                  <button type="button" class="admin-action-card" data-admin-panel-target="access">
-                    <span class="admin-action-card__label">People &amp; Access</span>
-                    <strong>Set who can see what and who can edit what</strong>
-                    <span>Invite people, assign roles and reporting lines, or revoke access.</span>
-                  </button>
-                  <button type="button" class="admin-action-card" data-admin-panel-target="sites">
-                    <span class="admin-action-card__label">Site Ownership</span>
-                    <strong>Update bakery region and ops area assignments</strong>
-                    <span>Keep filters and operational reporting accurate.</span>
-                  </button>
-                  <button type="button" class="admin-action-card" data-admin-panel-target="data">
-                    <span class="admin-action-card__label">Shared Dataset</span>
-                    <strong>Refresh, inspect, or clear the synced workbook</strong>
-                    <span>Control the live data every user sees.</span>
-                  </button>
-                  <button type="button" class="admin-action-card" data-admin-panel-target="visits">
-                    <span class="admin-action-card__label">Bakery Visits</span>
-                    <strong>Log, edit, or remove routine coffee visits</strong>
-                    <span>Keep last-visited dates accurate.</span>
-                  </button>
-                </div>
-              </div>
-
-              <div class="admin-section">
-                <div class="admin-section__header">
-                  <div>
-                    <h3>Login Activity</h3>
+                    <h2>Login Activity</h2>
                     <p>Recent dashboard logins across all accounts.</p>
                   </div>
                 </div>
@@ -331,16 +305,58 @@
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
-                    <h3>People</h3>
+                    <h2>People</h2>
                     <p>Everyone with dashboard access, organised into Operations and Coffee Team. Each row shows what that person can see, what they can change, and who they report to &mdash; open <strong>Manage</strong> to change any of it in one place.</p>
                   </div>
                   <div class="admin-section__header-actions">
                     <button type="button" id="inviteUserBtn" class="btn">&#43; Invite person</button>
                   </div>
                 </div>
-                <div id="usersMsg" class="admin-message" style="display:none;"></div>
-                <div id="createMsg" class="admin-message" style="display:none;"></div>
-                <div class="admin-table-wrap">
+                <div id="usersMsg" class="admin-message" role="status" style="display:none;"></div>
+                <div id="createMsg" class="admin-message" role="status" style="display:none;"></div>
+
+                <!-- The most-used table on the page had no search, no filter and
+                     no sort. Fine at a dozen people; unusable at a hundred. -->
+                <div class="admin-toolbar admin-toolbar--filters">
+                  <label class="admin-form-field admin-form-field--search" for="userSearchInput">
+                    <span>Search people</span>
+                    <input type="search" id="userSearchInput" placeholder="Search name or email">
+                  </label>
+                  <label class="admin-form-field" for="userDepartmentFilter">
+                    <span>Department</span>
+                    <select id="userDepartmentFilter">
+                      <option value="">All departments</option>
+                      <option value="operations">Operations</option>
+                      <option value="coffee-team">Coffee Team</option>
+                      <option value="unassigned">Unassigned</option>
+                    </select>
+                  </label>
+                  <label class="admin-form-field" for="userRoleFilter">
+                    <span>Role</span>
+                    <select id="userRoleFilter"><option value="">All roles</option></select>
+                  </label>
+                  <label class="admin-form-field" for="userStatusFilter">
+                    <span>Status</span>
+                    <select id="userStatusFilter">
+                      <option value="">Any status</option>
+                      <option value="active">Active</option>
+                      <option value="pending">Invited</option>
+                      <option value="warn">Email failed</option>
+                    </select>
+                  </label>
+                  <label class="admin-form-field" for="userSortSelect">
+                    <span>Sort by</span>
+                    <select id="userSortSelect">
+                      <option value="name">Name</option>
+                      <option value="department">Department</option>
+                      <option value="role">Role</option>
+                      <option value="status">Status</option>
+                    </select>
+                  </label>
+                  <div class="admin-toolbar__meta" id="userTableMeta">Loading people&hellip;</div>
+                </div>
+
+                <div class="admin-table-wrap admin-table-wrap--tall">
                   <table class="admin-table admin-table--people">
                     <thead>
                       <tr>
@@ -367,7 +383,7 @@
               <div class="admin-section" id="roleFormSection">
                 <div class="admin-section__header">
                   <div>
-                    <h3>Roles</h3>
+                    <h2>Roles</h2>
                     <p>A role answers both questions once, for everyone who holds it. Admin and Viewer are built in and cannot be changed; delete a custom role and anyone holding it drops back to Viewer.</p>
                   </div>
                   <div class="admin-section__header-actions">
@@ -375,7 +391,9 @@
                   </div>
                 </div>
                 <div id="roleMsg" class="admin-message" style="display:none;"></div>
-                <div class="admin-table-wrap">
+                <!-- --tall gives the wrap a height, which is what makes the
+                     sticky column headers in .admin-table th actually stick. -->
+                <div class="admin-table-wrap admin-table-wrap--tall">
                   <table class="admin-table admin-table--roles">
                     <thead>
                       <tr>
@@ -400,7 +418,7 @@
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
-                    <h3>Estate-wide rules</h3>
+                    <h2>Estate-wide rules</h2>
                     <p>Applied on top of every role, whoever holds it.</p>
                   </div>
                 </div>
@@ -419,12 +437,8 @@
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
-                    <h3>Bakery and Ops Mapping</h3>
+                    <h2>Bakery and Ops Mapping</h2>
                     <p>Edit the site directory that powers the Region and Ops Area filters across the dashboard.</p>
-                  </div>
-                  <div class="admin-section__actions">
-                    <button type="button" id="resetSitesBtn" class="admin-secondary-btn">Reset Unsaved Changes</button>
-                    <button type="button" id="saveSitesBtn" class="btn">Save Site Data</button>
                   </div>
                 </div>
 
@@ -454,13 +468,21 @@
                 <div class="admin-region-assignments">
                   <div class="admin-region-assignments__header">
                     <div>
-                      <h4>Region Coffee Team</h4>
-                      <p>Regions are detected automatically from the site directory. Start typing a colleague’s name,
-                        then choose their account to assign every bakery in that region. If a Coffee Partner or
-                        Coffee Trainer leaves and their patch is split, switch <strong>Cover</strong> on for the
-                        region and name whoever is covering each ops area — anywhere you leave blank stays with the
-                        region’s own pair above. Switch Cover off once a permanent replacement is in post and the
-                        whole region goes back to them.</p>
+                      <h3>Region Coffee Team</h3>
+                      <!-- This was five rules in one grey block, above the fold,
+                           every time the panel opened: needed as a walkthrough by
+                           a first-timer, and scrolled past by everyone else. One
+                           line of orientation stays; the Cover rules fold away. -->
+                      <p>Regions are detected from the site directory. Assign a Coffee Partner and Coffee
+                        Trainer to each, or switch <strong>Cover</strong> on to split a region across its ops areas.</p>
+                      <details class="admin-help-note">
+                        <summary>How Cover works</summary>
+                        <p>Start typing a colleague’s name, then choose their account to assign every bakery in
+                          that region. If a Coffee Partner or Coffee Trainer leaves and their patch is split,
+                          switch Cover on for the region and name whoever is covering each ops area — anywhere
+                          you leave blank stays with the region’s own pair above. Switch Cover off once a
+                          permanent replacement is in post and the whole region goes back to them.</p>
+                      </details>
                     </div>
                     <div class="admin-toolbar__meta" id="regionAssignmentMeta">Loading regions&hellip;</div>
                   </div>
@@ -482,12 +504,15 @@
                   <div class="admin-region-assignments__subsection">
                     <div class="admin-region-assignments__header">
                       <div>
-                        <h4>Area Head Baristas</h4>
-                        <p>Every ops area detected in the site directory, grouped under its region. Name the Area
-                          Head Barista who looks after each one and the bakery they normally work at — an area can
-                          have more than one, so use + and &minus; to add and remove rows. Each person stays with
-                          their home bakery when a new site directory is uploaded, so areas can be renamed, split or
-                          merged without losing anyone.</p>
+                        <h3>Area Head Baristas</h3>
+                        <p>Every ops area in the directory, grouped under its region. Use + and &minus; for areas
+                          with more than one.</p>
+                        <details class="admin-help-note">
+                          <summary>What happens when a new directory is uploaded</summary>
+                          <p>Name the Area Head Barista who looks after each area and the bakery they normally
+                            work at. Each person stays with their home bakery when a new site directory is
+                            uploaded, so areas can be renamed, split or merged without losing anyone.</p>
+                        </details>
                       </div>
                       <div class="admin-toolbar__meta" id="opsAreaAssignmentMeta">Loading ops areas&hellip;</div>
                     </div>
@@ -553,6 +578,34 @@
                     <tbody id="siteMetaList"></tbody>
                   </table>
                 </div>
+
+                <!-- Both of these operate on the directory in the table directly
+                     above. They used to live in the Dataset panel, where an admin
+                     fixing a bakery's pin had no way to know a coordinate sync
+                     existed — and where a role with dataset access but no site
+                     access could click them and get PERMISSION_DENIED. -->
+                <div class="admin-maintenance-row">
+                  <p class="admin-maintenance-row__eyebrow">Directory maintenance</p>
+                  <div class="admin-maintenance-row__actions">
+                    <button type="button" id="syncCoordinatesBtn" class="admin-secondary-btn">Fill in missing coordinates</button>
+                    <button type="button" id="exportSiteMetaBtn" class="admin-secondary-btn">Export site directory</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="admin-section admin-section--danger">
+                <div class="admin-section__header">
+                  <div>
+                    <p class="admin-danger-zone__eyebrow">Destructive</p>
+                    <h2>Restore the default site map</h2>
+                    <p>Replaces the uploaded site directory with the mapping built into this app.
+                      Every bakery, region and ops area you have imported or edited is lost, and so
+                      are the Coffee Team and Area Head Barista assignments attached to them.</p>
+                  </div>
+                  <div class="admin-section__header-actions">
+                    <button type="button" id="restoreMetadataBtn" class="admin-danger-btn">Restore default site map</button>
+                  </div>
+                </div>
               </div>
                 </section>
 
@@ -560,7 +613,7 @@
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
-                    <h3>Bakery Visits</h3>
+                    <h2>Bakery Visits</h2>
                     <p>Routine Coffee Visits sync automatically from the field form. Coffee Quality Visit (CQV) and NBO Coffee Visit reports are added here by dragging in the PDF exported from GoAudits.</p>
                   </div>
                 </div>
@@ -580,10 +633,22 @@
                   </div>
                 </div>
                 <div id="cqvImportMsg" class="admin-message" style="display:none;"></div>
-                <div class="admin-toolbar">
+                <div class="admin-toolbar admin-toolbar--filters">
                   <label class="admin-form-field admin-form-field--search" for="visitSearchInput">
                     <span>Search visits</span>
-                    <input type="text" id="visitSearchInput" placeholder="Search Bakery, Coffee Partner or Barista">
+                    <input type="search" id="visitSearchInput" placeholder="Search Bakery, Coffee Partner or Barista">
+                  </label>
+                  <!-- Four kinds of record share this table and only the badge told
+                       them apart, so finding "the CQVs" meant reading every row. -->
+                  <label class="admin-form-field" for="visitTypeFilter">
+                    <span>Report type</span>
+                    <select id="visitTypeFilter">
+                      <option value="">All types</option>
+                      <option value="routine">Routine</option>
+                      <option value="siteVisit">Site visit</option>
+                      <option value="cqv">CQV</option>
+                      <option value="nbo">NBO</option>
+                    </select>
                   </label>
                   <div class="admin-toolbar__meta" id="visitTableMeta">Loading visit history&hellip;</div>
                 </div>
@@ -643,7 +708,7 @@
                       <p id="deleteConfirmPromptText" class="admin-dialog__prompt"></p>
                       
                       <div class="admin-form-field">
-                        <label for="deleteConfirmInput">Type <strong>delete record</strong> to confirm</label>
+                        <label for="deleteConfirmInput">Type <strong id="deleteConfirmWord">delete record</strong> to confirm</label>
                         <input type="text" id="deleteConfirmInput" autocomplete="off" placeholder="delete record" class="visit-log-input">
                       </div>
                       
@@ -956,7 +1021,7 @@
               <div class="admin-section">
                 <div class="admin-section__header">
                   <div>
-                    <h3>Shared Dataset Controls</h3>
+                    <h2>Shared Dataset Controls</h2>
                     <p>See what is currently synced to Firebase and control how the shared workbook is refreshed.</p>
                   </div>
                 </div>
@@ -981,14 +1046,28 @@
                   </div>
                 </div>
                 <div class="admin-data-grid" id="adminDataGrid"></div>
-                <div class="admin-action-row">
-                  <button type="button" id="portalUploadBtn" class="admin-secondary-btn">&#8592; Go to Dashboard</button>
-                  <button type="button" id="clearDatasetBtn" class="admin-danger-btn">Clear Shared Dataset</button>
-                  <button type="button" id="restoreMetadataBtn" class="admin-secondary-btn">Restore Default Site Map</button>
-                  <button type="button" id="syncCoordinatesBtn" class="admin-secondary-btn">Sync Coordinates Only</button>
-                  <button type="button" id="exportSiteMetaBtn" class="admin-secondary-btn">Export Site Directory</button>
+                <div id="dataMsg" class="admin-message" role="status" style="display:none;"></div>
+              </div>
+
+              <!-- This row used to hold five buttons at equal weight, three of
+                   which acted on the SITE DIRECTORY rather than the dataset, and
+                   one of which ("Go to Dashboard") was not an action at all — it
+                   duplicated the link in the top bar, one 40px hop from "Clear
+                   Shared Dataset". The three directory operations have moved to
+                   Site Data; what is left is the one destructive thing that
+                   genuinely belongs to this panel. -->
+              <div class="admin-section admin-section--danger">
+                <div class="admin-section__header">
+                  <div>
+                    <p class="admin-danger-zone__eyebrow">Destructive</p>
+                    <h2>Clear the shared dataset</h2>
+                    <p>Removes the synced workbook for every dashboard user. Nobody sees any customer
+                      experience data until a new workbook is uploaded. This cannot be undone.</p>
+                  </div>
+                  <div class="admin-section__header-actions">
+                    <button type="button" id="clearDatasetBtn" class="admin-danger-btn">Clear shared dataset</button>
+                  </div>
                 </div>
-                <div id="dataMsg" class="admin-message" style="display:none;"></div>
               </div>
                 </section>
               </div>
@@ -1048,7 +1127,7 @@
   <!-- Reuses the CQV parser's pdf.js text extraction and the NBO score helpers,
        so it must load after both. -->
   <script defer src="js/nbo-parser.js"></script>
-  <script type="module" src="js/admin-page.js?v=20260811-admin-password-01"></script>
+  <script type="module" src="js/admin-page.js?v=20260817-admin-overhaul-01"></script>
 </body>
 
 </html>

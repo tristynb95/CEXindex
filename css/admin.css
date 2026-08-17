@@ -5,22 +5,40 @@
  * existing visual language.
  */
 
+/* The admin surface is a DENSITY layer over the brand layer, not a second design
+   system. Every colour below aliases a token from css/styles.css :root, so a
+   palette change on the dashboard reaches this page too. Only the type scale and
+   the control heights are genuinely admin-specific — admin work is table work,
+   and it runs tighter than the dashboard's --control-h: 38px. */
 .admin-body {
-  --admin-bg: #f3f4f1;
-  --admin-surface: #ffffff;
-  --admin-surface-muted: #f7f8f5;
-  --admin-sidebar: #20231f;
-  --admin-sidebar-soft: #2a2e29;
-  --admin-ink: #20231f;
-  --admin-muted: #697067;
-  --admin-line: #dfe3dc;
-  --admin-line-strong: #ccd2c8;
-  --admin-accent: #b5312a;
-  --admin-accent-dark: #8f241f;
-  --admin-accent-soft: #f9ebe9;
-  --admin-blue: #2769a7;
-  --admin-green: #2f7951;
-  --admin-amber: #9a681c;
+  --admin-bg: var(--bg-2);                 /* #FBF9F3 — warm, quieter than full cream */
+  --admin-surface: var(--card);
+  --admin-surface-muted: var(--card-2);
+  /* The one deliberate exception: a near-black rail is the "you are in the back
+     office" signal. Warmed onto the brand ink rather than the old cool #20231f. */
+  --admin-sidebar: #1D1A16;
+  --admin-sidebar-soft: #2A2621;
+  --admin-ink: var(--text);
+  --admin-muted: var(--muted-l);
+  --admin-line: var(--card-border);
+  --admin-line-strong: var(--card-border-h);
+  --admin-accent: var(--accent);
+  --admin-accent-dark: var(--accent-hover);
+  --admin-accent-soft: rgba(178, 42, 36, 0.08);
+  --admin-blue: var(--blue);
+  --admin-green: var(--green);
+  --admin-amber: var(--amber);
+
+  /* Density + type scale. The old values put table headers at 8.96px and body
+     text at 11.36px against a 16px root — below the legible floor for a screen
+     where bakery names, emails and coordinates are re-keyed by hand. */
+  --control-h: 34px;
+  --admin-row-h: 38px;
+  --admin-fs-body: 0.8rem;    /* 12.8px — table cells, inputs */
+  --admin-fs-label: 0.68rem;  /* 10.9px — uppercase micro-labels, th */
+  --admin-fs-copy: 0.78rem;   /* 12.5px — descriptions, hints */
+  --admin-fs-title: 0.95rem;  /* 15.2px — section headings */
+
   margin: 0;
   color: var(--admin-ink);
   background: var(--admin-bg);
@@ -30,6 +48,15 @@
 
 .admin-body .glass-bg {
   display: none;
+}
+
+/* `hidden` is only a UA-stylesheet `display: none`, so any class that sets its
+   own display beats it. `.admin-import-card__content` is `display: grid`, which
+   meant setZoneLoadedState's `hidden` toggle did nothing and both dropzone
+   states rendered at once: the "Upload New Site Directory Data" prompt and the
+   "Current draft workbook" summary, stacked, on every visit. */
+.admin-body [hidden] {
+  display: none !important;
 }
 
 .admin-body *,
@@ -110,10 +137,16 @@
   padding: 0 16px;
 }
 
+/* .login-hero__top brings justify-content: space-between and width: 100% with it,
+   which pushed the Admin pill into the middle of the bar. The brandbar packs left
+   and lets the status line take the slack instead. */
 .admin-body .admin-workspace__brandbar {
   min-width: 0;
+  flex: 1 1 auto;
+  width: auto;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 12px;
 }
 
@@ -142,7 +175,7 @@
   margin: 0;
   padding: 0 9px;
   color: rgba(255, 255, 255, 0.72);
-  font-size: 0.64rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -179,7 +212,7 @@
   width: 21px;
   height: 21px;
   color: #fff;
-  font-size: 0.62rem;
+  font-size: 0.70rem;
   background: var(--admin-accent);
 }
 
@@ -194,7 +227,7 @@
   color: var(--admin-ink);
   border: 1px solid var(--admin-line);
   border-radius: 10px;
-  box-shadow: 0 16px 36px rgba(23, 28, 23, 0.18);
+  box-shadow: 0 16px 36px rgba(48, 36, 22, 0.18);
 }
 
 /* A single dense status row replaces the previous hero and highlight cards. */
@@ -240,7 +273,7 @@
 .admin-body .admin-overview-card__label,
 .admin-body .admin-data-card__label {
   color: var(--admin-muted);
-  font-size: 0.58rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -259,61 +292,60 @@
   overflow: hidden;
   margin-top: 2px;
   color: var(--admin-muted);
-  font-size: 0.64rem;
+  font-size: 0.72rem;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* The canonical stat row. These were cells in a 66px command strip that sat above
+   every panel; they are now proper cards, on the one panel that is about the
+   state of the workspace. */
 .admin-body .admin-portal__summary {
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
+  gap: 10px;
 }
 
 .admin-body .admin-summary-card {
   min-width: 0;
   display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   align-content: center;
-  column-gap: 8px;
-  padding: 8px 12px;
-  background: transparent;
-  border: 0;
-  border-right: 1px solid var(--admin-line);
-  border-radius: 0;
-  box-shadow: none;
+  gap: 2px;
+  padding: 12px 14px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-sm);
   backdrop-filter: none;
 }
 
-.admin-body .admin-summary-card:last-child {
-  border-right: 0;
-}
-
+/* The label/value/meta stack used to be placed by hand into the two columns of a
+   66px strip cell. As a card they simply read downwards. */
 .admin-body .admin-summary-card__label {
   grid-column: 1;
   grid-row: 1;
-  align-self: end;
 }
 
 .admin-body .admin-summary-card__value {
   grid-column: 1;
   grid-row: 2;
-  margin: 1px 0 0;
+  margin: 2px 0 0;
   color: var(--admin-ink);
-  font-size: 1rem;
-  line-height: 1;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
 }
 
 .admin-body .admin-summary-card__meta {
-  grid-column: 2;
-  grid-row: 1 / 3;
-  align-self: center;
+  grid-column: 1;
+  grid-row: 3;
   overflow: hidden;
   color: var(--admin-muted);
-  font-size: 0.61rem;
+  font-size: 0.69rem;
   line-height: 1.25;
   text-overflow: ellipsis;
 }
@@ -367,7 +399,7 @@
 .admin-body .admin-workspace__sidebar-label {
   margin: 0 0 2px;
   color: rgba(255, 255, 255, 0.45);
-  font-size: 0.55rem;
+  font-size: 0.68rem;
   letter-spacing: 0.12em;
 }
 
@@ -452,7 +484,7 @@
   color: #fff;
   background: var(--admin-accent);
   border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 5px 14px rgba(48, 36, 22, 0.16);
 }
 
 .admin-body .admin-pg-nav__icon {
@@ -490,7 +522,7 @@
   overflow: hidden;
   color: inherit;
   font-size: 0.75rem;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -500,7 +532,7 @@
   margin-top: auto;
   padding: 10px;
   color: rgba(255, 255, 255, 0.48);
-  font-size: 0.62rem;
+  font-size: 0.70rem;
   line-height: 1.35;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -510,12 +542,12 @@
 .admin-body .admin-workspace__sidebar-note-label {
   margin-bottom: 3px;
   color: rgba(255, 255, 255, 0.42);
-  font-size: 0.53rem;
+  font-size: 0.68rem;
 }
 
 .admin-body .admin-workspace__sidebar-note strong {
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.65rem;
+  font-size: 0.73rem;
   font-weight: 600;
   line-height: 1.35;
 }
@@ -555,27 +587,39 @@
   background: var(--admin-bg);
 }
 
+/* One line, not three. The blur is gone with it: behind a 95%-opaque surface it
+   was invisible, and only bought a compositing layer that repainted on every
+   scroll frame of a table-heavy page. */
 .admin-body .admin-workspace__banner {
   position: sticky;
   top: -14px;
   z-index: 20;
-  min-height: 58px;
+  min-height: 44px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: -14px -18px 12px;
-  padding: 10px 18px;
-  background: rgba(243, 244, 241, 0.95);
+  padding: 8px 18px;
+  background: var(--admin-bg);
   border: 0;
   border-bottom: 1px solid var(--admin-line);
   border-radius: 0;
-  box-shadow: 0 6px 12px rgba(32, 35, 31, 0.04);
-  backdrop-filter: blur(12px);
+  box-shadow: 0 6px 12px rgba(48, 36, 22, 0.04);
+}
+
+.admin-body .admin-workspace__banner h1 {
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .admin-body .admin-workspace__banner-label {
   margin: 0 0 2px;
   color: var(--admin-accent);
-  font-size: 0.56rem;
+  font-size: 0.68rem;
   letter-spacing: 0.1em;
 }
 
@@ -590,7 +634,7 @@
 .admin-body .admin-workspace__banner p:last-child {
   margin: 2px 0 0;
   color: var(--admin-muted);
-  font-size: 0.68rem;
+  font-size: 0.77rem;
   line-height: 1.35;
 }
 
@@ -610,7 +654,7 @@
   background: var(--admin-surface);
   border: 1px solid var(--admin-line);
   border-radius: 11px;
-  box-shadow: 0 1px 2px rgba(32, 35, 31, 0.03);
+  box-shadow: 0 1px 2px rgba(48, 36, 22, 0.03);
   backdrop-filter: none;
 }
 
@@ -634,7 +678,7 @@
   max-width: 880px;
   margin: 3px 0 0;
   color: var(--admin-muted);
-  font-size: 0.7rem;
+  font-size: 0.79rem;
   line-height: 1.45;
 }
 
@@ -663,7 +707,7 @@
 .admin-body .admin-data-grid,
 .admin-body .admin-action-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 8px;
 }
 
@@ -684,7 +728,7 @@
   margin-top: 4px;
   color: var(--admin-ink);
   font-size: 0.88rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.25;
   text-overflow: ellipsis;
 }
@@ -693,7 +737,7 @@
 .admin-body .admin-data-card__meta {
   margin-top: 3px;
   color: var(--admin-muted);
-  font-size: 0.63rem;
+  font-size: 0.71rem;
   line-height: 1.35;
 }
 
@@ -720,7 +764,7 @@
 .admin-body .admin-action-card__label {
   margin-bottom: 5px;
   color: var(--admin-accent);
-  font-size: 0.56rem;
+  font-size: 0.68rem;
   letter-spacing: 0.08em;
 }
 
@@ -733,7 +777,7 @@
 
 .admin-body .admin-action-card span:last-child {
   color: var(--admin-muted);
-  font-size: 0.64rem;
+  font-size: 0.72rem;
   line-height: 1.35;
 }
 
@@ -764,8 +808,8 @@
 .admin-body .admin-form-field > label,
 .admin-body .admin-form-field label {
   color: #525850;
-  font-size: 0.59rem;
-  font-weight: 750;
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 0.07em;
   line-height: 1.25;
   text-transform: uppercase;
@@ -820,7 +864,7 @@
 .admin-body .mention-field-hint {
   margin: 0;
   color: var(--admin-muted);
-  font-size: 0.61rem;
+  font-size: 0.69rem;
   line-height: 1.35;
 }
 
@@ -832,11 +876,36 @@
   margin: 0 0 9px;
 }
 
+/* Search + filters + count, the same shape above every table that has enough
+   rows to need finding rather than reading. The search field takes the slack;
+   the filters stay at their natural width; the count is pushed to the end. */
+.admin-body .admin-toolbar--filters {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.admin-body .admin-toolbar--filters .admin-form-field--search {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.admin-body .admin-toolbar--filters .admin-form-field {
+  flex: 0 0 auto;
+}
+
+.admin-body .admin-toolbar--filters .admin-form-field select {
+  min-width: 132px;
+}
+
+.admin-body .admin-toolbar--filters .admin-toolbar__meta {
+  margin-left: auto;
+}
+
 .admin-body .admin-toolbar__meta {
   margin: 0;
   padding: 0 0 8px;
   color: var(--admin-muted);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   white-space: nowrap;
 }
 
@@ -853,7 +922,7 @@
   gap: 6px;
   padding: 0 11px;
   font: inherit;
-  font-size: 0.68rem;
+  font-size: 0.77rem;
   font-weight: 700;
   line-height: 1;
   border-radius: 7px;
@@ -931,7 +1000,7 @@
   margin: 6px 0;
   padding: 8px 10px;
   color: var(--admin-ink);
-  font-size: 0.68rem;
+  font-size: 0.77rem;
   line-height: 1.4;
   border-radius: 7px;
 }
@@ -979,7 +1048,7 @@
 
 .admin-body .admin-toggle-row__desc {
   color: var(--admin-muted);
-  font-size: 0.63rem;
+  font-size: 0.71rem;
   line-height: 1.35;
 }
 
@@ -1018,7 +1087,7 @@
   max-width: 900px;
   margin: 0 auto 3px;
   color: var(--admin-muted);
-  font-size: 0.63rem;
+  font-size: 0.71rem;
   line-height: 1.4;
 }
 
@@ -1033,7 +1102,7 @@
 .admin-body .admin-import-card__eyebrow {
   margin-bottom: 3px;
   color: var(--admin-accent);
-  font-size: 0.56rem;
+  font-size: 0.68rem;
 }
 
 .admin-body .admin-import-card__stats {
@@ -1045,7 +1114,7 @@
   min-height: 25px;
   padding: 4px 8px;
   color: var(--admin-muted);
-  font-size: 0.62rem;
+  font-size: 0.70rem;
   background: #fff;
   border-color: var(--admin-line);
 }
@@ -1060,8 +1129,13 @@
   box-shadow: none;
 }
 
+/* A floor, not a ceiling. The old `min(430px, …)` meant the 430px term won on
+   any viewport taller than 680px — so a 1440px monitor showed exactly the same
+   eleven rows as a 768px laptop while ~700px of the panel sat unused. Inverting
+   it to `max()` lets a tall screen actually spend its height on rows, and keeps
+   320px as the smallest useful table on a short one. */
 .admin-body .admin-table-wrap--tall {
-  max-height: min(430px, calc(100dvh - 250px));
+  max-height: max(320px, calc(100dvh - 268px));
 }
 
 .admin-body .admin-table {
@@ -1069,7 +1143,7 @@
   border-collapse: separate;
   border-spacing: 0;
   color: var(--admin-ink);
-  font-size: 0.71rem;
+  font-size: 0.80rem;
 }
 
 .admin-body .admin-table th,
@@ -1090,7 +1164,7 @@
   z-index: 3;
   height: 32px;
   color: #596057;
-  font-size: 0.56rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1109,17 +1183,17 @@
 
 .admin-body .admin-table__title {
   color: var(--admin-ink);
-  font-size: 0.71rem;
+  font-size: 0.80rem;
   font-weight: 700;
 }
 
 .admin-body .admin-table__title--sm {
-  font-size: 0.7rem;
+  font-size: 0.79rem;
 }
 
 .admin-body .admin-status-note {
   color: var(--admin-muted);
-  font-size: 0.62rem;
+  font-size: 0.70rem;
   line-height: 1.3;
 }
 
@@ -1132,7 +1206,7 @@
 .admin-body .admin-badge {
   min-height: 22px;
   padding: 2px 7px;
-  font-size: 0.58rem;
+  font-size: 0.68rem;
   line-height: 1.2;
 }
 
@@ -1140,7 +1214,7 @@
 .admin-body .admin-table select {
   min-height: 30px;
   padding: 4px 7px;
-  font-size: 0.67rem;
+  font-size: 0.76rem;
   border-radius: 6px;
 }
 
@@ -1152,7 +1226,7 @@
 .admin-body .admin-table__actions .admin-inline-danger {
   min-height: 28px;
   padding-inline: 8px;
-  font-size: 0.62rem;
+  font-size: 0.70rem;
 }
 
 .admin-body .admin-table__actions--icons {
@@ -1183,12 +1257,33 @@
 .admin-body .admin-empty {
   padding: 24px 14px;
   color: var(--admin-muted);
-  font-size: 0.7rem;
+  font-size: 0.79rem;
 }
 
 .admin-body .admin-table--people {
   min-width: 900px;
   table-layout: fixed;
+}
+
+/* Under table-layout: fixed the seven columns divide evenly, which left the
+   Person column too narrow for a full name plus a work email. The two prose
+   columns can afford to give some of it back. */
+.admin-body .admin-table--people th:nth-child(1) { width: 19%; }
+.admin-body .admin-table--people th:nth-child(2) { width: 10%; }
+.admin-body .admin-table--people th:nth-child(3) { width: 10%; }
+.admin-body .admin-table--people th:nth-child(4) { width: 14%; }
+.admin-body .admin-table--people th:nth-child(5) { width: 21%; }
+.admin-body .admin-table--people th:nth-child(6) { width: 16%; }
+.admin-body .admin-table--people th:nth-child(7) { width: 10%; }
+
+/* The cell-level `overflow-wrap: anywhere` is what lets the permission prose fit,
+   but it also broke email addresses mid-word. Addresses get one line and an
+   ellipsis instead; the full value is on the element's title. */
+.admin-body .admin-user-email {
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-body .admin-table--roles {
@@ -1300,13 +1395,13 @@
 .admin-body .admin-region-assignments__header p {
   max-width: 920px;
   margin-top: 3px;
-  font-size: 0.65rem;
+  font-size: 0.73rem;
   line-height: 1.4;
 }
 
 .admin-body .admin-region-assignments__header .admin-toolbar__meta {
   padding: 0;
-  font-size: 0.62rem;
+  font-size: 0.70rem;
 }
 
 .admin-body .admin-region-assignments__subsection {
@@ -1316,7 +1411,7 @@
 
 .admin-body .admin-cover-toggle {
   gap: 6px;
-  font-size: 0.63rem;
+  font-size: 0.71rem;
 }
 
 .admin-body .admin-cover-toggle input[type="checkbox"] {
@@ -1330,7 +1425,7 @@
 }
 
 .admin-body .admin-table__cover-area {
-  font-size: 0.68rem;
+  font-size: 0.77rem;
 }
 
 /* Shared modal frame */
@@ -1341,7 +1436,7 @@
 .admin-body .modal-overlay {
   padding: 16px;
   overflow: auto;
-  background: rgba(22, 26, 22, 0.64);
+  background: rgba(48, 36, 22, 0.64);
   backdrop-filter: blur(5px);
 }
 
@@ -1381,7 +1476,7 @@
   background: var(--admin-surface);
   border: 1px solid var(--admin-line-strong);
   border-radius: 11px;
-  box-shadow: 0 24px 60px rgba(22, 26, 22, 0.26);
+  box-shadow: 0 24px 60px rgba(48, 36, 22, 0.26);
 }
 
 .admin-body .access-modal--wide {
@@ -1404,7 +1499,7 @@
 .admin-body .admin-dialog__eyebrow {
   margin: 0 0 2px;
   color: var(--admin-accent);
-  font-size: 0.56rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1419,7 +1514,7 @@
 .admin-body .access-modal__sub {
   margin-top: 2px;
   color: var(--admin-muted);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   line-height: 1.35;
 }
 
@@ -1457,12 +1552,12 @@
 
 .admin-body .access-modal__readout-label {
   color: var(--admin-muted);
-  font-size: 0.54rem;
+  font-size: 0.68rem;
 }
 
 .admin-body .access-modal__readout-col strong {
   color: var(--admin-ink);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   line-height: 1.35;
 }
 
@@ -1478,7 +1573,7 @@
 .admin-body .access-team legend {
   padding: 0 4px;
   color: var(--admin-ink);
-  font-size: 0.69rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
@@ -1486,7 +1581,7 @@
 .admin-body .access-team__copy {
   margin-bottom: 7px;
   color: var(--admin-muted);
-  font-size: 0.61rem;
+  font-size: 0.69rem;
   line-height: 1.35;
 }
 
@@ -1513,19 +1608,19 @@
 .admin-body .access-department-option strong,
 .admin-body .access-team__option-body strong {
   color: var(--admin-ink);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
 }
 
 .admin-body .access-department-option small,
 .admin-body .access-team__option-body span {
   color: var(--admin-muted);
-  font-size: 0.58rem;
+  font-size: 0.68rem;
   line-height: 1.3;
 }
 
 .admin-body .access-modal__note {
   color: var(--admin-muted);
-  font-size: 0.64rem;
+  font-size: 0.72rem;
   line-height: 1.4;
 }
 
@@ -1559,7 +1654,7 @@
 .admin-body .access-password-panel__head p {
   margin: 0;
   color: var(--admin-muted);
-  font-size: 0.63rem;
+  font-size: 0.71rem;
   line-height: 1.4;
 }
 
@@ -1575,7 +1670,7 @@
   align-items: center;
   gap: 7px;
   color: var(--admin-muted);
-  font-size: 0.63rem;
+  font-size: 0.71rem;
   cursor: pointer;
 }
 
@@ -1624,7 +1719,7 @@
 .admin-body .access-grid__group-head p {
   margin-bottom: 6px;
   color: var(--admin-muted);
-  font-size: 0.6rem;
+  font-size: 0.68rem;
   line-height: 1.3;
 }
 
@@ -1641,7 +1736,7 @@
 
 .admin-body .access-grid__head span {
   color: var(--admin-muted);
-  font-size: 0.53rem;
+  font-size: 0.68rem;
 }
 
 .admin-body .access-grid__row {
@@ -1656,12 +1751,12 @@
 
 .admin-body .access-grid__label strong {
   color: var(--admin-ink);
-  font-size: 0.67rem;
+  font-size: 0.76rem;
 }
 
 .admin-body .access-grid__label span {
   color: var(--admin-muted);
-  font-size: 0.57rem;
+  font-size: 0.68rem;
   line-height: 1.25;
 }
 
@@ -1690,7 +1785,7 @@
   border: 1px solid var(--admin-line-strong);
   border-top: 3px solid var(--admin-accent);
   border-radius: 11px;
-  box-shadow: 0 24px 60px rgba(22, 26, 22, 0.26);
+  box-shadow: 0 24px 60px rgba(48, 36, 22, 0.26);
 }
 
 .admin-body .visit-detail-body h3 {
@@ -1698,7 +1793,7 @@
 }
 
 .admin-body .visit-detail-body > p {
-  font-size: 0.67rem;
+  font-size: 0.76rem;
 }
 
 .admin-body .visit-detail-header-wrap {
@@ -1719,7 +1814,7 @@
   margin-bottom: 8px;
   padding-bottom: 6px;
   color: var(--admin-amber);
-  font-size: 0.58rem;
+  font-size: 0.68rem;
   border-color: var(--admin-line);
 }
 
@@ -1760,7 +1855,7 @@
 .admin-body .admin-dialog__head p:last-child {
   margin: 2px 0 0;
   color: var(--admin-muted);
-  font-size: 0.65rem;
+  font-size: 0.73rem;
   line-height: 1.35;
 }
 
@@ -1785,7 +1880,7 @@
 .admin-body .admin-dialog__summary {
   padding: 8px 9px;
   color: var(--admin-muted);
-  font-size: 0.67rem;
+  font-size: 0.76rem;
   line-height: 1.4;
   background: var(--admin-surface-muted);
   border: 1px solid var(--admin-line);
@@ -1826,6 +1921,309 @@
   border: 2px solid transparent;
   border-radius: 999px;
   background-clip: padding-box;
+}
+
+/* ── New shell components ──────────────────────────────────────────────────
+   Added by the overhaul: the skip link, the top-bar status chip that replaced
+   the 66px command strip, the Needs-attention list that replaced the Overview
+   panel's duplicate stat cards, and the sticky save bar. */
+
+.admin-body .admin-skip-link {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 100;
+  padding: 8px 14px;
+  color: #fff;
+  font-size: var(--admin-fs-copy);
+  font-weight: 700;
+  background: var(--admin-accent);
+  border-radius: var(--r-sm);
+  transform: translateY(-160%);
+  transition: transform 0.14s var(--ease, ease);
+}
+
+.admin-body .admin-skip-link:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  transform: translateY(0);
+}
+
+/* Live sync status, inline in the bar. One line of text never justified a band
+   of its own — and on a narrow screen the band was the first thing dropped,
+   which is exactly where "is this thing connected?" matters most. */
+.admin-body .admin-topbar__status {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-left: 12px;
+  margin-left: 4px;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.admin-body .admin-topbar__status .admin-live-indicator {
+  align-self: center;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+
+.admin-body .admin-topbar__status-value {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: var(--admin-fs-copy);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-body .admin-topbar__status-meta {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: var(--admin-fs-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Needs attention. Rows, not cards: this is a to-do list, and a list reads top
+   to bottom faster than a grid reads left to right. Tone is carried by a dot,
+   not by a left edge bar. */
+.admin-body .admin-attention {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-body .admin-attention__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  background: var(--admin-surface-muted);
+  border: 1px solid var(--admin-line);
+  border-radius: var(--r-sm);
+}
+
+.admin-body .admin-attention__row::before {
+  content: "";
+  order: -1;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--admin-muted);
+}
+
+.admin-body .admin-attention__row--danger::before { background: var(--admin-accent); }
+.admin-body .admin-attention__row--warn::before   { background: var(--admin-amber); }
+.admin-body .admin-attention__row--info::before   { background: var(--admin-blue); }
+
+.admin-body .admin-attention__body {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.admin-body .admin-attention__body strong {
+  color: var(--admin-ink);
+  font-size: var(--admin-fs-copy);
+  font-weight: 700;
+}
+
+.admin-body .admin-attention__body span {
+  color: var(--admin-muted);
+  font-size: var(--admin-fs-label);
+}
+
+.admin-body .admin-attention__clear {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 18px 14px;
+  text-align: center;
+  background: var(--admin-surface-muted);
+  border: 1px dashed var(--admin-line-strong);
+  border-radius: var(--r-sm);
+}
+
+.admin-body .admin-attention__clear strong {
+  color: var(--admin-green);
+  font-size: var(--admin-fs-copy);
+  font-weight: 700;
+}
+
+.admin-body .admin-attention__clear span {
+  color: var(--admin-muted);
+  font-size: var(--admin-fs-label);
+}
+
+/* Sticky save bar. Lifted with a shadow and a tint rather than an edge bar. */
+.admin-body .admin-save-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px -18px -14px;
+  padding: 10px 18px;
+  background: var(--admin-surface);
+  border-top: 1px solid var(--admin-line-strong);
+  box-shadow: 0 -3px 10px rgba(48, 36, 22, 0.06), 0 -10px 28px rgba(48, 36, 22, 0.05);
+}
+
+.admin-body .admin-save-bar[hidden] {
+  display: none;
+}
+
+.admin-body .admin-save-bar__body {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-body .admin-save-bar__dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  background: var(--admin-amber);
+  border-radius: 50%;
+}
+
+.admin-body .admin-save-bar__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.admin-body .admin-save-bar__text strong {
+  color: var(--admin-ink);
+  font-size: var(--admin-fs-copy);
+  font-weight: 700;
+}
+
+.admin-body .admin-save-bar__detail {
+  overflow: hidden;
+  color: var(--admin-muted);
+  font-size: var(--admin-fs-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-body .admin-save-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The rail is nav and nothing else now, so the panel list sits at the top and
+   the collapse control sits at the foot, out of the reading path. */
+.admin-body .admin-workspace__sidebar .admin-workspace__toggle {
+  margin-top: auto;
+}
+
+/* Instructions that a first-timer needs and a returning admin does not. Folded
+   away rather than deleted, so the rule is still there when it is wanted. */
+.admin-body .admin-help-note {
+  margin: 5px 0 0;
+  font-size: var(--admin-fs-copy);
+}
+
+.admin-body .admin-help-note > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  color: var(--admin-accent);
+  font-size: var(--admin-fs-label);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.admin-body .admin-help-note > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-body .admin-help-note > summary::before {
+  content: "?";
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  color: var(--admin-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+
+.admin-body .admin-help-note > summary:hover {
+  color: var(--admin-accent-dark);
+}
+
+.admin-body .admin-help-note > p {
+  max-width: 88ch;
+  margin: 6px 0 0;
+  color: var(--admin-muted);
+  line-height: 1.5;
+}
+
+/* Danger zone. Set apart by an outline and a faint warm tint — not by a red left
+   edge bar, which this codebase deliberately does not use. */
+.admin-body .admin-section--danger {
+  background: linear-gradient(180deg, rgba(178, 42, 36, 0.035), rgba(178, 42, 36, 0.015));
+  border-color: rgba(178, 42, 36, 0.28);
+}
+
+.admin-body .admin-danger-zone__eyebrow {
+  margin: 0 0 3px;
+  color: var(--admin-accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.admin-body .admin-section--danger .admin-section__header {
+  align-items: center;
+}
+
+.admin-body .admin-section--danger .admin-section__header p {
+  max-width: 74ch;
+}
+
+/* Directory maintenance: read-only and repair operations that belong to the table
+   above them, kept visually quieter than the editing controls. */
+.admin-body .admin-maintenance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid var(--admin-line);
+}
+
+.admin-body .admin-maintenance-row__eyebrow {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.admin-body .admin-maintenance-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 1180px) {
@@ -1905,7 +2303,16 @@
     padding-top: 8px;
   }
 
+  /* Collapsing used to set `display: none` on the nav here — and
+     navigateToAdminPanel force-collapses on narrow viewports, so on a tablet
+     choosing a panel made the navigation disappear, leaving a 30px chevron as
+     the only way back. Collapsed now means icons-only, the same as it does on
+     the desktop rail, and the labels are what fold away. */
   .admin-body .admin-workspace__shell[data-sidebar-collapsed="true"] .admin-workspace__nav {
+    display: grid;
+  }
+
+  .admin-body .admin-workspace__shell[data-sidebar-collapsed="true"] .admin-workspace__nav .admin-pg-nav__content {
     display: none;
   }
 
@@ -1927,7 +2334,7 @@
   }
 
   .admin-body .admin-pg-nav__content strong {
-    font-size: 0.64rem;
+    font-size: 0.72rem;
   }
 
   .admin-body .admin-workspace__sidebar-note {
@@ -2004,7 +2411,7 @@
   }
 
   .admin-body .admin-section__header p {
-    font-size: 0.66rem;
+    font-size: 0.75rem;
   }
 
   .admin-body .admin-overview-grid,
