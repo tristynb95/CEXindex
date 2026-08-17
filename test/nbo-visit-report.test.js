@@ -112,11 +112,16 @@ test('shows the summary paragraph and the action plan the PDF carried', () => {
 
   assert.match(html, /<h4>Summary<\/h4>/);
   assert.match(html, /Very positive coffee visit at Kings Cross Station today\./);
-  assert.match(html, /<h4>Action Plan \(1\)<\/h4>/);
+  // Section titles are sentence case and the count moved out of the heading
+  // string into the shared status pill, which is how NBO already labelled its
+  // question sections ("1 to work on") before the rest caught up.
+  assert.match(html, /<h4>Action plan<\/h4>[\s\S]*?visit-section-attention[^>]*>1 item</);
   assert.match(html, /BM &amp; HB to collaboratively work on shift planner\.|BM & HB to collaboratively work on shift planner\./);
   assert.match(html, /Due 02 Aug 26/);
-  assert.match(html, /<h4>Coaching Notes \(1\)<\/h4>/);
-  assert.equal((html.match(/class="drill-card visit-report-stat/g) || []).length, 4);
+  assert.match(html, /<h4>Coaching notes<\/h4>[\s\S]*?visit-section-attention[^>]*>1 note</);
+  // Score leads every report type; the strip carries the facts an NBO records.
+  assert.match(html, /visit-report-stat--primary[\s\S]*?drill-card__label">Score</);
+  assert.equal((html.match(/class="drill-card visit-report-stat/g) || []).length, 5);
   assert.doesNotMatch(html, /drill-card__label">Visit</);
 });
 

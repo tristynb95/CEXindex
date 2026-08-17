@@ -9796,41 +9796,47 @@ body.table-fullscreen-lock {
 }
 
 /* ── Visit Report ─────────────────────────────────────────────────────── */
+/* One banner for every "something you need to know" line on every report type.
+   Flat white with a hairline and a straight status rule on the leading edge,
+   like every other surface in the house kit — the tinted washes it replaces
+   were the only filled panels in the modal, and the strongest colour on the
+   page was being spent on a sentence rather than on data. */
 .visit-report-hs-banner {
-  border-radius: 14px;
-  padding: 14px 18px;
-  font-size: 0.9rem;
-  margin: 4px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin: 0;
+  padding: 11px 16px;
+  border: 1px solid var(--card-border, rgba(146, 137, 120, 0.22));
+  border-left: 3px solid var(--banner-color, #928978);
+  border-radius: 0 14px 14px 0;
+  color: var(--text);
+  background: #fff;
+  font-size: 0.84rem;
+  line-height: 1.45;
 }
 
 .visit-report-hs-banner--ok {
-  background: rgba(29, 158, 92, 0.1);
-  border: 1px solid rgba(29, 158, 92, 0.25);
-  color: var(--green);
+  --banner-color: #1d8a55;
 }
 
 .visit-report-hs-banner--alert {
-  background: rgba(178, 42, 36, 0.1);
-  border: 1px solid rgba(178, 42, 36, 0.3);
-  color: var(--text);
+  --banner-color: #b22a24;
 }
 
-.visit-report-hs-banner--alert strong {
-  color: var(--red);
+.visit-report-hs-banner strong {
+  color: var(--banner-color, var(--text));
+  font-weight: 750;
 }
 
-.visit-report-hs-banner ul {
-  margin: 8px 0 0;
-  padding-left: 20px;
-}
-
+/* Height is set inline by drawPointsChart (js/visit-report.js) from the number
+   of sections the record actually has — one lane per section — so there is no
+   fixed box here to fight it. The floor only covers the degenerate one-section
+   case. */
 .visit-report-chart-wrap {
-  height: 300px;
+  min-height: 96px;
   margin-bottom: 20px;
-  /* Direct flex item of the column-flex modal body (its wrapper is
-     display: contents) — without this the body compresses the declared
-     height and the chart renders squashed. */
-  flex-shrink: 0;
 }
 
 .visit-report-note {
@@ -9874,17 +9880,9 @@ body.table-fullscreen-lock {
   gap: 8px;
 }
 
-.visit-report-hs-tag {
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--red);
-  background: rgba(178, 42, 36, 0.12);
-  border: 1px solid rgba(178, 42, 36, 0.28);
-  border-radius: 999px;
-  padding: 3px 9px;
-}
+/* .visit-report-hs-tag is gone: it appended a "Health & Safety" chip to a
+   heading that already read "Health & Safety". The count of failures is the
+   fact worth carrying there, and it uses the shared pill. */
 
 .visit-report-row {
   display: flex;
@@ -9924,36 +9922,8 @@ body.table-fullscreen-lock {
   color: var(--red);
 }
 
-.visit-pill {
-  font-size: 0.74rem;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 999px;
-}
-
-.visit-pill--yes {
-  background: rgba(29, 158, 92, 0.14);
-  color: var(--green);
-}
-
-.visit-pill--no {
-  background: rgba(178, 42, 36, 0.14);
-  color: var(--red);
-}
-
-.visit-pill--na {
-  background: rgba(146, 137, 120, 0.14);
-  color: var(--muted-l);
-}
-
-.visit-pill--unknown {
-  background: rgba(146, 137, 120, 0.08);
-  color: var(--muted);
-}
-
-.visit-pill--flag {
-  box-shadow: 0 0 0 1px rgba(178, 42, 36, 0.4);
-}
+/* The pill itself is defined once, with the rest of the shared report
+   components, further down this file. */
 
 /* Upright, not italic: these are multi-sentence write-ups, and a whole
    paragraph set in italic is the slowest thing to read on the report. */
@@ -10303,8 +10273,10 @@ body.table-fullscreen-lock {
     padding: 12px 40px 30px !important;
   }
 
+  /* The lane-per-section height set inline at draw time is what makes the
+     chart printable; a fixed print height would squash it back. */
   #visitReportModal .visit-report-chart-wrap {
-    height: 320px !important;
+    height: auto !important;
   }
 
   #visitReportModal .drill-modal-title,
@@ -10340,13 +10312,14 @@ body.table-fullscreen-lock {
     page-break-inside: avoid;
   }
 
-  #visitReportModal .visit-report-section-notes {
+  #visitReportModal .visit-report-noteblock {
     border: 1px solid #ddd;
+    border-left: 3px solid #999;
     background: #fff;
     page-break-inside: avoid;
   }
 
-  #visitReportModal .visit-report-section-notes__label {
+  #visitReportModal .visit-report-noteblock__label {
     color: #555;
   }
 
@@ -11958,12 +11931,6 @@ body.dashboard-nav-open .filter-side-tab {
     flex-shrink: 0;
     margin-left: auto;
     text-align: right;
-  }
-
-  /* The rotated x-axis labels eat ~110px on a phone, so the bars need extra
-     vertical space to stay readable. */
-  #visitReportModal .visit-report-chart-wrap {
-    height: 340px;
   }
 
   /* Full-width tap target for the "View Original CQV PDF" link (rendered
@@ -23264,9 +23231,10 @@ body[data-dash-tab="cei"] .methodology {
   padding: 20px 24px 26px;
   overflow: auto;
   scroll-behavior: smooth;
-  background:
-    radial-gradient(circle at 96% 3%, color-mix(in srgb, var(--drill-accent, var(--accent)) 7%, transparent), transparent 29%),
-    #f7f5f0;
+  /* Flat ground, no accent wash. The panel already states its type in the 3px
+     top accent and the header badge; a tinted corner gradient was the only
+     gradient in the design and it put the type colour behind the data. */
+  background: #f7f5f0;
 }
 
 /* The report body is now a stat strip over a rail + content two-pane layout
@@ -23356,6 +23324,11 @@ body[data-dash-tab="cei"] .methodology {
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  /* The scrollbar is hidden, so without this the last pill is simply cut off
+     by the card edge and reads as broken rather than as scrollable. The fade
+     only appears while there is actually more to scroll to. */
+  mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
 }
 
 .visit-report-toc > div::-webkit-scrollbar {
@@ -23400,85 +23373,93 @@ body[data-dash-tab="cei"] .methodology {
   scroll-margin-top: 58px;
 }
 
+/* ── One type ramp for the whole report ──
+   The four report types between them reached 29 distinct font sizes on a
+   desktop screen, 21 of those inside a 5px band — including three renderings
+   of .visit-report-comment at 0.84 / 0.845 / 0.85rem, which is a difference of
+   less than a tenth of a pixel. Six steps express everything they actually
+   say, and a role that is the same role now reads at the same size on every
+   report type. */
+.drill-modal--visit-report {
+  --vr-eyebrow: 0.66rem;
+  --vr-micro: 0.72rem;
+  --vr-body: 0.82rem;
+  --vr-prose: 0.875rem;
+  --vr-title: 0.95rem;
+  --vr-stat: 1.05rem;
+}
+
 .drill-modal--visit-report .visit-report-section {
-  height: 100%;
+  /* Not height: 100% — that stretched a four-row card to the height of the
+     twelve-row card beside it and ended it in a white void. */
+  height: auto;
   margin: 0;
-  padding: 18px 20px 24px;
+  padding: 18px 20px 22px;
   border: 1px solid rgba(146, 137, 120, 0.21);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.94);
+  background: #fff;
   box-shadow: 0 7px 20px rgba(54, 47, 38, 0.045);
 }
 
-.drill-modal--visit-report .visit-report-section > h4,
-.drill-modal--visit-report .visit-report-section-title-row h4,
-.drill-modal--visit-report .visit-report-section-heading h4 {
-  margin: 0 0 12px;
-  color: var(--text);
-  font-size: 0.95rem;
-  font-weight: 750;
-  letter-spacing: -0.012em;
-}
+/* ── One section heading ──
+   Reports used three heading idioms between them: a bare <h4>, a title row
+   with a count chip, and an eyebrow + title + a caption right-aligned across
+   the card. This is all three. The caption sits under the title it modifies
+   rather than a screen's width to its right, and the chip takes the right end
+   of the row.
 
-.visit-report-section-title-row {
+   text-transform is reset explicitly. The base rule sets `uppercase`, and the
+   modal rule that follows it changed size, weight, colour and tracking without
+   ever clearing it — so every section title on every report type rendered as
+   uppercase with *negative* tracking, which is the one combination that always
+   looks wrong, and is most of why the modal never quite read as the house kit. */
+.visit-report-section-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 12px;
 }
 
-.drill-modal--visit-report .visit-report-section-title-row h4 {
-  margin-bottom: 0;
+.visit-report-section-heading__text {
+  min-width: 0;
 }
 
-.visit-section-attention {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  min-height: 24px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  color: #9b2722;
-  background: rgba(178, 42, 36, 0.09);
-  font-size: 0.65rem;
+.drill-modal--visit-report .visit-report-section > h4,
+.drill-modal--visit-report .visit-report-section-heading h4 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--vr-title);
   font-weight: 750;
-  white-space: nowrap;
+  letter-spacing: -0.012em;
+  text-transform: none;
 }
 
-.visit-report-section-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 8px;
-}
-
-.visit-report-section-heading > div > span {
+.visit-report-section-eyebrow {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   color: var(--drill-accent, var(--accent));
-  font-size: 0.64rem;
+  font-size: var(--vr-eyebrow);
   font-weight: 800;
   letter-spacing: 0.1em;
+  line-height: 1.2;
   text-transform: uppercase;
 }
 
-.drill-modal--visit-report .visit-report-section-heading h4 {
-  margin-bottom: 0;
+.visit-report-section-caption {
+  max-width: 62ch;
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-size: var(--vr-micro);
+  line-height: 1.45;
 }
 
-.visit-report-section-heading p {
-  max-width: 360px;
-  margin: 0;
-  color: var(--text-2);
-  font-size: 0.72rem;
-  line-height: 1.4;
-  text-align: right;
+.visit-report-section-heading .visit-pill {
+  flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 .drill-modal--visit-report .visit-report-chart-wrap {
-  height: 270px;
   margin: 8px 0 0;
   padding-top: 10px;
 }
@@ -23520,178 +23501,167 @@ body[data-dash-tab="cei"] .methodology {
   line-height: 1.5;
 }
 
-.visit-action-item,
-.visit-question {
-  padding: 14px 0;
+/* ── One item ──
+   An action-plan entry and an NBO question are the same object — an
+   observation carrying a status — and were drawn by two components with two
+   layouts. This is both.
+
+   The item is capped at a reading measure. It used to be a space-between flex
+   row inside a full-bleed panel, so on a wide screen the status pill and the
+   due date ended up most of a screen's width from the title they belonged to,
+   and the reader had to track across the whole panel and back on every row. */
+.visit-report-item {
+  /* Capped to a reading measure, which also keeps the status pill beside the
+     title it grades rather than out at the panel edge. */
+  max-width: 82ch;
+  padding: 13px 0;
   border-bottom: 1px solid rgba(146, 137, 120, 0.15);
 }
 
-.visit-action-item:last-child,
-.visit-question:last-child {
+.visit-report-item:last-child {
   padding-bottom: 0;
   border-bottom: 0;
 }
 
-.visit-action-item--critical {
-  margin-left: -9px;
-  padding-left: 9px;
-  border-left: 3px solid #b22a24;
+.visit-report-item__head {
+  display: grid;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
 }
 
-.visit-action-layout,
-.visit-question-layout {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.visit-action-copy,
-.visit-question-copy {
+.visit-report-item__copy {
   min-width: 0;
-  flex: 1;
 }
 
-.visit-action-title,
-.visit-question-title {
+.visit-report-item__title {
+  margin: 0;
   color: var(--text);
-  font-size: 0.83rem;
+  font-size: var(--vr-body, 0.82rem);
   font-weight: 700;
-  line-height: 1.4;
-}
-
-.visit-action-section {
-  margin-top: 2px;
-  color: var(--text-2);
-  font-size: 0.68rem;
-}
-
-.visit-action-finding {
-  margin: 8px 0 0;
-  color: var(--text-2);
-  font-size: 0.78rem;
   line-height: 1.45;
 }
 
-.visit-action-required,
-.visit-question-note {
+.visit-report-item__subtitle {
+  margin: 2px 0 0;
+  color: var(--text-2);
+  font-size: var(--vr-micro, 0.72rem);
+  line-height: 1.35;
+}
+
+.visit-report-item__finding {
+  margin: 7px 0 0;
+  color: var(--text-2);
+  font-size: var(--vr-body, 0.82rem);
+  line-height: 1.55;
+}
+
+/* Supporting facts run under the copy, on the same left edge, instead of
+   stacking in a right-aligned column of their own. */
+.visit-report-item__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   margin-top: 9px;
-  padding: 8px 10px;
-  border-left: 3px solid var(--drill-accent, var(--accent));
-  border-radius: 5px;
-  color: var(--text);
-  background: color-mix(in srgb, var(--drill-accent, var(--accent)) 7%, white);
-  font-size: 0.77rem;
-  line-height: 1.45;
 }
 
-.visit-action-required strong {
+.visit-report-item__due {
+  color: var(--text-2);
+  font-size: var(--vr-micro, 0.72rem);
+  white-space: nowrap;
+}
+
+/* ── One pill ──
+   Five families (visit-pill, visit-action-tag, visit-response-pill,
+   visit-section-attention, visit-report-hs-tag) collapse to this. Colour comes
+   in as data through --pill-color, so a new status needs a value, not a rule. */
+.visit-pill,
+.visit-section-attention {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--pill-color, #6c6559);
+  background: color-mix(in srgb, var(--pill-color, #928978) 13%, white);
+  font-size: var(--vr-micro, 0.72rem);
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.visit-pill--solid {
+  color: #fff;
+  background: var(--pill-color, #928978);
+}
+
+/* ── One block of prose ──
+   "Notes", "Action required", "Observed" and an NBO coaching note were four
+   drawings of one thing. This is the routine report's labelled block, which
+   was the best of them, applied everywhere.
+
+   The left rule and the rounded corners are kept apart on purpose: a 3px bar
+   inside a uniformly rounded box gets clipped into a tapered curve at both
+   ends, which is the curved sliver this redesign is removing. Squaring the two
+   corners the rule passes through makes it read as the straight line it is. */
+.visit-report-noteblock {
+  margin: 10px 0 0;
+  padding: 11px 14px 12px;
+  border-left: 3px solid rgba(146, 137, 120, 0.45);
+  border-radius: 0 12px 12px 0;
+  background: rgba(146, 137, 120, 0.06);
+}
+
+.visit-report-noteblock--accent {
+  border-left-color: var(--drill-accent, var(--accent));
+  background: color-mix(in srgb, var(--drill-accent, var(--accent)) 6%, white);
+}
+
+.visit-report-noteblock__label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-2);
+  font-size: var(--vr-eyebrow, 0.66rem);
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.visit-report-noteblock--accent .visit-report-noteblock__label {
   color: var(--drill-accent, var(--accent));
 }
 
-.visit-action-meta {
-  display: flex;
-  align-items: flex-end;
-  flex: 0 0 auto;
-  flex-direction: column;
-  gap: 5px;
-  text-align: right;
-}
-
-.visit-action-tag,
-.visit-response-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 23px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  color: var(--action-color, var(--text-2));
-  background: color-mix(in srgb, var(--action-color, #928978) 12%, white);
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.visit-action-tag--critical {
-  --action-color: #b22a24;
-  color: #fff;
-  background: #b22a24;
-}
-
-.visit-action-due {
-  color: var(--text-2);
-  font-size: 0.68rem;
-  white-space: nowrap;
-}
-
-.visit-question--attention .visit-question-title {
+.visit-report-item--attention .visit-report-item__title {
   font-weight: 750;
 }
 
-.visit-question-note {
-  margin-bottom: 0;
-  border-left: 0;
-}
-
-.visit-response-pill--yes {
-  --action-color: #1d8a55;
-}
-
-.visit-response-pill--no {
-  --action-color: #b22a24;
-}
-
-.visit-response-pill--unknown {
-  --action-color: #7e776c;
-}
-
-.drill-modal--visit-report .visit-report-hs-banner,
 .drill-modal--visit-report .visit-report-pdf-btn {
   margin: 0;
   border-radius: 14px;
 }
 
+/* One reading size and one measure for every paragraph on the report — the
+   summary, a section write-up, an observation and a coaching note were set at
+   0.82 / 0.84 / 0.845 / 0.85rem across four components, differences of under a
+   tenth of a pixel that cost four rules to maintain. */
 .drill-modal--visit-report .visit-report-comment {
-  color: var(--text-2);
-  font-size: 0.82rem;
-  line-height: 1.6;
-}
-
-/* The section write-up used to hang off the end of the checklist rows in small
-   italic muted type, with nothing marking where the list stopped and the prose
-   began. It now sits in its own tinted block under an eyebrow, at the reading
-   size and leading the check-in modal's notes already use. */
-.drill-modal--visit-report .visit-report-section-notes {
-  margin: 16px 0 0;
-  padding: 13px 15px 14px;
-  border: 1px solid rgba(146, 137, 120, 0.16);
-  border-radius: 12px;
-  background: rgba(146, 137, 120, 0.055);
-}
-
-.drill-modal--visit-report .visit-report-section-notes__label {
-  display: block;
-  margin-bottom: 7px;
-  color: var(--drill-accent, var(--accent));
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
-.drill-modal--visit-report .visit-report-section-notes .visit-report-comment {
-  max-width: 72ch;
-  margin: 0 0 10px;
+  max-width: 78ch;
+  margin: 0 0 9px;
   color: var(--text);
-  font-size: 0.845rem;
-  line-height: 1.72;
+  font-size: var(--vr-prose);
+  line-height: 1.68;
 }
 
-.drill-modal--visit-report .visit-report-section-notes .visit-report-comment:last-child {
+.drill-modal--visit-report .visit-report-comment:last-child {
   margin-bottom: 0;
+}
+
+.drill-modal--visit-report .visit-report-noteblock .visit-report-comment {
+  font-size: var(--vr-body);
+  line-height: 1.6;
 }
 
 .visit-report-empty {
@@ -23800,36 +23770,17 @@ body[data-dash-tab="cei"] .methodology {
     padding: 15px 15px 20px;
   }
 
-  .drill-modal--visit-report .visit-report-section-notes {
-    margin-top: 14px;
-    padding: 12px 13px;
+  .drill-modal--visit-report .visit-report-noteblock {
+    margin-top: 10px;
+    padding: 10px 12px 11px;
   }
 
-  .visit-report-section-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .visit-report-section-heading p {
-    text-align: left;
-  }
-
-  .drill-modal--visit-report .visit-report-chart-wrap {
-    height: 235px;
-  }
-
-  .visit-action-layout,
-  .visit-question-layout {
-    flex-direction: column;
-    gap: 9px;
-  }
-
-  .visit-action-meta {
-    align-items: center;
-    flex-direction: row;
-    flex-wrap: wrap;
-    text-align: left;
+  /* The status pill drops under the title rather than competing with it for a
+     narrow line. The meta row is already under the copy at every width. */
+  .visit-report-item__head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    justify-items: start;
   }
 }
 
@@ -24181,13 +24132,18 @@ body[data-dash-tab="cei"] .methodology {
   }
 
   #visitReportModal .visit-report-body--railed .visit-report-layout {
-    grid-template-columns: 240.6px minmax(0, 1fr);
+    grid-template-columns: 236px minmax(0, 1fr);
   }
 
+  /* The rail must never grow a scrollbar of its own: one sitting beside the
+     content pane's is two scrollbars on one panel, which is what a report with
+     many sections (a routine visit's seven, an NBO's nine) used to produce.
+     The rail is a fixed column; if anything has to give it is the jump list,
+     which scrolls inside itself with no chrome (see below). */
   #visitReportModal .visit-report-rail {
     min-width: 0;
     min-height: 0;
-    overflow-y: auto;
+    overflow: hidden;
     overscroll-behavior: contain;
   }
 
@@ -24228,34 +24184,65 @@ body[data-dash-tab="cei"] .methodology {
     position: sticky;
     top: 0;
     display: flex;
+    /* Takes whatever height is left under the stat strip, and no more. */
+    flex: 0 1 auto;
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
+    min-height: 0;
     padding: 9px 10px;
   }
 
   #visitReportModal .visit-report-rail .visit-report-toc > div {
+    flex: 0 1 auto;
     flex-direction: column;
-    gap: 1px;
-    overflow: visible;
+    gap: 2px;
+    min-height: 0;
+    /* No fade down this edge. The rail is sized so every jump link fits at any
+       panel height (see the max-height steps further down), so a fade here has
+       nothing to announce — all it did was dim the bottom of the last entry,
+       permanently. overflow-y stays as a silent fallback for a window shorter
+       than anything the steps cover; trackVisitReportSection scrolls the
+       current entry into view, so nothing there can become unreachable.
+       The base rule's horizontal fade belongs to the pill bar, not here. */
+    overflow-y: auto;
+    scrollbar-width: none;
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+
+  #visitReportModal .visit-report-rail .visit-report-toc > div::-webkit-scrollbar {
+    display: none;
   }
 
   #visitReportModal .visit-report-rail .visit-report-toc a {
-    min-height: 26px;
-    padding: 4px 9px;
+    /* The rail is the report's primary navigation, so its links get a real
+       target rather than the 26px they had, with separation between them. */
+    min-height: 30px;
+    padding: 5px 10px;
     border-color: transparent;
     border-radius: 8px;
     background: transparent;
-    font-size: 0.72rem;
-    line-height: 1.25;
+    font-size: 0.75rem;
+    line-height: 1.3;
     text-align: left;
     white-space: normal;
+  }
+
+  /* Focus was signalled by colour alone here: the generic :focus-visible rule
+     sets a border colour and a white background, and both are then reset to
+     transparent by the ID-scoped rail rule above, which wins. An outline is
+     drawn instead so it cannot be cancelled by a background reset. */
+  #visitReportModal .visit-report-rail .visit-report-toc a:focus-visible {
+    outline: 2px solid var(--drill-accent, var(--accent));
+    outline-offset: 1px;
   }
 
   #visitReportModal .visit-report-rail .visit-report-toc a[aria-current="true"] {
     border-color: color-mix(in srgb, var(--drill-accent, var(--accent)) 32%, transparent);
     color: var(--drill-accent, var(--accent));
     background: color-mix(in srgb, var(--drill-accent, var(--accent)) 9%, #fff);
+    font-weight: 750;
   }
 
   #visitReportModal .visit-report-rail .visit-report-pdf-btn {
@@ -24336,7 +24323,7 @@ body[data-dash-tab="cei"] .methodology {
       grid-template-rows: auto minmax(0, 1fr);
     }
 
-    /* Losing the rail's 240.6px does not buy back a third section column. */
+    /* Losing the rail's 236px does not buy back a third section column. */
     #visitReportModal .visit-report-content {
       grid-template-columns: repeat(var(--report-cols-md, 2), minmax(0, 1fr));
     }
@@ -24357,6 +24344,11 @@ body[data-dash-tab="cei"] .methodology {
       flex-direction: row;
       gap: 7px;
       overflow-x: auto;
+      /* Back to a horizontal pill bar here, so the overflow fade returns with
+         it — the scrollbar is hidden and the last pill would otherwise just be
+         sliced off by the card edge. */
+      mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
     }
 
     #visitReportModal .visit-report-rail .visit-report-toc a {
@@ -24413,10 +24405,31 @@ body[data-dash-tab="cei"] .methodology {
 }
 
 /* The section rail is navigation, not content — the report prints without it,
-   exactly like the pill bar it replaced. */
+   exactly like the pill bar it replaced.
+
+   But the rail also carries the stat strip: enhanceVisitReportBody moves
+   .drill-summary into it, so hiding the whole rail was dropping the score, the
+   rating, the Coffee Partner and the visit date off every printed report —
+   the facts the report exists to state. Only the jump list is navigation. */
 @media print {
-  #visitReportModal .visit-report-rail {
+  #visitReportModal .visit-report-rail > .visit-report-toc {
     display: none !important;
+  }
+
+  #visitReportModal .visit-report-rail {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  #visitReportModal .visit-report-layout {
+    display: block !important;
+  }
+
+  #visitReportModal .visit-report-rail > .visit-report-overview {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    margin-bottom: 12px !important;
   }
 }
 
@@ -25671,7 +25684,7 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
   #visitReportModal .visit-report-rail {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
 
   #visitReportModal .visit-report-rail > .visit-report-overview {
@@ -25683,15 +25696,23 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
     box-shadow: none;
   }
 
+  /* The rail's height budget is fixed — it must hold the stat strip and every
+     jump link without either scrolling. "COFFEE PARTNER" is the widest label
+     any report type uses; at 96px it still wrapped to two lines, which pushed
+     those rows to ~45px and was what pushed the rail over the panel height. */
   #visitReportModal .visit-report-overview .visit-report-stat {
     display: grid;
     align-items: center;
-    grid-template-columns: 82px minmax(0, 1fr);
+    grid-template-columns: 106px minmax(0, 1fr);
     gap: 8px;
-    min-height: 32px;
+    min-height: 36px;
     padding: 6px 12px;
     border-right: 0;
     border-bottom: 1px solid rgba(146, 137, 120, 0.18);
+  }
+
+  #visitReportModal .visit-report-rail .drill-card__label {
+    letter-spacing: 0.05em;
   }
 
   #visitReportModal .visit-report-overview .visit-report-stat:last-child {
@@ -25700,6 +25721,63 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
 
   #visitReportModal .visit-report-overview .visit-report-stat--primary {
     background: color-mix(in srgb, var(--drill-accent, var(--accent)) 5%, #fff);
+  }
+
+  /* ── Keeping every jump link visible ──
+     The worst case is a routine visit (seven facts, eight sections) or an NBO
+     (five facts, nine links plus the PDF button). Both fit a full-height
+     window at the sizes above; in a shorter one the rail tightens by steps so
+     the list still shows every entry rather than scrolling part of itself out
+     of sight. Nothing here goes below a 24px target. */
+  @media screen and (max-height: 860px) {
+    #visitReportModal .visit-report-overview .visit-report-stat {
+      min-height: 32px;
+      padding: 4px 12px;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-toc {
+      gap: 4px;
+      padding: 7px 9px;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-toc a {
+      min-height: 27px;
+      padding: 4px 9px;
+    }
+  }
+
+  @media screen and (max-height: 720px) {
+    /* 26px, not 28px: a seven-fact routine strip is the tallest there is, and
+       the two pixels a row buys back here are exactly what its eight jump
+       links needed to all fit. These rows are read, not clicked, so their
+       height is a typographic decision rather than a target-size one. */
+    #visitReportModal .visit-report-overview .visit-report-stat {
+      min-height: 26px;
+      padding: 3px 10px;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-toc {
+      gap: 2px;
+      padding: 5px 8px;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-toc > span {
+      font-size: 0.62rem;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-toc > div {
+      gap: 1px;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-toc a {
+      min-height: 24px;
+      padding: 2px 9px;
+      font-size: 0.72rem;
+    }
+
+    #visitReportModal .visit-report-rail .visit-report-pdf-btn {
+      min-height: 26px;
+    }
   }
 
   #visitReportModal .visit-report-overview .drill-card__label {
@@ -25730,8 +25808,10 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
   #visitReportModal[data-report-type='followup'] .visit-report-body--railed .visit-report-layout,
   #visitReportModal[data-report-type='nbo'] .visit-report-body--railed .visit-report-layout,
   #visitReportModal[data-report-type='routine'] .visit-report-body--railed .visit-report-layout {
-    /* Matches the check-in modal's left rail width for consistency. */
-    grid-template-columns: 240.6px minmax(0, 1fr);
+    /* One rail width for all four analytical report types. It was 240.6px,
+       which was a magic number with no derivation and did not in fact match
+       the check-in workspace rail (260px) its comment claimed to. */
+    grid-template-columns: 236px minmax(0, 1fr);
     gap: 14px;
   }
 
@@ -25762,11 +25842,16 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
     line-height: 1.58;
   }
 
+  /* The lead card on a follow-up and on an NBO used to carry a 3px accent bar
+     down its left edge, drawn as an inset shadow — which follows the card's
+     14px corner radius, so the bar swept round both corners as a curved
+     sliver. On a follow-up the accent is red, so a bakery that had recovered
+     to 91.5% and a Green rating was framed in the loudest red on the page.
+     The card is marked out by its position and its heading instead. */
   #visitReportModal[data-report-type='followup'] .visit-report-section--action,
   #visitReportModal[data-report-type='nbo'] .visit-report-section--coaching {
-    border-color: color-mix(in srgb, var(--drill-accent, var(--accent)) 28%, rgba(146, 137, 120, 0.2));
-    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--drill-accent, var(--accent)) 78%, transparent),
-      0 7px 20px rgba(54, 47, 38, 0.045);
+    border-color: rgba(146, 137, 120, 0.21);
+    box-shadow: 0 7px 20px rgba(54, 47, 38, 0.045);
   }
 
   #visitReportModal[data-report-type='cqv'] .visit-report-hs-banner,
@@ -25824,9 +25909,21 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  /* Once the strip turns from a rail into a horizontal band, each cell is only
+     ~190px wide — far too narrow to hold the rail's 96px label column beside a
+     value, which wrapped "725 / 1055" over two lines. The label sits above its
+     value instead, both hard left, which also stops a right-aligned value
+     reading as though it belonged to the next cell's label. */
   #visitReportModal .visit-report-overview .visit-report-stat {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
     border-right: 1px solid rgba(146, 137, 120, 0.18);
     border-bottom: 0;
+  }
+
+  #visitReportModal .visit-report-overview .drill-card__value {
+    text-align: left;
   }
 
   #visitReportModal .visit-report-overview .visit-report-stat:last-child {

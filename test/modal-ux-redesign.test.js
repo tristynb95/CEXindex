@@ -132,7 +132,11 @@ test('Bakery Reports identify report type and provide navigable responsive secti
   assert.match(script, /<dt class="drill-card__label">/);
   assert.match(script, /<dd class="drill-card__value"/);
   assert.match(script, /setVisitReportPresentation\(record\.isFollowUp \? 'followup' : 'cqv', record\)/);
-  assert.match(script, /record\.isFollowUp[\s\S]*?summaryHtml \+ actionPlanHtml \+ categoryHtml \+ sectionHtml \+ chartHtml/);
+  // A follow-up leads with the score profile — whether the score recovered is
+  // the question it exists to answer — and a CQV leads with its write-up.
+  // Both put the action plan ahead of the two score tables.
+  assert.match(script, /record\.isFollowUp[\s\S]*?chartHtml \+ summaryHtml \+ actionPlanHtml \+ categoryHtml \+ sectionHtml/);
+  assert.match(script, /summaryHtml \+ chartHtml \+ actionPlanHtml \+ categoryHtml \+ sectionHtml/);
 
   // Quick stats stack above the persistent section links in the left rail,
   // leaving the full report height available to the scrolling content pane.
@@ -153,8 +157,24 @@ test('Bakery Reports identify report type and provide navigable responsive secti
   // below it keeps that track from collapsing.
   assert.match(styles, /#visitReportModal \.visit-report-content \{[\s\S]*?grid-template-columns: repeat\(var\(--report-cols, 2\), minmax\(0, 1fr\)\)/);
   assert.match(styles, /#visitReportModal \.visit-report-rail \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column/);
-  assert.match(styles, /#visitReportModal \.visit-report-overview \.visit-report-stat \{[\s\S]*?min-height: 40px/);
-  assert.match(styles, /#visitReportModal \.visit-report-overview \.visit-report-stat \{[\s\S]*?grid-template-columns: 82px minmax\(0, 1fr\)/);
+  // The label column fits "COFFEE PARTNER" — the widest label any report type
+  // uses — on one line. Wrapping it pushed those rows to ~45px, which is what
+  // made a seven-fact routine rail taller than the panel it sits in.
+  assert.match(styles, /#visitReportModal \.visit-report-overview \.visit-report-stat \{[\s\S]*?min-height: 36px/);
+  assert.match(styles, /#visitReportModal \.visit-report-overview \.visit-report-stat \{[\s\S]*?grid-template-columns: 106px minmax\(0, 1fr\)/);
+  // The rail itself never scrolls; if anything overflows it is the jump list,
+  // inside itself, with no scrollbar chrome.
+  assert.match(styles, /#visitReportModal \.visit-report-rail \{[\s\S]*?overflow: hidden/);
+  assert.match(styles, /#visitReportModal \.visit-report-rail \.visit-report-toc > div \{[\s\S]*?overflow-y: auto;[\s\S]*?scrollbar-width: none/);
+  // Short windows tighten the rail by steps so every jump link stays visible
+  // rather than part of the list scrolling out of sight.
+  assert.match(styles, /@media screen and \(max-height: 860px\)[\s\S]*?\.visit-report-stat \{[\s\S]*?min-height: 32px/);
+  assert.match(styles, /@media screen and \(max-height: 720px\)[\s\S]*?\.visit-report-stat \{[\s\S]*?min-height: 26px/);
+  // A clicked jump link stays marked, rather than the scroll spy immediately
+  // handing the highlight to whichever peer shares the top of its grid row.
+  assert.match(script, /pinnedId = id;/);
+  assert.match(script, /function releasePin/);
+  assert.doesNotMatch(script, /data-in-view/);
   assert.match(styles, /#visitReportModal \.visit-report-overview \.drill-card__value \{[\s\S]*?overflow-wrap: anywhere/);
   assert.match(styles, /#visitReportModal \.visit-report-rail > \.visit-report-overview \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(script, /setProperty\('--report-cols', Math\.max\(1, Math\.min\(3, narrowCount\)\)\)/);
