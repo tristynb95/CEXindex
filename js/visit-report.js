@@ -167,13 +167,49 @@ window.GAILS = window.GAILS || {};
     }
   }
 
-  // Highlights the rail entry for whatever section is at the top of the
-  // content pane. A rail that never says where you are is just a link list.
+  // Keeps the rail entry for the section being read inside the jump list's own
+  // scroll box. The list scrolls internally on reports with more sections than
+  // the rail is tall, so without this the entry saying "you are here" could be
+  // the one entry you cannot see. The 14px margin clears the fade at the
+  // bottom edge, so the current entry never arrives half-faded.
+  // Handles both orientations: the list is a vertical rail on a wide screen and
+  // a horizontal pill bar below 1080px, and an entry can be out of sight in
+  // either. Only the axis that actually overflows is touched.
+  function keepRailLinkVisible(list, link) {
+    if (!list || !link || !list.getBoundingClientRect) return;
+    var listBox = list.getBoundingClientRect();
+    var linkBox = link.getBoundingClientRect();
+    var margin = 14;
+
+    if (list.scrollHeight > list.clientHeight + 2) {
+      if (linkBox.top < listBox.top + margin) {
+        list.scrollTop -= (listBox.top + margin) - linkBox.top;
+      } else if (linkBox.bottom > listBox.bottom - margin) {
+        list.scrollTop += linkBox.bottom - (listBox.bottom - margin);
+      }
+    }
+
+    if (list.scrollWidth > list.clientWidth + 2) {
+      if (linkBox.left < listBox.left + margin) {
+        list.scrollLeft -= (listBox.left + margin) - linkBox.left;
+      } else if (linkBox.right > listBox.right - margin) {
+        list.scrollLeft += linkBox.right - (listBox.right - margin);
+      }
+    }
+  }
+
+  // Highlights the rail entry for the section being read. A rail that never
+  // says where you are is just a link list.
   //
-  // This measures on scroll rather than using an IntersectionObserver band:
-  // the sections sit in a multi-column grid, so a band narrow enough to mean
-  // "at the top" leaves dead zones where a tall section spans it and nothing
-  // is reported at all. Reading positions directly always names a section.
+  // A click on a jump link wins outright until the reader scrolls again. The
+  // sections sit in a multi-column grid, so several share a top edge, and the
+  // edge-crossing rule below always resolves such a row to its first member —
+  // which meant clicking "Equipment" scrolled to Equipment and then lit up
+  // "Service", the section next to it. What you asked for is what gets marked.
+  //
+  // Scroll position measures on scroll rather than using an IntersectionObserver
+  // band: a band narrow enough to mean "at the top" leaves dead zones where a
+  // tall section spans it and nothing is reported at all.
   function trackVisitReportSection(nav, scroller) {
     stopVisitReportSectionSpy();
     if (!nav.querySelectorAll || !scroller.addEventListener) return;
@@ -188,37 +224,89 @@ window.GAILS = window.GAILS || {};
     if (!order.length) return;
 
     var frame = null;
+    var list = nav.querySelector('div');
+    var lastCurrent = null;
+    var pinnedId = null;
+    var pinnedAt = 0;
+    var lastScrollTop = scroller.scrollTop;
+    var scrollingDown = true;
 
-    function update() {
-      frame = null;
-      var edge = scroller.getBoundingClientRect().top + 24;
-      var currentTop = -Infinity;
-      var current = order[0];
-      order.forEach(function(id) {
-        var heading = document.getElementById(id);
-        if (!heading) return;
-        var top = heading.getBoundingClientRect().top;
-        // The last heading to have passed the top edge is the one being read.
-        // Sections sharing a grid row share a top, and `>` keeps the first of
-        // that row rather than the last.
-        if (top <= edge && top > currentTop) {
-          currentTop = top;
-          current = id;
-        }
-      });
-      // A short trailing section can sit fully on screen without its heading
-      // ever reaching the edge line, because the pane runs out of room to
-      // scroll before that happens — the edge-crossing loop above then keeps
-      // pointing at whatever section preceded it. Once there's nowhere further
-      // to scroll, the last section is what's being read, full stop.
-      var canScroll = scroller.scrollHeight > scroller.clientHeight + 4;
-      if (canScroll && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) {
-        current = order[order.length - 1];
-      }
+    // The card, not the heading: a section counts as being read for as long as
+    // any of it is on screen, and only the card knows where it ends.
+    function sectionBox(id) {
+      var heading = document.getElementById(id);
+      if (!heading || !heading.getBoundingClientRect) return null;
+      var card = heading.closest ? heading.closest('.visit-report-section') : null;
+      return (card || heading).getBoundingClientRect();
+    }
+
+    function applyCurrent(current) {
       order.forEach(function(id) {
         if (id === current) links[id].setAttribute('aria-current', 'true');
         else links[id].removeAttribute('aria-current');
       });
+      // Only when the section actually changes, so this never fights a reader
+      // who is scrolling the jump list by hand.
+      if (current !== lastCurrent) {
+        lastCurrent = current;
+        keepRailLinkVisible(list, links[current]);
+      }
+    }
+
+    function update() {
+      frame = null;
+      if (pinnedId) {
+        applyCurrent(pinnedId);
+        return;
+      }
+
+      var edge = scroller.getBoundingClientRect().top + 24;
+      var currentTop = -Infinity;
+      var current = order[0];
+
+      order.forEach(function(id) {
+        var box = sectionBox(id);
+        if (!box) return;
+        // The last card to have passed the top edge is the one being read.
+        // Sections sharing a grid row share a top, and `>` keeps the first of
+        // that row rather than the last.
+        if (box.top <= edge && box.top > currentTop) {
+          currentTop = box.top;
+          current = id;
+        }
+      });
+
+      // A short trailing section can sit fully on screen without ever reaching
+      // the edge line, because the pane runs out of room to scroll before that
+      // happens — the edge-crossing loop above then keeps pointing at whatever
+      // section preceded it. Once there's nowhere further to scroll, the last
+      // section is what's being read, full stop.
+      var canScroll = scroller.scrollHeight > scroller.clientHeight + 4;
+      if (canScroll && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) {
+        current = order[order.length - 1];
+      }
+
+      // The highlight only ever travels the way the reader is travelling.
+      //
+      // Two or three sections share a grid row and therefore share a top edge,
+      // and the rule above always resolves such a row to its first member — so
+      // scrolling down out of "Maintenance" handed the highlight backwards to
+      // "Drink Quality" sitting beside it. Cards in a row are different heights
+      // (Drink Quality has twelve rows, Maintenance eight), so this holds even
+      // once the marked card has scrolled off the top while its taller
+      // neighbour is still on screen: the test cannot be "is it still visible",
+      // it has to be direction alone. A candidate that would move the highlight
+      // against the direction of travel is ignored outright, and the row is
+      // left behind only when the next one arrives.
+      if (lastCurrent) {
+        var currentIndex = order.indexOf(current);
+        var lastIndex = order.indexOf(lastCurrent);
+        if (scrollingDown ? currentIndex < lastIndex : currentIndex > lastIndex) {
+          current = lastCurrent;
+        }
+      }
+
+      applyCurrent(current);
     }
 
     function schedule() {
@@ -226,13 +314,89 @@ window.GAILS = window.GAILS || {};
       frame = window.requestAnimationFrame ? window.requestAnimationFrame(update) : setTimeout(update, 16);
     }
 
-    scroller.addEventListener('scroll', schedule, { passive: true });
+    // Direction is read here rather than inside update(), which runs a frame
+    // later and would compare against a position that has already moved on.
+    function onScroll() {
+      var top = scroller.scrollTop;
+      if (top !== lastScrollTop) {
+        scrollingDown = top > lastScrollTop;
+        lastScrollTop = top;
+      }
+      schedule();
+    }
+
+    // Scrolling is handled here rather than by the anchor's default jump, so
+    // that reading four sections doesn't leave four hash entries stacked up
+    // behind the browser's Back button.
+    function onNavClick(event) {
+      var link = event.target && event.target.closest
+        ? event.target.closest('a[href^="#visitReportSection"]')
+        : null;
+      if (!link || !nav.contains(link)) return;
+      var id = link.getAttribute('href').slice(1);
+      var heading = document.getElementById(id);
+      if (!heading) return;
+      event.preventDefault();
+      pinnedId = id;
+      pinnedAt = Date.now();
+      applyCurrent(id);
+      if (heading.scrollIntoView) heading.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+
+    function pinnedIsOnScreen() {
+      var box = sectionBox(pinnedId);
+      // A section that has left the DOM must not hold the pin for ever.
+      if (!box) return true;
+      var view = scroller.getBoundingClientRect();
+      return box.bottom > view.top + 10 && box.top < view.bottom - 10;
+    }
+
+    // A pin is released by the reader moving themselves, not by the smooth
+    // scroll the click started — which is why this listens for the input
+    // events rather than for scroll.
+    //
+    // It also waits until that scroll has actually delivered the section. A
+    // wheel a moment after the click would otherwise release the pin while the
+    // pane was still travelling, handing the highlight straight back to
+    // whatever sits at the top — the very thing the click moved away from.
+    // Once the section is on screen the release is safe, because the
+    // direction-of-travel rule in update() then holds the highlight there.
+    function releasePin() {
+      if (!pinnedId) return;
+      if (!pinnedIsOnScreen() && Date.now() - pinnedAt < 2000) return;
+      pinnedId = null;
+      schedule();
+    }
+
+    nav.addEventListener('click', onNavClick);
+    scroller.addEventListener('wheel', releasePin, { passive: true });
+    scroller.addEventListener('touchstart', releasePin, { passive: true });
+    scroller.addEventListener('keydown', releasePin);
+    scroller.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', schedule);
-    update();
+
+    // The first measurement cannot be taken here. enhanceVisitReportBody runs
+    // while the modal is still display:none, so every rect is zero and nothing
+    // reads as on screen — which used to leave the whole rail unmarked except
+    // for the order[0] fallback until the reader scrolled. Measuring is
+    // deferred to after the panel is shown, and a ResizeObserver re-measures
+    // when the content settles (drawPointsChart sets the chart's height inline
+    // a frame later, which moves everything below it).
+    schedule();
+    var sizeSpy = null;
+    if (typeof window.ResizeObserver === 'function') {
+      sizeSpy = new window.ResizeObserver(schedule);
+      sizeSpy.observe(scroller);
+    }
 
     visitReportSectionSpy = function() {
-      scroller.removeEventListener('scroll', schedule);
+      nav.removeEventListener('click', onNavClick);
+      scroller.removeEventListener('wheel', releasePin);
+      scroller.removeEventListener('touchstart', releasePin);
+      scroller.removeEventListener('keydown', releasePin);
+      scroller.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', schedule);
+      if (sizeSpy) sizeSpy.disconnect();
     };
   }
 
@@ -295,6 +459,13 @@ window.GAILS = window.GAILS || {};
     layout.className = 'visit-report-layout';
     var content = document.createElement('div');
     content.className = 'visit-report-content';
+    // This element is the report's scroller, and on a routine visit it holds no
+    // focusable children at all — so without a tab stop of its own a keyboard
+    // user could reach the header controls and the rail and still have no way
+    // to scroll the report they came to read.
+    content.setAttribute('tabindex', '0');
+    content.setAttribute('role', 'region');
+    content.setAttribute('aria-label', 'Report content');
     // The sections grid is sized to how many narrow sections there actually
     // are, not to how many would fit. A CQV has exactly two (Score by Category
     // and Score by Section); an auto-fit grid gave it three tracks and left
@@ -360,15 +531,65 @@ window.GAILS = window.GAILS || {};
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
-  function ynnaPill(value, flag) {
-    var v = value || '—';
-    var cls = 'visit-pill';
-    if (value === 'Yes') cls += ' visit-pill--yes';
-    else if (value === 'No') cls += ' visit-pill--no';
-    else if (value === 'N/A') cls += ' visit-pill--na';
-    else cls += ' visit-pill--unknown';
-    if (flag) cls += ' visit-pill--flag';
-    return '<span class="' + cls + '">' + (flag ? '&#9888; ' : '') + escapeHtml(v) + '</span>';
+  // Same pill as every other status on every other report type. The failed
+  // answers used to carry a ⚠ glyph and a red ring on top of the red text and
+  // the tinted row behind them — the same single fact said four ways over.
+  var YNNA_COLORS = { Yes: '#1D8A55', No: '#B22A24', 'N/A': '#7E776C' };
+
+  function ynnaPill(value) {
+    return pillHtml(value || '—', { color: YNNA_COLORS[value] || '#8C8272' });
+  }
+
+  // ── Shared report primitives ──
+  // The four report types used to build the same conceptual things out of
+  // different components: three section-heading idioms, three row idioms, five
+  // pill families and six ways of drawing a block of prose. Everything below is
+  // the single version of each, and every builder now goes through it, so a
+  // routine visit, a CQV, a follow-up and an NBO read as one document type.
+
+  // One heading for every section on every report: an optional uppercase
+  // eyebrow, the title in ink, an optional caption under it (not right-aligned
+  // across the card, where it used to sit a screen's width from the title it
+  // modified), and an optional status chip pinned right.
+  function sectionHeadingHtml(options) {
+    var o = options || {};
+    return '<div class="visit-report-section-heading">' +
+      '<div class="visit-report-section-heading__text">' +
+      (o.eyebrow ? '<span class="visit-report-section-eyebrow">' + escapeHtml(o.eyebrow) + '</span>' : '') +
+      '<h4>' + escapeHtml(o.title) + '</h4>' +
+      (o.caption ? '<p class="visit-report-section-caption">' + escapeHtml(o.caption) + '</p>' : '') +
+      '</div>' +
+      (o.chip || '') +
+      '</div>';
+  }
+
+  // One pill. Colour arrives as data through --pill-color rather than through a
+  // modifier class per status, which is what stopped the previous five families
+  // (visit-pill / visit-action-tag / visit-response-pill / visit-section-attention
+  // / visit-report-hs-tag) from being able to share a rule.
+  function pillHtml(text, options) {
+    var o = options || {};
+    var cls = 'visit-pill' + (o.solid ? ' visit-pill--solid' : '') + (o.className ? ' ' + o.className : '');
+    var style = o.color ? ' style="--pill-color:' + escapeHtml(o.color) + ';"' : '';
+    return '<span class="' + cls + '"' + style + '>' + escapeHtml(text) + '</span>';
+  }
+
+  // One block of prose. `label` gives it the eyebrow that "Notes" and "Action
+  // required" both used to draw their own way; `tone` picks the accent. The
+  // straight left rule is drawn by CSS with the adjoining corners squared —
+  // a side rule and a rounded corner may never meet, or the rule renders as a
+  // curved sliver instead of a line.
+  function noteBlockHtml(value, options) {
+    var o = options || {};
+    var paragraphs = String(value == null ? '' : value).split(/\r?\n+/).map(function (para) {
+      var text = para.trim();
+      return text ? '<p class="visit-report-comment">' + escapeHtml(text) + '</p>' : '';
+    }).join('');
+    if (!paragraphs) return '';
+    return '<div class="visit-report-noteblock' + (o.tone ? ' visit-report-noteblock--' + o.tone : '') + '">' +
+      (o.label ? '<span class="visit-report-noteblock__label">' + escapeHtml(o.label) + '</span>' : '') +
+      paragraphs +
+      '</div>';
   }
 
   // A section's write-up is the only long-form prose on a card otherwise made
@@ -377,15 +598,7 @@ window.GAILS = window.GAILS || {};
   // paragraphs — their numbered recommendations were being flattened into one
   // unbroken run of text.
   function renderSectionNotes(value) {
-    var paragraphs = String(value).split(/\r?\n+/).map(function (para) {
-      var text = para.trim();
-      return text ? '<p class="visit-report-comment">' + escapeHtml(text) + '</p>' : '';
-    }).join('');
-    if (!paragraphs) return '';
-    return '<div class="visit-report-section-notes">' +
-      '<span class="visit-report-section-notes__label">Notes</span>' +
-      paragraphs +
-      '</div>';
+    return noteBlockHtml(value, { label: 'Notes' });
   }
 
   function renderPhotoLinks(urls) {
@@ -409,7 +622,7 @@ window.GAILS = window.GAILS || {};
         rows.push(
           '<div class="visit-report-row' + (isHs && failed ? ' visit-report-row--flag' : '') + '">' +
           '<span class="visit-report-row__label">' + escapeHtml(field.label) + '</span>' +
-          ynnaPill(value, isHs && failed) +
+          ynnaPill(value) +
           '</div>'
         );
       } else if (field.type === 'scale') {
@@ -443,28 +656,44 @@ window.GAILS = window.GAILS || {};
       }
     });
 
+    // The old "Health & Safety" chip was appended to a heading that already
+    // read "Health & Safety". The count of failures is the fact worth carrying
+    // there, and it matches how NBO labels its question sections.
+    var hsFailures = isHs ? hsIssues.length : 0;
     return '<div class="visit-report-section-wrapper">' +
       '<div class="visit-report-section' + (isHs ? ' visit-report-section--hs' : '') + '">' +
-      '<h4>' + escapeHtml(section.title) + (isHs ? ' <span class="visit-report-hs-tag">Health &amp; Safety</span>' : '') + '</h4>' +
+      sectionHeadingHtml({
+        title: section.title,
+        chip: hsFailures
+          ? pillHtml(hsFailures + ' to fix', { color: '#B22A24', className: 'visit-section-attention' })
+          : ''
+      }) +
       rows.join('') + comments + photos +
       '</div>' +
       '</div>';
   }
 
-  function buildHsSummaryHtml(hsIssues) {
-    if (!hsIssues.length) {
-      return '<div class="visit-report-section-wrapper">' +
-        '<div class="visit-report-hs-banner visit-report-hs-banner--ok">' +
-        '&#9989; No Health &amp; Safety issues found on this visit.' +
-        '</div>' +
-        '</div>';
-    }
+  // One banner component for every "something you need to know" line on every
+  // report type — the Health & Safety result here and the CQV critical-point
+  // failure below both used to draw their own.
+  function bannerHtml(tone, text) {
     return '<div class="visit-report-section-wrapper">' +
-      '<div class="visit-report-hs-banner visit-report-hs-banner--alert">' +
-      '<strong>&#9888; ' + hsIssues.length + ' Health &amp; Safety issue' + (hsIssues.length === 1 ? '' : 's') + ' found:</strong>' +
-      '<ul>' + hsIssues.map(function (label) { return '<li>' + escapeHtml(label) + '</li>'; }).join('') + '</ul>' +
+      '<div class="visit-report-hs-banner visit-report-hs-banner--' + tone + '">' +
+      '<span class="visit-report-banner__text">' + text + '</span>' +
       '</div>' +
       '</div>';
+  }
+
+  // The alert used to list every failed check by name, and the Health & Safety
+  // card immediately below then listed the same failures again with the same red
+  // flag — the same information twice within one screen. The banner now states
+  // the count and the card carries the detail, which is what it is for.
+  function buildHsSummaryHtml(hsIssues) {
+    if (!hsIssues.length) {
+      return bannerHtml('ok', 'No Health &amp; Safety issues found on this visit.');
+    }
+    return bannerHtml('alert', '<strong>' + hsIssues.length + ' Health &amp; Safety issue' +
+      (hsIssues.length === 1 ? '' : 's') + '</strong> found — see the Health &amp; Safety section below.');
   }
 
   // A Coffee Partner may name an assignee as "@Name". The stored "@" is a
@@ -512,21 +741,22 @@ window.GAILS = window.GAILS || {};
     }).join(' & '));
   }
 
+  // Routine visits led with raw points ("37 / 45") while CQV and NBO both led
+  // with a percentage, so the one number every report exists to deliver was
+  // expressed three different ways. All four now lead with the percentage and
+  // carry the points behind it.
   function buildHeaderStatsHtml(record) {
-    var scoreText = (record.score != null) ? record.score + ' / ' + (record.scoreMax != null ? record.scoreMax : '—') : '—';
+    var pct = (record.score != null && record.scoreMax) ? Math.round((record.score / record.scoreMax) * 100) : null;
     var cards = [
-      { label: 'Score', value: scoreText },
+      { label: 'Score', value: pct != null ? pct + '%' : '—' },
+      { label: 'Points', value: (record.score != null) ? record.score + ' / ' + (record.scoreMax != null ? record.scoreMax : '—') : '—' },
       { label: 'Coffee Partner', html: partnerHtml(record.coffeePartner) },
       { label: 'Barista', value: record.mod || '—' },
-      { label: 'Head Barista Present', value: record.headBaristaPresent || '—' },
-      { label: 'Staff on Shift', value: record.numberOfStaff != null ? record.numberOfStaff : '—' },
+      { label: 'Head Barista', value: record.headBaristaPresent || '—' },
+      { label: 'Staff on shift', value: record.numberOfStaff != null ? record.numberOfStaff : '—' },
       { label: 'Completed', value: visitDaysAgoLabel(record) }
     ];
-    return '<dl class="drill-summary visit-report-overview" aria-label="Report overview">' + cards.map(function (c, index) {
-      var classes = 'drill-card visit-report-stat' + (index === 0 ? ' visit-report-stat--primary' : '');
-      return '<div class="' + classes + '"><dt class="drill-card__label">' + escapeHtml(c.label) + '</dt>' +
-        '<dd class="drill-card__value">' + (c.html || escapeHtml(c.value)) + '</dd></div>';
-    }).join('') + '</dl>';
+    return buildReportOverviewHtml(cards);
   }
 
   function buildReportHtml(record) {
@@ -538,10 +768,7 @@ window.GAILS = window.GAILS || {};
 
     var hasSectionScores = record.sectionScores && Object.keys(record.sectionScores).length > 0;
     var chartHtml = hasSectionScores
-      ? '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--chart">' +
-        '<div class="visit-report-section-heading"><div><span>Score profile</span><h4>Performance by section</h4></div>' +
-        '<p>Earned points compared with the available score.</p></div>' +
-        '<div class="visit-report-chart-wrap"><canvas id="' + CHART_ID + '"></canvas></div></div></div>'
+      ? scoreChartSectionHtml(CHART_ID)
       : '<p class="visit-report-note">Section-by-section score breakdown isn’t available for this visit (it was recorded before scoring breakdown was added).</p>';
 
     return buildHeaderStatsHtml(record) +
@@ -550,33 +777,165 @@ window.GAILS = window.GAILS || {};
       sectionsHtml;
   }
 
-  function drawScoreChart(record) {
-    var G = window.GAILS;
-    if (!record.sectionScores || typeof G.makeChart !== 'function') return;
-    var schema = window.GAILS_VISIT_SCHEMA;
-    var labels = schema.sections.map(function (s) { return s.title; });
-    var earned = schema.sections.map(function (s) { return (window.getVisitSectionScores(record, s) || {}).earned || 0; });
-    var max = schema.sections.map(function (s) { return (window.getVisitSectionScores(record, s) || {}).max || 0; });
+  // ── Points by section ──
+  // Horizontal bars, not vertical. Section names are multi-word ("Compliance &
+  // Training", "Bar Standards & Cleanliness"), and on a category x-axis Chart.js
+  // rotated them to 50° — burning roughly a third of the chart's height on
+  // turned text — then silently dropped labels via autoSkip once the pane got
+  // narrow, leaving unnamed bars. Down the y-axis the same names are set
+  // horizontally at full length in a gutter, and autoSkip is off so every bar
+  // keeps its name.
+  //
+  // "Available" is the track behind "Earned" rather than a second bar beside it:
+  // it is the maximum for that section, not a comparable series, so the pair
+  // reads as one progress bar per section. That also halves the bar count, which
+  // is what lets the whole chart be shorter than the vertical one it replaces.
+  var CHART_ROW_HEIGHT = 30;
+  var CHART_CHROME_HEIGHT = 58;
+  var CHART_VALUE_FONT = '700 11px Inter, system-ui, sans-serif';
+  var CHART_VALUE_PAD = 14;
 
-    G.makeChart(CHART_ID, {
+  // Measures the widest "earned / available" label so the gutter reserved for
+  // it is the size it actually needs. Falls back to a per-character estimate if
+  // a 2D context isn't available (jsdom in the test suite).
+  function measureChartValueGutter(valueLabels) {
+    var widest = 0;
+    var ctx = null;
+    try {
+      ctx = document.createElement('canvas').getContext('2d');
+      if (ctx) ctx.font = CHART_VALUE_FONT;
+    } catch {
+      ctx = null;
+    }
+    valueLabels.forEach(function (label) {
+      var width = ctx ? ctx.measureText(label).width : label.length * 6.6;
+      if (width > widest) widest = width;
+    });
+    return Math.ceil(widest) + CHART_VALUE_PAD;
+  }
+
+  function drawPointsChart(canvasId, labels, earned, max) {
+    var G = window.GAILS;
+    if (typeof G.makeChart !== 'function' || !labels.length) return;
+    var ink = G.CHART_INK || {};
+
+    // The value gutter is measured from the widest label it has to hold, not
+    // guessed. A CQV can score in the hundreds ("260 / 470"), and a fixed
+    // gutter sized for a routine visit's single digits clipped those in half.
+    var valueLabels = earned.map(function (value, index) {
+      return value + ' / ' + max[index];
+    });
+    var gutter = measureChartValueGutter(valueLabels);
+
+    // Height follows the data instead of a fixed box, so a 5-section CQV is not
+    // padded out to a 7-section routine visit's height and neither one crushes.
+    var canvas = document.getElementById(canvasId);
+    var wrap = canvas && canvas.parentNode;
+    if (wrap && wrap.style) {
+      wrap.style.height = (labels.length * CHART_ROW_HEIGHT + CHART_CHROME_HEIGHT) + 'px';
+    }
+
+    G.makeChart(canvasId, {
       type: 'bar',
+      // Top-level (per-chart) plugin registration, not options.plugins.
+      plugins: [pointsValuePlugin],
       data: {
         labels: labels,
         datasets: [
-          { label: 'Points Earned', data: earned, backgroundColor: '#1D9E5C', borderRadius: 6 },
-          { label: 'Points Available', data: max, backgroundColor: 'rgba(146, 137, 120,0.25)', borderRadius: 6 }
+          {
+            label: 'Points available',
+            data: max,
+            backgroundColor: 'rgba(146, 137, 120, 0.18)',
+            borderRadius: 999,
+            barPercentage: 1,
+            categoryPercentage: 0.62,
+            maxBarThickness: 15
+          },
+          {
+            label: 'Points earned',
+            data: earned,
+            backgroundColor: '#1D9E5C',
+            borderRadius: 999,
+            barPercentage: 1,
+            categoryPercentage: 0.62,
+            maxBarThickness: 15
+          }
         ]
       },
       options: {
+        indexAxis: 'y',
+        // The track and the value share one lane rather than sitting side by
+        // side; the value is drawn second so it paints over the track.
+        grouped: false,
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { right: gutter } },
         scales: {
-          x: { grid: { display: false } },
-          y: { beginAtZero: true, grid: { color: 'rgba(34, 31, 26,0.06)' } }
+          // The value axis is now x and the category axis is now y, so the
+          // beginAtZero/grid roles swap with them.
+          x: {
+            beginAtZero: true,
+            grid: { color: 'rgba(34, 31, 26,0.06)' },
+            border: { display: false },
+            ticks: { precision: 0 }
+          },
+          y: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: {
+              autoSkip: false,
+              color: ink.body || '#4D463C',
+              font: { size: 11.5, weight: '600' }
+            }
+          }
         },
-        plugins: { legend: { position: 'bottom' } }
+        plugins: {
+          legend: { position: 'bottom', reverse: true },
+          tooltip: { callbacks: { label: pointsTooltipLabel } }
+        }
       }
     });
+  }
+
+  function pointsTooltipLabel(ctx) {
+    return ctx.dataset.label + ': ' + ctx.parsed.x;
+  }
+
+  // Prints "earned / available" at the end of each lane. Without it the numbers
+  // are hover-only, so a printed report — the format these are most often read
+  // in — carries a chart with no values on it at all.
+  var pointsValuePlugin = {
+    id: 'visitReportPointsValue',
+    afterDatasetsDraw: function (chart) {
+      var earnedSet = chart.getDatasetMeta(1);
+      if (!earnedSet || earnedSet.hidden) return;
+      var maxData = chart.data.datasets[0].data;
+      var earnedData = chart.data.datasets[1].data;
+      var ctx = chart.ctx;
+      ctx.save();
+      ctx.font = CHART_VALUE_FONT;
+      ctx.fillStyle = '#4D463C';
+      // Right-aligned against the canvas edge rather than left-aligned off the
+      // plot area, so the column of values lines up and cannot run past the
+      // card however large the numbers get.
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      earnedSet.data.forEach(function (bar, index) {
+        ctx.fillText(earnedData[index] + ' / ' + maxData[index], chart.width - 2, bar.y);
+      });
+      ctx.restore();
+    }
+  };
+
+  function drawScoreChart(record) {
+    if (!record.sectionScores) return;
+    var schema = window.GAILS_VISIT_SCHEMA;
+    drawPointsChart(
+      CHART_ID,
+      schema.sections.map(function (s) { return s.title; }),
+      schema.sections.map(function (s) { return (window.getVisitSectionScores(record, s) || {}).earned || 0; }),
+      schema.sections.map(function (s) { return (window.getVisitSectionScores(record, s) || {}).max || 0; })
+    );
   }
 
   var CQV_CHART_ID = 'cqvReportScoreChart';
@@ -586,6 +945,10 @@ window.GAILS = window.GAILS || {};
   var cqvBand = GAILS.CQVShared.band;
   var cqvBandColor = GAILS.CQVShared.bandColor;
 
+  // The one stat-strip builder. It used to be two near-identical functions with
+  // a capability each — this one could colour a value but only took plain text,
+  // while the routine one could render a Coffee Partner mention but had no way
+  // to express a band colour. Both now go through here.
   function buildReportOverviewHtml(cards) {
     return '<dl class="drill-summary visit-report-overview" aria-label="Report overview">' +
       cards.map(function (card, index) {
@@ -593,7 +956,7 @@ window.GAILS = window.GAILS || {};
         var colorStyle = card.color ? ' style="--report-stat-color:' + escapeHtml(card.color) + ';"' : '';
         return '<div class="' + classes + '">' +
           '<dt class="drill-card__label">' + escapeHtml(card.label) + '</dt>' +
-          '<dd class="drill-card__value"' + colorStyle + '>' + escapeHtml(card.value) + '</dd></div>';
+          '<dd class="drill-card__value"' + colorStyle + '>' + (card.html || escapeHtml(card.value)) + '</dd></div>';
       }).join('') + '</dl>';
   }
 
@@ -602,7 +965,9 @@ window.GAILS = window.GAILS || {};
     var band = cqvBand(record);
     var bandColor = cqvBandColor(band);
     var cards = [
-      { label: 'Overall Score', value: scoreText },
+      // Same label vocabulary as every other report type: "Score" leads, then
+      // the points behind it, then who and when.
+      { label: 'Score', value: scoreText },
       { label: 'Rating', value: band || '—', color: bandColor },
       { label: 'Points', value: (record.score != null) ? record.score + ' / ' + (record.scoreMax != null ? record.scoreMax : '—') : '—' },
       { label: 'Coffee Partner', value: record.auditorName || '—' },
@@ -628,6 +993,53 @@ window.GAILS = window.GAILS || {};
   var cqvCriticalTag = GAILS.CQVShared.criticalTag;
   var cqvLostPointItems = GAILS.CQVShared.lostPointItems;
 
+  // One item component for both the CQV/NBO action plan and the NBO question
+  // list. They were two builders drawing the same shape: a title, an optional
+  // sub-label, an observation, and a status.
+  //
+  // The status sits in a fixed track beside the title, and the supporting meta
+  // (priority, due date) runs as a line under the copy. Previously the meta was
+  // a right-aligned column of a space-between flex row, so on a full-bleed
+  // panel the due date could end up the better part of a screen's width from
+  // the action it belonged to, and the reader had to saccade across the whole
+  // panel and back for every row.
+  //
+  // `visit-action-item` / `visit-question` / `visit-question-layout` are kept on
+  // the elements as-is: several host surfaces and the modal test suite key off
+  // them, and nothing is gained by renaming what already reads correctly.
+  function buildReportItemHtml(item) {
+    var status = item.status
+      ? pillHtml(item.status.text, { color: item.status.color, solid: item.status.solid })
+      : '';
+    var tags = (item.tags || []).filter(Boolean).map(function (tag) {
+      return pillHtml(tag.text, { color: tag.color, solid: tag.solid });
+    }).join('');
+    // An empty due date used to still print "Due —" on every row of a derived
+    // follow-up plan; a fact nobody recorded is not worth a line.
+    var meta = (tags || item.due)
+      ? '<div class="visit-report-item__meta visit-action-meta">' + tags +
+        (item.due ? '<span class="visit-report-item__due visit-action-due">Due ' + escapeHtml(item.due) + '</span>' : '') +
+        '</div>'
+      : '';
+
+    return '<' + (item.tag || 'article') + ' class="visit-report-item ' + escapeHtml(item.legacyClass) +
+      (item.attention ? ' visit-report-item--attention' : '') + '">' +
+      '<div class="visit-report-item__head ' + escapeHtml(item.legacyLayoutClass) + '">' +
+      '<div class="visit-report-item__copy visit-action-copy visit-question-copy">' +
+      '<h5 class="visit-report-item__title visit-action-title visit-question-title">' + escapeHtml(item.title) + '</h5>' +
+      (item.subtitle ? '<p class="visit-report-item__subtitle">' + escapeHtml(item.subtitle) + '</p>' : '') +
+      '</div>' +
+      status +
+      '</div>' +
+      // What was seen is plain prose; only what someone has to do about it gets
+      // the note block. Giving both a block turned every action item into two
+      // stacked boxes and flattened the difference between them.
+      (item.finding ? '<p class="visit-report-item__finding visit-action-finding">' + escapeHtml(item.finding) + '</p>' : '') +
+      (item.note ? noteBlockHtml(item.note, { label: item.noteLabel, tone: item.noteTone }) : '') +
+      meta +
+      '</' + (item.tag || 'article') + '>';
+  }
+
   function buildCqvActionPlanHtml(actionPlan) {
     if (!actionPlan || !actionPlan.length) {
       return '<p class="visit-report-note">No action items were flagged on this visit.</p>';
@@ -649,42 +1061,59 @@ window.GAILS = window.GAILS || {};
         cleanSection = cleanSection.split('>>').pop().trim();
       }
 
-      var priorityColor = cqvPriorityColor(a.priority);
       var criticalTag = cqvCriticalTag(label);
-      var metaHtml = '<div class="visit-action-meta">' +
-        (criticalTag
-          ? '<span class="visit-action-tag visit-action-tag--critical">&#9888; ' + escapeHtml(criticalTag) + '</span>'
-          : '') +
-        (a.priority
-          ? '<span class="visit-action-tag"' + (priorityColor ? ' style="--action-color:' + priorityColor + '"' : '') + '>' +
-            escapeHtml(a.priority) + '</span>'
-          : '') +
-        '<span class="visit-action-due">Due ' + escapeHtml(dueDate || '—') + '</span>' +
-        '</div>';
+      // The most severe thing about an item takes the status slot; whatever is
+      // left over drops to the meta line.
+      var status = criticalTag
+        ? { text: criticalTag, color: '#B22A24', solid: true }
+        : (a.priority ? { text: a.priority, color: cqvPriorityColor(a.priority) } : null);
+      var tags = (criticalTag && a.priority)
+        ? [{ text: a.priority, color: cqvPriorityColor(a.priority) }]
+        : [];
 
-      return '<article class="visit-action-item' + (criticalTag ? ' visit-action-item--critical' : '') + '">' +
-        '<div class="visit-action-layout">' +
-        '<div class="visit-action-copy">' +
-        '<div class="visit-action-title">' + escapeHtml(label) + '</div>' +
-        (cleanSection ? '<div class="visit-action-section">' + escapeHtml(cleanSection) + '</div>' : '') +
-        (a.findings ? '<p class="visit-action-finding">' + escapeHtml(a.findings) + '</p>' : '') +
-        (a.actionRequired ? '<div class="visit-action-required">' +
-          '<strong>Action required:</strong> ' + escapeHtml(a.actionRequired) + '</div>' : '') +
-        '</div>' +
-        metaHtml +
-        '</div>' +
-        '</article>';
+      return buildReportItemHtml({
+        legacyClass: 'visit-action-item',
+        legacyLayoutClass: 'visit-action-layout',
+        title: label,
+        subtitle: cleanSection,
+        finding: a.findings,
+        findingLabel: 'Observed',
+        note: a.actionRequired,
+        noteLabel: 'Action required',
+        noteTone: 'accent',
+        status: status,
+        tags: tags,
+        due: dueDate,
+        attention: !!criticalTag
+      });
     }).join('');
+  }
+
+  // The chart card, shared by the routine and CQV reports so the one visual
+  // recap of the score looks the same on both.
+  function scoreChartSectionHtml(canvasId) {
+    return '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide">' +
+      '<div class="visit-report-section visit-report-section--chart">' +
+      sectionHeadingHtml({
+        eyebrow: 'Score profile',
+        title: 'Performance by section',
+        caption: 'Points earned against the points available.'
+      }) +
+      '<div class="visit-report-chart-wrap"><canvas id="' + canvasId + '"></canvas></div>' +
+      '</div></div>';
+  }
+
+  function summarySectionHtml(text) {
+    if (!text) return '';
+    return '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--summary">' +
+      sectionHeadingHtml({ title: 'Summary' }) +
+      '<p class="visit-report-comment">' + escapeHtml(text) + '</p>' +
+      '</div></div>';
   }
 
   function buildCqvReportHtml(record) {
     var hasSectionScores = record.sectionScores && Object.keys(record.sectionScores).length > 0;
-    var chartHtml = hasSectionScores
-      ? '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--chart">' +
-        '<div class="visit-report-section-heading"><div><span>Score profile</span><h4>Performance by section</h4></div>' +
-        '<p>Earned points compared with the available score.</p></div>' +
-        '<div class="visit-report-chart-wrap"><canvas id="' + CQV_CHART_ID + '"></canvas></div></div></div>'
-      : '';
+    var chartHtml = hasSectionScores ? scoreChartSectionHtml(CQV_CHART_ID) : '';
 
     // The PDF link is relocated into the Jump To bar by enhanceVisitReportBody
     // (it hunts for .visit-report-pdf-btn), so this wrapper is just a carrier —
@@ -694,21 +1123,21 @@ window.GAILS = window.GAILS || {};
       : '';
 
     var criticalFailHtml = cqvHasCriticalFail(record)
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-hs-banner visit-report-hs-banner--alert">' +
-      '<strong>&#9888; A Critical Point was lost.</strong>' +
-      '</div></div>'
+      ? bannerHtml('alert', '<strong>A Critical Point was lost</strong> on this visit.')
       : '';
 
-    var summaryHtml = record.summary
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--summary"><h4>Summary</h4><p class="visit-report-comment">' + escapeHtml(record.summary) + '</p></div></div>'
-      : '';
+    var summaryHtml = summarySectionHtml(record.summary);
 
     var categoryHtml = record.categoryScores && Object.keys(record.categoryScores).length
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--score' + (cqvHasCriticalFail(record) ? ' visit-report-section--danger' : '') + '"><h4>Score by Category</h4>' + buildCqvScoreRowsHtml(record.categoryScores) + '</div></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--score' + (cqvHasCriticalFail(record) ? ' visit-report-section--danger' : '') + '">' +
+        sectionHeadingHtml({ title: 'Score by category' }) +
+        buildCqvScoreRowsHtml(record.categoryScores) + '</div></div>'
       : '';
 
     var sectionHtml = hasSectionScores
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--score"><h4>Score by Section</h4>' + buildCqvScoreRowsHtml(record.sectionScores) + '</div></div>'
+      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--score">' +
+        sectionHeadingHtml({ title: 'Score by section' }) +
+        buildCqvScoreRowsHtml(record.sectionScores) + '</div></div>'
       : '';
 
     var actionPlanItems = record.actionPlan;
@@ -718,19 +1147,38 @@ window.GAILS = window.GAILS || {};
       actionPlanIsDerived = actionPlanItems.length > 0;
     }
 
+    var actionCount = (actionPlanItems || []).length;
     var actionPlanHtml = '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--action">' +
-      '<h4>Action Plan (' + ((actionPlanItems || []).length) + ')</h4>' +
-      (actionPlanIsDerived ? '<p class="visit-report-note" style="margin-bottom:10px;">This follow-up report didn’t include a written action plan — showing the questions that lost points instead.</p>' : '') +
+      sectionHeadingHtml({
+        title: 'Action plan',
+        chip: actionCount
+          ? pillHtml(actionCount + (actionCount === 1 ? ' item' : ' items'), { color: '#B22A24', className: 'visit-section-attention' })
+          : '',
+        caption: actionPlanIsDerived
+          ? 'This follow-up didn’t include a written action plan, so the questions that lost points are shown instead.'
+          : ''
+      }) +
       buildCqvActionPlanHtml(actionPlanItems) +
       '</div></div>';
 
-    // Category and Section are both compact score tables of comparable
-    // height, so they're kept adjacent (and non-wide) to pair up side by
-    // side — rather than one of them landing alone next to a much taller or
-    // shorter neighbour.
+    // A CQV reads summary-first: the write-up says what happened, then the
+    // chart shows where the points went. The two sit together because the
+    // write-up names the sections the profile is about.
+    //
+    // A follow-up leads with the chart instead. The question it exists to
+    // answer is whether the score recovered, so the profile is the headline
+    // and the summary explains it rather than introducing it.
+    //
+    // Either way the action plan comes before the score tables. It used to sit
+    // last on a CQV, below the chart and both tables, which put the only
+    // actionable panel on the report below the fold.
+    //
+    // Category and Section are both compact score tables of comparable height,
+    // so they're kept adjacent (and non-wide) to pair up side by side — rather
+    // than one of them landing alone next to a much taller or shorter neighbour.
     var sectionsHtml = record.isFollowUp
-      ? summaryHtml + actionPlanHtml + categoryHtml + sectionHtml + chartHtml
-      : summaryHtml + chartHtml + categoryHtml + sectionHtml + actionPlanHtml;
+      ? chartHtml + summaryHtml + actionPlanHtml + categoryHtml + sectionHtml
+      : summaryHtml + chartHtml + actionPlanHtml + categoryHtml + sectionHtml;
     return buildCqvHeaderStatsHtml(record) + criticalFailHtml + pdfHtml + sectionsHtml;
   }
 
@@ -748,28 +1196,36 @@ window.GAILS = window.GAILS || {};
     var cards = [
       { label: 'Score', value: nboPctText(record) },
       { label: 'Met', value: scorable.yes + ' of ' + scorable.total },
-      { label: 'To Work On', value: String(counts.no || 0), color: (counts.no ? '#B22A24' : null) },
+      { label: 'To work on', value: String(counts.no || 0), color: (counts.no ? '#B22A24' : null) },
       { label: 'Coffee Partner', value: record.auditorName || '—' },
       { label: 'Completed', value: visitDaysAgoLabel(record) }
     ];
     return buildReportOverviewHtml(cards);
   }
 
+  // Same component as an action-plan item: a question is an observation with a
+  // status, which is what an action item is too.
+  // The PDF shouts its answers ("YES"/"NO"); a routine visit renders the same
+  // answers as "Yes"/"No". One report should not be louder than another for
+  // saying the same thing, so the shouting stops at the parser boundary.
+  var NBO_RESPONSES = {
+    YES: { text: 'Yes', color: '#1D8A55' },
+    NO: { text: 'No', color: '#B22A24' }
+  };
+
   function buildNboQuestionRowHtml(q) {
     var isNo = q.response === 'NO';
-    var responseClass = q.response === 'YES' ? 'yes' : (isNo ? 'no' : 'unknown');
-    return '<div class="visit-question' + (isNo ? ' visit-question--attention' : '') + '">' +
-      '<div class="visit-question-layout">' +
-      '<div class="visit-question-copy">' +
-      '<div class="visit-question-title">' +
-      escapeHtml((q.qNum ? q.qNum + '. ' : '') + (q.label || 'Question')) + '</div>' +
-      (q.note
-        ? '<p class="visit-question-note">' +
-          escapeHtml(q.note) + '</p>'
-        : '') +
-      '</div>' +
-      '<span class="visit-response-pill visit-response-pill--' + responseClass + '">' + escapeHtml(q.response || '—') + '</span>' +
-      '</div></div>';
+    var response = NBO_RESPONSES[q.response] || { text: q.response || '—', color: '#7E776C' };
+    return buildReportItemHtml({
+      tag: 'div',
+      legacyClass: 'visit-question' + (isNo ? ' visit-question--attention' : ''),
+      legacyLayoutClass: 'visit-question-layout',
+      title: (q.qNum ? q.qNum + '. ' : '') + (q.label || 'Question'),
+      note: q.note,
+      noteLabel: 'Coaching note',
+      status: response,
+      attention: isNo
+    });
   }
 
   function buildNboReportHtml(record) {
@@ -783,13 +1239,15 @@ window.GAILS = window.GAILS || {};
     // js/nbo-parser.js). Records imported before those were parsed simply
     // don't carry them, hence the empty-string fallbacks rather than an
     // "unavailable" placeholder.
-    var summaryHtml = record.summary
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--summary"><h4>Summary</h4><p class="visit-report-comment">' + escapeHtml(record.summary) + '</p></div></div>'
-      : '';
+    var summaryHtml = summarySectionHtml(record.summary);
 
     var actionPlanHtml = (record.actionPlan && record.actionPlan.length)
       ? '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--action">' +
-        '<h4>Action Plan (' + record.actionPlan.length + ')</h4>' +
+        sectionHeadingHtml({
+          title: 'Action plan',
+          chip: pillHtml(record.actionPlan.length + (record.actionPlan.length === 1 ? ' item' : ' items'),
+            { color: '#6B4FA8', className: 'visit-section-attention' })
+        }) +
         buildCqvActionPlanHtml(record.actionPlan) +
         '</div></div>'
       : '';
@@ -798,8 +1256,12 @@ window.GAILS = window.GAILS || {};
     // full question list into their own section at the top.
     var coachingItems = questions.filter(function (q) { return q.note; });
     var coachingHtml = coachingItems.length
-      ? '<div class="visit-report-section-wrapper"><div class="visit-report-section visit-report-section--coaching">' +
-        '<h4>Coaching Notes (' + coachingItems.length + ')</h4>' +
+      ? '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--coaching">' +
+        sectionHeadingHtml({
+          title: 'Coaching notes',
+          chip: pillHtml(coachingItems.length + (coachingItems.length === 1 ? ' note' : ' notes'),
+            { color: '#6B4FA8', className: 'visit-section-attention' })
+        }) +
         coachingItems.map(buildNboQuestionRowHtml).join('') +
         '</div></div>'
       : '';
@@ -821,8 +1283,12 @@ window.GAILS = window.GAILS || {};
       var items = bySection[name];
       var noCount = items.filter(function (q) { return q.response === 'NO'; }).length;
       return '<div class="visit-report-section-wrapper visit-report-section-wrapper--wide"><div class="visit-report-section visit-report-section--questions">' +
-        '<div class="visit-report-section-title-row"><h4>' + escapeHtml(name) + '</h4>' +
-        (noCount ? '<span class="visit-section-attention">' + noCount + ' to work on</span>' : '') + '</div>' +
+        sectionHeadingHtml({
+          title: name,
+          chip: noCount
+            ? pillHtml(noCount + ' to work on', { color: '#B22A24', className: 'visit-section-attention' })
+            : ''
+        }) +
         items.map(buildNboQuestionRowHtml).join('') +
         '</div></div>';
     }).join('');
@@ -835,32 +1301,14 @@ window.GAILS = window.GAILS || {};
   }
 
   function drawCqvScoreChart(record) {
-    var G = window.GAILS;
-    if (!record.sectionScores || typeof G.makeChart !== 'function') return;
+    if (!record.sectionScores) return;
     var names = Object.keys(record.sectionScores);
-    if (!names.length) return;
-    var earned = names.map(function (n) { return record.sectionScores[n].actual || 0; });
-    var max = names.map(function (n) { return record.sectionScores[n].target || 0; });
-
-    G.makeChart(CQV_CHART_ID, {
-      type: 'bar',
-      data: {
-        labels: names,
-        datasets: [
-          { label: 'Points Earned', data: earned, backgroundColor: '#1D9E5C', borderRadius: 6 },
-          { label: 'Points Available', data: max, backgroundColor: 'rgba(146, 137, 120,0.25)', borderRadius: 6 }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { grid: { display: false } },
-          y: { beginAtZero: true, grid: { color: 'rgba(34, 31, 26,0.06)' } }
-        },
-        plugins: { legend: { position: 'bottom' } }
-      }
-    });
+    drawPointsChart(
+      CQV_CHART_ID,
+      names,
+      names.map(function (n) { return record.sectionScores[n].actual || 0; }),
+      names.map(function (n) { return record.sectionScores[n].target || 0; })
+    );
   }
 
   function bakeryVisitHistory(record) {
@@ -1502,7 +1950,12 @@ window.GAILS = window.GAILS || {};
       var reportModal = document.getElementById('visitReportModal');
       var tagName = event.target && event.target.tagName;
       var isFormField = tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA';
-      if (reportModal && reportModal.style.display !== 'none' && window.GAILS._activeVisitReportId && !isFormField) {
+      // The report pane is focusable so it can be scrolled from the keyboard;
+      // while the reader is inside it the arrows have to belong to the pane, or
+      // reading a report with the keyboard would throw the reader onto a
+      // different bakery on a different date with no way back.
+      var inContent = event.target && event.target.closest && event.target.closest('.visit-report-content');
+      if (reportModal && reportModal.style.display !== 'none' && window.GAILS._activeVisitReportId && !isFormField && !inContent) {
         event.preventDefault();
         window.GAILS.openAdjacentVisit(event.key === 'ArrowLeft' ? 'previous' : 'next');
       }
