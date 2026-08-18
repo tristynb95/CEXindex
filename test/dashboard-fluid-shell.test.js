@@ -16,7 +16,8 @@ test('desktop dashboard uses a docked rail and fluid content column', () => {
   assert.match(styles, /#dashboardContent:has\(> \.dashboard-workspace\[data-sidebar-collapsed=true\]\) \{[\s\S]*?--dashboard-sidebar-w:\s*96px;/);
   assert.match(styles, /#dashboardContent > \.dashboard-workspace \{\s*display:\s*contents;/);
   assert.match(styles, /#dashboardContent \.dashboard-sidebar \{[\s\S]*?grid-row:\s*1 \/ span 2;/);
-  assert.match(styles, /--dashboard-header-h:\s*57px;/);
+  // 70px since the banner chips became filter controls sized to be hit.
+  assert.match(styles, /--dashboard-header-h:\s*70px;/);
   assert.match(styles, /\.header \{[\s\S]*?height:\s*var\(--dashboard-header-h\);[\s\S]*?min-height:\s*var\(--dashboard-header-h\);/);
   // The complete menu rail is fixed below the header and anchored to the
   // viewport bottom, so the document boundary cannot push it upward.

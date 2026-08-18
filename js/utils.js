@@ -415,3 +415,134 @@ window.GAILS.formatSecs = function(secs) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
+
+// ---------- banner filter chips ----------
+// The banner is sticky and the filter bars are not, so these chips are the
+// only filter readout that survives scrolling — which makes them the right
+// place to put the controls too. Both the dashboard and Bakery Reports
+// render into #headerSub, so they share one chip vocabulary: a wrapper
+// carrying the chip surface, a body button that opens the drawer, and an
+// optional clear button. Nested <button> is invalid, hence the wrapper.
+window.GAILS.headerPill = function (kind, key, text, clearable) {
+  var escape = window.GAILS.escapeHtml;
+  var body = '<button type="button" class="header-pill__body" data-filter-pill="' +
+    escape(key) + '">' + escape(text) + '</button>';
+  var clear = clearable
+    ? '<button type="button" class="header-pill__clear" data-filter-clear="' + escape(key) +
+      '" aria-label="Clear ' + escape(text) + ' filter">\u00d7</button>'
+    : '';
+  return '<span class="header-pill ' + kind + '">' + body + clear + '</span>';
+};
+
+// Always present, unlike the chips: a filter that is not set has no chip, so
+// without this there would be no way to set one from the banner.
+window.GAILS.HEADER_FILTER_BTN =
+  '<span class="header-pill header-pill-add">' +
+  '<button type="button" class="header-pill__body" data-filter-open aria-label="Open filters">' +
+  '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round"><path d="M3 7h18M7 12h10M11 17h2"/></svg></button></span>';
+
+// ---------- drawer menu positioning ----------
+// A filter drawer stacks its controls in a ~390px column, so a menu that
+// opened in flow shoved everything below it down and ran off the bottom of
+// the screen. Fixed positioning lifts them out of the column instead: they
+// overlay the controls beneath and cap their height to the room left.
+// They always open downward. Flipping upward was tried and dropped: a menu
+// that jumps over the controls above it hides the filters you were just
+// reading, and which direction it took depended on the window height. Six
+// rows fit below at any normal height; on a short window the menu simply
+// shows fewer and scrolls.
+window.GAILS.mountDrawerMenus = function (panel) {
+  if (!panel) return;
+  var drawerMedia = window.matchMedia('(min-width: 721px)');
+  var GAP = 8;
+  var EDGE = 16;
+  // Floor for a pathologically short window — below this the menu would be
+  // too small to use at all, so it is allowed to run past the edge.
+  var MIN_MENU = 132;
+
+  function place(trigger, menu) {
+    var rect = trigger.getBoundingClientRect();
+    var below = window.innerHeight - rect.bottom - GAP - EDGE;
+    menu.style.position = 'fixed';
+    menu.style.left = rect.left + 'px';
+    menu.style.right = 'auto';
+    menu.style.bottom = 'auto';
+    menu.style.width = rect.width + 'px';
+    menu.style.top = (rect.bottom + GAP) + 'px';
+    menu.style.maxHeight = Math.max(MIN_MENU, Math.floor(below)) + 'px';
+    menu.style.overflowY = 'auto';
+  }
+
+  // Only the properties place() writes — display belongs to the control's
+  // own open/close code and must survive.
+  function reset(menu) {
+    menu.style.position = '';
+    menu.style.left = '';
+    menu.style.right = '';
+    menu.style.width = '';
+    menu.style.top = '';
+    menu.style.bottom = '';
+    menu.style.maxHeight = '';
+    menu.style.overflowY = '';
+  }
+
+  function pair(containerSel, triggerSel, menuSel, openOnContainer) {
+    Array.prototype.forEach.call(panel.querySelectorAll(containerSel), function (box) {
+      var trigger = box.querySelector(triggerSel);
+      var menu = box.querySelector(menuSel);
+      if (!trigger || !menu) return;
+      var open = (openOnContainer ? box : trigger).classList.contains('is-open');
+      if (drawerMedia.matches && open) place(trigger, menu);
+      else reset(menu);
+    });
+  }
+
+  function syncMenus() {
+    pair('.bakery-ms', '.bakery-ms__trigger', '.bakery-ms__dropdown', false);
+    pair('.filter-select', '.filter-select__trigger', '.filter-select__menu', true);
+  }
+
+  // Every control type signals open/closed with a class, and place() only
+  // ever writes inline styles, so watching class alone cannot re-trigger.
+  new MutationObserver(syncMenus).observe(panel, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class']
+  });
+  window.addEventListener('resize', syncMenus);
+  panel.addEventListener('scroll', syncMenus, true);
+};
+
+// ---------- drawer anchoring ----------
+// The filter panels drop from under the banner as a full-bleed strip, so
+// they read as coming out of the chips that open them while keeping the
+// shape seven controls actually want: a row, not a column. Width is left
+// to CSS; only the vertical placement is measured, because the band wraps
+// to two rows on narrow desktops and the strip has to follow it down.
+window.GAILS.anchorDrawerToBanner = function (panel) {
+  if (!panel) return;
+  var drawerMedia = window.matchMedia('(min-width: 721px)');
+  var EDGE = 12;
+
+  function anchor() {
+    var header = document.querySelector('.header');
+    if (!drawerMedia.matches || !header) {
+      panel.style.top = '';
+      panel.style.maxHeight = '';
+      return;
+    }
+    var headerRect = header.getBoundingClientRect();
+    panel.style.top = Math.round(headerRect.bottom) + 'px';
+    panel.style.maxHeight = Math.round(window.innerHeight - headerRect.bottom - EDGE) + 'px';
+  }
+
+  anchor();
+  window.addEventListener('resize', anchor);
+  // The banner reflows as chips change, so re-measure whenever the panel
+  // is opened rather than trusting the position from last time.
+  new MutationObserver(anchor).observe(panel, {
+    attributes: true,
+    attributeFilter: ['class']
+  });
+};

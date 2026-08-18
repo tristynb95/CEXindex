@@ -567,8 +567,10 @@ window.GAILS.renderLeagueTable = function (data) {
   }).join('');
   var table = document.getElementById('tableBody').closest('table');
   G.renumberRankedTable(table);
-  // makeSortable re-applies any header-click sort saved on the table, and
-  // renumbers again itself if it does.
-  G.makeSortable(table);
+  // Deliberately NOT makeSortable: the League Table has one way to reorder
+  // itself, the "Sort by" dropdown above it. Clickable headers were a second,
+  // invisible one that quietly disagreed with the dropdown still showing the
+  // old metric, and sorted on rendered cell text rather than the underlying
+  // value. Headers here are labels only.
   G.syncNpsSplitTables();
 };

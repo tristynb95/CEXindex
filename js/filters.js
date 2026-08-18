@@ -305,10 +305,17 @@ window.GAILS.getRollingMonths = function() {
   // filtered to Bobby Holmes" and "76 in Ops Areas view" stop agreeing —
   // which volume-weighting broke, since a handful of small sites can pull
   // a weighted mean well away from the plain one every other view shows.
+  //
+  // Every displayed metric has to be listed here: anything left off is simply
+  // absent from a group row, and G.avg reads a missing field as nothing at all
+  // (0 on the KPI tiles, an em dash in the table) rather than erroring — which
+  // is how Coffee Efficiency ('ts') and its two percentile siblings ('ap',
+  // 'atp') read as no data in Ops Areas/Regions view while every other card
+  // showed a figure.
   var GROUP_AVERAGED_FIELDS = [
     'n', 's2', 's3', 's4', 'o5', 'ov', 'fr', 'dr', 'ef', 'ep', 'dp', 'fp',
-    'np', 'c', 's2w', 'ac', 'ats', 'a_at', 'c_raw', 'ac_raw', 's30',
-    'at', 'at12', 'at9', 'nc', 'nm', 'nd', 'na'
+    'np', 'ts', 'ap', 'atp', 'c', 's2w', 'ac', 'ats', 'a_at', 'c_raw',
+    'ac_raw', 's30', 'at', 'at12', 'at9', 'nc', 'nm', 'nd', 'na'
   ];
   var GROUP_SUMMED_FIELDS = ['v', 'td', 'vc', 'vf', 'va'];
 

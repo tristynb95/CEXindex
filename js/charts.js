@@ -1,8 +1,27 @@
 // ========== CHARTS MODULE ==========
 window.GAILS = window.GAILS || {};
 
+// One role-based palette for every analytical view. Semantic colours are
+// reserved for outcomes; comparison colours stay neutral and brand-consistent.
+window.GAILS.CHART_PALETTE = {
+  brand: '#B22A24',
+  comparison: ['#1E70C4', '#0E8074', '#6B4FA8', '#C97F12'],
+  positive: '#1D9E5C',
+  caution: '#C97F12',
+  negative: '#B22A24',
+  reference: '#928978',
+  textStrong: '#221F1A',
+  textBody: '#4D463C',
+  textMuted: '#6D665C',
+  grid: 'rgba(34, 31, 26, 0.055)',
+  gridStrong: 'rgba(34, 31, 26, 0.16)',
+  surface: '#FFFFFF'
+};
+
 // ── GAIL's light-theme defaults for Chart.js ──
 if (typeof Chart !== 'undefined') {
+  var chartPalette = window.GAILS.CHART_PALETTE;
+
   function setSafe(obj, path, value) {
     var parts = path.split('.');
     var curr = obj;
@@ -15,34 +34,41 @@ if (typeof Chart !== 'undefined') {
     curr[parts[parts.length - 1]] = value;
   }
 
-  setSafe(Chart, 'defaults.color', '#757575');
-  setSafe(Chart, 'defaults.borderColor', 'rgba(34, 31, 26,0.07)');
+  setSafe(Chart, 'defaults.color', chartPalette.textMuted);
+  setSafe(Chart, 'defaults.borderColor', chartPalette.grid);
   setSafe(Chart, 'defaults.font.family', 'Inter, system-ui, sans-serif');
-  setSafe(Chart, 'defaults.plugins.legend.labels.color', '#757575');
+  setSafe(Chart, 'defaults.plugins.legend.labels.color', chartPalette.textMuted);
   setSafe(Chart, 'defaults.plugins.legend.labels.font.family', 'Inter, system-ui, sans-serif');
+  setSafe(Chart, 'defaults.plugins.legend.labels.font.size', 11);
+  setSafe(Chart, 'defaults.plugins.legend.labels.padding', 16);
   setSafe(Chart, 'defaults.plugins.legend.labels.usePointStyle', true);
-  setSafe(Chart, 'defaults.plugins.tooltip.backgroundColor', '#FFFFFF');
-  setSafe(Chart, 'defaults.plugins.tooltip.titleColor', '#221F1A');
-  setSafe(Chart, 'defaults.plugins.tooltip.bodyColor', '#757575');
-  setSafe(Chart, 'defaults.plugins.tooltip.borderColor', 'rgba(0,0,0,0.1)');
+  setSafe(Chart, 'defaults.plugins.tooltip.backgroundColor', chartPalette.surface);
+  setSafe(Chart, 'defaults.plugins.tooltip.titleColor', chartPalette.textStrong);
+  setSafe(Chart, 'defaults.plugins.tooltip.bodyColor', chartPalette.textMuted);
+  setSafe(Chart, 'defaults.plugins.tooltip.titleFont.size', 12);
+  setSafe(Chart, 'defaults.plugins.tooltip.titleFont.weight', '700');
+  setSafe(Chart, 'defaults.plugins.tooltip.bodyFont.size', 11);
+  setSafe(Chart, 'defaults.plugins.tooltip.borderColor', 'rgba(34, 31, 26, 0.14)');
   setSafe(Chart, 'defaults.plugins.tooltip.borderWidth', 1);
-  setSafe(Chart, 'defaults.plugins.tooltip.padding', 10);
-  setSafe(Chart, 'defaults.plugins.tooltip.cornerRadius', 8);
+  setSafe(Chart, 'defaults.plugins.tooltip.padding', 12);
+  setSafe(Chart, 'defaults.plugins.tooltip.cornerRadius', 10);
   setSafe(Chart, 'defaults.plugins.tooltip.displayColors', false);
 
   if (Chart.defaults.scale) {
-    setSafe(Chart, 'defaults.scale.grid.color', 'rgba(0,0,0,0.05)');
-    setSafe(Chart, 'defaults.scale.ticks.color', '#8C8272');
+    setSafe(Chart, 'defaults.scale.grid.color', chartPalette.grid);
+    setSafe(Chart, 'defaults.scale.ticks.color', chartPalette.textMuted);
+    setSafe(Chart, 'defaults.scale.ticks.font.size', 11);
     setSafe(Chart, 'defaults.scale.ticks.backdropColor', 'transparent');
-    setSafe(Chart, 'defaults.scale.title.color', '#757575');
+    setSafe(Chart, 'defaults.scale.title.color', chartPalette.textMuted);
   }
 
   if (Chart.defaults.scales) {
     ['linear', 'category'].forEach(function (scaleType) {
-      setSafe(Chart, 'defaults.scales.' + scaleType + '.grid.color', 'rgba(0,0,0,0.05)');
-      setSafe(Chart, 'defaults.scales.' + scaleType + '.ticks.color', '#8C8272');
+      setSafe(Chart, 'defaults.scales.' + scaleType + '.grid.color', chartPalette.grid);
+      setSafe(Chart, 'defaults.scales.' + scaleType + '.ticks.color', chartPalette.textMuted);
+      setSafe(Chart, 'defaults.scales.' + scaleType + '.ticks.font.size', 11);
       setSafe(Chart, 'defaults.scales.' + scaleType + '.ticks.backdropColor', 'transparent');
-      setSafe(Chart, 'defaults.scales.' + scaleType + '.title.color', '#757575');
+      setSafe(Chart, 'defaults.scales.' + scaleType + '.title.color', chartPalette.textMuted);
     });
   }
 }
@@ -50,11 +76,11 @@ if (typeof Chart !== 'undefined') {
 // Ink and rule colours shared by the chart configs, mirroring the CSS custom
 // properties of the same name so charts and cards stay in step.
 window.GAILS.CHART_INK = {
-  strong: '#221F1A',
-  body: '#4D463C',
-  muted: '#8C8272',
-  grid: 'rgba(34, 31, 26, 0.05)',
-  track: 'rgba(34, 31, 26, 0.05)'
+  strong: window.GAILS.CHART_PALETTE.textStrong,
+  body: window.GAILS.CHART_PALETTE.textBody,
+  muted: window.GAILS.CHART_PALETTE.textMuted,
+  grid: window.GAILS.CHART_PALETTE.grid,
+  track: window.GAILS.CHART_PALETTE.grid
 };
 
 var _charts = {};
@@ -100,7 +126,13 @@ window.GAILS.resizeChartsIn = function (container) {
 };
 
 // ========== RENDER OVERVIEW CHARTS ==========
-window.GAILS.renderOverviewCharts = function (data) {
+// `data` is whatever the View toggle selected — bakeries, ops areas or
+// regions — and drives the band split and the scatter, where one mark per row
+// is the whole point. `aggregateRows` is always the bakery-level cohort behind
+// it, and drives the two component charts, which are estate averages: rolled
+// up rows would make those a mean of means and put them at odds with the KPI
+// row directly above. Optional so an older single-argument call still works.
+window.GAILS.renderOverviewCharts = function (data, aggregateRows) {
   var G = GAILS;
   var avg = G.avg;
   data.forEach(G.ensureBands);
@@ -261,17 +293,22 @@ window.GAILS.renderOverviewCharts = function (data) {
   if (dragTitleEl) dragTitleEl.textContent = 'Biggest Drags on ' + metricLabel;
   var scoreTitleEl = document.getElementById('overviewScoreTitle');
   if (scoreTitleEl) scoreTitleEl.textContent = 'Category Scoring';
-  var atRows = chartData.filter(function (b) { return typeof b.at === 'number' && !isNaN(b.at); });
+  var compRows = (aggregateRows && aggregateRows.length
+    ? aggregateRows.filter(function (r) { return r && !r.noData; })
+    : chartData);
+  if (!compRows.length) compRows = chartData;
+  var compN = compRows.length;
+  var atRows = compRows.filter(function (b) { return typeof b.at === 'number' && !isNaN(b.at); });
   var rawAvgAt = atRows.length ? atRows.reduce(function (a, r) { return a + r.at; }, 0) / atRows.length : null;
 
   var W = G.CEI_WEIGHTS;
   var componentAvgs = [
-      { name: 'Drink + Meal NPS', weight: W.nps, avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.n, G.BENCHMARKS.nps, G.BENCHMARK_FLOORS.nps); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'n') },
-      { name: 'Overall Efficiency', weight: W.ef, avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.ef, G.BENCHMARKS.ef, G.BENCHMARK_FLOORS.ef); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'ef') },
-      { name: 'Drink Quality', weight: W.dr, avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.dr, G.BENCHMARKS.dr, G.BENCHMARK_FLOORS.dr); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'dr') },
-      { name: 'Friendliness', weight: W.fr, avg: chartData.map(function (b) { return G.computeAbsoluteComponent(b.fr, G.BENCHMARKS.fr, G.BENCHMARK_FLOORS.fr); }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'fr') },
-      { name: 'Coffee Efficiency', weight: W.time, avg: chartData.map(function (b) { return b.ats; }).reduce(function (a, v) { return a + v; }, 0) / n, raw: avg(chartData, 'ts') },
-      { name: 'Avg Wait Time', weight: W.at, avg: chartData.map(function (b) { return (b.a_at !== undefined && b.a_at !== null) ? b.a_at : 100; }).reduce(function (a, v) { return a + v; }, 0) / n, raw: rawAvgAt }
+      { name: 'Drink + Meal NPS', weight: W.nps, avg: compRows.map(function (b) { return G.computeAbsoluteComponent(b.n, G.BENCHMARKS.nps, G.BENCHMARK_FLOORS.nps); }).reduce(function (a, v) { return a + v; }, 0) / compN, raw: avg(compRows, 'n') },
+      { name: 'Overall Efficiency', weight: W.ef, avg: compRows.map(function (b) { return G.computeAbsoluteComponent(b.ef, G.BENCHMARKS.ef, G.BENCHMARK_FLOORS.ef); }).reduce(function (a, v) { return a + v; }, 0) / compN, raw: avg(compRows, 'ef') },
+      { name: 'Drink Quality', weight: W.dr, avg: compRows.map(function (b) { return G.computeAbsoluteComponent(b.dr, G.BENCHMARKS.dr, G.BENCHMARK_FLOORS.dr); }).reduce(function (a, v) { return a + v; }, 0) / compN, raw: avg(compRows, 'dr') },
+      { name: 'Friendliness', weight: W.fr, avg: compRows.map(function (b) { return G.computeAbsoluteComponent(b.fr, G.BENCHMARKS.fr, G.BENCHMARK_FLOORS.fr); }).reduce(function (a, v) { return a + v; }, 0) / compN, raw: avg(compRows, 'fr') },
+      { name: 'Coffee Efficiency', weight: W.time, avg: compRows.map(function (b) { return b.ats; }).reduce(function (a, v) { return a + v; }, 0) / compN, raw: avg(compRows, 'ts') },
+      { name: 'Avg Wait Time', weight: W.at, avg: compRows.map(function (b) { return (b.a_at !== undefined && b.a_at !== null) ? b.a_at : 100; }).reduce(function (a, v) { return a + v; }, 0) / compN, raw: rawAvgAt }
     ];
 
   // "Drag" bars are benchmark points lost, not points scored. The index is a

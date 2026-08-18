@@ -202,8 +202,11 @@ h4 {
 /* GAIL's red brand band, echoing the gailsbread.co.uk footer */
 .header {
   background: linear-gradient(180deg, #B5312A 0%, #A32520 100%);
-  padding: 8px 28px;
-  min-height: 56px;
+  /* Taller than the 56px band it started as: the chips below are
+     controls now, not labels, so they are sized to be hit rather than
+     read (see BANNER PILL CONTROLS at the end of this file). */
+  padding: 12px 28px;
+  min-height: 70px;
   display: flex;
   align-items: center;
   gap: 20px;
@@ -3493,6 +3496,15 @@ canvas {
   background: var(--bg);
   background-clip: border-box;
   box-shadow: none;
+  /* The League Table sorts from the "Sort by" dropdown only, so its headers
+     are labels rather than controls — no pointer, no hover shift, and no
+     sort arrow (the shared th.sortable rules never apply here because
+     renderLeagueTable deliberately skips makeSortable). */
+  cursor: default;
+}
+
+.league-table th:hover {
+  color: var(--muted);
 }
 
 /* Frozen identity pane: rank + bakery stay pinned while the metric columns
@@ -15719,7 +15731,8 @@ table.nps-splits-collapsed .nps-split-col {
 @media (max-width: 980px) {
 
   .header-pill-core,
-  .header-pill-filter {
+  .header-pill-filter,
+  .header-pill-add {
     font-size: 0.64rem;
     padding: 1px 6px;
     border-radius: 10px;
@@ -15731,7 +15744,8 @@ table.nps-splits-collapsed .nps-split-col {
 @media (max-width: 640px) {
 
   .header-pill-core,
-  .header-pill-filter {
+  .header-pill-filter,
+  .header-pill-add {
     font-size: 0.58rem;
     padding: 1px 5px;
     border-radius: 8px;
@@ -24453,7 +24467,9 @@ body[data-dash-tab="cei"] .methodology {
    ========================================================================== */
 @media (min-width: 981px) {
   :root {
-    --dashboard-header-h: 57px;
+    /* Raised from 57px to seat the larger chip controls. Also feeds the
+       shell height calc and the rail top offset below, so both follow. */
+    --dashboard-header-h: 70px;
   }
 
   .header {
@@ -25964,4 +25980,1183 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
   #visitReportModal[data-report-type='nbo'] .visit-report-section {
     padding: 14px 14px 18px;
   }
+}
+
+/* ==========================================================================
+   VISUAL ELEVATION PASS — 2026-08
+
+   Five coordinated refinements: executive Overview hierarchy, a calmer
+   surface system, a structured filter command bar, a consistent analytical
+   card language, and stronger navigation/typography. Kept as one final layer
+   because this stylesheet is intentionally source-order driven.
+   ========================================================================== */
+
+:root {
+  --surface-canvas: #F5F1E7;
+  --surface-panel: #FFFFFF;
+  --surface-subtle: #FBF9F3;
+  --surface-ink: #24201B;
+  --stroke-subtle: rgba(34, 31, 26, 0.09);
+  --stroke-strong: rgba(34, 31, 26, 0.16);
+  --elev-rest: 0 1px 2px rgba(48, 36, 22, 0.04), 0 8px 22px rgba(48, 36, 22, 0.045);
+  --elev-raised: 0 12px 30px rgba(48, 36, 22, 0.10);
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --muted: #766D61;
+  --muted-l: #6D665C;
+}
+
+body {
+  background: var(--surface-canvas);
+}
+
+.glass-bg {
+  background:
+    radial-gradient(ellipse 72% 54% at 8% 2%, rgba(178, 42, 36, 0.055) 0%, transparent 56%),
+    radial-gradient(ellipse 58% 62% at 92% 92%, rgba(201, 127, 18, 0.06) 0%, transparent 58%),
+    linear-gradient(rgba(78, 58, 38, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(78, 58, 38, 0.014) 1px, transparent 1px),
+    var(--surface-canvas);
+  background-size: auto, auto, 28px 28px, 28px 28px, auto;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(245, 192, 88, 0.8), rgba(255, 238, 198, 0.25) 42%, transparent 78%);
+  pointer-events: none;
+}
+
+/* 1. Executive hierarchy: the Overview now reads as summary, relationship,
+   distribution, then diagnostics instead of four equally weighted rows. */
+@media (min-width: 1181px) {
+  #tab-overview.active {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  #tab-overview > .kpi-row {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+
+  #tab-overview > .overview-card--scatter {
+    grid-column: span 8;
+    margin-bottom: 0;
+  }
+
+  #tab-overview > .overview-supporting-charts {
+    display: contents;
+  }
+
+  #tab-overview .overview-card--bands {
+    grid-column: span 4;
+  }
+
+  #tab-overview .overview-card--drags,
+  #tab-overview .overview-card--score {
+    grid-column: span 6;
+  }
+
+  #tab-overview .overview-card--bands,
+  #tab-overview .overview-card--drags,
+  #tab-overview .overview-card--score {
+    margin-bottom: 0;
+  }
+}
+
+.kpi::after {
+  display: none;
+}
+
+/* 2. Surface hierarchy: remove the desktop card-within-card shell and reserve
+   meaningful elevation for the data cards and interactive overlays. */
+@media (min-width: 981px) {
+  #dashboardContent .dashboard-workspace__main {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  body[data-dash-tab='visit-log'] #dashboardContent .dashboard-workspace__main,
+  body[data-dash-tab='table'] #dashboardContent .dashboard-workspace__main,
+  body[data-dash-tab='map'] #dashboardContent .dashboard-workspace__main,
+  body[data-dash-tab='feedback'] #dashboardContent .dashboard-workspace__main,
+  body[data-dash-tab='target'][data-target-subtab='summary'] #dashboardContent .dashboard-workspace__main,
+  body[data-dash-tab='target'][data-target-subtab='priority'] #dashboardContent .dashboard-workspace__main,
+  body[data-dash-tab='target'][data-target-subtab='table'] #dashboardContent .dashboard-workspace__main,
+  body[data-dash-tab='target'][data-target-subtab='map'] #dashboardContent .dashboard-workspace__main,
+  body[data-dash-tab='target'][data-target-subtab='feedback'] #dashboardContent .dashboard-workspace__main {
+    border-radius: 18px;
+    background: var(--surface-panel);
+  }
+}
+
+.section {
+  border-color: var(--stroke-subtle);
+  border-radius: 16px;
+  box-shadow: var(--elev-rest);
+}
+
+.section:hover {
+  border-color: var(--stroke-subtle);
+}
+
+/* 3. Filter command bar: time, display, scope, and performance controls gain
+   visual grouping while all IDs and the mobile re-parenting behavior remain. */
+@media (min-width: 981px) {
+  #dashboardContent {
+    --dashboard-shell-gap: clamp(12px, 1vw, 20px);
+    --dashboard-edge-pad: clamp(18px, 1.5vw, 30px);
+  }
+
+  #dashboardContent > .filter-bar,
+  #dashboardContent > .visit-log-filter-bar {
+    position: static;
+    z-index: auto;
+    margin: 12px 0 0;
+    border: 1px solid rgba(34, 31, 26, 0.11);
+    border-radius: 18px;
+    background: #FFFFFF;
+    box-shadow: 0 8px 22px rgba(48, 36, 22, 0.08);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (min-width: 1321px) {
+  .filter-controls {
+    grid-template-columns:
+      minmax(118px, 0.7fr)
+      minmax(116px, 0.75fr)
+      minmax(140px, 0.65fr)
+      minmax(130px, 0.85fr)
+      repeat(2, minmax(126px, 1fr))
+      minmax(140px, 0.9fr)
+      auto;
+    gap: 10px;
+  }
+
+  body[data-dash-tab='target'] .filter-controls,
+  body[data-dash-tab='map'] .filter-controls,
+  body[data-dash-tab='feedback'] .filter-controls {
+    grid-template-columns:
+      minmax(94px, 0.7fr)
+      minmax(116px, 0.8fr)
+      repeat(3, minmax(126px, 1fr))
+      minmax(140px, 0.9fr)
+      auto;
+  }
+
+  .filter-control--display,
+  .filter-control--performance {
+    padding-left: 10px;
+    border-left: 1px solid rgba(34, 31, 26, 0.10);
+  }
+
+  body[data-dash-tab='target'] .filter-control--scope-start,
+  body[data-dash-tab='map'] .filter-control--scope-start,
+  body[data-dash-tab='feedback'] .filter-control--scope-start {
+    padding-left: 10px;
+    border-left: 1px solid rgba(34, 31, 26, 0.10);
+  }
+}
+
+.filter-bar label,
+.visit-log-filter-control label {
+  color: var(--muted-l);
+  font-size: 0.75rem;
+  letter-spacing: 0.075em;
+}
+
+.filter-select__trigger,
+.bakery-ms__trigger {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 1px 2px rgba(48, 36, 22, 0.045);
+}
+
+@media (max-width: 720px) {
+  .filter-panel-header {
+    display: flex;
+  }
+
+  .filter-controls-body {
+    padding: 24px 20px calc(96px + env(safe-area-inset-bottom, 0px));
+    gap: 20px 18px;
+  }
+
+  .filter-control--display,
+  .filter-control--performance,
+  .filter-control--scope-start {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .filter-controls-body .filter-control label {
+    font-size: 0.75rem;
+  }
+
+  .filter-controls .filter-select__trigger,
+  .filter-controls .bakery-ms__trigger {
+    min-height: 44px;
+    background: #FFFFFF;
+  }
+
+  .filter-panel-header__close {
+    width: 44px;
+    height: 44px;
+  }
+
+  .filter-panel-header__reset {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .filter-controls-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 4. Analytical language: role-based card accents and quieter plotting
+   surfaces make chart purpose scannable before a user reads every caption. */
+.overview-card,
+.trend-card {
+  --analysis-accent: var(--accent);
+  position: relative;
+  border-top-color: var(--stroke-subtle);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--analysis-accent) 3%, #FFFFFF) 0%, #FFFFFF 30%);
+}
+
+.trend-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 20px;
+  left: 20px;
+  height: 3px;
+  border-radius: 0;
+  background: var(--analysis-accent);
+  pointer-events: none;
+}
+
+.kpi::before {
+  top: 3px;
+  height: 3px;
+  border-radius: 0;
+  opacity: 1;
+}
+
+.overview-card--bands {
+  --analysis-accent: var(--gold);
+}
+
+.overview-card--drags {
+  --analysis-accent: var(--accent);
+}
+
+.overview-card--score {
+  --analysis-accent: var(--teal);
+}
+
+.trend-card {
+  --analysis-accent: var(--blue);
+}
+
+.chart-caption {
+  color: var(--muted-l);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.league-table tbody tr,
+#bakeryTrackerTable table tbody tr,
+.trend-detail-table tbody tr,
+.support-priority-table tbody tr {
+  transition: background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.league-table tbody tr:hover,
+#bakeryTrackerTable table tbody tr:hover,
+.trend-detail-table tbody tr:hover,
+.support-priority-table tbody tr:hover {
+  background: rgba(178, 42, 36, 0.045);
+  box-shadow: inset 3px 0 0 rgba(178, 42, 36, 0.42);
+}
+
+/* 5. Navigation and typography: inactive destinations recede, active state
+   gains a non-colour marker, and dashboard type keeps hierarchy professional. */
+.section-page-title {
+  margin-bottom: 10px;
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 2vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+
+body[data-dash-tab='overview'] .section-page-title {
+  font-size: clamp(1.4rem, 1.5vw, 1.6rem);
+  letter-spacing: -0.02em;
+}
+
+.section h2 {
+  font-family: var(--font-display);
+  font-size: 1.04rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+}
+
+.dashboard-nav__group-title {
+  font-size: 0.75rem;
+  letter-spacing: 0.09em;
+}
+
+.dashboard-nav__btn {
+  padding-left: 10px;
+  border-left-width: 1px;
+  border-radius: 11px;
+  border-color: transparent;
+  background: transparent;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.dashboard-nav__btn:hover {
+  border-color: transparent;
+  background: rgba(34, 31, 26, 0.045);
+}
+
+.dashboard-nav__btn.active {
+  border-color: transparent;
+  background: rgba(178, 42, 36, 0.095);
+  box-shadow: none;
+  color: var(--accent-hover);
+}
+
+.dashboard-workspace[data-sidebar-collapsed='true'] .dashboard-nav__btn {
+  padding-left: 0;
+}
+
+.dashboard-nav__btn.active .dashboard-nav__icon {
+  color: var(--accent-hover);
+}
+
+.dashboard-nav__submenu .target-subtab {
+  color: var(--text-2);
+}
+
+.dashboard-nav__submenu .target-subtab.active {
+  color: var(--accent-hover);
+  background: rgba(178, 42, 36, 0.10);
+}
+
+.dashboard-nav__btn:focus-visible,
+.dashboard-nav__submenu .target-subtab:focus-visible,
+.mobile-bottom-nav__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 980px) {
+  .section-page-title {
+    font-size: clamp(1.35rem, 5vw, 1.6rem);
+  }
+
+  .mobile-bottom-nav__btn.active .mobile-bottom-nav__icon {
+    background: rgba(178, 42, 36, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(178, 42, 36, 0.12);
+  }
+
+  .mobile-bottom-nav__btn.active span:last-child {
+    color: var(--accent-hover);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-content.active,
+  .dashboard-nav__submenu {
+    animation: none;
+  }
+
+  .kpi,
+  .section,
+  .dashboard-nav__btn,
+  .filter-select__trigger,
+  .bakery-ms__trigger,
+  .mobile-bottom-nav__btn {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   DESKTOP FILTER DRAWER + BANNER PILL CONTROLS
+   ══════════════════════════════════════════════════════
+   The sticky banner already carries every active filter as a pill
+   (renderHeaderSummary in js/app.js), and unlike the bar it survives
+   scrolling — so the bar was left duplicating a readout while costing a row
+   of vertical space, three rows of it at laptop widths. The controls move
+   into a right-hand drawer opened from the pills themselves.
+
+   Mobile (≤720px) keeps its top sheet untouched: everything scoped to
+   min-width 721px below reuses the same #filterControlsPanel markup, so there
+   is one panel with two presentations rather than two panels. */
+
+/* ── Banner pills ── */
+/* Nested <button> is invalid, so the pill surface moved onto a span wrapper
+   and the two colour classes now paint a flex row rather than a box. */
+.header-pill {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin-right: 4px;
+  border-radius: 12px;
+  line-height: 1.3;
+}
+
+.header-pill.header-pill-core,
+.header-pill.header-pill-filter {
+  display: inline-flex;
+  padding: 0;
+}
+
+/* `.header button` (see HEADER, near the top of this file) hands every
+   button in the banner a 34px min-height, 16px side padding, 0.8rem text
+   and a pill radius. Right for Profile, wrong for a chip — so the pill
+   parts restate the geometry they had as plain spans. */
+.header .header-pill__body {
+  min-height: 0;
+  padding: 2px 8px;
+  gap: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Only when a clear button follows, or the chip loses its right inset
+   and the text sits against the edge. */
+.header .header-pill__body:not(:only-child) {
+  padding-right: 3px;
+}
+
+.header .header-pill__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  min-height: 0;
+  margin: 0 5px 0 0;
+  padding: 0;
+  gap: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  opacity: 0.6;
+  font-family: inherit;
+  font-size: 0.66rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.16s ease, opacity 0.16s ease;
+}
+
+.header .header-pill__clear:hover {
+  background: rgba(255, 255, 255, 0.3);
+  opacity: 1;
+}
+
+.header-pill.header-pill-core:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.header-pill.header-pill-filter:hover {
+  background: rgba(201, 127, 18, 0.34);
+  border-color: rgba(201, 127, 18, 0.62);
+}
+
+.header-pill__body:focus-visible,
+.header-pill__clear:focus-visible,
+.header-pill-add:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 1px;
+}
+
+/* The always-there affordance: an unset filter has no pill, so without this
+   there would be no way to set one from the banner. Same chip shell as
+   the others — a circle among rounded rectangles read as a different
+   family of control. */
+.header-pill-add {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 243, 235, 0.9);
+  font-size: 0.72rem;
+}
+
+.header-pill-add:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.header .header-pill-add .header-pill__body {
+  padding-inline: 6px;
+}
+
+.header-pill-add svg {
+  flex: 0 0 auto;
+  display: block;
+  width: 1.3em;
+  height: 1.3em;
+}
+
+/* ── Chip target sizing ── */
+/* A 21px chip is fine to read and mean to hit. These are interactive
+   now, so they are sized for coordination: ~30px tall on desktop, with
+   the clear button and the funnel scaled to match rather than left as
+   pinpricks. The banner grew to suit (see .header above). */
+.header-pill-core,
+.header-pill-filter,
+.header-pill-add {
+  font-size: 0.78rem;
+  border-radius: 14px;
+}
+
+.header .header-pill__body {
+  padding: 6px 11px;
+}
+
+.header .header-pill__body:not(:only-child) {
+  padding-right: 5px;
+}
+
+.header .header-pill__clear {
+  width: 17px;
+  height: 17px;
+  margin-right: 7px;
+  font-size: 0.78rem;
+}
+
+.header .header-pill-add .header-pill__body {
+  padding-inline: 9px;
+}
+
+@media (max-width: 980px) {
+  .header-pill-core,
+  .header-pill-filter,
+  .header-pill-add {
+    font-size: 0.7rem;
+    border-radius: 13px;
+  }
+
+  .header .header-pill__body {
+    padding: 5px 9px;
+  }
+
+  .header .header-pill__clear {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+  }
+
+  .header .header-pill-add .header-pill__body {
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-pill-core,
+  .header-pill-filter,
+  .header-pill-add {
+    font-size: 0.66rem;
+    border-radius: 12px;
+  }
+
+  .header .header-pill__body {
+    padding: 5px 8px;
+  }
+}
+
+@media (min-width: 721px) {
+
+  /* Stripped, not hidden: .filter-controls is a child of the bar, so
+     display:none would take the drawer with it — the same trick the mobile
+     sheet uses. The #dashboardContent selector is repeated so this beats the
+     surface the ≥981px command-bar block hands the bar. */
+  #dashboardContent > .filter-bar,
+  .filter-bar {
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .filter-controls {
+    position: fixed;
+    /* Left, width, top and max-height are measured in js/utils.js
+       (anchorDrawerToBanner); the values here only cover the moment before
+       it runs. z-index sits under .header (100) so the strip slides out
+       from behind the band — which also leaves the chips lit while the
+       page behind them dims. */
+    top: 70px;
+    left: 0;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    max-height: calc(100vh - 86px);
+    /* A row, with the actions cluster trailing it — see .filter-panel-header
+       below, which stops being a header bar at this width. */
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(180deg, #FFFFFF 0%, #FDFCF9 100%);
+    border: 0;
+    border-bottom: 1px solid rgba(34, 31, 26, 0.1);
+    border-radius: 0;
+    box-shadow: 0 26px 60px rgba(48, 36, 22, 0.22);
+    /* translateY(-100%) parks it entirely above its own top edge, which is
+       the band, so it is hidden behind it. The open state must be `none`
+       and not translateY(0): any transform other than none makes this a
+       containing block for the fixed menus inside it. */
+    transform: translateY(-100%);
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    z-index: 90;
+  }
+
+  .filter-controls.is-open {
+    transform: none;
+  }
+
+  .filter-side-backdrop {
+    z-index: 80;
+    background: rgba(34, 31, 26, 0.22);
+  }
+
+  /* In a row the panel needs no title bar — the values are all on show,
+     so the badge and the word "Filters" would only repeat what you can
+     already read. Reset and Close trail the controls instead. */
+  .filter-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    padding: 0;
+    border-bottom: 0;
+    order: 2;
+  }
+
+
+  /* Hidden in the strip: the icon, the word "Filters" and the active-count
+     badge only repeat what the controls beside them already show, and the
+     row would rather have the ~90px back. */
+  .filter-panel-header__title {
+    display: none;
+  }
+
+  .filter-panel-header__icon {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    color: var(--accent);
+  }
+
+  .filter-panel-header__text {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .filter-panel-header__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.66rem;
+    font-weight: 700;
+  }
+
+  .filter-panel-header__badge[hidden] {
+    display: none;
+  }
+
+  .filter-panel-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .filter-panel-header__reset {
+    padding: 5px 10px;
+    border: 1px solid var(--card-border-h);
+    border-radius: 8px;
+    background: var(--bg-2);
+    color: var(--text-2);
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.18s ease, color 0.18s ease;
+  }
+
+  .filter-panel-header__reset:hover:not(:disabled) {
+    border-color: rgba(178, 42, 36, 0.5);
+    color: var(--accent);
+  }
+
+  .filter-panel-header__reset:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .filter-panel-header__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--card-border-h);
+    border-radius: 8px;
+    background: var(--bg-2);
+    color: var(--text-2);
+    cursor: pointer;
+    transition: border-color 0.18s ease, color 0.18s ease;
+  }
+
+  .filter-panel-header__close:hover {
+    border-color: rgba(178, 42, 36, 0.5);
+    color: var(--accent);
+  }
+
+  .filter-panel-header__close svg {
+    width: 11px;
+    height: 11px;
+  }
+
+  /* One column, scrolling under the pinned header. Kept tight on purpose:
+     every pixel saved here lifts the Bakery and Band controls further up
+     the column, which is what keeps their menus opening downward. */
+  /* auto-fit rather than hand-tuned breakpoints: the controls take one row
+     where there is room and wrap to two when there is not, at any width,
+     which is what the old fixed 7-column grid could not do. */
+  .filter-controls-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 10px 12px;
+    align-content: start;
+    align-items: end;
+    padding: 0;
+    overflow: visible;
+    flex: 1 1 auto;
+    min-width: 0;
+    order: 1;
+  }
+
+  .filter-controls-body .filter-control label {
+    margin-bottom: 2px;
+    font-size: 0.68rem;
+    letter-spacing: 0.07em;
+  }
+
+  /* Every pixel taken off a trigger lifts the two controls below it, and
+     those are the ones whose menus have the least room underneath. */
+  .filter-controls .bakery-ms__trigger,
+  .filter-controls .filter-select__trigger {
+    min-height: 34px;
+    padding: 6px 12px;
+  }
+
+  .filter-controls-body .filter-control {
+    position: relative;
+    min-width: 0;
+  }
+
+  /* Reset lives in the panel header now. */
+  .filter-control--reset {
+    display: none;
+  }
+
+  /* The group dividers were a horizontal-bar idea — stacked in a column they
+     read as a stray rule and an indent on whichever control starts a group.
+     Keyed off the panel id because the rules they undo are tab-scoped
+     (body[data-dash-tab=...] .filter-control--scope-start) and so outrank a
+     plain class selector. */
+  #filterControlsPanel .filter-control--display,
+  #filterControlsPanel .filter-control--performance,
+  #filterControlsPanel .filter-control--scope-start {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  /* Menus are positioned by js/app.js (see "Drawer menu positioning"):
+     fixed, so they overlay the controls below rather than pushing them
+     down, and flipped above the trigger when the room below runs out.
+     Only the surface is left to CSS. Fixed descendants escape the
+     drawer overflow because it carries no transform while open. */
+  .filter-controls .filter-select__menu,
+  .filter-controls .bakery-ms__dropdown {
+    padding: 6px;
+    border-radius: 14px;
+    background: #FFFFFF;
+    border-color: rgba(178, 42, 36, 0.2);
+    box-shadow: 0 18px 40px rgba(48, 36, 22, 0.2);
+  }
+
+  .filter-controls .bakery-ms__search-row {
+    padding: 2px 2px 6px;
+  }
+
+  .filter-controls .bakery-ms__search {
+    min-height: 32px;
+  }
+
+  .filter-controls .bakery-ms__trigger.is-open ~ .bakery-ms__dropdown {
+    display: block;
+  }
+
+  /* Six rows, then scroll — a menu that cannot grow past six is short
+     enough to sit below its trigger even for the last control in the
+     column. place() still clamps on top of this as the safety net. */
+  .filter-controls {
+    --ms-row: 31px;
+  }
+
+  .filter-controls .bakery-ms__option,
+  .filter-controls .filter-select__option {
+    padding: 6px 10px;
+    font-size: 0.82rem;
+  }
+
+  .filter-controls .bakery-ms__list {
+    max-height: calc(var(--ms-row) * 6);
+  }
+
+  .filter-controls .filter-select__menu {
+    max-height: calc(var(--ms-row) * 6 + 16px);
+  }
+
+  .filter-controls .bakery-ms__search-row {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 4px 2px 8px;
+    background: #FFFFFF;
+  }
+
+  .filter-controls .bakery-ms__selected-chips {
+    max-height: 112px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   BAKERY REPORTS FILTER DRAWER
+   ══════════════════════════════════════════════════════
+   Bakery Reports filters its own data, so it keeps a separate control set
+   — but it renders into the same banner and should not read as a second
+   idiom. Its panel becomes the same right-hand drawer, opened from the
+   same chips. Mobile keeps its sheet: everything here is above 720px. */
+@media (min-width: 721px) {
+
+  /* Stripped, not hidden, so the fixed panel inside still renders — the
+     same reason the dashboard bar is treated this way. */
+  #dashboardContent > .visit-log-filter-bar,
+  .visit-log-filter-bar {
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .visit-log-filter-bar .visit-log-filters {
+    display: block;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    overflow: visible;
+  }
+
+  /* The bar used to hold these; the drawer header owns closing now. */
+  .visit-log-mobile-filter-btn {
+    display: none;
+  }
+
+  .visit-log-filter-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(34, 31, 26, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.32s ease, visibility 0.32s ease;
+    z-index: 80;
+    background: rgba(34, 31, 26, 0.22);
+  }
+
+  .visit-log-filter-backdrop.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .visit-log-filter-panel {
+    position: fixed;
+    /* Left, width, top and max-height are measured in js/utils.js
+       (anchorDrawerToBanner); the values here only cover the moment before
+       it runs. z-index sits under .header (100) so the strip slides out
+       from behind the band — which also leaves the chips lit while the
+       page behind them dims. */
+    top: 70px;
+    left: 0;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    max-height: calc(100vh - 86px);
+    /* A row, with the actions cluster trailing it — see .filter-panel-header
+       below, which stops being a header bar at this width. */
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(180deg, #FFFFFF 0%, #FDFCF9 100%);
+    border: 0;
+    border-bottom: 1px solid rgba(34, 31, 26, 0.1);
+    border-radius: 0;
+    box-shadow: 0 26px 60px rgba(48, 36, 22, 0.22);
+    /* translateY(-100%) parks it entirely above its own top edge, which is
+       the band, so it is hidden behind it. The open state must be `none`
+       and not translateY(0): any transform other than none makes this a
+       containing block for the fixed menus inside it. */
+    transform: translateY(-100%);
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    z-index: 90;
+  }
+
+  .visit-log-filter-panel.is-open {
+    transform: none;
+  }
+
+  .visit-log-filter-panel__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    padding: 0;
+    border-bottom: 0;
+    order: 2;
+  }
+
+  .visit-log-filter-panel__header strong {
+    display: none;
+  }
+
+  .visit-log-filter-panel__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--card-border-h);
+    border-radius: 8px;
+    background: var(--bg-2);
+    color: var(--text-2);
+    cursor: pointer;
+    transition: border-color 0.18s ease, color 0.18s ease;
+  }
+
+  .visit-log-filter-panel__close:hover {
+    border-color: rgba(178, 42, 36, 0.5);
+    color: var(--accent);
+  }
+
+  .visit-log-filter-panel__close svg {
+    width: 11px;
+    height: 11px;
+  }
+
+  /* Same column and rhythm as the dashboard drawer. */
+  .visit-log-filter-panel__body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 10px 12px;
+    align-content: start;
+    align-items: end;
+    padding: 0;
+    overflow: visible;
+    flex: 1 1 auto;
+    min-width: 0;
+    order: 1;
+  }
+
+  .visit-log-filter-panel__body .visit-log-filter-control {
+    position: relative;
+    min-width: 0;
+    /* This control is a flex column and its dashboard counterpart is a
+       block, so its 4px gap stacked on top of the label margin and made
+       the reports strip 4px taller than the dashboard one. */
+    gap: 0;
+  }
+
+  /* The bar these controls used to live in laid them out three different
+     ways: a flex row with a 150-240px basis, a fixed 225px Search, and —
+     on Visit History above 1200px — a named grid-template-areas map
+     ("search period region ops" / "group sort type rating reset"). The
+     bar is gone but those rules still match by descendant, and the ones
+     that place by grid-area are keyed to control ids, so they outrank a
+     plain class selector and dropped every Visit History control into a
+     template this grid does not define — which stacked them on top of
+     each other. The panel id gets the specificity back; source order
+     settles the ties. */
+  #visitLogFilterPanel .visit-log-filter-panel__body .visit-log-filter-control,
+  #visitLogFilterPanel .visit-log-filter-panel__body .visit-log-filter-control--compact {
+    grid-area: auto;
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  #visitLogFilterPanel .visit-log-filter-panel__header .visit-log-reset-btn {
+    grid-area: auto;
+    flex: 0 0 auto;
+  }
+
+  /* Search leads, then Period: the two that decide which records exist at
+     all, ahead of the ones that narrow or arrange them. The bar did this
+     with order:-2 on its first child and order:-1 on Period; Search moved
+     into the panel, so only the Period half survived and it ended up
+     leading the row on its own. */
+  #visitLogFilterPanel #visitLogSearchControl {
+    order: -2;
+  }
+
+  .visit-log-filter-panel__body .visit-log-filter-control label {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.68rem;
+    line-height: 1.18;
+    letter-spacing: 0.07em;
+  }
+
+  .visit-log-filter-panel__body .visit-log-input,
+  .visit-log-filter-panel__body .bakery-ms__trigger,
+  .visit-log-filter-panel__body .filter-select__trigger {
+    width: 100%;
+    min-height: 34px;
+    padding: 6px 12px;
+    font-size: 0.82rem;
+  }
+
+
+  /* Six rows then scroll, matching the dashboard drawer. */
+  .visit-log-filter-panel {
+    --ms-row: 31px;
+  }
+
+  .visit-log-filter-panel .bakery-ms__option,
+  .visit-log-filter-panel .filter-select__option {
+    padding: 6px 10px;
+    font-size: 0.82rem;
+  }
+
+  .visit-log-filter-panel .bakery-ms__list {
+    max-height: calc(var(--ms-row) * 6);
+  }
+
+  .visit-log-filter-panel .filter-select__menu,
+  .visit-log-filter-panel .bakery-ms__dropdown {
+    padding: 6px;
+    border-radius: 14px;
+    background: #FFFFFF;
+    border-color: rgba(178, 42, 36, 0.2);
+    box-shadow: 0 18px 40px rgba(48, 36, 22, 0.2);
+  }
+
+  .visit-log-filter-panel .filter-select__menu {
+    max-height: calc(var(--ms-row) * 6 + 16px);
+  }
+
+  .visit-log-filter-panel .bakery-ms__search-row {
+    padding: 2px 2px 6px;
+  }
+
+  .visit-log-filter-panel .bakery-ms__search {
+    min-height: 32px;
+  }
+}
+
+/* Reset lives in the panel header beside Close, matching the dashboard
+   drawer. It carries .visit-log-reset-btn only so the existing click
+   handler and active-state sync keep finding it; every visual rule that
+   class brings (icon slots, square icon-button sizing) is replaced here. */
+.visit-log-filter-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.visit-log-reset-btn.visit-log-filter-panel__reset {
+  width: auto;
+  height: auto;
+  min-height: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--card-border-h);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.visit-log-reset-btn.visit-log-filter-panel__reset:hover:not(:disabled) {
+  border-color: rgba(178, 42, 36, 0.5);
+  color: var(--accent);
+  background: var(--bg-2);
+}
+
+.visit-log-reset-btn.visit-log-filter-panel__reset:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

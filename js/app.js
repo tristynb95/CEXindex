@@ -217,6 +217,11 @@
 
   var escapeHtml = G.escapeHtml;
 
+  // Chip markup and the funnel live in js/utils.js — Bakery Reports renders
+  // into the same #headerSub and must produce identical chips.
+  var headerPill = G.headerPill;
+  var HEADER_FILTER_BTN = G.HEADER_FILTER_BTN;
+
   function renderHeaderSummary() {
     renderDataUpdatedStamp();
     var headerSub = document.getElementById('headerSub');
@@ -242,34 +247,34 @@
     var bakeryLabel = headerBakeryCount === 1 ? '1 bakery' : headerBakeryCount + ' bakeries';
     var coreConfigText = formatSelectedPeriod() + ' · ' + bakeryLabel;
     if (currentTab === 'target') coreConfigText = 'All Time \u00b7 ' + bakeryLabel;
-    pills.push('<span class="header-pill-core">' + escapeHtml(coreConfigText) + '</span>');
+    pills.push(headerPill('header-pill-core', 'period', coreConfigText, false));
 
     // Optional bubble: View — only on the tabs the toggle actually governs,
     // and only when it's grouping (its "Bakeries" default needs no chip).
     if (DASHBOARD_VIEW_SCOPED_TABS[currentTab] && state.dashboardView !== 'bakeries') {
       var viewText = 'View: ' + (state.dashboardView === 'region' ? 'Regions' : 'Ops Areas');
-      pills.push('<span class="header-pill-filter">' + escapeHtml(viewText) + '</span>');
+      pills.push(headerPill('header-pill-filter', 'view', viewText, true));
     }
 
     // Optional bubble: Region
     var selRegions = state.regionFilter || [];
     if (selRegions.length > 0) {
       var rText = selRegions.length === 1 ? selRegions[0] : selRegions.length + ' Regions';
-      pills.push('<span class="header-pill-filter">' + escapeHtml(rText) + '</span>');
+      pills.push(headerPill('header-pill-filter', 'region', rText, true));
     }
 
     // Optional bubble: Area (Ops Area)
     var selOps = state.opsFilter || [];
     if (selOps.length > 0) {
       var oText = selOps.length === 1 ? selOps[0] : selOps.length + ' Areas';
-      pills.push('<span class="header-pill-filter">' + escapeHtml(oText) + '</span>');
+      pills.push(headerPill('header-pill-filter', 'ops', oText, true));
     }
 
     // Optional bubble: Bakery
     var selBakeries = state.searchBakery || [];
     if (selBakeries.length > 0) {
       var bText = selBakeries.length === 1 ? selBakeries[0] : selBakeries.length + ' Bakeries';
-      pills.push('<span class="header-pill-filter">' + escapeHtml(bText) + '</span>');
+      pills.push(headerPill('header-pill-filter', 'bakery', bText, true));
     }
 
     // Optional bubble: Band
@@ -283,12 +288,13 @@
       };
       var bandKey = bandVal.indexOf('abs:') === 0 ? bandVal.slice(4) : bandVal;
       var bandText = 'Band: ' + (bandLabels[bandKey] || bandKey);
-      pills.push('<span class="header-pill-filter">' + escapeHtml(bandText) + '</span>');
+      pills.push(headerPill('header-pill-filter', 'band', bandText, true));
     }
 
     headerSub.innerHTML = prefix +
       '<span class="header-sub-pillwrap">' +
       pills.join('') +
+      HEADER_FILTER_BTN +
       '</span>';
   }
 
@@ -933,7 +939,7 @@
         { eyebrow: 'KV Link', title: 'Orders >5 Min', meta: 'Target: < 1%' }
       );
       dashboardKpiRow.innerHTML = dashMetrics.map(function (metric) {
-        return '<article class="kpi kpi-muted' + (metric.primary ? ' kpi--primary' : '') + (metric.info ? ' kpi--has-info' : '') + '">'
+        return '<article class="kpi kpi-muted' + (metric.info ? ' kpi--has-info' : '') + '">'
           + (metric.info ? benchmarkScoreInfoHtml() : '')
           + '<div class="kpi__top">'
           + '<span class="kpi__eyebrow">' + metric.eyebrow + '</span>'
@@ -993,21 +999,24 @@
         info: !!config.info
       };
     };
-    // scoredViewData, not scoredData — the KPI row sits directly under the
-    // League Table/scatter chart it shares the Overview tab with, so it has
-    // to average the same rows they do (ops areas/regions when grouped) or
-    // its headline numbers silently describe a different population than
-    // what's drawn right below them.
-    var nps = G.avg(scoredViewData, 'n');
-    var acei = G.avg(scoredViewData, 'ac');
-    var dr = G.avg(scoredViewData, 'dr');
-    var ef = G.avg(scoredViewData, 'ef');
-    var fr = G.avg(scoredViewData, 'fr');
-    var ts = G.avg(scoredViewData, 'ts');
-    var o5 = G.avg(scoredViewData, 'o5');
+    // scoredData, not scoredViewData — the headline row answers "how is the
+    // estate in scope performing", and that is one number per metric however
+    // the rows below happen to be grouped. Averaging the group rows instead
+    // made it a mean of means, so the same bakeries read differently in each
+    // view: three ops areas of 12, 9 and 2 bakeries each counted a third,
+    // letting the two-bakery area pull the headline as hard as the twelve.
+    // The View toggle changes the granularity of the table and scatter below,
+    // not the population the KPI row describes.
+    var nps = G.avg(scoredData, 'n');
+    var acei = G.avg(scoredData, 'ac');
+    var dr = G.avg(scoredData, 'dr');
+    var ef = G.avg(scoredData, 'ef');
+    var fr = G.avg(scoredData, 'fr');
+    var ts = G.avg(scoredData, 'ts');
+    var o5 = G.avg(scoredData, 'o5');
     // Avg wait is null on records that predate the KV avg-time columns, so
     // average only the bakeries that have it.
-    var atRows = scoredViewData.filter(function (r) { return typeof r.at === 'number' && !isNaN(r.at); });
+    var atRows = scoredData.filter(function (r) { return typeof r.at === 'number' && !isNaN(r.at); });
     var at = atRows.length ? atRows.reduce(function (a, r) { return a + r.at; }, 0) / atRows.length : null;
     var atCard = at === null
       ? {
@@ -1038,7 +1047,7 @@
         compare: Math.round(acei),
         display: Math.round(acei).toString(),
         eyebrow: 'Index',
-        title: state.dashboardView === 'bakeries' ? 'Benchmark Score' : 'Benchmark Score (' + (state.dashboardView === 'region' ? 'Regions' : 'Ops Areas') + ')',
+        title: 'Benchmark Score',
         meta: 'Target: ' + BENCHMARK_MEETING_SCORE,
         priorKey: 'ac',
         bands: [
@@ -1166,7 +1175,7 @@
     );
 
     dashboardKpiRow.innerHTML = cards.map(function (metric) {
-      return '<article class="kpi ' + metric.tone + (metric.primary ? ' kpi--primary' : '') + (metric.info ? ' kpi--has-info' : '') + '">'
+      return '<article class="kpi ' + metric.tone + (metric.info ? ' kpi--has-info' : '') + '">'
         + (metric.info ? benchmarkScoreInfoHtml(scoredData, acei) : '')
         + '<div class="kpi__top">'
         + '<span class="kpi__eyebrow">' + metric.eyebrow + '</span>'
@@ -1183,7 +1192,10 @@
     fitKpiValues();
     publishKpiBlockHeight();
 
-    G.renderOverviewCharts(viewData);
+    // Second argument is the bakery-level cohort: the band split and scatter
+    // plot whatever rows the View toggle selected, but the two component
+    // charts are estate averages and have to agree with the KPI row above them.
+    G.renderOverviewCharts(viewData, scoredData);
     G._lastData = data;
     renderOrDeferPanels({
       trends: function () { G.renderTrendCharts(scoredViewData); },
@@ -1989,18 +2001,10 @@
   // state.dashboardView defaults to 'bakeries', so this is a no-op today —
   // kept for when the View select's starting value stops being a constant.
   syncDashboardViewFilterAvailability();
-  document.getElementById('sortBy').addEventListener('change', function () {
-    var leagueTableBody = document.getElementById('tableBody');
-    var leagueTable = leagueTableBody ? leagueTableBody.closest('table') : null;
-    if (leagueTable) {
-      delete leagueTable.dataset.sortCol0;
-      delete leagueTable.dataset.sortAsc0;
-      leagueTable.querySelectorAll('thead th').forEach(function (header) {
-        header.classList.remove('sort-asc', 'sort-desc');
-      });
-    }
-    refresh();
-  });
+  // The only control that reorders the League Table — renderLeagueTable sorts
+  // straight off this value. (It used to have to clear a header-click sort off
+  // the table first; headers no longer sort, so there is nothing to undo.)
+  document.getElementById('sortBy').addEventListener('change', refresh);
 
   document.getElementById('rollingWindow').addEventListener('change', function () {
     state.selectedMonths = G.resolvePeriodMonths(this.value, state.MONTHS, state.ALL);
@@ -2374,12 +2378,74 @@
   if (filterPanelReset) { filterPanelReset.addEventListener('click', resetAllFilters); }
   if (desktopFilterReset) { desktopFilterReset.addEventListener('click', resetAllFilters); }
   if (filterSideBackdrop) { filterSideBackdrop.addEventListener('click', closeFilterSidePanel); }
+
+  // ── Banner pills as the filter control surface ──
+  // #headerSub is rebuilt wholesale by renderHeaderSummary on every refresh,
+  // so the listener sits on the container rather than the pills themselves.
+  // Bakery Reports filters its own data and owns a separate drawer.
+  function isVisitLogTab() {
+    return document.body.dataset.dashTab === 'visit-log' &&
+      typeof G.setVisitLogFiltersOpen === 'function';
+  }
+
+  function clearHeaderFilter(key) {
+    if (key === 'view') {
+      state.dashboardView = 'bakeries';
+      var viewSelect = document.getElementById('dashboardView');
+      if (viewSelect) { viewSelect.value = 'bakeries'; G.syncCustomSelect(viewSelect); }
+      syncDashboardViewFilterAvailability();
+    } else if (key === 'region') {
+      state.regionFilter.splice(0, state.regionFilter.length);
+      if (G.rebuildRegionMultiselect) G.rebuildRegionMultiselect();
+      // Ops Area options are derived from the selected regions.
+      if (G.rebuildOpsMultiselect) G.rebuildOpsMultiselect();
+    } else if (key === 'ops') {
+      state.opsFilter.splice(0, state.opsFilter.length);
+      if (G.rebuildOpsMultiselect) G.rebuildOpsMultiselect();
+    } else if (key === 'bakery') {
+      state.searchBakery.splice(0, state.searchBakery.length);
+      if (G.resetBakeryMultiselect) G.resetBakeryMultiselect();
+    } else if (key === 'band') {
+      state.bandFilter = '';
+      var bandSelect = document.getElementById('bandFilter');
+      if (bandSelect) { bandSelect.value = ''; G.syncCustomSelect(bandSelect); }
+    } else {
+      return;
+    }
+    refresh();
+  }
+
+  var headerSubEl = document.getElementById('headerSub');
+  if (headerSubEl) {
+    headerSubEl.addEventListener('click', function (event) {
+      var clear = event.target.closest('[data-filter-clear]');
+      if (clear) {
+        // Clearing is the whole intent — don't also open the drawer.
+        event.stopPropagation();
+        var key = clear.getAttribute('data-filter-clear');
+        if (isVisitLogTab()) G.clearVisitLogHeaderFilter(key);
+        else clearHeaderFilter(key);
+        return;
+      }
+      if (!event.target.closest('[data-filter-pill], [data-filter-open]')) return;
+      if (isVisitLogTab()) {
+        G.setVisitLogFiltersOpen(!G.isVisitLogFiltersOpen());
+        return;
+      }
+      filterSidePanelOpen ? closeFilterSidePanel() : openFilterSidePanel();
+    });
+  }
   document.addEventListener('click', function (event) {
-    if (!mobileFilterMedia.matches || !filterSidePanelOpen || !filterControlsPanel) return;
+    if (!filterSidePanelOpen || !filterControlsPanel || isVisitLogTab()) return;
     var path = typeof event.composedPath === 'function' ? event.composedPath() : [];
     var insidePanel = path.indexOf(filterControlsPanel) !== -1;
     var onTab = filterSideTab ? path.indexOf(filterSideTab) !== -1 : false;
-    if (!insidePanel && !onTab) closeFilterSidePanel();
+    // The banner pills open the drawer, so a click on one is not 'outside'
+    // — without this the same click would open and immediately close it.
+    var onBanner = path.some(function (el) {
+      return el && el.closest && el.closest('[data-filter-pill], [data-filter-open]');
+    });
+    if (!insidePanel && !onTab && !onBanner) closeFilterSidePanel();
   });
 
   document.addEventListener('keydown', function (e) {
@@ -2387,9 +2453,13 @@
   });
 
   // Close side panel when viewport grows past mobile breakpoint
+  // Crossing the breakpoint swaps the sheet for the drawer rather than
+  // dismissing it, but the mobile sheet locks body scroll and the drawer
+  // does not, so that lock has to be handed back on the way out.
   if (mobileFilterMedia.addEventListener) {
     mobileFilterMedia.addEventListener('change', function (e) {
-      if (!e.matches && filterSidePanelOpen) { closeFilterSidePanel(); }
+      if (!e.matches) { document.body.style.overflow = ''; }
+      else if (filterSidePanelOpen) { document.body.style.overflow = 'hidden'; }
     });
   }
 
@@ -2468,6 +2538,11 @@
     });
     panelObserver.observe(filterControlsPanel, { attributes: true, attributeFilter: ['class'] });
   })();
+
+  // Menus in the drawer are positioned by the shared helper (see
+  // mountDrawerMenus in js/utils.js); Bakery Reports mounts its own.
+  G.mountDrawerMenus(document.getElementById('filterControlsPanel'));
+  G.anchorDrawerToBanner(document.getElementById('filterControlsPanel'));
 
   // Patch refresh to also sync the filter badge
   var originalRefresh = refresh;

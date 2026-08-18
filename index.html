@@ -301,10 +301,10 @@
           </div>
 
           <div class="filter-controls-body">
-            <div class="filter-control"><label>Month</label><br><select id="monthSelect">
+            <div class="filter-control filter-control--time"><label for="monthSelect">Month</label><br><select id="monthSelect">
                 <option value="">&mdash; Select &mdash;</option>
               </select></div>
-            <div class="filter-control"><label>Period</label><br><select id="rollingWindow">
+            <div class="filter-control filter-control--time"><label for="rollingWindow">Period</label><br><select id="rollingWindow">
                 <option value="0">All Time</option>
                 <option value="current">This Month</option>
                 <option value="1">Last Month</option>
@@ -316,16 +316,16 @@
                 <option value="thisYear">This Year</option>
                 <option value="lastYear">Last Year</option>
               </select></div>
-            <div class="filter-control filter-control--view"><label>View</label><br><select id="dashboardView">
+            <div class="filter-control filter-control--view filter-control--display"><label for="dashboardView">View</label><br><select id="dashboardView">
                 <option value="bakeries" selected>Bakeries</option>
                 <option value="ops">Ops Areas</option>
                 <option value="region">Regions</option>
               </select></div>
-            <div class="filter-control">
-              <label>Region</label><br>
+            <div class="filter-control filter-control--scope filter-control--scope-start">
+              <label id="regionFilterLabel">Region</label><br>
               <div class="bakery-ms" id="regionMultiselect">
                 <button class="bakery-ms__trigger" id="regionMsTrigger" type="button" aria-haspopup="listbox"
-                  aria-expanded="false">
+                  aria-expanded="false" aria-labelledby="regionFilterLabel regionMsLabel">
                   <span class="bakery-ms__trigger-label" id="regionMsLabel">All Regions</span>
                   <span class="bakery-ms__trigger-icon" aria-hidden="true"></span>
                 </button>
@@ -345,11 +345,11 @@
                 </div>
               </div>
             </div>
-            <div class="filter-control">
-              <label>Ops Area</label><br>
+            <div class="filter-control filter-control--scope">
+              <label id="opsFilterLabel">Ops Area</label><br>
               <div class="bakery-ms" id="opsMultiselect">
                 <button class="bakery-ms__trigger" id="opsMsTrigger" type="button" aria-haspopup="listbox"
-                  aria-expanded="false">
+                  aria-expanded="false" aria-labelledby="opsFilterLabel opsMsLabel">
                   <span class="bakery-ms__trigger-label" id="opsMsLabel">All Areas</span>
                   <span class="bakery-ms__trigger-icon" aria-hidden="true"></span>
                 </button>
@@ -371,11 +371,11 @@
                 </div>
               </div>
             </div>
-            <div class="filter-control">
-              <label>Bakery</label><br>
+            <div class="filter-control filter-control--scope">
+              <label id="bakeryFilterLabel">Bakery</label><br>
               <div class="bakery-ms" id="bakeryMultiselect">
                 <button class="bakery-ms__trigger" id="bakeryMsTrigger" type="button" aria-haspopup="listbox"
-                  aria-expanded="false">
+                  aria-expanded="false" aria-labelledby="bakeryFilterLabel bakeryMsLabel">
                   <span class="bakery-ms__trigger-label" id="bakeryMsLabel">All Bakeries</span>
                   <span class="bakery-ms__trigger-icon" aria-hidden="true"></span>
                 </button>
@@ -397,7 +397,8 @@
                 </div>
               </div>
             </div>
-            <div class="filter-control"><label id="bandFilterLabel">Benchmark Band</label><br><select id="bandFilter">
+            <div class="filter-control filter-control--performance"><label id="bandFilterLabel">Benchmark Band</label><br><select id="bandFilter"
+                aria-labelledby="bandFilterLabel">
                 <option value="">All</option>
                 <!-- Kept as an optgroup: updateBandFilterOptions() only applies the
                      "band is actually present in the data" filter to grouped options. -->
@@ -446,11 +447,6 @@
       <div class="visit-log-filter-bar">
         <!-- STANDALONE VISIT LOG FILTERS -->
         <div class="visit-log-filters">
-          <div class="visit-log-filter-control">
-            <label for="visitLogSearch">Search</label>
-            <input type="search" id="visitLogSearch" placeholder="Bakery or partner&hellip;"
-              class="visit-log-input" autocomplete="off">
-          </div>
           <button type="button" id="visitLogMobileFilterBtn" class="visit-log-mobile-filter-btn"
             aria-controls="visitLogFilterPanel" aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
@@ -464,15 +460,24 @@
           <div id="visitLogFilterPanel" class="visit-log-filter-panel" aria-label="Visit report filters">
             <div class="visit-log-filter-panel__header">
               <strong>Filters</strong>
-              <button type="button" id="visitLogFilterCloseBtn" class="visit-log-filter-panel__close"
-                aria-label="Close filters">
-                <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
-                  stroke-width="2" stroke-linecap="round">
-                  <path d="M1 1l12 12M13 1L1 13" />
-                </svg>
-              </button>
+              <div class="visit-log-filter-panel__actions">
+                <button type="button" id="visitLogResetBtn"
+                  class="visit-log-reset-btn visit-log-filter-panel__reset">Reset</button>
+                <button type="button" id="visitLogFilterCloseBtn" class="visit-log-filter-panel__close"
+                  aria-label="Close filters">
+                  <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round">
+                    <path d="M1 1l12 12M13 1L1 13" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="visit-log-filter-panel__body">
+              <div class="visit-log-filter-control" id="visitLogSearchControl">
+                <label for="visitLogSearch">Search</label>
+                <input type="search" id="visitLogSearch" placeholder="Bakery or partner&hellip;"
+                  class="visit-log-input" autocomplete="off">
+              </div>
               <div class="visit-log-filter-control" id="visitLogRegionControl">
                 <label for="visitLogRegionMsTrigger">Region</label>
                 <select id="visitLogRegion" class="visit-log-multiselect__native" multiple hidden aria-hidden="true" tabindex="-1">
@@ -675,22 +680,6 @@
                   <option value="Red">Red</option>
                 </select>
               </div>
-              <button type="button" id="visitLogResetBtn" class="visit-log-reset-btn" title="Reset filters"
-                aria-label="Reset filters">
-                <svg class="visit-log-reset-btn__icon--plain" viewBox="0 0 24 24" aria-hidden="true"
-                  focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round">
-                  <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
-                </svg>
-                <svg class="visit-log-reset-btn__icon--active" viewBox="0 0 24 24" aria-hidden="true"
-                  focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round">
-                  <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.06" />
-                  <path d="m22 3-5 5" />
-                  <path d="m17 3 5 5" />
-                </svg>
-                <span class="visit-log-reset-btn__label">Reset</span>
-              </button>
             </div>
           </div>
         </div>

@@ -83,9 +83,11 @@ test('the header breadcrumb gives each setting its own bubble', () => {
   // "Period · Grouped by · Sorted by" capsule read as one sentence, so finding
   // a single value meant parsing all of it.
   assert.doesNotMatch(source, /coreConfigText = periodText/);
-  assert.match(source, /pills\.push\('<span class="header-pill-core">' \+ escapeHtml\(periodText\) \+ '<\/span>'\)/);
-  assert.match(source, /escapeHtml\(groupLabels\[groupVal\] \|\| 'Grouped'\)/);
-  assert.match(source, /escapeHtml\(sortLabels\[sortVal\] \|\| 'Sorted'\)/);
+  // Chips are built by GAILS.headerPill now (it does the escaping); what is
+  // pinned here is still one bubble per setting, not one combined capsule.
+  assert.match(source, /pills\.push\(pill\('header-pill-core', 'period', periodText, false\)\)/);
+  assert.match(source, /pill\('header-pill-core', 'group', groupLabels\[groupVal\] \|\| 'Grouped', false\)/);
+  assert.match(source, /pill\('header-pill-core', 'sort', sortLabels\[sortVal\] \|\| 'Sorted', false\)/);
 
   // Unvisited Sites and Follow-up Tasks lost their combined capsules too.
   assert.doesNotMatch(source, /Follow-up Tasks · '/);
@@ -97,7 +99,7 @@ test('the bakery directory reports its own list controls, not the view you came 
 
   // The directory has no Period, and its Sort By / Group By are a separate pair
   // of dropdowns from the ones the reporting views read.
-  assert.match(source, /Sorted by ' \+\s*escapeHtml\(exportFilterLabel\('visitLogDirectorySort', 'Bakery Name \(A-Z\)'\)\)/);
+  assert.match(source, /'Sorted by ' \+ exportFilterLabel\('visitLogDirectorySort', 'Bakery Name \(A-Z\)'\)/);
   assert.match(source, /exportFilterLabel\('visitLogDirectoryGroup', 'None'\)/);
 
   // The breadcrumb has to be written before the per-view branches, all of which

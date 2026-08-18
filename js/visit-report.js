@@ -3560,6 +3560,29 @@ window.GAILS = window.GAILS || {};
     return 'region';
   }
 
+  // Matches the sub-nav entries in index.html. The short forms are for the
+  // narrow banner, where the full names crowd out the chips beside them.
+  var VISIT_LOG_VIEW_LABELS = {
+    bakeries: { full: 'Bakery Directory', short: 'Directory' },
+    followups: { full: 'Follow-up Tasks', short: 'Follow-ups' },
+    unvisited: { full: 'Unvisited Sites', short: 'Unvisited' },
+    history: { full: 'Visit History', short: 'History' }
+  };
+
+  function visitLogViewTitle(view) {
+    var label = VISIT_LOG_VIEW_LABELS[view] || VISIT_LOG_VIEW_LABELS.history;
+    return (window.innerWidth <= 980) ? label.short : label.full;
+  }
+
+  var pill = function (kind, key, text, clearable) {
+    if (window.GAILS.headerPill) return window.GAILS.headerPill(kind, key, text, clearable);
+    return '<span class="' + kind + '">' + escapeHtml(text) + '</span>';
+  };
+
+  function headerFilterButton() {
+    return window.GAILS.HEADER_FILTER_BTN || '';
+  }
+
   window.GAILS.getVisitLogHeaderSummary = function () {
     var searchEl = document.getElementById('visitLogSearch');
     var regionEl = document.getElementById('visitLogRegion');
@@ -3593,41 +3616,39 @@ window.GAILS = window.GAILS || {};
       // (visitLogDirectorySort / visitLogDirectoryGroup) from the ones the
       // history views read.
       var directoryGroupEl = document.getElementById('visitLogDirectoryGroup');
-      pills.push('<span class="header-pill-core">Bakery Directory</span>');
-      pills.push('<span class="header-pill-core">Sorted by ' +
-        escapeHtml(exportFilterLabel('visitLogDirectorySort', 'Bakery Name (A-Z)')) + '</span>');
-      pills.push('<span class="header-pill-core">' +
+      pills.push(pill('header-pill-core', 'directorySort',
+        'Sorted by ' + exportFilterLabel('visitLogDirectorySort', 'Bakery Name (A-Z)'), false));
+      pills.push(pill('header-pill-core', 'directoryGroup',
         (directoryGroupEl && directoryGroupEl.value !== 'none'
-          ? 'Grouped by ' + escapeHtml(exportFilterLabel('visitLogDirectoryGroup', 'None'))
-          : 'Ungrouped') + '</span>');
-      if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
-      if (regionVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogRegion', 'All regions')) + '</span>');
-      if (opsVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogOps', 'All ops areas')) + '</span>');
-      if (bakeryVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogBakery', 'All bakeries')) + '</span>');
-      var directoryTitle = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
-      return directoryTitle + '<span class="header-sub-pillwrap">' + pills.join('') + '</span>';
+          ? 'Grouped by ' + exportFilterLabel('visitLogDirectoryGroup', 'None')
+          : 'Ungrouped'), false));
+      if (searchVal) pills.push(pill('header-pill-filter', 'search', 'Search: "' + searchVal + '"', true));
+      if (regionVals.length) pills.push(pill('header-pill-filter', 'region', exportFilterLabel('visitLogRegion', 'All regions'), true));
+      if (opsVals.length) pills.push(pill('header-pill-filter', 'ops', exportFilterLabel('visitLogOps', 'All ops areas'), true));
+      if (bakeryVals.length) pills.push(pill('header-pill-filter', 'bakery', exportFilterLabel('visitLogBakery', 'All bakeries'), true));
+      var directoryTitle = visitLogViewTitle('bakeries');
+      return directoryTitle + '<span class="header-sub-pillwrap">' + pills.join('') + headerFilterButton() + '</span>';
     }
 
     if (view === 'followups') {
       var statusLabels = FOLLOW_UP_STATUS_LABELS;
       var followStatus = window.GAILS._followUpStatusFilter || 'open';
-      pills.push('<span class="header-pill-core">Follow-up Tasks</span>');
-      pills.push('<span class="header-pill-core">' + escapeHtml(statusLabels[followStatus] || 'Open') + '</span>');
-      if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
-      if (regionVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogRegion', 'All regions')) + '</span>');
-      if (opsVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogOps', 'All ops areas')) + '</span>');
+      pills.push(pill('header-pill-core', 'followStatus', statusLabels[followStatus] || 'Open', false));
+      if (searchVal) pills.push(pill('header-pill-filter', 'search', 'Search: "' + searchVal + '"', true));
+      if (regionVals.length) pills.push(pill('header-pill-filter', 'region', exportFilterLabel('visitLogRegion', 'All regions'), true));
+      if (opsVals.length) pills.push(pill('header-pill-filter', 'ops', exportFilterLabel('visitLogOps', 'All ops areas'), true));
       if (followUpAssigneeEl && followUpAssigneeEl.value) {
-        pills.push('<span class="header-pill-filter">Assigned to ' +
-          escapeHtml(exportFilterLabel('followUpAssignee', 'All')) + '</span>');
+        pills.push(pill('header-pill-filter', 'followUpAssignee',
+          'Assigned to ' + exportFilterLabel('followUpAssignee', 'All'), true));
       }
       if (followUpGroupEl && followUpGroupEl.value !== 'bakery') {
-        pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('followUpGroup', 'Bakery')) + '</span>');
+        pills.push(pill('header-pill-filter', 'followUpGroup', exportFilterLabel('followUpGroup', 'Bakery'), true));
       }
       if (followUpSortEl && followUpSortEl.value !== 'dueAsc') {
-        pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('followUpSort', 'Due Date (Soonest)')) + '</span>');
+        pills.push(pill('header-pill-filter', 'followUpSort', exportFilterLabel('followUpSort', 'Due Date (Soonest)'), true));
       }
-      var fuTitle = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
-      return fuTitle + '<span class="header-sub-pillwrap">' + pills.join('') + '</span>';
+      var fuTitle = visitLogViewTitle('followups');
+      return fuTitle + '<span class="header-sub-pillwrap">' + pills.join('') + headerFilterButton() + '</span>';
     }
 
     if (view === 'unvisited') {
@@ -3637,17 +3658,18 @@ window.GAILS = window.GAILS || {};
         'region': 'Grouped by Region',
         'none': 'Ungrouped'
       };
-      pills.push('<span class="header-pill-core">Unvisited in ' + escapeHtml(periodText) + '</span>');
-      pills.push('<span class="header-pill-core">' + escapeHtml(unvisitedGroupLabels[groupVal] || 'Grouped by Region') + '</span>');
+      pills.push(pill('header-pill-core', 'period', periodText, false));
+      pills.push(pill('header-pill-core', 'group', unvisitedGroupLabels[groupVal] || 'Grouped by Region', false));
 
-      if (searchVal) pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
-      if (regionVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogRegion', 'All regions')) + '</span>');
-      if (opsVals.length) pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogOps', 'All ops areas')) + '</span>');
+      if (searchVal) pills.push(pill('header-pill-filter', 'search', 'Search: "' + searchVal + '"', true));
+      if (regionVals.length) pills.push(pill('header-pill-filter', 'region', exportFilterLabel('visitLogRegion', 'All regions'), true));
+      if (opsVals.length) pills.push(pill('header-pill-filter', 'ops', exportFilterLabel('visitLogOps', 'All ops areas'), true));
 
-      var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
+      var title = visitLogViewTitle('unvisited');
       return title +
         '<span class="header-sub-pillwrap">' +
         pills.join('') +
+        headerFilterButton() +
         '</span>';
     }
 
@@ -3670,18 +3692,18 @@ window.GAILS = window.GAILS || {};
     // the whole of it to find the one value you were checking; separate
     // bubbles also wrap individually beside the title instead of dropping the
     // whole run below it.
-    pills.push('<span class="header-pill-core">' + escapeHtml(periodText) + '</span>');
-    pills.push('<span class="header-pill-core">' + escapeHtml(groupLabels[groupVal] || 'Grouped') + '</span>');
-    pills.push('<span class="header-pill-core">' + escapeHtml(sortLabels[sortVal] || 'Sorted') + '</span>');
+    pills.push(pill('header-pill-core', 'period', periodText, false));
+    pills.push(pill('header-pill-core', 'group', groupLabels[groupVal] || 'Grouped', false));
+    pills.push(pill('header-pill-core', 'sort', sortLabels[sortVal] || 'Sorted', false));
 
     if (searchVal) {
-      pills.push('<span class="header-pill-filter">Search: "' + escapeHtml(searchVal) + '"</span>');
+      pills.push(pill('header-pill-filter', 'search', 'Search: "' + searchVal + '"', true));
     }
     if (regionVals.length) {
-      pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogRegion', 'All regions')) + '</span>');
+      pills.push(pill('header-pill-filter', 'region', exportFilterLabel('visitLogRegion', 'All regions'), true));
     }
     if (opsVals.length) {
-      pills.push('<span class="header-pill-filter">' + escapeHtml(exportFilterLabel('visitLogOps', 'All ops areas')) + '</span>');
+      pills.push(pill('header-pill-filter', 'ops', exportFilterLabel('visitLogOps', 'All ops areas'), true));
     }
     if (typeVal) {
       var typeLabels = {
@@ -3697,13 +3719,14 @@ window.GAILS = window.GAILS || {};
       if (ratingVal && (typeVal === 'cqv' || typeVal === 'cqvFollowUp')) {
         tLabel += ' (' + ratingVal + ')';
       }
-      pills.push('<span class="header-pill-filter">' + escapeHtml(tLabel) + '</span>');
+      pills.push(pill('header-pill-filter', 'type', tLabel, true));
     }
 
-    var title = (window.innerWidth <= 980) ? 'Reports' : 'Bakery Reports';
+    var title = visitLogViewTitle('history');
     return title +
       '<span class="header-sub-pillwrap">' +
       pills.join('') +
+      headerFilterButton() +
       '</span>';
   };
 
@@ -3832,7 +3855,11 @@ window.GAILS = window.GAILS || {};
     if (resetBtn) {
       var searchEl = document.getElementById('visitLogSearch');
       var hasSearch = !!(searchEl && searchEl.value.trim());
-      resetBtn.classList.toggle('has-active-filters', hasSearch || count > 0);
+      var anyActive = hasSearch || count > 0;
+      resetBtn.classList.toggle('has-active-filters', anyActive);
+      // Text button in the drawer header now, so it greys out with nothing
+      // to clear instead of relying on the icon swap it used to do.
+      resetBtn.disabled = !anyActive;
     }
 
     if (!btn || !badge) return;
@@ -3864,7 +3891,11 @@ window.GAILS = window.GAILS || {};
         btn.classList.add('is-open');
         btn.setAttribute('aria-expanded', 'true');
       }
-      document.body.style.overflow = 'hidden';
+      // The mobile sheet covers the page, so it locks scrolling. The
+      // desktop drawer sits beside the content and must leave it alone.
+      if (window.matchMedia('(max-width: 720px)').matches) {
+        document.body.style.overflow = 'hidden';
+      }
       document.body.classList.add('visit-log-filter-open');
       return;
     }
@@ -3890,6 +3921,82 @@ window.GAILS = window.GAILS || {};
     setTimeout(function () {
       if (!backdrop.classList.contains('is-open')) backdrop.hidden = true;
     }, 180);
+  }
+
+  window.GAILS.setVisitLogFiltersOpen = setVisitLogFiltersOpen;
+
+  window.GAILS.isVisitLogFiltersOpen = function () {
+    var panel = document.getElementById('visitLogFilterPanel');
+    return !!panel && panel.classList.contains('is-open');
+  };
+
+  // Clearing one chip from the banner, keyed the same way the chip was
+  // built. Each branch resets its control to the value getVisitLogActive-
+  // FilterCount treats as unset, so the chip and the badge stay in step.
+  window.GAILS.clearVisitLogHeaderFilter = function (key) {
+    var byId = function (id) { return document.getElementById(id); };
+    var resync = [];
+
+    if (key === 'search') {
+      var searchEl = byId('visitLogSearch');
+      if (searchEl) searchEl.value = '';
+    } else if (key === 'region') {
+      setVisitLogFilterValues(byId('visitLogRegion'), []);
+      // Ops areas and bakeries are scoped by region, so both lists widen.
+      populateDropdown('visitLogOps', new Set(getVisitLogOps('')), 'All Areas');
+      populateDirectoryBakeryOptions();
+    } else if (key === 'ops') {
+      setVisitLogFilterValues(byId('visitLogOps'), []);
+      populateDirectoryBakeryOptions();
+    } else if (key === 'bakery') {
+      setVisitLogFilterValues(byId('visitLogBakery'), []);
+    } else if (key === 'type') {
+      var typeEl = byId('visitLogType');
+      var ratingEl = byId('visitLogRating');
+      if (typeEl) typeEl.value = '';
+      if (ratingEl) ratingEl.value = '';
+      syncCqvRatingVisibility();
+      resync = ['visitLogType', 'visitLogRating'];
+    } else if (key === 'followUpAssignee') {
+      var assigneeEl = byId('followUpAssignee');
+      if (assigneeEl) assigneeEl.value = '';
+      window.GAILS._pendingFollowUpAssigneeFilter = '';
+      resync = ['followUpAssignee'];
+    } else if (key === 'followUpGroup') {
+      var fuGroupEl = byId('followUpGroup');
+      if (fuGroupEl) fuGroupEl.value = 'bakery';
+      resync = ['followUpGroup'];
+    } else if (key === 'followUpSort') {
+      var fuSortEl = byId('followUpSort');
+      if (fuSortEl) fuSortEl.value = 'dueAsc';
+      resync = ['followUpSort'];
+    } else {
+      return;
+    }
+
+    if (window.GAILS.syncCustomSelect) {
+      resync.forEach(function (id) { window.GAILS.syncCustomSelect(id); });
+    }
+    syncVisitLogMobileFilterButton();
+    window.GAILS.renderVisitLog();
+  };
+
+  // Same fixed-menu behaviour the dashboard drawer gets. Only index.html
+  // has this panel, and only it loads utils.js alongside — hence both
+  // guards rather than a bare call.
+  function mountVisitLogDrawerMenus() {
+    if (!window.GAILS.mountDrawerMenus) return;
+    var panel = document.getElementById('visitLogFilterPanel');
+    window.GAILS.mountDrawerMenus(panel);
+    window.GAILS.anchorDrawerToBanner(panel);
+  }
+
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', mountVisitLogDrawerMenus);
+    } else {
+      mountVisitLogDrawerMenus();
+    }
   }
 
   var VISIT_LOG_FILTER_STORAGE_KEY = 'gails.visitLogFilters';
@@ -4369,8 +4476,10 @@ window.GAILS = window.GAILS || {};
         if (e.key === 'Escape') setVisitLogFiltersOpen(false);
       });
       if (visitMobileFilterMedia) {
+        // The sheet becomes the drawer rather than being dismissed; only
+        // the scroll lock it took on the way in has to be handed back.
         var closeVisitFilterOnDesktop = function (e) {
-          if (!e.matches) setVisitLogFiltersOpen(false);
+          if (!e.matches) document.body.style.overflow = '';
         };
         if (visitMobileFilterMedia.addEventListener) {
           visitMobileFilterMedia.addEventListener('change', closeVisitFilterOnDesktop);

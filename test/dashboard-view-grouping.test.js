@@ -23,10 +23,10 @@ function createGroupingContext() {
   const GAILS = {
     state: {
       ALL: [
-        { b: 'Alpha', m: 'Jun 26', n: 50, ac: 80, v: 10 },
-        { b: 'Bravo', m: 'Jun 26', n: 70, ac: 90, v: 30 },
-        { b: 'Charlie', m: 'Jun 26', n: 40, ac: 60, v: 5 },
-        { b: 'Delta', m: 'Jun 26', n: 60, ac: 70, v: 15 }
+        { b: 'Alpha', m: 'Jun 26', n: 50, ac: 80, v: 10, s2: 60, ts: 60, ap: 40, atp: 55 },
+        { b: 'Bravo', m: 'Jun 26', n: 70, ac: 90, v: 30, s2: 80, ts: 80, ap: 70, atp: 65 },
+        { b: 'Charlie', m: 'Jun 26', n: 40, ac: 60, v: 5, s2: 50, ts: 50, ap: 20, atp: 30 },
+        { b: 'Delta', m: 'Jun 26', n: 60, ac: 70, v: 15, s2: 70, ts: 70, ap: 60, atp: 50 }
       ],
       MONTHS: ['Jun 26'],
       selectedMonths: ['Jun 26'],
@@ -175,4 +175,31 @@ test('getGroupedAvailableBands reflects the groups\' own bands, not their bakeri
   assert.equal(available.absolute.has('Exceeding'), false);
   assert.equal(available.absolute.has('Meeting'), true);
   assert.equal(available.absolute.has('Approaching'), true);
+});
+
+test('a group carries Coffee Efficiency and the other timeliness metrics', () => {
+  // Anything missing from GROUP_AVERAGED_FIELDS is simply absent on a group
+  // row, and G.avg reads absent as nothing — which is how the Coffee
+  // Efficiency KPI tile read as no data the moment View left Bakeries.
+  const G = createGroupingContext();
+  const northA = G.getGroupedViewData('ops').find((r) => r.b === 'North Ops A');
+
+  assert.equal(northA.ts, 70); // (60 + 80) / 2 — Coffee Efficiency, % under 2 min
+  assert.equal(northA.ts, northA.s2); // ts is s2 by definition, so they must agree
+  assert.equal(northA.ap, 55); // (40 + 70) / 2
+  assert.equal(northA.atp, 60); // (55 + 65) / 2
+});
+
+test('every metric the Overview KPI row reads survives the roll-up', () => {
+  // The tiles average these keys straight off whichever rows are in scope; a
+  // key the roll-up drops shows 0 rather than failing loudly, so pin the set.
+  const G = createGroupingContext();
+  const KPI_FIELDS = ['n', 'ac', 'dr', 'ef', 'fr', 'ts', 'o5', 'at'];
+  ['ops', 'region'].forEach((groupBy) => {
+    G.getGroupedViewData(groupBy).forEach((row) => {
+      KPI_FIELDS.forEach((field) => {
+        assert.ok(field in row, groupBy + ' row ' + row.b + ' is missing ' + field);
+      });
+    });
+  });
 });
