@@ -26493,6 +26493,113 @@ body[data-dash-tab='overview'] .section-page-title {
   border-color: rgba(201, 127, 18, 0.62);
 }
 
+
+/* Multi-select pills use a dashboard-owned tooltip instead of the browser's
+   unstyled title bubble. The label/value hierarchy makes a long selection
+   readable at a glance, while aria-label on the trigger carries the same
+   detail for assistive technology. */
+.header .header-pill__body {
+  position: relative;
+}
+
+.header-pill__tooltip {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  min-width: 190px;
+  max-width: min(340px, calc(100vw - 32px));
+  padding: 10px 12px 11px;
+  border: 1px solid rgba(91, 57, 34, 0.16);
+  border-radius: 10px;
+  background: #FFFDF9;
+  box-shadow:
+    0 12px 30px rgba(47, 27, 20, 0.18),
+    0 2px 7px rgba(47, 27, 20, 0.1);
+  color: var(--text);
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -4px);
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease,
+    visibility 0s linear 0.14s;
+}
+
+.header-pill__tooltip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid rgba(91, 57, 34, 0.16);
+  border-left: 1px solid rgba(91, 57, 34, 0.16);
+  background: #FFFDF9;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.header-pill__tooltip-label {
+  display: block;
+  margin-bottom: 4px;
+  color: #9F6720;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+
+.header-pill__tooltip-values {
+  display: block;
+  color: #3E3933;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (hover: hover) {
+  .header-pill__body:hover > .header-pill__tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+    transition-delay: 0.12s;
+  }
+}
+
+.header-pill__body:focus-visible > .header-pill__tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition-delay: 0.06s;
+}
+
+/* Once either filter surface is open, its controls are the active context.
+   Suppress header tooltips so they cannot overlap or compete with the bar. */
+body:has(#filterControlsPanel.is-open) .header-pill__tooltip,
+body.visit-log-filter-open .header-pill__tooltip {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .header-pill__tooltip {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-pill__tooltip {
+    transition: none;
+  }
+}
+
 .header-pill__body:focus-visible,
 .header-pill__clear:focus-visible,
 .header-pill-add:focus-visible {

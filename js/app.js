@@ -260,21 +260,24 @@
     var selRegions = state.regionFilter || [];
     if (selRegions.length > 0) {
       var rText = selRegions.length === 1 ? selRegions[0] : selRegions.length + ' Regions';
-      pills.push(headerPill('header-pill-filter', 'region', rText, true));
+      var rTooltip = selRegions.length > 1 ? 'Selected regions: ' + selRegions.join(', ') : '';
+      pills.push(headerPill('header-pill-filter', 'region', rText, true, rTooltip));
     }
 
     // Optional bubble: Area (Ops Area)
     var selOps = state.opsFilter || [];
     if (selOps.length > 0) {
       var oText = selOps.length === 1 ? selOps[0] : selOps.length + ' Areas';
-      pills.push(headerPill('header-pill-filter', 'ops', oText, true));
+      var oTooltip = selOps.length > 1 ? 'Selected ops areas: ' + selOps.join(', ') : '';
+      pills.push(headerPill('header-pill-filter', 'ops', oText, true, oTooltip));
     }
 
     // Optional bubble: Bakery
     var selBakeries = state.searchBakery || [];
     if (selBakeries.length > 0) {
       var bText = selBakeries.length === 1 ? selBakeries[0] : selBakeries.length + ' Bakeries';
-      pills.push(headerPill('header-pill-filter', 'bakery', bText, true));
+      var bTooltip = selBakeries.length > 1 ? 'Selected bakeries: ' + selBakeries.join(', ') : '';
+      pills.push(headerPill('header-pill-filter', 'bakery', bText, true, bTooltip));
     }
 
     // Optional bubble: Band

@@ -3574,10 +3574,18 @@ window.GAILS = window.GAILS || {};
     return (window.innerWidth <= 980) ? label.short : label.full;
   }
 
-  var pill = function (kind, key, text, clearable) {
-    if (window.GAILS.headerPill) return window.GAILS.headerPill(kind, key, text, clearable);
+  var pill = function (kind, key, text, clearable, tooltip) {
+    if (window.GAILS.headerPill) return window.GAILS.headerPill(kind, key, text, clearable, tooltip);
     return '<span class="' + kind + '">' + escapeHtml(text) + '</span>';
   };
+
+  function multiSelectPill(key, values, pluralLabel) {
+    var text = values.length === 1 ? values[0] : values.length + ' ' + pluralLabel;
+    var tooltip = values.length > 1
+      ? 'Selected ' + pluralLabel.toLowerCase() + ': ' + values.join(', ')
+      : '';
+    return pill('header-pill-filter', key, text, true, tooltip);
+  }
 
   function headerFilterButton() {
     return window.GAILS.HEADER_FILTER_BTN || '';
@@ -3623,9 +3631,9 @@ window.GAILS = window.GAILS || {};
           ? 'Grouped by ' + exportFilterLabel('visitLogDirectoryGroup', 'None')
           : 'Ungrouped'), false));
       if (searchVal) pills.push(pill('header-pill-filter', 'search', 'Search: "' + searchVal + '"', true));
-      if (regionVals.length) pills.push(pill('header-pill-filter', 'region', exportFilterLabel('visitLogRegion', 'All regions'), true));
-      if (opsVals.length) pills.push(pill('header-pill-filter', 'ops', exportFilterLabel('visitLogOps', 'All ops areas'), true));
-      if (bakeryVals.length) pills.push(pill('header-pill-filter', 'bakery', exportFilterLabel('visitLogBakery', 'All bakeries'), true));
+      if (regionVals.length) pills.push(multiSelectPill('region', regionVals, 'Regions'));
+      if (opsVals.length) pills.push(multiSelectPill('ops', opsVals, 'Ops Areas'));
+      if (bakeryVals.length) pills.push(multiSelectPill('bakery', bakeryVals, 'Bakeries'));
       var directoryTitle = visitLogViewTitle('bakeries');
       return directoryTitle + '<span class="header-sub-pillwrap">' + pills.join('') + headerFilterButton() + '</span>';
     }
@@ -3635,8 +3643,8 @@ window.GAILS = window.GAILS || {};
       var followStatus = window.GAILS._followUpStatusFilter || 'open';
       pills.push(pill('header-pill-core', 'followStatus', statusLabels[followStatus] || 'Open', false));
       if (searchVal) pills.push(pill('header-pill-filter', 'search', 'Search: "' + searchVal + '"', true));
-      if (regionVals.length) pills.push(pill('header-pill-filter', 'region', exportFilterLabel('visitLogRegion', 'All regions'), true));
-      if (opsVals.length) pills.push(pill('header-pill-filter', 'ops', exportFilterLabel('visitLogOps', 'All ops areas'), true));
+      if (regionVals.length) pills.push(multiSelectPill('region', regionVals, 'Regions'));
+      if (opsVals.length) pills.push(multiSelectPill('ops', opsVals, 'Ops Areas'));
       if (followUpAssigneeEl && followUpAssigneeEl.value) {
         pills.push(pill('header-pill-filter', 'followUpAssignee',
           'Assigned to ' + exportFilterLabel('followUpAssignee', 'All'), true));
@@ -3662,8 +3670,8 @@ window.GAILS = window.GAILS || {};
       pills.push(pill('header-pill-core', 'group', unvisitedGroupLabels[groupVal] || 'Grouped by Region', false));
 
       if (searchVal) pills.push(pill('header-pill-filter', 'search', 'Search: "' + searchVal + '"', true));
-      if (regionVals.length) pills.push(pill('header-pill-filter', 'region', exportFilterLabel('visitLogRegion', 'All regions'), true));
-      if (opsVals.length) pills.push(pill('header-pill-filter', 'ops', exportFilterLabel('visitLogOps', 'All ops areas'), true));
+      if (regionVals.length) pills.push(multiSelectPill('region', regionVals, 'Regions'));
+      if (opsVals.length) pills.push(multiSelectPill('ops', opsVals, 'Ops Areas'));
 
       var title = visitLogViewTitle('unvisited');
       return title +
@@ -3700,10 +3708,10 @@ window.GAILS = window.GAILS || {};
       pills.push(pill('header-pill-filter', 'search', 'Search: "' + searchVal + '"', true));
     }
     if (regionVals.length) {
-      pills.push(pill('header-pill-filter', 'region', exportFilterLabel('visitLogRegion', 'All regions'), true));
+      pills.push(multiSelectPill('region', regionVals, 'Regions'));
     }
     if (opsVals.length) {
-      pills.push(pill('header-pill-filter', 'ops', exportFilterLabel('visitLogOps', 'All ops areas'), true));
+      pills.push(multiSelectPill('ops', opsVals, 'Ops Areas'));
     }
     if (typeVal) {
       var typeLabels = {

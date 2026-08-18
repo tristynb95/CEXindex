@@ -423,10 +423,22 @@ window.GAILS.formatSecs = function(secs) {
 // render into #headerSub, so they share one chip vocabulary: a wrapper
 // carrying the chip surface, a body button that opens the drawer, and an
 // optional clear button. Nested <button> is invalid, hence the wrapper.
-window.GAILS.headerPill = function (kind, key, text, clearable) {
+window.GAILS.headerPill = function (kind, key, text, clearable, tooltip) {
   var escape = window.GAILS.escapeHtml;
+  var tooltipText = tooltip ? String(tooltip) : '';
+  var tooltipSeparator = tooltipText.indexOf(': ');
+  var tooltipLabel = tooltipSeparator === -1 ? 'Selected filters' : tooltipText.slice(0, tooltipSeparator);
+  var tooltipValues = tooltipSeparator === -1 ? tooltipText : tooltipText.slice(tooltipSeparator + 2);
+  var tooltipAttrs = tooltipText
+    ? ' aria-label="' + escape(text + '. ' + tooltipText) + '"'
+    : '';
+  var tooltipMarkup = tooltipText
+    ? '<span class="header-pill__tooltip" aria-hidden="true">' +
+      '<span class="header-pill__tooltip-label">' + escape(tooltipLabel) + '</span>' +
+      '<span class="header-pill__tooltip-values">' + escape(tooltipValues) + '</span></span>'
+    : '';
   var body = '<button type="button" class="header-pill__body" data-filter-pill="' +
-    escape(key) + '">' + escape(text) + '</button>';
+    escape(key) + '"' + tooltipAttrs + '>' + escape(text) + tooltipMarkup + '</button>';
   var clear = clearable
     ? '<button type="button" class="header-pill__clear" data-filter-clear="' + escape(key) +
       '" aria-label="Clear ' + escape(text) + ' filter">\u00d7</button>'

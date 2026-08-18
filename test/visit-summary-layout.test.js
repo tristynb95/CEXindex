@@ -124,3 +124,29 @@ test('follow-up rows always show their real bakery and ops area, matching Visit 
   assert.match(source, /var opsLabel = \(G\.getBakeryOps \? G\.getBakeryOps\(t\.bakery\) : ''\)/);
   assert.match(source, /class="visit-log-row__bakery-col"/);
 });
+
+test('multi-select header chips show counts with hover details', () => {
+  const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
+  const utils = fs.readFileSync(path.join(root, 'js', 'utils.js'), 'utf8');
+  const reports = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+
+  assert.match(utils, /headerPill = function \(kind, key, text, clearable, tooltip\)/);
+  assert.doesNotMatch(utils, /title=\"' \+ escape\(tooltipText\)/);
+  assert.match(utils, /aria-label=\"' \+ escape\(text \+ '\. ' \+ tooltipText\)/);
+  assert.match(utils, /class=\"header-pill__tooltip\" aria-hidden=\"true\"/);
+  assert.match(utils, /header-pill__tooltip-label/);
+  assert.match(utils, /header-pill__tooltip-values/);
+  assert.match(styles, /body:has\(#filterControlsPanel\.is-open\) \.header-pill__tooltip,[\s\S]*?body\.visit-log-filter-open \.header-pill__tooltip \{\s*display: none;/);
+
+  assert.match(app, /selRegions\.length \+ ' Regions'[\s\S]*?Selected regions:/);
+  assert.match(app, /selOps\.length \+ ' Areas'[\s\S]*?Selected ops areas:/);
+  assert.match(app, /selBakeries\.length \+ ' Bakeries'[\s\S]*?Selected bakeries:/);
+
+  assert.match(reports, /function multiSelectPill\(key, values, pluralLabel\)/);
+  assert.match(reports, /values\.length === 1 \? values\[0\] : values\.length \+ ' ' \+ pluralLabel/);
+  assert.match(reports, /values\.join\(', '\)/);
+  assert.match(reports, /multiSelectPill\('region', regionVals, 'Regions'\)/);
+  assert.match(reports, /multiSelectPill\('ops', opsVals, 'Ops Areas'\)/);
+  assert.match(reports, /multiSelectPill\('bakery', bakeryVals, 'Bakeries'\)/);
+});
