@@ -24622,11 +24622,20 @@ body[data-dash-tab="cei"] .methodology {
     box-shadow: none;
   }
 
+  /* Hand 6px of the rail's own padding to the scrolling wrapper below, so the
+     first control's hover ring and lift render inside the scrollport instead
+     of being shaved off at its top/side edge. Total inset is unchanged. */
+  #dashboardContent .dashboard-sidebar,
+  #dashboardContent .dashboard-workspace[data-sidebar-collapsed="true"] .dashboard-sidebar {
+    padding: 6px 6px 12px;
+  }
+
   /* The rail owns the fixed position. This wrapper only supplies an internal
      scrollbar when a short viewport cannot fit every menu item. */
   #dashboardContent .dashboard-sidebar__pinned {
     height: 100%;
     max-height: 100%;
+    padding: 6px 6px 0;
     overflow-x: hidden;
     overflow-y: auto;
     scrollbar-width: thin;
