@@ -1865,11 +1865,11 @@ document.addEventListener('keydown', function (event) {
   // month when a rolling window is active. Shared by the visit filter and the
   // area coverage counts so both agree on what "visited in period" means.
   //
-  // Both maps read the same selected period. The Focus map used to answer from
-  // a fixed "visited in the last six months" rule instead, which meant a bakery
-  // stayed marked visited for half a year with no way to ask about a narrower
-  // window — the Focus period controls being locked left nothing to ask with.
-  // Unlocking them on that sub-tab (js/app.js) is what makes this read live.
+  // Both maps read the same selected period. On the network map that is
+  // whatever the user picked; on the Focus map the period controls are locked
+  // (js/app.js) and the selection is held at All Time, so "visited in period"
+  // there means "visited at all" — the same all-history window the Focus
+  // scores are built from.
   function getPeriodMonths() {
     var months = (GAILS.state && GAILS.state.selectedMonths) || [];
     var rollingEl = document.getElementById('rollingWindow');

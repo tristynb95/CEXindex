@@ -129,7 +129,7 @@
     return selectedMonths[0] + ' \u2013 ' + selectedMonths[count - 1];
   }
 
-  function setFocusPeriodControls(isFocus, isFocusMap) {
+  function setFocusPeriodControls(isFocus) {
     [
       { id: 'monthSelect', label: '\u2014 Select \u2014' },
       { id: 'rollingWindow', label: 'All Time' }
@@ -142,27 +142,20 @@
         select.title = 'Focus Bakeries uses all completed history and weights recent months most.';
       } else {
         delete select.dataset.lockedLabel;
-        // On the Focus map the controls are live but narrower in scope than
-        // anywhere else, so say what they actually move before anyone reads a
-        // changed period as a changed score.
-        if (isFocusMap) {
-          select.title = 'Sets which period the map counts as visited. Focus scores still use all completed history.';
-        } else {
-          select.removeAttribute('title');
-        }
+        select.removeAttribute('title');
       }
       if (G.syncCustomSelect) G.syncCustomSelect(select);
     });
   }
 
   // Which Focus sub-tab is showing. The period controls are locked across the
-  // Focus tab because its scoring always spans all completed history \u2014 except
-  // on the map, where the visited/unvisited overlay is the whole point and can
-  // only answer "who have we been to lately" if you can pick the window.
+  // whole Focus tab, the map included, because its scoring always spans all
+  // completed history \u2014 a period control that cannot move a single score reads
+  // as broken, so the map answers "visited" over that same all-history window.
   var activeTargetSubtab = 'summary';
-  // The dashboard's own period, parked while the Focus map borrows the
-  // controls, so leaving the map puts every other tab back on the period the
-  // user chose there. Null whenever the map is not holding them.
+  // The dashboard's own period, parked while the Focus map holds the selection
+  // at all time, so leaving the map puts every other tab back on the period the
+  // user chose there. Null whenever the map is not holding it.
   var focusMapPeriodMemo = null;
 
   function applyPeriodSelection(month, rolling) {
@@ -186,7 +179,7 @@
       name = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
     }
     var onFocusMap = name === 'target' && activeTargetSubtab === 'map';
-    setFocusPeriodControls(name === 'target' && !onFocusMap, onFocusMap);
+    setFocusPeriodControls(name === 'target');
 
     if (onFocusMap && !focusMapPeriodMemo) {
       var monthSelect = document.getElementById('monthSelect');
@@ -195,8 +188,9 @@
         month: monthSelect ? monthSelect.value : '',
         rolling: rollingWindow ? rollingWindow.value : '1'
       };
-      // The map opens on the widest view \u2014 every month, no single month \u2014 so
-      // "visited" starts as "ever" and narrows only when asked.
+      // The map runs on the widest view \u2014 every month, no single month \u2014 so
+      // "visited" means "ever", matching the All Time label the locked controls
+      // show and the all-history basis of the Focus scores themselves.
       applyPeriodSelection('', '0');
     } else if (!onFocusMap && focusMapPeriodMemo) {
       var memo = focusMapPeriodMemo;

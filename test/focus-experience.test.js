@@ -14,7 +14,7 @@ const customSelects = fs.readFileSync(path.join(root, 'js', 'custom-selects.js')
 
 test('locks the Focus period controls to a clear All Time display without changing the saved period', () => {
   assert.match(app, /syncFocusPeriodControls\(name\)/);
-  assert.match(app, /setFocusPeriodControls\(name === 'target' && !onFocusMap, onFocusMap\)/);
+  assert.match(app, /setFocusPeriodControls\(name === 'target'\)/);
   assert.match(app, /\{ id: 'rollingWindow', label: 'All Time' \}/);
   assert.match(app, /select\.dataset\.lockedLabel = config\.label/);
   assert.match(customSelects, /select\.dataset\.lockedLabel/);
@@ -22,21 +22,24 @@ test('locks the Focus period controls to a clear All Time display without changi
   assert.doesNotMatch(html, /id="focusPeriodContext"/);
 });
 
-test('the Focus map unlocks the period controls, and only that sub-tab', () => {
+test('the Focus map keeps the period controls locked, like every other Focus sub-tab', () => {
   assert.match(app, /var onFocusMap = name === 'target' && activeTargetSubtab === 'map'/);
-  // The sub-tab switch re-syncs, so stepping between Focus sub-tabs locks and
-  // unlocks without leaving the tab.
+  // The sub-tab switch re-syncs, so stepping onto the map holds the controls at
+  // All Time without leaving the tab.
   assert.match(app, /activeTargetSubtab = name;/);
   assert.match(app, /panel\.classList\.toggle\('active', panel\.dataset\.targetSubtabPanel === name\);\s*\}\);[\s\S]{0,220}?syncFocusPeriodControls\(\);/);
-  // Unlocked, the controls say what they move: the map overlay, not the scores.
-  assert.match(app, /Sets which period the map counts as visited\. Focus scores still use all completed history\./);
+  // No Focus sub-tab offers a period the scores would ignore, so no control
+  // carries a map-only explanation of what changing it would move.
+  assert.doesNotMatch(app, /Sets which period the map counts as visited/);
+  assert.doesNotMatch(app, /isFocusMap/);
+  assert.match(app, /select\.title = 'Focus Bakeries uses all completed history and weights recent months most\.'/);
 });
 
 test('the Focus map opens on all months and hands the period back when it is left', () => {
   assert.match(app, /applyPeriodSelection\('', '0'\)/);
   assert.match(app, /focusMapPeriodMemo = \{\s*month: monthSelect \? monthSelect\.value : '',\s*rolling: rollingWindow \? rollingWindow\.value : '1'\s*\}/);
-  // Leaving restores whatever the rest of the dashboard was set to, so
-  // borrowing the controls never rewrites the user's own period.
+  // Leaving restores whatever the rest of the dashboard was set to, so holding
+  // the Focus map at All Time never rewrites the user's own period.
   assert.match(app, /\} else if \(!onFocusMap && focusMapPeriodMemo\) \{[\s\S]*?applyPeriodSelection\(memo\.month, memo\.rolling\)/);
   assert.match(app, /state\.selectedMonths = month\s*\?\s*\[month\]\s*:\s*G\.resolvePeriodMonths\(rolling, state\.MONTHS, state\.ALL\)/);
 });
