@@ -577,6 +577,9 @@
     // After the panel is on screen: entering or leaving the map re-renders
     // through applyPeriodSelection, and only an active panel redraws markers.
     syncFocusPeriodControls();
+    // The period stops counting as a filter the moment it locks, so the badge
+    // and Reset have to be re-read on the way in and out of the map.
+    syncFilterBadge();
     if (name === 'map') {
       requestAnimationFrame(function () {
         requestAnimationFrame(function () { G.initTargetMap(); });
@@ -637,6 +640,9 @@
     syncDashboardViewFilterAvailability();
     renderHeaderSummary();
     updateBandFilterOptions();
+    // View counts as a filter only on the tabs it governs, and Period only
+    // where it is unlocked, so the badge and Reset are tab-dependent.
+    syncFilterBadge();
 
     // The two page-level filter bars swap: Bakery Reports filters its own data,
     // so it hides the shared bar and shows its own in the same slot above the
@@ -2198,24 +2204,31 @@
     }
     syncDashboardViewFilterAvailability();
 
-    if (rollingWindow) {
-      rollingWindow.value = '3';
-      G.syncCustomSelect(rollingWindow);
-    }
+    if (focusMapPeriodMemo) {
+      // The Focus map holds the live period at All Time, so Reset defaults the
+      // parked dashboard period instead — the map keeps its window, and the
+      // rest of the dashboard is on Last 3 Months again once the tab is left.
+      focusMapPeriodMemo = { month: '', rolling: '3' };
+    } else {
+      if (rollingWindow) {
+        rollingWindow.value = '3';
+        G.syncCustomSelect(rollingWindow);
+      }
 
-    if (monthSelect) {
-      monthSelect.value = '';
-      G.syncCustomSelect(monthSelect);
+      if (monthSelect) {
+        monthSelect.value = '';
+        G.syncCustomSelect(monthSelect);
+      }
+
+      state.selectedMonths = (state.MONTHS && state.MONTHS.length)
+        ? G.resolvePeriodMonths(rollingWindow ? rollingWindow.value : '3', state.MONTHS, state.ALL)
+        : [];
     }
 
     if (bandFilter) {
       bandFilter.value = '';
       G.syncCustomSelect(bandFilter);
     }
-
-    state.selectedMonths = (state.MONTHS && state.MONTHS.length)
-      ? G.resolvePeriodMonths(rollingWindow ? rollingWindow.value : '3', state.MONTHS, state.ALL)
-      : [];
 
     if (G.rebuildRegionMultiselect) G.rebuildRegionMultiselect();
     if (G.rebuildOpsMultiselect) G.rebuildOpsMultiselect();
@@ -2225,12 +2238,41 @@
     refresh();
   }
 
+  // The two selects Reset also restores, measured against the values it
+  // restores them to: View sits at Bakeries and Period at Last 3 Months on a
+  // clean dashboard, so anything else is a filter the user set and Reset can
+  // undo.
+  function isNonDefaultDashboardView() {
+    // Only where the toggle governs anything — the tabs fixed to bakery level
+    // hide it, and a grouped view parked there is not something Reset should
+    // advertise. Same test the View header pill uses.
+    var activePanel = document.querySelector('.tab-content.active');
+    var currentTab = activePanel ? activePanel.id.replace(/^tab-/, '') : 'overview';
+    return !!(DASHBOARD_VIEW_SCOPED_TABS && DASHBOARD_VIEW_SCOPED_TABS[currentTab]) &&
+      state.dashboardView !== 'bakeries';
+  }
+
+  function isNonDefaultPeriod() {
+    var monthSelect = document.getElementById('monthSelect');
+    var rollingWindow = document.getElementById('rollingWindow');
+    if (!monthSelect || !rollingWindow) return false;
+    // Locked on Focus Bakeries: the period showing there is the tab's, not the
+    // user's, so it is not a filter anyone chose or can clear.
+    if (monthSelect.disabled) return false;
+    // Month and Period are one decision — picking a month parks Period on All
+    // Time — so a pinned month scores once, not twice.
+    if (monthSelect.value) return true;
+    return rollingWindow.value !== '3';
+  }
+
   function countActiveFilters() {
     var count = 0;
     if (state.regionFilter && state.regionFilter.length) count++;
     if (state.opsFilter && state.opsFilter.length) count++;
     if (state.searchBakery && state.searchBakery.length) count++;
     if (state.bandFilter) count++;
+    if (isNonDefaultDashboardView()) count++;
+    if (isNonDefaultPeriod()) count++;
     return count;
   }
 
