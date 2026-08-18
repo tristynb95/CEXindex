@@ -76,6 +76,17 @@ test('the Bakery Reports filters are a page-level bar with a balanced Visit Hist
   assert.match(styles, /\.visit-log-filter-bar #visitLogPeriodControl \{\s*order: -1;/);
 });
 
+test('filter drawers cannot open over an active modal', () => {
+  const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
+  const reports = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
+  const utils = fs.readFileSync(path.join(root, 'js', 'utils.js'), 'utf8');
+
+  assert.match(utils, /isModalOpen = function\(\)/);
+  assert.match(utils, /querySelectorAll\('dialog\[open\], \[aria-modal=true\]'\)/);
+  assert.match(app, /function openFilterSidePanel\(\) \{[\s\S]*?G\.isModalOpen\(\)[\s\S]*?filterSidePanelOpen = true/);
+  assert.match(reports, /function setVisitLogFiltersOpen\(open\) \{[\s\S]*?open && typeof window\.GAILS\.isModalOpen[\s\S]*?isModalOpen\(\)/);
+});
+
 test('the header breadcrumb gives each setting its own bubble', () => {
   const source = fs.readFileSync(path.join(root, 'js', 'visit-report.js'), 'utf8');
 

@@ -2242,6 +2242,7 @@
 
   function openFilterSidePanel() {
     if (!filterControlsPanel) return;
+    if (typeof G.isModalOpen === 'function' && G.isModalOpen()) return;
     filterSidePanelOpen = true;
     clearFilterDragStyles();
     filterControlsPanel.classList.add('is-open');

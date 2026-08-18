@@ -1,6 +1,30 @@
 // ========== MONTH PARSING ==========
 window.GAILS = window.GAILS || {};
 
+// Filter drawers live alongside modal markup on several pages. Keep their
+// open guards in one place so a banner pill cannot surface page controls over
+// an active dialog, regardless of which kind of modal is currently visible.
+window.GAILS.isModalOpen = function() {
+  if (typeof document === 'undefined' || !document.querySelectorAll) return false;
+
+  return Array.prototype.some.call(
+    document.querySelectorAll('dialog[open], [aria-modal=true]'),
+    function(modal) {
+      var node = modal;
+      while (node && node.nodeType === 1) {
+        if (node.hidden || node.getAttribute('aria-hidden') === 'true') return false;
+        if (node.style && (node.style.display === 'none' || node.style.visibility === 'hidden')) return false;
+        if (typeof window !== 'undefined' && window.getComputedStyle) {
+          var styles = window.getComputedStyle(node);
+          if (styles.display === 'none' || styles.visibility === 'hidden') return false;
+        }
+        node = node.parentElement;
+      }
+      return true;
+    }
+  );
+};
+
 // ---------- subtle site-wide success notifications ----------
 // Mutation forms live on several pages, but their confirmation should feel
 // identical everywhere. The region is created lazily so pages that never save

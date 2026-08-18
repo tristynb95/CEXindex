@@ -3886,6 +3886,7 @@ window.GAILS = window.GAILS || {};
     var panel = document.getElementById('visitLogFilterPanel');
     var backdrop = document.getElementById('visitLogFilterBackdrop');
     if (!panel || !backdrop) return;
+    if (open && typeof window.GAILS.isModalOpen === 'function' && window.GAILS.isModalOpen()) return;
 
     panel.classList.remove('is-dragging');
     panel.style.transform = '';
