@@ -49,10 +49,10 @@ test('Reset defaults the parked period rather than the one the Focus map holds',
   assert.match(app, /if \(focusMapPeriodMemo\) \{[\s\S]*?focusMapPeriodMemo = \{ month: '', rolling: '1' \};\s*\} else \{/);
 });
 
-// The banner Reset button (js/utils.js HEADER_RESET_BTN) has no chip of its
-// own for Period, since Period lives in the always-shown core pill — so its
-// visibility has to fold in isNonDefaultPeriod() directly rather than relying
-// solely on hasActiveFilterPills(pills).
-test('the banner reset button also reacts to a non-default period, not just filter chips', () => {
-  assert.match(app, /var showReset = \(G\.hasActiveFilterPills && G\.hasActiveFilterPills\(pills\)\) \|\| isNonDefaultPeriod\(\);/);
+// The banner Reset button (js/utils.js HEADER_RESET_BTN) is scoped to the
+// filter chips only — Period/Month live in the core pill and are
+// deliberately excluded, so changing the time window alone must not surface
+// a Reset button that only clears filters.
+test('the banner reset button ignores Period/Month and only reacts to filter chips', () => {
+  assert.match(app, /var showReset = G\.hasActiveFilterPills && G\.hasActiveFilterPills\(pills\);/);
 });

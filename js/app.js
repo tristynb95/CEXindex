@@ -289,9 +289,10 @@
       pills.push(headerPill('header-pill-filter', 'band', bandText, true));
     }
 
-    // Period has no chip of its own (it lives in the core pill), so a pinned
-    // month or non-default period wouldn't otherwise trip the reset button.
-    var showReset = (G.hasActiveFilterPills && G.hasActiveFilterPills(pills)) || isNonDefaultPeriod();
+    // Period/Month live in the core pill, not a clearable chip, and are
+    // deliberately left out of this — Reset here is scoped to the filter
+    // chips only, not the time window.
+    var showReset = G.hasActiveFilterPills && G.hasActiveFilterPills(pills);
     headerSub.innerHTML = prefix +
       '<span class="header-sub-pillwrap">' +
       pills.join('') +
