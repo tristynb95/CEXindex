@@ -388,8 +388,10 @@
   // #monthSelect pins the exact date, #rollingWindow the rolling window —
   // whichever the current label came from is the one worth opening.
   function openPeriodFilterControl() {
+    var wasOpen = filterSidePanelOpen;
     openFilterSidePanel();
-    requestAnimationFrame(function () {
+
+    function clickPeriodTrigger() {
       var monthEl = document.getElementById('monthSelect');
       var target = (monthEl && monthEl.value) ? monthEl : document.getElementById('rollingWindow');
       var wrapper = target && target.closest('.filter-select');
@@ -397,7 +399,36 @@
       if (!trigger || trigger.disabled) return;
       if (wrapper.scrollIntoView) wrapper.scrollIntoView({ block: 'nearest' });
       trigger.click();
-    });
+    }
+
+    // On desktop the panel slides in under a CSS transform transition, and
+    // the dropdown's fixed position (GAILS.mountDrawerMenus) is computed from
+    // the trigger's live bounding rect the moment it opens. Clicking on the
+    // very next frame — before that slide-in settles — freezes the menu at
+    // the trigger's still-hidden, mid-transition position instead of its
+    // final spot under the row. Waiting for the panel's own transition (with
+    // a timeout fallback in case it was already open, so nothing transitions)
+    // keeps this consistent with opening the panel by hand and clicking the
+    // control afterwards.
+    if (filterControlsPanel && !wasOpen && window.matchMedia('(min-width: 721px)').matches) {
+      var settled = false;
+      var fallback;
+      var onTransitionEnd = function (e) {
+        if (e.target !== filterControlsPanel || e.propertyName !== 'transform') return;
+        finish();
+      };
+      function finish() {
+        if (settled) return;
+        settled = true;
+        filterControlsPanel.removeEventListener('transitionend', onTransitionEnd);
+        clearTimeout(fallback);
+        requestAnimationFrame(clickPeriodTrigger);
+      }
+      filterControlsPanel.addEventListener('transitionend', onTransitionEnd);
+      fallback = setTimeout(finish, 360);
+    } else {
+      requestAnimationFrame(clickPeriodTrigger);
+    }
   }
 
   function updateDashboardActiveView(name) {

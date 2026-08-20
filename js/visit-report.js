@@ -2492,15 +2492,47 @@ window.GAILS = window.GAILS || {};
   // title's period button is a one-click shortcut rather than just a signal
   // to go find the funnel.
   function openVisitLogPeriodFilterControl() {
+    var panel = document.getElementById('visitLogFilterPanel');
+    var wasOpen = panel && panel.classList.contains('is-open');
     setVisitLogFiltersOpen(true);
-    requestAnimationFrame(function () {
+
+    function clickPeriodTrigger() {
       var periodEl = document.getElementById('visitLogPeriod');
       var wrapper = periodEl && periodEl.closest('.filter-select');
       var trigger = wrapper && wrapper.querySelector('.filter-select__trigger');
       if (!trigger || trigger.disabled) return;
       if (wrapper.scrollIntoView) wrapper.scrollIntoView({ block: 'nearest' });
       trigger.click();
-    });
+    }
+
+    // On desktop the panel slides in under a CSS transform transition, and
+    // the dropdown's fixed position (GAILS.mountDrawerMenus) is computed from
+    // the trigger's live bounding rect the moment it opens. Clicking on the
+    // very next frame — before that slide-in settles — freezes the menu at
+    // the trigger's still-hidden, mid-transition position instead of its
+    // final spot under the row. Waiting for the panel's own transition (with
+    // a timeout fallback in case it was already open, so nothing transitions)
+    // keeps this consistent with opening the panel by hand and clicking the
+    // control afterwards.
+    if (panel && !wasOpen && window.matchMedia('(min-width: 721px)').matches) {
+      var settled = false;
+      var fallback;
+      var onTransitionEnd = function (e) {
+        if (e.target !== panel || e.propertyName !== 'transform') return;
+        finish();
+      };
+      function finish() {
+        if (settled) return;
+        settled = true;
+        panel.removeEventListener('transitionend', onTransitionEnd);
+        clearTimeout(fallback);
+        requestAnimationFrame(clickPeriodTrigger);
+      }
+      panel.addEventListener('transitionend', onTransitionEnd);
+      fallback = setTimeout(finish, 360);
+    } else {
+      requestAnimationFrame(clickPeriodTrigger);
+    }
   }
 
   document.addEventListener('click', function (event) {
