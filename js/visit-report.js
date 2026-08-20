@@ -967,7 +967,7 @@ window.GAILS = window.GAILS || {};
     var cards = [
       // Same label vocabulary as every other report type: "Score" leads, then
       // the points behind it, then who and when.
-      { label: 'Score', value: scoreText },
+      { label: 'Score', value: scoreText, color: bandColor },
       { label: 'Rating', value: band || '—', color: bandColor },
       { label: 'Points', value: (record.score != null) ? record.score + ' / ' + (record.scoreMax != null ? record.scoreMax : '—') : '—' },
       { label: 'Coffee Partner', value: record.auditorName || '—' },
@@ -3906,6 +3906,16 @@ window.GAILS = window.GAILS || {};
       resetBtn.disabled = !anyActive;
     }
 
+    // Full-width bar in the mobile sheet body — same active-state condition
+    // as the header's reset above, just a separate element (mirrors the
+    // dashboard drawer's filterPanelReset + desktopFilterReset pair).
+    var resetBarBtn = document.getElementById('visitLogPanelResetBtn');
+    if (resetBarBtn) {
+      var searchElForBar = document.getElementById('visitLogSearch');
+      var hasSearchForBar = !!(searchElForBar && searchElForBar.value.trim());
+      resetBarBtn.disabled = !(hasSearchForBar || count > 0);
+    }
+
     if (!btn || !badge) return;
     btn.classList.toggle('has-active-filters', count > 0);
     if (count > 0) {
@@ -4508,6 +4518,7 @@ window.GAILS = window.GAILS || {};
       var followUpAssigneeEl = document.getElementById('followUpAssignee');
       var periodEl = document.getElementById('visitLogPeriod');
       var resetBtn = document.getElementById('visitLogResetBtn');
+      var resetBarBtn = document.getElementById('visitLogPanelResetBtn');
       var mobileFilterBtn = document.getElementById('visitLogMobileFilterBtn');
       var mobileFilterCloseBtn = document.getElementById('visitLogFilterCloseBtn');
       var mobileFilterBackdrop = document.getElementById('visitLogFilterBackdrop');
@@ -4978,8 +4989,8 @@ window.GAILS = window.GAILS || {};
         });
       }
 
-      if (resetBtn) {
-        resetBtn.addEventListener('click', function () {
+      if (resetBtn || resetBarBtn) {
+        var handleVisitLogFilterReset = function () {
           try { localStorage.removeItem(VISIT_LOG_FILTER_STORAGE_KEY); } catch (e) { /* storage unavailable */ }
           if (searchEl) searchEl.value = '';
           setVisitLogFilterValues(regionEl, []);
@@ -5017,7 +5028,9 @@ window.GAILS = window.GAILS || {};
             window.GAILS.syncCustomSelect('followUpSort');
           }
           window.GAILS.renderVisitLog();
-        });
+        };
+        if (resetBtn) resetBtn.addEventListener('click', handleVisitLogFilterReset);
+        if (resetBarBtn) resetBarBtn.addEventListener('click', handleVisitLogFilterReset);
       }
     }
 

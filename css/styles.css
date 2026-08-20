@@ -3041,8 +3041,17 @@ canvas {
     padding: 22px 20px 24px;
   }
 
-  .dashboard-workspace__menu-btn {
+  /* Every other tab is fully covered by the bottom nav, so the button is
+     just clutter there — shown only where it is the sole way to reach
+     sub-views (Focus Bakeries' summary/list/table/graphs/map/feedback). */
+  body[data-dash-tab="target"] .dashboard-workspace__menu-btn {
     display: inline-flex;
+  }
+
+  /* Same phantom-row problem the desktop rule above already solves for: an
+     empty toolbar row still costs a grid gap above the page title. */
+  body:not([data-dash-tab="target"]) .dashboard-workspace__toolbar {
+    display: none;
   }
 
   /* The rail's collapse control doubles as the drawer's close button here —
@@ -11295,7 +11304,7 @@ body.dashboard-nav-open .filter-side-tab {
   /* Scrollable body area */
   .filter-controls-body {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     overflow-y: auto;
     overflow-x: hidden;
     flex: 1;
@@ -13197,7 +13206,8 @@ body.map-fullscreen-active .dashboard-workspace__main {
 
 .visit-log-mobile-filter-btn,
 .visit-log-filter-backdrop,
-.visit-log-filter-panel__header {
+.visit-log-filter-panel__header,
+.visit-log-filter-panel__reset-bar {
   display: none;
 }
 
@@ -13682,10 +13692,19 @@ body.visit-log-filter-open .mobile-bottom-nav {
 }
 
 @media (max-width: 720px) {
+  /* All real content moves into the fixed sheet/FAB below, which escape
+     normal flow — without this the container itself still renders as an
+     empty white toolbar pill above the page. */
   .visit-log-filters {
     grid-template-columns: 1fr;
     align-items: end;
-    padding: 12px 14px;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    margin-bottom: 0;
+    min-height: 0;
+    gap: 0;
   }
 
   .visit-log-filters>.visit-log-filter-control {
@@ -13779,7 +13798,9 @@ body.visit-log-filter-open .mobile-bottom-nav {
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 4090;
+    /* Below the app's own sticky header (z-index:100, see .header) so the
+       banner stays visible above the sheet — matches .filter-side-backdrop. */
+    z-index: 44;
     background: rgba(34, 31, 26, 0.42);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
@@ -13805,7 +13826,12 @@ body.visit-log-filter-open .mobile-bottom-nav {
     width: 100vw;
     height: 100dvh;
     max-height: none;
-    z-index: 4100;
+    /* Below the app's own sticky header (z-index:100) so the banner shows
+       through above the sheet — matches .filter-controls. Establishes its
+       own stacking context, so the close pill (4110) and the dropdown
+       menus (4120) inside it stay correctly ordered relative to each other
+       regardless of this being lower than their old values. */
+    z-index: 46;
     flex-direction: column;
     background:
       radial-gradient(ellipse 100% 30% at 50% 0%, rgba(178, 42, 36, 0.08) 0%, transparent 65%),
@@ -13834,6 +13860,11 @@ body.visit-log-filter-open .mobile-bottom-nav {
     transition: none;
   }
 
+  /* Invisible layout shell — the app's own sticky header (z-index:100) sits
+     above this panel's top edge and covers it, exactly like the dashboard
+     drawer's .filter-panel-header. Its only visible child is Close, which
+     escapes to a fixed floating pill below; Reset moves into the body as a
+     full-width bar (.visit-log-filter-panel__reset-bar). */
   .visit-log-filter-panel__header {
     display: flex;
     align-items: center;
@@ -13847,26 +13878,42 @@ body.visit-log-filter-open .mobile-bottom-nav {
     display: none;
   }
 
+  #visitLogFilterPanel .visit-log-filter-panel__header .visit-log-filter-panel__reset {
+    display: none;
+  }
+
+  /* Identical to .filter-panel-close-fab on the dashboard drawer. */
   .visit-log-filter-panel__close {
-    position: fixed;
-    right: 16px;
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    position: absolute;
+    right: 20px;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     z-index: 4110;
     width: auto;
-    height: 46px;
-    min-height: 46px;
-    padding: 0 16px;
-    display: inline-flex;
+    height: auto;
+    min-height: 48px;
+    padding: 0 22px;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    border: none;
     border-radius: 999px;
-    border: 1px solid rgba(70, 14, 11, 0.4);
-    background: linear-gradient(135deg, #B5312A 0%, #A32520 100%);
+    background: var(--accent);
     color: #fff;
-    font: 700 0.76rem/1 Inter, system-ui, sans-serif;
-    box-shadow: 0 8px 28px rgba(120, 28, 22, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    font: 700 0.86rem/1 var(--font);
+    letter-spacing: 0.01em;
+    box-shadow: 0 8px 24px rgba(178, 42, 36, 0.4);
     cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .visit-log-filter-panel__close:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 10px 28px rgba(178, 42, 36, 0.48);
+  }
+
+  .visit-log-filter-panel__close:active {
+    transform: scale(0.96);
   }
 
   .visit-log-filter-panel__close svg {
@@ -13878,13 +13925,49 @@ body.visit-log-filter-open .mobile-bottom-nav {
     content: "Close";
   }
 
+  /* Full-width bar, matching .filter-reset-btn / .filter-control--reset on
+     the dashboard drawer — display:none by default (see base rule below) so
+     it doesn't also show up flattened into the desktop toolbar. */
+  .visit-log-filter-panel__body .visit-log-filter-panel__reset-bar {
+    display: inline-flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-content: center;
+    margin-top: 8px;
+    min-height: 42px;
+    padding: 6px 16px;
+    border-radius: 12px;
+    font-family: var(--font);
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: linear-gradient(180deg, rgba(34, 31, 26, 0.04) 0%, rgba(34, 31, 26, 0.01) 100%), rgba(255, 255, 255, 0.96);
+    color: var(--text);
+    border: 1px solid var(--card-border-h);
+    transition: all 0.2s ease;
+  }
+
+  .visit-log-filter-panel__reset-bar:hover {
+    border-color: rgba(178, 42, 36, 0.55);
+    box-shadow: inset 0 1px 0 rgba(34, 31, 26, 0.05), 0 14px 28px rgba(48, 36, 22, 0.09), 0 0 0 1px rgba(178, 42, 36, 0.12);
+    color: var(--accent);
+  }
+
+  .visit-log-filter-panel__reset-bar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .visit-log-filter-panel__body {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px 22px;
     flex: 1;
     align-content: start;
-    padding: 88px 20px calc(96px + env(safe-area-inset-bottom, 0px));
+    /* Matches .filter-controls-body's top padding — clears the app's own
+       sticky header (~66-70px), which now shows through above this sheet
+       instead of being covered by it (see .visit-log-filter-panel z-index). */
+    padding: 124px 20px calc(96px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -14197,9 +14280,18 @@ body.visit-log-filter-open .mobile-bottom-nav {
 }
 
 @media (max-width: 720px) {
+  /* Real content is the fixed FAB + sheet inside, which escape flow — left
+     unstripped, the bar itself still paints as an empty white card above
+     the page. */
   .visit-log-filter-bar {
-    padding: 12px 14px;
-    margin-bottom: 14px;
+    padding: 0;
+    margin-bottom: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    height: 0;
+    overflow: visible;
   }
 }
 
@@ -26341,12 +26433,6 @@ body {
   }
 }
 
-@media (max-width: 420px) {
-  .filter-controls-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 /* 4. Analytical language: role-based card accents and quieter plotting
    surfaces make chart purpose scannable before a user reads every caption. */
 .overview-card,
@@ -26715,6 +26801,12 @@ body.visit-log-filter-open .header-pill__tooltip {
 
 @media (max-width: 720px) {
   .header-pill__tooltip {
+    display: none;
+  }
+
+  /* Redundant with the floating filter tab (bottom-right) at this width —
+     dropping it keeps the banner from carrying two "open filters" triggers. */
+  .header-pill-add {
     display: none;
   }
 }
@@ -27427,3 +27519,4 @@ body.visit-log-filter-open .header-pill__tooltip {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
