@@ -215,6 +215,7 @@
   // into the same #headerSub and must produce identical chips.
   var headerPill = G.headerPill;
   var HEADER_FILTER_BTN = G.HEADER_FILTER_BTN;
+  var HEADER_RESET_BTN = G.HEADER_RESET_BTN;
 
   function renderHeaderSummary() {
     renderDataUpdatedStamp();
@@ -288,10 +289,14 @@
       pills.push(headerPill('header-pill-filter', 'band', bandText, true));
     }
 
+    // Period has no chip of its own (it lives in the core pill), so a pinned
+    // month or non-default period wouldn't otherwise trip the reset button.
+    var showReset = (G.hasActiveFilterPills && G.hasActiveFilterPills(pills)) || isNonDefaultPeriod();
     headerSub.innerHTML = prefix +
       '<span class="header-sub-pillwrap">' +
       pills.join('') +
       HEADER_FILTER_BTN +
+      (showReset ? HEADER_RESET_BTN : '') +
       '</span>';
   }
 
@@ -368,10 +373,30 @@
   function syncPeriodScopedTitle(name) {
     if (!(name in periodScopedTabTitleEls)) return;
     var base = dashboardTabLabels[name] || name;
-    var text = base + ' - ' + getDashboardPeriodLabel();
+    var periodLabel = getDashboardPeriodLabel();
     var elId = periodScopedTabTitleEls[name];
     var el = elId ? document.getElementById(elId) : sectionPageTitle;
-    if (el) el.textContent = text;
+    if (!el) return;
+    // The period half is a button so the title doubles as a shortcut into
+    // the Period control, rather than making people hunt for the funnel.
+    el.innerHTML = escapeHtml(base) + ' - <button type="button" class="section-title-period" ' +
+      'data-open-period-filter aria-label="' + escapeHtml('Change period: ' + periodLabel) + '">' +
+      escapeHtml(periodLabel) + '</button>';
+  }
+
+  // #monthSelect pins the exact date, #rollingWindow the rolling window —
+  // whichever the current label came from is the one worth opening.
+  function openPeriodFilterControl() {
+    openFilterSidePanel();
+    requestAnimationFrame(function () {
+      var monthEl = document.getElementById('monthSelect');
+      var target = (monthEl && monthEl.value) ? monthEl : document.getElementById('rollingWindow');
+      var wrapper = target && target.closest('.filter-select');
+      var trigger = wrapper && wrapper.querySelector('.filter-select__trigger');
+      if (!trigger || trigger.disabled) return;
+      if (wrapper.scrollIntoView) wrapper.scrollIntoView({ block: 'nearest' });
+      trigger.click();
+    });
   }
 
   function updateDashboardActiveView(name) {
@@ -2207,11 +2232,11 @@
     if (focusMapPeriodMemo) {
       // The Focus map holds the live period at All Time, so Reset defaults the
       // parked dashboard period instead — the map keeps its window, and the
-      // rest of the dashboard is on Last 3 Months again once the tab is left.
-      focusMapPeriodMemo = { month: '', rolling: '3' };
+      // rest of the dashboard is on Last Month again once the tab is left.
+      focusMapPeriodMemo = { month: '', rolling: '1' };
     } else {
       if (rollingWindow) {
-        rollingWindow.value = '3';
+        rollingWindow.value = '1';
         G.syncCustomSelect(rollingWindow);
       }
 
@@ -2221,7 +2246,7 @@
       }
 
       state.selectedMonths = (state.MONTHS && state.MONTHS.length)
-        ? G.resolvePeriodMonths(rollingWindow ? rollingWindow.value : '3', state.MONTHS, state.ALL)
+        ? G.resolvePeriodMonths(rollingWindow ? rollingWindow.value : '1', state.MONTHS, state.ALL)
         : [];
     }
 
@@ -2239,7 +2264,7 @@
   }
 
   // The two selects Reset also restores, measured against the values it
-  // restores them to: View sits at Bakeries and Period at Last 3 Months on a
+  // restores them to: View sits at Bakeries and Period at Last Month on a
   // clean dashboard, so anything else is a filter the user set and Reset can
   // undo.
   function isNonDefaultDashboardView() {
@@ -2262,7 +2287,7 @@
     // Month and Period are one decision — picking a month parks Period on All
     // Time — so a pinned month scores once, not twice.
     if (monthSelect.value) return true;
-    return rollingWindow.value !== '3';
+    return rollingWindow.value !== '1';
   }
 
   function countActiveFilters() {
@@ -2455,6 +2480,13 @@
     refresh();
   }
 
+  document.addEventListener('click', function (event) {
+    var periodBtn = event.target.closest('[data-open-period-filter]');
+    if (!periodBtn) return;
+    event.preventDefault();
+    openPeriodFilterControl();
+  });
+
   var headerSubEl = document.getElementById('headerSub');
   if (headerSubEl) {
     headerSubEl.addEventListener('click', function (event) {
@@ -2465,6 +2497,13 @@
         var key = clear.getAttribute('data-filter-clear');
         if (isVisitLogTab()) G.clearVisitLogHeaderFilter(key);
         else clearHeaderFilter(key);
+        return;
+      }
+      var resetAll = event.target.closest('[data-filter-reset-all]');
+      if (resetAll) {
+        event.stopPropagation();
+        if (isVisitLogTab()) { if (G.resetVisitLogHeaderFilters) G.resetVisitLogHeaderFilters(); }
+        else resetAllFilters();
         return;
       }
       if (!event.target.closest('[data-filter-pill], [data-filter-open]')) return;
@@ -2480,10 +2519,11 @@
     var path = typeof event.composedPath === 'function' ? event.composedPath() : [];
     var insidePanel = path.indexOf(filterControlsPanel) !== -1;
     var onTab = filterSideTab ? path.indexOf(filterSideTab) !== -1 : false;
-    // The banner pills open the drawer, so a click on one is not 'outside'
-    // — without this the same click would open and immediately close it.
+    // The banner pills (and the clickable period in a section title) open
+    // the drawer, so a click on one is not 'outside' — without this the same
+    // click would open and immediately close it.
     var onBanner = path.some(function (el) {
-      return el && el.closest && el.closest('[data-filter-pill], [data-filter-open]');
+      return el && el.closest && el.closest('[data-filter-pill], [data-filter-open], [data-open-period-filter]');
     });
     if (!insidePanel && !onTab && !onBanner) closeFilterSidePanel();
   });

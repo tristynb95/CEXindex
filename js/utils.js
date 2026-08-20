@@ -478,6 +478,20 @@ window.GAILS.HEADER_FILTER_BTN =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" ' +
   'stroke-width="2" stroke-linecap="round"><path d="M3 7h18M7 12h10M11 17h2"/></svg></button></span>';
 
+// Only worth showing once a clearable chip exists — lets one click clear
+// every filter chip instead of clearing them one at a time. Both render
+// call sites insert it right after HEADER_FILTER_BTN, gated by
+// hasActiveFilterPills so it never appears beside bare core chips.
+window.GAILS.HEADER_RESET_BTN =
+  '<span class="header-pill header-pill-reset">' +
+  '<button type="button" class="header-pill__body" data-filter-reset-all aria-label="Reset all filters">' +
+  '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></span>';
+
+window.GAILS.hasActiveFilterPills = function (pills) {
+  return (pills || []).some(function (html) { return html.indexOf('header-pill-filter') !== -1; });
+};
+
 // ---------- drawer menu positioning ----------
 // A filter drawer stacks its controls in a ~390px column, so a menu that
 // opened in flow shoved everything below it down and ran off the bottom of

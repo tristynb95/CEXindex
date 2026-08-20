@@ -2901,6 +2901,36 @@ canvas {
   color: var(--text);
 }
 
+/* The clickable half of a period-scoped section title (League Table -
+   <Last Month>, etc — see syncPeriodScopedTitle in js/app.js). Opens the
+   Period control directly instead of making people hunt for the funnel. */
+.section-title-period {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: rgba(34, 31, 26, 0.32);
+  text-underline-offset: 3px;
+  transition: color 0.16s ease, text-decoration-color 0.16s ease;
+}
+
+.section-title-period:hover,
+.section-title-period:focus-visible {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+.section-title-period:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .section-page-header {
   display: contents;
 }
@@ -15756,7 +15786,8 @@ table.nps-splits-collapsed .nps-split-col {
 
   .header-pill-core,
   .header-pill-filter,
-  .header-pill-add {
+  .header-pill-add,
+  .header-pill-reset {
     font-size: 0.64rem;
     padding: 1px 6px;
     border-radius: 10px;
@@ -15769,7 +15800,8 @@ table.nps-splits-collapsed .nps-split-col {
 
   .header-pill-core,
   .header-pill-filter,
-  .header-pill-add {
+  .header-pill-add,
+  .header-pill-reset {
     font-size: 0.58rem;
     padding: 1px 5px;
     border-radius: 8px;
@@ -26727,6 +26759,34 @@ body.visit-log-filter-open .header-pill__tooltip {
   height: 1.3em;
 }
 
+/* Only rendered once a clearable chip is on the banner (see
+   hasActiveFilterPills in js/utils.js) — one click clears every chip
+   instead of clearing them one at a time. Same circular icon shell as Add,
+   sitting just after the funnel so it reads as acting on the chips to its
+   left rather than as another filter to set. */
+.header-pill-reset {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 243, 235, 0.9);
+  font-size: 0.72rem;
+}
+
+.header-pill-reset:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.header .header-pill-reset .header-pill__body {
+  padding-inline: 6px;
+}
+
+.header-pill-reset svg {
+  flex: 0 0 auto;
+  display: block;
+  width: 1.3em;
+  height: 1.3em;
+}
+
 /* ── Chip target sizing ── */
 /* A 21px chip is fine to read and mean to hit. These are interactive
    now, so they are sized for coordination: ~30px tall on desktop, with
@@ -26734,7 +26794,8 @@ body.visit-log-filter-open .header-pill__tooltip {
    pinpricks. The banner grew to suit (see .header above). */
 .header-pill-core,
 .header-pill-filter,
-.header-pill-add {
+.header-pill-add,
+.header-pill-reset {
   font-size: 0.78rem;
   border-radius: 14px;
 }
@@ -26754,7 +26815,8 @@ body.visit-log-filter-open .header-pill__tooltip {
   font-size: 0.78rem;
 }
 
-.header .header-pill-add .header-pill__body {
+.header .header-pill-add .header-pill__body,
+.header .header-pill-reset .header-pill__body {
   padding-inline: 9px;
 }
 
@@ -26762,7 +26824,8 @@ body.visit-log-filter-open .header-pill__tooltip {
 
   .header-pill-core,
   .header-pill-filter,
-  .header-pill-add {
+  .header-pill-add,
+  .header-pill-reset {
     font-size: 0.7rem;
     border-radius: 13px;
   }
@@ -26777,7 +26840,8 @@ body.visit-log-filter-open .header-pill__tooltip {
     margin-right: 6px;
   }
 
-  .header .header-pill-add .header-pill__body {
+  .header .header-pill-add .header-pill__body,
+  .header .header-pill-reset .header-pill__body {
     padding-inline: 8px;
   }
 }
@@ -26786,7 +26850,8 @@ body.visit-log-filter-open .header-pill__tooltip {
 
   .header-pill-core,
   .header-pill-filter,
-  .header-pill-add {
+  .header-pill-add,
+  .header-pill-reset {
     font-size: 0.66rem;
     border-radius: 12px;
   }

@@ -2472,15 +2472,43 @@ window.GAILS = window.GAILS || {};
     if (!el) return;
     var baseTitle = VISIT_LOG_VIEW_TITLES[view] || VISIT_LOG_VIEW_TITLES.history;
     // History and Unvisited Sites are the two views scoped by the Period
-    // filter, so their title names the period in view alongside them.
+    // filter, so their title names the period in view alongside them. The
+    // period half is a button — same shortcut-into-the-control pattern as
+    // the dashboard's syncPeriodScopedTitle in js/app.js — so it opens the
+    // Period select directly instead of making people find the funnel.
     if (view === 'history' || view === 'unvisited') {
       var periodEl = document.getElementById('visitLogPeriod');
       var periodVal = periodEl ? periodEl.value : getVisitLogDefaultPeriod(view);
-      el.textContent = baseTitle + ' - ' + getPeriodLabel(periodVal);
+      var periodLabel = getPeriodLabel(periodVal);
+      el.innerHTML = escapeHtml(baseTitle) + ' - <button type="button" class="section-title-period" ' +
+        'data-open-visit-log-period-filter aria-label="' + escapeHtml('Change period: ' + periodLabel) + '">' +
+        escapeHtml(periodLabel) + '</button>';
     } else {
       el.textContent = baseTitle;
     }
   }
+
+  // Opens the filter panel and expands the Period control within it, so the
+  // title's period button is a one-click shortcut rather than just a signal
+  // to go find the funnel.
+  function openVisitLogPeriodFilterControl() {
+    setVisitLogFiltersOpen(true);
+    requestAnimationFrame(function () {
+      var periodEl = document.getElementById('visitLogPeriod');
+      var wrapper = periodEl && periodEl.closest('.filter-select');
+      var trigger = wrapper && wrapper.querySelector('.filter-select__trigger');
+      if (!trigger || trigger.disabled) return;
+      if (wrapper.scrollIntoView) wrapper.scrollIntoView({ block: 'nearest' });
+      trigger.click();
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    var periodBtn = event.target.closest('[data-open-visit-log-period-filter]');
+    if (!periodBtn) return;
+    event.preventDefault();
+    openVisitLogPeriodFilterControl();
+  });
 
   // One primary action per view, in the card's header slot.
   //
@@ -3591,6 +3619,12 @@ window.GAILS = window.GAILS || {};
     return window.GAILS.HEADER_FILTER_BTN || '';
   }
 
+  function headerResetButton(pills) {
+    var G = window.GAILS;
+    if (G.hasActiveFilterPills && G.hasActiveFilterPills(pills)) return G.HEADER_RESET_BTN || '';
+    return '';
+  }
+
   window.GAILS.getVisitLogHeaderSummary = function () {
     var searchEl = document.getElementById('visitLogSearch');
     var regionEl = document.getElementById('visitLogRegion');
@@ -3635,7 +3669,7 @@ window.GAILS = window.GAILS || {};
       if (opsVals.length) pills.push(multiSelectPill('ops', opsVals, 'Ops Areas'));
       if (bakeryVals.length) pills.push(multiSelectPill('bakery', bakeryVals, 'Bakeries'));
       var directoryTitle = visitLogViewTitle('bakeries');
-      return directoryTitle + '<span class="header-sub-pillwrap">' + pills.join('') + headerFilterButton() + '</span>';
+      return directoryTitle + '<span class="header-sub-pillwrap">' + pills.join('') + headerFilterButton() + headerResetButton(pills) + '</span>';
     }
 
     if (view === 'followups') {
@@ -3656,7 +3690,7 @@ window.GAILS = window.GAILS || {};
         pills.push(pill('header-pill-filter', 'followUpSort', exportFilterLabel('followUpSort', 'Due Date (Soonest)'), true));
       }
       var fuTitle = visitLogViewTitle('followups');
-      return fuTitle + '<span class="header-sub-pillwrap">' + pills.join('') + headerFilterButton() + '</span>';
+      return fuTitle + '<span class="header-sub-pillwrap">' + pills.join('') + headerFilterButton() + headerResetButton(pills) + '</span>';
     }
 
     if (view === 'unvisited') {
@@ -3678,6 +3712,7 @@ window.GAILS = window.GAILS || {};
         '<span class="header-sub-pillwrap">' +
         pills.join('') +
         headerFilterButton() +
+        headerResetButton(pills) +
         '</span>';
     }
 
@@ -3735,6 +3770,7 @@ window.GAILS = window.GAILS || {};
       '<span class="header-sub-pillwrap">' +
       pills.join('') +
       headerFilterButton() +
+      headerResetButton(pills) +
       '</span>';
   };
 
@@ -3939,10 +3975,13 @@ window.GAILS = window.GAILS || {};
     return !!panel && panel.classList.contains('is-open');
   };
 
-  // Clearing one chip from the banner, keyed the same way the chip was
-  // built. Each branch resets its control to the value getVisitLogActive-
-  // FilterCount treats as unset, so the chip and the badge stay in step.
-  window.GAILS.clearVisitLogHeaderFilter = function (key) {
+  // Applies one chip's clear, keyed the same way the chip was built. Each
+  // branch resets its control to the value getVisitLogActiveFilterCount
+  // treats as unset, so the chip and the badge stay in step. Split from
+  // rendering/re-sync so a bulk reset can apply several keys and render once.
+  var VISIT_LOG_FILTER_KEYS = ['search', 'region', 'ops', 'bakery', 'type', 'followUpAssignee', 'followUpGroup', 'followUpSort'];
+
+  function applyVisitLogFilterClear(key) {
     var byId = function (id) { return document.getElementById(id); };
     var resync = [];
 
@@ -3986,6 +4025,19 @@ window.GAILS = window.GAILS || {};
     if (window.GAILS.syncCustomSelect) {
       resync.forEach(function (id) { window.GAILS.syncCustomSelect(id); });
     }
+  }
+
+  window.GAILS.clearVisitLogHeaderFilter = function (key) {
+    applyVisitLogFilterClear(key);
+    syncVisitLogMobileFilterButton();
+    window.GAILS.renderVisitLog();
+  };
+
+  // Banner Reset: clears every recognised filter key at once. Keys not in
+  // play for the current view (e.g. followUpSort outside Follow-ups) simply
+  // find no control and no-op, so this stays one list for every view.
+  window.GAILS.resetVisitLogHeaderFilters = function () {
+    VISIT_LOG_FILTER_KEYS.forEach(applyVisitLogFilterClear);
     syncVisitLogMobileFilterButton();
     window.GAILS.renderVisitLog();
   };
