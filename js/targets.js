@@ -1086,7 +1086,7 @@ window.GAILS.openFocusDetail = function (name) {
     function inSelection(b) {
       if (regionFilter.length && regionFilter.indexOf(G.getBakeryRegion(b)) < 0) return false;
       if (opsFilter.length && opsFilter.indexOf(G.getBakeryOps(b)) < 0) return false;
-      if (searchBakery.length && !searchBakery.some(function (s) { return b.toLowerCase().indexOf(String(s).toLowerCase()) >= 0; })) return false;
+      if (searchBakery.length && !G.isSelectedBakery(b, searchBakery)) return false;
       return true;
     }
     FM.forEach(function (m) {
@@ -1909,7 +1909,7 @@ document.addEventListener('keydown', function (event) {
     return names.filter(function (name) {
       if (regionFilter.length && regionFilter.indexOf(G.getBakeryRegion(name)) < 0) return false;
       if (opsFilter.length && opsFilter.indexOf(G.getBakeryOps(name)) < 0) return false;
-      if (searchBakery.length && !searchBakery.some(function (s) { return name.toLowerCase().indexOf(s.toLowerCase()) >= 0; })) return false;
+      if (searchBakery.length && !G.isSelectedBakery(name, searchBakery)) return false;
       return true;
     }).sort();
   }

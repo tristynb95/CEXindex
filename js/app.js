@@ -791,7 +791,7 @@
     if (state.regionFilter.length) recs = recs.filter(function (r) { return state.regionFilter.indexOf(G.getBakeryRegion(r.b)) >= 0; });
     if (state.opsFilter.length) recs = recs.filter(function (r) { return state.opsFilter.indexOf(G.getBakeryOps(r.b)) >= 0; });
     if (state.searchBakery && state.searchBakery.length) recs = recs.filter(function (r) {
-      return state.searchBakery.some(function (s) { return r.b.toLowerCase().indexOf(s.toLowerCase()) >= 0; });
+      return G.isSelectedBakery(r.b, state.searchBakery);
     });
     if (recs.length === 0) return null;
     var avg = function (key) { return recs.reduce(function (a, r) { return a + (r[key] || 0); }, 0) / recs.length; };

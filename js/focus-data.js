@@ -85,12 +85,28 @@ window.GAILS = window.GAILS || {};
     return months;
   }
 
+  // The bakery filter holds whole site names picked from a list, so it has to
+  // match the one site it names: testing it as a substring let "Hampstead"
+  // stand in for Hampstead Heath, West Hampstead and every other name
+  // containing it. This is G.isSelectedBakery with the canonicalisation the
+  // Focus view needs — it groups by canonical name, so the selection is
+  // resolved the same way before the two are compared.
+  function isSelectedBakery(name, selection) {
+    var needle = normalizedBakeryName(name);
+    return selection.some(function(search) {
+      return normalizedBakeryName(search) === needle;
+    });
+  }
+
+  function normalizedBakeryName(name) {
+    return String(canonicalBakeryName(String(name == null ? '' : name)))
+      .trim().toLowerCase();
+  }
+
   function passesBakeryFilters(name, state) {
     if ((state.regionFilter || []).length && state.regionFilter.indexOf(G.getBakeryRegion(name)) < 0) return false;
     if ((state.opsFilter || []).length && state.opsFilter.indexOf(G.getBakeryOps(name)) < 0) return false;
-    if ((state.searchBakery || []).length && !state.searchBakery.some(function(search) {
-      return name.toLowerCase().indexOf(String(search).toLowerCase()) >= 0;
-    })) return false;
+    if ((state.searchBakery || []).length && !isSelectedBakery(name, state.searchBakery)) return false;
     return true;
   }
 

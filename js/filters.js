@@ -250,7 +250,7 @@ window.GAILS.getRollingMonths = function() {
     if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(record.b))) return false;
     if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(record.b))) return false;
     if (state.searchBakery && state.searchBakery.length &&
-        !state.searchBakery.some(function(search) { return record.b.toLowerCase().includes(search.toLowerCase()); })) return false;
+        !G.isSelectedBakery(record.b, state.searchBakery)) return false;
     return true;
   }
 
