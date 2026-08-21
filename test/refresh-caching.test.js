@@ -261,8 +261,11 @@ test('getFocusAvailableBands and a filtered render see the same snapshots', () =
   seed(G);
   G.state.bandFilter = 'abs:Below Standard';
 
-  // This is the pair a refresh on the Focus tab makes, in order.
-  const available = G.getFocusAvailableBands();
+  // This is the pair a refresh on the Focus tab makes, in order. Both are
+  // pinned to the same reference date: NOW is fixed, so a picker left on the
+  // real clock drifts away from the render as the seeded months age out of the
+  // window, and the two stop describing the same snapshots.
+  const available = G.getFocusAvailableBands({ isAbsolute: true, referenceDate: NOW });
   const rendered = G.buildFocusDataset({ isAbsolute: true, referenceDate: NOW });
 
   // Every band the picker offers is a band some snapshot actually has, and the

@@ -414,8 +414,14 @@ window.GAILS = window.GAILS || {};
     };
   };
 
-  G.getFocusAvailableBands = function() {
-    var context = G.buildFocusDataset({ ignoreBandFilter: true });
+  // The picker and the render it sits above have to be reading the same
+  // snapshots, so everything that decides which snapshots exist has to reach
+  // both calls. The reference date matters most: it fixes which months count as
+  // closed, and a picker built against a different date than the render offers
+  // bands the render has nothing in — or hides bands it does. Callers that mean
+  // "now" still pass nothing.
+  G.getFocusAvailableBands = function(options) {
+    var context = G.buildFocusDataset(Object.assign({}, options, { ignoreBandFilter: true }));
     return {
       relative: new Set(context.allSnapshots.map(function(record) { return record.cb; })),
       absolute: new Set(context.allSnapshots.map(function(record) { return record.acb; }))

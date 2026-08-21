@@ -267,10 +267,32 @@ test('nearby competition is live, cached, and linked to Google Maps', () => {
   assert.match(script, /travelmode=walking/);
 });
 
+// The shopping park, not Banbury town centre a mile north-west: the bakery sits
+// in the retail park, so competition and walking directions are only right if
+// the pin is there. Pinning the literal coordinate made this fail whenever the
+// pin was nudged, which says nothing about whether it is still on the park, so
+// assert the distance instead.
+const BANBURY_SHOPPING_PARK = [52.076677, -1.318543];
+
+function metresBetween(a, b) {
+  const latMetres = 111320;
+  const dLat = (a[0] - b[0]) * latMetres;
+  const dLon = (a[1] - b[1]) * latMetres * Math.cos((a[0] * Math.PI) / 180);
+  return Math.sqrt(dLat * dLat + dLon * dLon);
+}
+
 test('Banbury uses the shopping park centre and includes current Greggs records', () => {
-  assert.match(configScript, /"Banbury Gateway":[^{]*\{[^}]*"ll": \[52\.076677, -1\.318543\]/);
-  assert.match(script, /\["name"~"Greggs","i"\]/);
-  assert.match(script, /namePattern = \/bakery\|cafe\|coffee\|patisserie\|tearoom\|greggs/);
+  const pin = configScript.match(/"Banbury Gateway":[^{]*\{[^}]*"ll": \[(-?[\d.]+), (-?[\d.]+)\]/);
+  assert.ok(pin, 'Banbury Gateway should have a mapped coordinate');
+  const distance = metresBetween([Number(pin[1]), Number(pin[2])], BANBURY_SHOPPING_PARK);
+  assert.ok(distance < 200,
+    `Banbury Gateway is pinned ${Math.round(distance)}m from the shopping park centre`);
+  // Greggs trades under names OSM does not tag as a bakery or cafe, so it needs
+  // its own name query and a place in the name filter. Both lists have grown
+  // since — match the brand rather than the whole alternation, so adding the
+  // next one does not read as a regression.
+  assert.match(script, /\["name"~"[^"]*Greggs[^"]*","i"\]/);
+  assert.match(script, /var namePattern = \/[^/]*\bgreggs\b[^/]*\//);
   assert.match(script, /'Banbury Gateway': \{\s*removeNames: \['starbucks'\]/);
 });
 
