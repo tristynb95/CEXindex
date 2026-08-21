@@ -85,12 +85,28 @@ window.GAILS = window.GAILS || {};
     return months;
   }
 
+  // The bakery filter holds whole site names picked from a list, so it has to
+  // match the one site it names: testing it as a substring let "Hampstead"
+  // stand in for Hampstead Heath, West Hampstead and every other name
+  // containing it. This is G.isSelectedBakery with the canonicalisation the
+  // Focus view needs — it groups by canonical name, so the selection is
+  // resolved the same way before the two are compared.
+  function isSelectedBakery(name, selection) {
+    var needle = normalizedBakeryName(name);
+    return selection.some(function(search) {
+      return normalizedBakeryName(search) === needle;
+    });
+  }
+
+  function normalizedBakeryName(name) {
+    return String(canonicalBakeryName(String(name == null ? '' : name)))
+      .trim().toLowerCase();
+  }
+
   function passesBakeryFilters(name, state) {
     if ((state.regionFilter || []).length && state.regionFilter.indexOf(G.getBakeryRegion(name)) < 0) return false;
     if ((state.opsFilter || []).length && state.opsFilter.indexOf(G.getBakeryOps(name)) < 0) return false;
-    if ((state.searchBakery || []).length && !state.searchBakery.some(function(search) {
-      return name.toLowerCase().indexOf(String(search).toLowerCase()) >= 0;
-    })) return false;
+    if ((state.searchBakery || []).length && !isSelectedBakery(name, state.searchBakery)) return false;
     return true;
   }
 
@@ -398,8 +414,14 @@ window.GAILS = window.GAILS || {};
     };
   };
 
-  G.getFocusAvailableBands = function() {
-    var context = G.buildFocusDataset({ ignoreBandFilter: true });
+  // The picker and the render it sits above have to be reading the same
+  // snapshots, so everything that decides which snapshots exist has to reach
+  // both calls. The reference date matters most: it fixes which months count as
+  // closed, and a picker built against a different date than the render offers
+  // bands the render has nothing in — or hides bands it does. Callers that mean
+  // "now" still pass nothing.
+  G.getFocusAvailableBands = function(options) {
+    var context = G.buildFocusDataset(Object.assign({}, options, { ignoreBandFilter: true }));
     return {
       relative: new Set(context.allSnapshots.map(function(record) { return record.cb; })),
       absolute: new Set(context.allSnapshots.map(function(record) { return record.acb; }))

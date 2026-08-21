@@ -282,6 +282,20 @@ window.GAILS.escapeHtml = function(value) {
     .replace(/'/g, '&#39;');
 };
 
+// The bakery filter is a pick-list of whole site names, not a free-text search,
+// so a selection has to identify exactly the site that was ticked. Matching it
+// as a substring meant choosing "Hampstead" also dragged in every other site
+// whose name merely contains it (Hampstead Heath, West Hampstead, ...). Case
+// and surrounding whitespace are still normalised, so a selection that was
+// stored before a name was retyped keeps matching its own site.
+window.GAILS.isSelectedBakery = function(name, selection) {
+  if (!selection || !selection.length) return true;
+  var needle = String(name == null ? '' : name).trim().toLowerCase();
+  return selection.some(function(selected) {
+    return String(selected == null ? '' : selected).trim().toLowerCase() === needle;
+  });
+};
+
 // Every bakery-name table link carries its dashboard origin explicitly. URL
 // fragments are not included in document.referrer, so relying on the referrer
 // alone would lose the active tab and send users back to the wrong page.
