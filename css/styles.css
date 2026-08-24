@@ -20663,10 +20663,12 @@ html {
 
 /* Nested inside a .focus-tool-label (a column flex box), so .search-pill's
    own flex-basis — meant as a row-context width — would otherwise size this
-   element's height instead. Reset the flex shorthand and size by width. */
+   element's height instead. Reset the flex shorthand and size by width —
+   280px matches .search-pill's own max-width, so this reads as the same
+   size as the map's search box rather than a narrower cousin of it. */
 .focus-queue__search {
   flex: 0 0 auto;
-  width: 210px;
+  width: 280px;
 }
 
 .focus-reset-btn:hover {
