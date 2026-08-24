@@ -2488,20 +2488,43 @@ window.GAILS = window.GAILS || {};
     }
   }
 
-  // Opens the filter panel and expands the Period control within it, so the
-  // title's period button is a one-click shortcut rather than just a signal
-  // to go find the funnel.
-  function openVisitLogPeriodFilterControl() {
+  // Region/Ops/Bakery open their own multiselect trigger button directly;
+  // every other filter here is a native <select> that syncCustomSelect wraps
+  // in a .filter-select, so those go through its trigger/menu instead. Search
+  // lives outside the drawer entirely (its own always-visible box above the
+  // list), so it has no drawer control to jump to.
+  function findVisitLogFilterTrigger(key) {
+    var MS_TRIGGERS = { region: 'visitLogRegionMsTrigger', ops: 'visitLogOpsMsTrigger', bakery: 'visitLogBakeryMsTrigger' };
+    if (MS_TRIGGERS[key]) return document.getElementById(MS_TRIGGERS[key]);
+    var SELECT_IDS = {
+      type: 'visitLogType', rating: 'visitLogRating', group: 'visitLogGroup', sort: 'visitLogSort',
+      period: 'visitLogPeriod', directorySort: 'visitLogDirectorySort', directoryGroup: 'visitLogDirectoryGroup',
+      followUpAssignee: 'followUpAssignee', followUpGroup: 'followUpGroup', followUpSort: 'followUpSort'
+    };
+    var elId = SELECT_IDS[key];
+    var el = elId ? document.getElementById(elId) : null;
+    var wrapper = el && el.closest('.filter-select');
+    return wrapper ? wrapper.querySelector('.filter-select__trigger') : null;
+  }
+
+  // Opens the filter panel and expands the control for `key` within it, so a
+  // pill (or the title's period button) is a one-click shortcut rather than
+  // just a signal to go find the funnel.
+  function openVisitLogFilterControl(key) {
+    if (key === 'search') {
+      var searchInput = document.getElementById('visitLogSearch');
+      if (searchInput) { searchInput.scrollIntoView({ block: 'nearest' }); searchInput.focus(); }
+      return;
+    }
+
     var panel = document.getElementById('visitLogFilterPanel');
     var wasOpen = panel && panel.classList.contains('is-open');
     setVisitLogFiltersOpen(true);
 
-    function clickPeriodTrigger() {
-      var periodEl = document.getElementById('visitLogPeriod');
-      var wrapper = periodEl && periodEl.closest('.filter-select');
-      var trigger = wrapper && wrapper.querySelector('.filter-select__trigger');
+    function clickTrigger() {
+      var trigger = findVisitLogFilterTrigger(key);
       if (!trigger || trigger.disabled) return;
-      if (wrapper.scrollIntoView) wrapper.scrollIntoView({ block: 'nearest' });
+      if (trigger.scrollIntoView) trigger.scrollIntoView({ block: 'nearest' });
       trigger.click();
     }
 
@@ -2526,20 +2549,22 @@ window.GAILS = window.GAILS || {};
         settled = true;
         panel.removeEventListener('transitionend', onTransitionEnd);
         clearTimeout(fallback);
-        requestAnimationFrame(clickPeriodTrigger);
+        requestAnimationFrame(clickTrigger);
       }
       panel.addEventListener('transitionend', onTransitionEnd);
       fallback = setTimeout(finish, 360);
     } else {
-      requestAnimationFrame(clickPeriodTrigger);
+      requestAnimationFrame(clickTrigger);
     }
   }
+
+  window.GAILS.openVisitLogFilterControl = openVisitLogFilterControl;
 
   document.addEventListener('click', function (event) {
     var periodBtn = event.target.closest('[data-open-visit-log-period-filter]');
     if (!periodBtn) return;
     event.preventDefault();
-    openVisitLogPeriodFilterControl();
+    openVisitLogFilterControl('period');
   });
 
   // One primary action per view, in the card's header slot.
@@ -5270,9 +5295,10 @@ window.GAILS = window.GAILS || {};
 
         if (searchVal) {
           var bakeryMatch = v.bakery.toLowerCase().indexOf(searchVal) !== -1;
+          var opsMatch = (G.getBakeryOps ? G.getBakeryOps(v.bakery) : '').toLowerCase().indexOf(searchVal) !== -1;
           var partnerMatch = partnerText(v.coffeePartner).toLowerCase().indexOf(searchVal) !== -1 && !!v.coffeePartner;
           var auditorMatch = v.auditorName && v.auditorName.toLowerCase().indexOf(searchVal) !== -1;
-          if (!bakeryMatch && !partnerMatch && !auditorMatch) return false;
+          if (!bakeryMatch && !opsMatch && !partnerMatch && !auditorMatch) return false;
         }
         if (regionVal.length) {
           var reg = G.getBakeryRegion ? G.getBakeryRegion(v.bakery) : 'Unknown';
@@ -5517,7 +5543,8 @@ window.GAILS = window.GAILS || {};
 
       allBakeries.forEach(function (bName) {
         if (searchVal) {
-          if (bName.toLowerCase().indexOf(searchVal) === -1) return;
+          var opsMatch = (G.getBakeryOps ? G.getBakeryOps(bName) : '').toLowerCase().indexOf(searchVal) !== -1;
+          if (bName.toLowerCase().indexOf(searchVal) === -1 && !opsMatch) return;
         }
         if (regionVal.length) {
           var reg = G.getBakeryRegion ? G.getBakeryRegion(bName) : 'Unknown';
@@ -5681,7 +5708,8 @@ window.GAILS = window.GAILS || {};
         if (!t.bakery) return false;
         var label = (G.getBakeryMapLabel ? G.getBakeryMapLabel(t.bakery) : t.bakery) || t.bakery;
         if (searchVal) {
-          var hay = (label + ' ' + (t.title || '') + ' ' + (t.detail || '') + ' ' +
+          var opsLabel = G.getBakeryOps ? G.getBakeryOps(t.bakery) : '';
+          var hay = (label + ' ' + opsLabel + ' ' + (t.title || '') + ' ' + (t.detail || '') + ' ' +
             followUpAttributionLabel(t)).toLowerCase();
           if (hay.indexOf(searchVal) === -1) return false;
         }

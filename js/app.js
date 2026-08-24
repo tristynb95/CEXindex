@@ -385,19 +385,39 @@
       escapeHtml(periodLabel) + '</button>';
   }
 
+  // Region/Ops/Bakery open their own multiselect trigger button directly.
+  // Period/Band/View are native <select>s that G.syncCustomSelect wraps in a
+  // .filter-select at runtime, so those go through its trigger/menu instead.
   // #monthSelect pins the exact date, #rollingWindow the rolling window —
-  // whichever the current label came from is the one worth opening.
-  function openPeriodFilterControl() {
+  // whichever the current label came from is the one worth opening for 'period'.
+  function findHeaderFilterTrigger(key) {
+    if (key === 'region') return document.getElementById('regionMsTrigger');
+    if (key === 'ops') return document.getElementById('opsMsTrigger');
+    if (key === 'bakery') return document.getElementById('bakeryMsTrigger');
+    var selectId = key === 'period'
+      ? null
+      : key === 'band' ? 'bandFilter' : key === 'view' ? 'dashboardView' : null;
+    var target = key === 'period'
+      ? (function () {
+        var monthEl = document.getElementById('monthSelect');
+        return (monthEl && monthEl.value) ? monthEl : document.getElementById('rollingWindow');
+      })()
+      : (selectId ? document.getElementById(selectId) : null);
+    var wrapper = target && target.closest('.filter-select');
+    return wrapper ? wrapper.querySelector('.filter-select__trigger') : null;
+  }
+
+  // Opens the filter drawer, if it isn't already, then jumps straight to the
+  // control for `key` (the chip that was clicked) instead of leaving people to
+  // hunt for it in the drawer themselves.
+  function openHeaderFilterControl(key) {
     var wasOpen = filterSidePanelOpen;
     openFilterSidePanel();
 
-    function clickPeriodTrigger() {
-      var monthEl = document.getElementById('monthSelect');
-      var target = (monthEl && monthEl.value) ? monthEl : document.getElementById('rollingWindow');
-      var wrapper = target && target.closest('.filter-select');
-      var trigger = wrapper && wrapper.querySelector('.filter-select__trigger');
+    function clickTrigger() {
+      var trigger = findHeaderFilterTrigger(key);
       if (!trigger || trigger.disabled) return;
-      if (wrapper.scrollIntoView) wrapper.scrollIntoView({ block: 'nearest' });
+      if (trigger.scrollIntoView) trigger.scrollIntoView({ block: 'nearest' });
       trigger.click();
     }
 
@@ -422,12 +442,12 @@
         settled = true;
         filterControlsPanel.removeEventListener('transitionend', onTransitionEnd);
         clearTimeout(fallback);
-        requestAnimationFrame(clickPeriodTrigger);
+        requestAnimationFrame(clickTrigger);
       }
       filterControlsPanel.addEventListener('transitionend', onTransitionEnd);
       fallback = setTimeout(finish, 360);
     } else {
-      requestAnimationFrame(clickPeriodTrigger);
+      requestAnimationFrame(clickTrigger);
     }
   }
 
@@ -2545,7 +2565,7 @@
     var periodBtn = event.target.closest('[data-open-period-filter]');
     if (!periodBtn) return;
     event.preventDefault();
-    openPeriodFilterControl();
+    openHeaderFilterControl('period');
   });
 
   var headerSubEl = document.getElementById('headerSub');
@@ -2567,7 +2587,17 @@
         else resetAllFilters();
         return;
       }
-      if (!event.target.closest('[data-filter-pill], [data-filter-open]')) return;
+      // A pill jumps straight to its own control, the same shortcut the
+      // clickable period in the page title already gives. The bare "+" add
+      // button has no key to jump to, so it just opens the drawer generically.
+      var pill = event.target.closest('[data-filter-pill]');
+      if (pill) {
+        var pillKey = pill.getAttribute('data-filter-pill');
+        if (isVisitLogTab()) { if (G.openVisitLogFilterControl) G.openVisitLogFilterControl(pillKey); }
+        else openHeaderFilterControl(pillKey);
+        return;
+      }
+      if (!event.target.closest('[data-filter-open]')) return;
       if (isVisitLogTab()) {
         G.setVisitLogFiltersOpen(!G.isVisitLogFiltersOpen());
         return;
