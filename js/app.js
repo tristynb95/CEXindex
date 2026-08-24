@@ -686,6 +686,7 @@
     var flushedPanel = flushPendingPanel(name);
     if (name === 'target' && previousName && previousName !== 'target') {
       activateTargetSubtab('summary', { scrollNav: false });
+      if (G.resetFocusSearch) G.resetFocusSearch();
     }
     var enteringVisitLog = name === 'visit-log' && previousName && previousName !== 'visit-log';
     if (enteringVisitLog && G.resetVisitLogView) {
@@ -1462,6 +1463,34 @@
       if (G.setTargetMapVisitFilter) G.setTargetMapVisitFilter(nextVisit);
     });
   });
+
+  // ========== MAP SEARCH (network + Focus Bakery) ==========
+  function wireMapSearch(inputId, clearBtnId, setSearchFn) {
+    var input = document.getElementById(inputId);
+    var clearBtn = document.getElementById(clearBtnId);
+    if (!input || !clearBtn) return;
+    var debounceTimer = null;
+
+    function apply(value) {
+      if (G[setSearchFn]) G[setSearchFn](value);
+    }
+
+    input.addEventListener('input', function () {
+      var value = input.value;
+      clearBtn.style.display = value ? '' : 'none';
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function () { apply(value); }, 150);
+    });
+    clearBtn.addEventListener('click', function () {
+      clearTimeout(debounceTimer);
+      input.value = '';
+      clearBtn.style.display = 'none';
+      apply('');
+      input.focus();
+    });
+  }
+  wireMapSearch('networkMapSearchInput', 'networkMapSearchClear', 'setNetworkMapSearch');
+  wireMapSearch('targetMapSearchInput', 'targetMapSearchClear', 'setTargetMapSearch');
 
   // ========== MAP FULLSCREEN TOGGLE ==========
   (function () {

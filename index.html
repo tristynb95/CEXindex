@@ -473,11 +473,6 @@
               </div>
             </div>
             <div class="visit-log-filter-panel__body">
-              <div class="visit-log-filter-control" id="visitLogSearchControl">
-                <label for="visitLogSearch">Search</label>
-                <input type="search" id="visitLogSearch" placeholder="Bakery or partner&hellip;"
-                  class="visit-log-input" autocomplete="off">
-              </div>
               <div class="visit-log-filter-control" id="visitLogRegionControl">
                 <label for="visitLogRegionMsTrigger">Region</label>
                 <select id="visitLogRegion" class="visit-log-multiselect__native" multiple hidden aria-hidden="true" tabindex="-1">
@@ -628,9 +623,8 @@
                   <option value="none">None</option>
                 </select>
               </div>
-              <!-- Sits second in the bar, right after Search — see the order
-                   rules in css/styles.css. It stays here in source order so
-                   the mobile filter sheet keeps its own grouping. -->
+              <!-- Leads the panel now that Search lives above the content
+                   container instead of in here. -->
               <div class="visit-log-filter-control visit-log-filter-control--compact"
                 id="visitLogPeriodControl">
                 <label for="visitLogPeriod">Period</label>
@@ -1698,6 +1692,23 @@
               <div class="map-section-header" style="margin-bottom:12px;">
                 <div class="map-control-bar">
                   <h1 class="focus-subtab-title map-panel-title" id="mapSectionTitle">Map</h1>
+                  <div class="search-pill" id="networkMapSearch">
+                    <svg class="search-pill__icon" viewBox="0 0 16 16" aria-hidden="true">
+                      <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"></circle>
+                      <path d="M11 11 14.5 14.5" fill="none" stroke="currentColor" stroke-width="1.6"
+                        stroke-linecap="round"></path>
+                    </svg>
+                    <input type="text" class="search-pill__input" id="networkMapSearchInput"
+                      placeholder="Search bakery or ops area" autocomplete="off"
+                      aria-label="Search map by bakery or ops area name">
+                    <button type="button" class="search-pill__clear" id="networkMapSearchClear"
+                      aria-label="Clear map search" style="display:none">
+                      <svg viewBox="0 0 12 12" aria-hidden="true">
+                        <path d="M2 2 10 10M10 2 2 10" fill="none" stroke="currentColor" stroke-width="1.6"
+                          stroke-linecap="round"></path>
+                      </svg>
+                    </button>
+                  </div>
                   <div class="map-toggle-group">
                     <span class="map-toggle-label">
                       <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
@@ -1870,6 +1881,23 @@
                   <div class="map-section-header" style="margin-bottom:16px;">
                     <div class="map-control-bar">
                       <h1 class="focus-subtab-title map-panel-title">Focus Bakery &mdash; Map</h1>
+                      <div class="search-pill" id="targetMapSearch">
+                        <svg class="search-pill__icon" viewBox="0 0 16 16" aria-hidden="true">
+                          <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"></circle>
+                          <path d="M11 11 14.5 14.5" fill="none" stroke="currentColor" stroke-width="1.6"
+                            stroke-linecap="round"></path>
+                        </svg>
+                        <input type="text" class="search-pill__input" id="targetMapSearchInput"
+                          placeholder="Search bakery or ops area" autocomplete="off"
+                          aria-label="Search map by bakery or ops area name">
+                        <button type="button" class="search-pill__clear" id="targetMapSearchClear"
+                          aria-label="Clear map search" style="display:none">
+                          <svg viewBox="0 0 12 12" aria-hidden="true">
+                            <path d="M2 2 10 10M10 2 2 10" fill="none" stroke="currentColor" stroke-width="1.6"
+                              stroke-linecap="round"></path>
+                          </svg>
+                        </button>
+                      </div>
                       <div class="map-toggle-group">
                         <span class="map-toggle-label">
                           <svg class="map-toggle-label__icon" viewBox="0 0 16 16" aria-hidden="true">
@@ -2131,8 +2159,31 @@
 
               <div id="visitLogStatus" class="status" style="margin-bottom:15px"></div>
 
-              <!-- AT-A-GLANCE SUMMARY BAR (total + per-type counts, chips filter on click) -->
-              <div id="visitLogSummary" class="visit-log-summary" hidden></div>
+              <!-- Search sits beside the summary bar, not inside it — its own box to the
+                   left, pulled out of the filter panel so it's always in view instead of
+                   waiting behind the funnel. .visit-log-toolbar just lays the two boxes out
+                   in one row; #visitLogSummary keeps owning its own innerHTML exactly as
+                   before (AT-A-GLANCE SUMMARY BAR: total + per-type counts, chips filter on
+                   click), untouched by this change. -->
+              <div class="visit-log-toolbar">
+                <div class="search-pill visit-log-search-bar" id="visitLogSearchControl">
+                  <svg class="search-pill__icon" viewBox="0 0 16 16" aria-hidden="true">
+                    <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"></circle>
+                    <path d="M11 11 14.5 14.5" fill="none" stroke="currentColor" stroke-width="1.6"
+                      stroke-linecap="round"></path>
+                  </svg>
+                  <input type="text" id="visitLogSearch" placeholder="Search by bakery or partner"
+                    class="search-pill__input" autocomplete="off" aria-label="Search by bakery or partner">
+                  <button type="button" class="search-pill__clear" id="visitLogSearchClear"
+                    aria-label="Clear search" style="display:none">
+                    <svg viewBox="0 0 12 12" aria-hidden="true">
+                      <path d="M2 2 10 10M10 2 2 10" fill="none" stroke="currentColor" stroke-width="1.6"
+                        stroke-linecap="round"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div id="visitLogSummary" class="visit-log-summary" hidden></div>
+              </div>
 
               <div id="visitLogList" class="visit-log-list">
                 <!-- Rows will be dynamically rendered here -->

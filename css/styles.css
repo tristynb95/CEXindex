@@ -12585,6 +12585,99 @@ body.dashboard-nav-open .filter-side-tab {
   stroke-linejoin: round;
 }
 
+/* Shared icon-pill search field: originated on the network map, reused as-is
+   for the Focus Bakery Priority Overview queue search and the Bakery Reports
+   search bar so "search" looks the same everywhere in the dashboard. */
+.search-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 200px;
+  max-width: 280px;
+  min-height: var(--control-h);
+  padding: 0 8px 0 10px;
+  border: 1px solid rgba(34, 31, 26, 0.09);
+  border-radius: 11px;
+  background: rgba(251, 249, 243, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 2px rgba(48, 36, 22, 0.04);
+}
+
+.search-pill:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(111, 24, 20, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.search-pill__icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: var(--muted-l);
+}
+
+.search-pill__input {
+  flex: 1 1 auto;
+  /* width:0, not just min-width:0 — text inputs carry their own intrinsic
+     preferred width in flexbox that min-width:0 alone doesn't fully
+     suppress in every browser, which let the box widen as typed text grew
+     that preferred size. Forcing the flex-basis to 0 makes flex-grow the
+     only thing sizing it, so the pill's own fixed width always wins. */
+  width: 0;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+}
+
+/* The global input:focus-visible ring (see GLOBAL INTERACTION POLISH) outranks
+   the plain .search-pill__input class and would draw a second, sharp-cornered
+   red rectangle on top of the pill's own focus-within treatment above. */
+.search-pill__input:focus-visible {
+  outline: none;
+}
+
+.search-pill__input::placeholder {
+  color: var(--muted-l);
+  font-weight: 500;
+}
+
+.search-pill__clear {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(34, 31, 26, 0.08);
+  color: var(--muted-l);
+  cursor: pointer;
+  transition: background-color 0.16s var(--ease), color 0.16s var(--ease);
+}
+
+.search-pill__clear:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.search-pill__clear svg {
+  width: 9px;
+  height: 9px;
+}
+
+@media (max-width: 640px) {
+  .search-pill {
+    width: 100%;
+    max-width: none;
+  }
+}
+
 /* Map-specific segmented controls use the dashboard's cream and GAIL's red,
    without inheriting the dark rankings switch from the Overview page. */
 .map-segmented-control {
@@ -13012,6 +13105,13 @@ body.map-fullscreen-active .dashboard-workspace__main {
     border-radius: 11px;
   }
 
+  #networkMapSearch,
+  #targetMapSearch {
+    grid-column: 1 / -1;
+    min-height: 46px;
+    padding: 0 8px 0 12px;
+  }
+
   .map-toggle-group .map-toggle-label {
     flex: 0 0 auto;
     font-size: 0.61rem;
@@ -13397,6 +13497,43 @@ body.visit-log-filter-open .mobile-bottom-nav {
 .filter-select__search::-webkit-search-cancel-button:hover,
 .focus-qsearch::-webkit-search-cancel-button:hover {
   opacity: 1;
+}
+
+/* Row pairing Search with the at-a-glance summary bar: its own box on the
+   left, the summary (count + actions) taking the rest of the row on the
+   right, rather than either sitting on its own full-width line. */
+.visit-log-toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.visit-log-toolbar .visit-log-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+/* Used to live inside the filter panel (see the note by #visitLogFilterPanel
+   further down), which meant opening Filters just to type a bakery name —
+   pulled out so it's always on screen. The look itself is the shared
+   .search-pill (see the network map); this class only sets the fixed width
+   that lets it share a row with the summary bar instead of spanning it alone. */
+.visit-log-search-bar {
+  flex: 0 0 280px;
+  max-width: none;
+}
+
+@media (max-width: 640px) {
+  .visit-log-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .visit-log-search-bar {
+    flex-basis: auto;
+  }
 }
 
 .visit-log-reset-btn {
@@ -20524,6 +20661,14 @@ html {
   flex-shrink: 0;
 }
 
+/* Nested inside a .focus-tool-label (a column flex box), so .search-pill's
+   own flex-basis — meant as a row-context width — would otherwise size this
+   element's height instead. Reset the flex shorthand and size by width. */
+.focus-queue__search {
+  flex: 0 0 auto;
+  width: 210px;
+}
+
 .focus-reset-btn:hover {
   background: var(--accent-light);
   border-color: var(--accent);
@@ -27417,15 +27562,6 @@ body.visit-log-filter-open .header-pill__tooltip {
   #visitLogFilterPanel .visit-log-filter-panel__header .visit-log-reset-btn {
     grid-area: auto;
     flex: 0 0 auto;
-  }
-
-  /* Search leads, then Period: the two that decide which records exist at
-     all, ahead of the ones that narrow or arrange them. The bar did this
-     with order:-2 on its first child and order:-1 on Period; Search moved
-     into the panel, so only the Period half survived and it ended up
-     leading the row on its own. */
-  #visitLogFilterPanel #visitLogSearchControl {
-    order: -2;
   }
 
   .visit-log-filter-panel__body .visit-log-filter-control label {

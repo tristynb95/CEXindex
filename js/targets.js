@@ -447,7 +447,16 @@ function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
     // the row a nested width to divide up and pushed Reset onto a second line.
     '<div class="focus-queue__bar">' +
     '<div class="focus-queue__chips" id="focusQueueChips"></div>' +
-    '<label class="focus-tool-label"><span>Search</span><input type="search" id="focusQueueSearch" class="focus-qsearch" placeholder="Bakery or operations area" aria-label="Search the action list by bakery or operations area" oninput="GAILS.setFocusSearch(this.value)"></label>' +
+    // Matches the network map's search field (.search-pill) — same icon-pill
+    // look and custom clear button everywhere "search" appears in the app.
+    // Wrapped in .focus-tool-label, like its neighbours, so it carries the
+    // same uppercase "Search" caption and picks up their responsive rules
+    // (mobile's flex:0 0 auto) for free.
+    '<label class="focus-tool-label"><span>Search</span><div class="search-pill focus-queue__search" id="focusQueueSearchWrap">' +
+    '<svg class="search-pill__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"></circle><path d="M11 11 14.5 14.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>' +
+    '<input type="text" id="focusQueueSearch" class="search-pill__input" placeholder="Bakery or ops area" autocomplete="off" aria-label="Search the action list by bakery or operations area" value="' + esc(prevSearch) + '" oninput="GAILS.setFocusSearch(this.value)">' +
+    '<button type="button" class="search-pill__clear" id="focusQueueSearchClear" aria-label="Clear search" style="display:' + (prevSearch ? '' : 'none') + '" onclick="GAILS.clearFocusSearch()"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2 10 10M10 2 2 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg></button>' +
+    '</div></label>' +
     // Support priority is one dropdown rather than four chips, and the two
     // activity filters are checkboxes rather than two more chips — six buttons
     // and two group labels replaced by three fields that sit in the same tray,
@@ -654,6 +663,9 @@ function _renderHubQueue() {
     dipping: activityScope.filter(function (r) { return isDipping(r) && (!s.novisit || isVisitDue(r)); }).length,
     novisit: activityScope.filter(function (r) { return isVisitDue(r) && (!s.dipping || isDipping(r)); }).length
   };
+
+  var searchClearBtn = document.getElementById('focusQueueSearchClear');
+  if (searchClearBtn) searchClearBtn.style.display = s.search ? '' : 'none';
 
   var rows = _visibleQueueRows();
   var LIMIT = 12;
@@ -865,6 +877,27 @@ window.GAILS.resetFocusFilters = function () {
 window.GAILS.setFocusSearch = function (val) {
   if (!_hubState) return;
   _hubState.search = val || '';
+  _renderHubQueue();
+};
+
+// Wired to the search pill's own clear (×) button — the box uses a plain
+// text input, not type="search", so there's no native cancel button to rely
+// on for this one.
+window.GAILS.clearFocusSearch = function () {
+  var input = document.getElementById('focusQueueSearch');
+  if (input) input.value = '';
+  window.GAILS.setFocusSearch('');
+};
+
+// Called on re-entering the Focus Bakeries tab from elsewhere, so a search
+// typed on a previous visit doesn't silently keep filtering the list. Other
+// filters (tier, band, area) are left alone — only the search box is a typed,
+// throwaway query rather than a chosen filter state.
+window.GAILS.resetFocusSearch = function () {
+  if (!_hubState || !_hubState.search) return;
+  _hubState.search = '';
+  var searchEl = document.getElementById('focusQueueSearch');
+  if (searchEl) searchEl.value = '';
   _renderHubQueue();
 };
 
@@ -1279,6 +1312,13 @@ document.addEventListener('keydown', function (event) {
   var _targetMapAreaState = 'off';
   var _networkMapVisitState = 'all';
   var _targetMapVisitState = 'all';
+  // Free-text filter for each map's own search box. Deliberately reset (not
+  // carried forward) whenever the underlying filter set changes — a
+  // dashboard filter, the visit toggle, or leaving and re-entering the map's
+  // tab — so it never silently narrows a filter combination the box no
+  // longer visibly shows.
+  var _networkMapSearchQuery = '';
+  var _targetMapSearchQuery = '';
 
   var MAPS = {
     network: {
@@ -1519,6 +1559,10 @@ document.addEventListener('keydown', function (event) {
     }
 
     if (cfg.instance) {
+      // Re-entering a map tab (rather than opening it for the first time)
+      // lands here — the search box is scoped to this visit, so it doesn't
+      // carry over from a previous look at the map.
+      resetMapSearch(mapKey);
       cfg.instance.invalidateSize();
       renderLegend(cfg);
       placeMarkers(cfg);
@@ -1897,6 +1941,36 @@ document.addEventListener('keydown', function (event) {
     });
   }
 
+  function getMapSearchQuery(cfg) {
+    return (cfg.key === 'network' ? _networkMapSearchQuery : _targetMapSearchQuery) || '';
+  }
+
+  // Narrows to bakeries/ops areas whose name contains the search box text.
+  function getSearchFilteredItems(cfg, items) {
+    var query = getMapSearchQuery(cfg);
+    if (!query) return items;
+    var q = query.toLowerCase();
+    return items.filter(function (item) {
+      var label = (GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b) || '';
+      var ops = (GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : '') || '';
+      return label.toLowerCase().indexOf(q) >= 0 || ops.toLowerCase().indexOf(q) >= 0;
+    });
+  }
+
+  // Clears a map's search box — both the state and the visible input — whenever
+  // something else changes what the map is filtered to, so the box never
+  // appears to apply while actually describing a stale selection.
+  function resetMapSearch(mapKey) {
+    if (mapKey === 'network') _networkMapSearchQuery = '';
+    else _targetMapSearchQuery = '';
+    var inputId = mapKey === 'network' ? 'networkMapSearchInput' : 'targetMapSearchInput';
+    var clearId = mapKey === 'network' ? 'networkMapSearchClear' : 'targetMapSearchClear';
+    var input = document.getElementById(inputId);
+    if (input) input.value = '';
+    var clearBtn = document.getElementById(clearId);
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
+
   // Names of every bakery matching the active region/ops/bakery filters,
   // regardless of whether they have any scored data for the current period.
   function getFilteredBakeryNames() {
@@ -1947,12 +2021,23 @@ document.addEventListener('keydown', function (event) {
     var hasBandFilter = !!(GAILS.state && GAILS.state.bandFilter);
     var sourceItems = cfg.noDataFallback && !hasBandFilter ? buildMergedItems(cfg) : cfg.items;
 
-    var visibleItems = getVisitFilteredItems(cfg, sourceItems);
+    var visitFilteredItems = getVisitFilteredItems(cfg, sourceItems);
+    var visibleItems = getSearchFilteredItems(cfg, visitFilteredItems);
 
     if (!sourceItems.length || !visibleItems.length) {
       cfg.missingItems = [];
       cfg.instance.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-      if (statusEl) statusEl.textContent = sourceItems.length ? 'No bakeries match the current visit filter.' : cfg.emptyMessage;
+      var emptyMsg = cfg.emptyMessage;
+      if (sourceItems.length) {
+        if (!visitFilteredItems.length) {
+          emptyMsg = 'No bakeries match the current visit filter.';
+        } else if (getMapSearchQuery(cfg)) {
+          emptyMsg = 'No bakeries or ops areas match “' + getMapSearchQuery(cfg) + '”.';
+        } else {
+          emptyMsg = 'No bakeries match the current filters.';
+        }
+      }
+      if (statusEl) statusEl.textContent = emptyMsg;
       return;
     }
 
@@ -2250,6 +2335,11 @@ document.addEventListener('keydown', function (event) {
   }
 
   window.GAILS.storeDashboardMapData = function (items) {
+    // New data here means a dashboard filter (region/ops/bakery/band/period/
+    // view) changed and the map is about to re-render against it — clear the
+    // map's own search box so it doesn't look like it's still narrowing a
+    // selection the rest of the page has moved on from.
+    resetMapSearch('network');
     storeMapItems('network', items);
   };
 
@@ -2258,6 +2348,7 @@ document.addEventListener('keydown', function (event) {
   };
 
   window.GAILS.storeMapTargets = function (targets) {
+    resetMapSearch('target');
     storeMapItems('target', targets);
   };
 
@@ -2315,6 +2406,15 @@ document.addEventListener('keydown', function (event) {
 
   window.GAILS.setNetworkMapVisitFilter = function (state) {
     _networkMapVisitState = state;
+    resetMapSearch('network');
+    var cfg = MAPS.network;
+    if (cfg.instance) {
+      placeMarkers(cfg);
+    }
+  };
+
+  window.GAILS.setNetworkMapSearch = function (query) {
+    _networkMapSearchQuery = (query || '').trim();
     var cfg = MAPS.network;
     if (cfg.instance) {
       placeMarkers(cfg);
@@ -2323,6 +2423,15 @@ document.addEventListener('keydown', function (event) {
 
   window.GAILS.setTargetMapVisitFilter = function (state) {
     _targetMapVisitState = state;
+    resetMapSearch('target');
+    var cfg = MAPS.target;
+    if (cfg.instance) {
+      placeMarkers(cfg);
+    }
+  };
+
+  window.GAILS.setTargetMapSearch = function (query) {
+    _targetMapSearchQuery = (query || '').trim();
     var cfg = MAPS.target;
     if (cfg.instance) {
       placeMarkers(cfg);

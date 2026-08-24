@@ -4071,9 +4071,19 @@ window.GAILS = window.GAILS || {};
 
   window.GAILS.clearVisitLogHeaderFilter = function (key) {
     applyVisitLogFilterClear(key);
+    if (key !== 'search') clearVisitLogSearchOnFilterChange();
     syncVisitLogMobileFilterButton();
     window.GAILS.renderVisitLog();
   };
+
+  // Search now lives above the results rather than inside the filter panel
+  // (see #visitLogSearchControl in index.html), so it reads as its own tool
+  // rather than one more filter among the rest — changing any other filter
+  // clears it instead of silently combining with a stale term.
+  function clearVisitLogSearchOnFilterChange() {
+    var searchEl = document.getElementById('visitLogSearch');
+    if (searchEl && searchEl.value) searchEl.value = '';
+  }
 
   // Banner Reset: clears every recognised filter key at once. Keys not in
   // play for the current view (e.g. followUpSort outside Follow-ups) simply
@@ -4532,6 +4542,16 @@ window.GAILS = window.GAILS || {};
     // scope so a live master-switch toggle takes effect without a reload.
     applyReportScopeToFilters();
 
+    // The search box's own clear (×) button only makes sense once there's
+    // something to clear — synced here rather than at every place that can
+    // blank the field (filter changes, Reset, the view toggle) so none of
+    // them can drift out of step with it.
+    var visitLogSearchEl = document.getElementById('visitLogSearch');
+    var visitLogSearchClearBtn = document.getElementById('visitLogSearchClear');
+    if (visitLogSearchClearBtn) {
+      visitLogSearchClearBtn.style.display = (visitLogSearchEl && visitLogSearchEl.value) ? '' : 'none';
+    }
+
     var allVisits = window.GAILS._allVisitsObj || {};
     var visitIds = Object.keys(allVisits);
 
@@ -4593,13 +4613,25 @@ window.GAILS = window.GAILS || {};
       }
 
       if (searchEl) {
+        var searchClearBtn = document.getElementById('visitLogSearchClear');
         var searchDebounceId = null;
         searchEl.addEventListener('input', function () {
+          if (searchClearBtn) searchClearBtn.style.display = searchEl.value ? '' : 'none';
           clearTimeout(searchDebounceId);
           searchDebounceId = setTimeout(function () { window.GAILS.renderVisitLog(); }, 220);
         });
+        if (searchClearBtn) {
+          searchClearBtn.addEventListener('click', function () {
+            clearTimeout(searchDebounceId);
+            searchEl.value = '';
+            searchClearBtn.style.display = 'none';
+            searchEl.focus();
+            window.GAILS.renderVisitLog();
+          });
+        }
       }
       if (regionEl) regionEl.addEventListener('change', function () {
+        clearVisitLogSearchOnFilterChange();
         // Selected regions changed: keep only ops areas and bakeries that
         // still sit inside at least one selected region.
         populateDropdown('visitLogOps', new Set(getVisitLogOps(getVisitLogFilterValues(regionEl))), 'All Areas');
@@ -4608,36 +4640,39 @@ window.GAILS = window.GAILS || {};
         window.GAILS.renderVisitLog();
       });
       if (opsEl) opsEl.addEventListener('change', function () {
+        clearVisitLogSearchOnFilterChange();
         populateDirectoryBakeryOptions();
         syncVisitLogMobileFilterButton();
         window.GAILS.renderVisitLog();
       });
-      if (bakeryEl) bakeryEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
-      if (directorySortEl) directorySortEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
-      if (directoryGroupEl) directoryGroupEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (bakeryEl) bakeryEl.addEventListener('change', function () { clearVisitLogSearchOnFilterChange(); syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (directorySortEl) directorySortEl.addEventListener('change', function () { clearVisitLogSearchOnFilterChange(); syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (directoryGroupEl) directoryGroupEl.addEventListener('change', function () { clearVisitLogSearchOnFilterChange(); syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       if (followUpAssigneeEl) followUpAssigneeEl.addEventListener('change', function () {
+        clearVisitLogSearchOnFilterChange();
         window.GAILS._pendingFollowUpAssigneeFilter = '';
         syncVisitLogMobileFilterButton();
         window.GAILS.renderVisitLog();
       });
-      if (periodEl) periodEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (periodEl) periodEl.addEventListener('change', function () { clearVisitLogSearchOnFilterChange(); syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var typeEl = document.getElementById('visitLogType');
       var ratingEl = document.getElementById('visitLogRating');
       if (typeEl) typeEl.addEventListener('change', function () {
+        clearVisitLogSearchOnFilterChange();
         syncCqvRatingVisibility();
         syncVisitLogMobileFilterButton();
         window.GAILS.renderVisitLog();
       });
-      if (ratingEl) ratingEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (ratingEl) ratingEl.addEventListener('change', function () { clearVisitLogSearchOnFilterChange(); syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       syncCqvRatingVisibility();
       var groupEl = document.getElementById('visitLogGroup');
-      if (groupEl) groupEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (groupEl) groupEl.addEventListener('change', function () { clearVisitLogSearchOnFilterChange(); syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var sortEl = document.getElementById('visitLogSort');
-      if (sortEl) sortEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (sortEl) sortEl.addEventListener('change', function () { clearVisitLogSearchOnFilterChange(); syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var followUpGroupEl = document.getElementById('followUpGroup');
-      if (followUpGroupEl) followUpGroupEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (followUpGroupEl) followUpGroupEl.addEventListener('change', function () { clearVisitLogSearchOnFilterChange(); syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
       var followUpSortEl = document.getElementById('followUpSort');
-      if (followUpSortEl) followUpSortEl.addEventListener('change', function () { syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
+      if (followUpSortEl) followUpSortEl.addEventListener('change', function () { clearVisitLogSearchOnFilterChange(); syncVisitLogMobileFilterButton(); window.GAILS.renderVisitLog(); });
 
       // Toggle views (scoped to the main view toggle so the Follow-ups status
       // sub-toggle below doesn't collide with it).
