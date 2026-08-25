@@ -1134,9 +1134,46 @@ window.GAILS.openFocusDetail = function (name) {
       allAvgByMonth.push(allN ? allSum / allN : null);
       selAvgByMonth.push(selN ? selSum / selN : null);
     });
-    var trendDatasets = [
-      { label: name, data: trend.hist.map(function (r) { return r && !r.noData && !r.incompletePeriod ? r[cf] : null; }), borderColor: bandColor, backgroundColor: 'rgba(178, 42, 36, 0.10)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: false }
-    ];
+
+    // The trend itself only ever plots closed months (see focus-data.js) so a
+    // month in progress never masquerades as a settled score. But if this
+    // bakery already has partial responses in for the open month, it's the
+    // freshest signal available — append it to the bakery's own line as a
+    // dashed final segment (Chart.js segment styling, so it curves as one
+    // continuous line rather than a bolted-on straight bridge) with a hollow
+    // point marking it as provisional. The reference lines (company/selection
+    // average, exit threshold) hold no real data for an open month, so they
+    // carry their last known value forward flat rather than asserting a new
+    // one — visibly still a reference, not a fresh reading.
+    var labels = FM;
+    var mainData = trend.hist.map(function (r) { return r && !r.noData && !r.incompletePeriod ? r[cf] : null; });
+    var curMonthLabel = G.focusMonthLabelFromKey ? G.focusMonthLabelFromKey(new Date().getFullYear() * 12 + new Date().getMonth()) : null;
+    var curRecord = curMonthLabel ? G.state.ALL.find(function (r) {
+      return r.b === name && r.m === curMonthLabel && !r.noData && !r.incompletePeriod &&
+        r[cf] !== null && r[cf] !== undefined && !isNaN(r[cf]);
+    }) : null;
+    function lastValue(arr) {
+      for (var i = arr.length - 1; i >= 0; i--) { if (arr[i] !== null && arr[i] !== undefined) return arr[i]; }
+      return null;
+    }
+    var provisionalIdx = -1;
+    if (curRecord) {
+      labels = FM.concat([curMonthLabel]);
+      provisionalIdx = mainData.length;
+      mainData = mainData.concat([curRecord[cf]]);
+      allAvgByMonth = allAvgByMonth.concat([lastValue(allAvgByMonth)]);
+      selAvgByMonth = selAvgByMonth.concat([lastValue(selAvgByMonth)]);
+    }
+
+    var mainDataset = { label: name, data: mainData, borderColor: bandColor, backgroundColor: 'rgba(178, 42, 36, 0.10)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: false };
+    if (provisionalIdx !== -1) {
+      mainDataset.segment = { borderDash: function (ctx) { return ctx.p1DataIndex === provisionalIdx ? [5, 4] : undefined; } };
+      mainDataset.pointRadius = 3;
+      mainDataset.pointBackgroundColor = function (ctx) { return ctx.dataIndex === provisionalIdx ? '#fff' : bandColor; };
+      mainDataset.pointBorderColor = bandColor;
+      mainDataset.pointBorderWidth = function (ctx) { return ctx.dataIndex === provisionalIdx ? 2 : 0; };
+    }
+    var trendDatasets = [mainDataset];
     // Unfiltered, this duplicates the company average; one bakery duplicates its own line.
     if (isFiltered && Object.keys(selPeers).length >= 2) {
       trendDatasets.push({ label: 'Selection average', data: selAvgByMonth, borderColor: 'rgba(43, 108, 176, 0.85)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 1.5, borderWidth: 1.75, borderDash: [3, 3] });
@@ -1145,7 +1182,7 @@ window.GAILS.openFocusDetail = function (name) {
     if (isAbsolute) {
       trendDatasets.push({
         label: 'Exit focus threshold (' + _hubState.escapeLine + ')',
-        data: FM.map(function () { return _hubState.escapeLine; }),
+        data: labels.map(function () { return _hubState.escapeLine; }),
         borderColor: 'rgba(29, 158, 92, 0.82)',
         backgroundColor: 'transparent',
         fill: false,
@@ -1156,9 +1193,10 @@ window.GAILS.openFocusDetail = function (name) {
         borderDash: [7, 5]
       });
     }
+
     G.makeChart('focusDetailChart', {
       type: 'line', data: {
-        labels: FM, datasets: trendDatasets
+        labels: labels, datasets: trendDatasets
       }, options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, boxHeight: 10 } } }, scales: { y: { min: 0, max: 100, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } }, maintainAspectRatio: false }
     });
   }

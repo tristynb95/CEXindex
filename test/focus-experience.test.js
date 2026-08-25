@@ -220,7 +220,7 @@ test('simplifies the bakery review and uses benchmark-based RAG analysis', () =>
   assert.doesNotMatch(targets, /_countFocusStreak\(recentTrend\.hist/);
   assert.match(targets, /if \(isAbsolute\) \{\s*trendDatasets\.push/);
   assert.match(targets, /label: 'Exit focus threshold \(' \+ _hubState\.escapeLine \+ '\)'/);
-  assert.match(targets, /data: FM\.map\(function \(\) \{ return _hubState\.escapeLine; \}\)/);
+  assert.match(targets, /data: labels\.map\(function \(\) \{ return _hubState\.escapeLine; \}\)/);
   assert.match(targets, /Bar colour shows target status · length shows progress to target/);
   assert.match(targets, /Math\.round\(d\.attainment\)/);
   assert.match(targets, /focus-driver__movement-icon--/);
