@@ -3435,6 +3435,28 @@ window.GAILS = window.GAILS || {};
     if (select._visitLogMultiSelect) select._visitLogMultiSelect.sync();
   }
 
+  // Mirrors the Overview filter bar's own focusMsListOption/restoreMsListFocus
+  // (js/app.js): Up/Down walks between option rows, and since renderList()
+  // rebuilds every row from scratch on each toggle, the focused button's DOM
+  // node is destroyed and has to be re-found by its option value afterwards
+  // or arrow-key navigation silently stops working after a selection.
+  function focusVisitLogListOption(list, direction) {
+    var items = Array.prototype.filter.call(list.querySelectorAll('.bakery-ms__option'), function (el) { return !el.disabled; });
+    if (!items.length) return;
+    var idx = items.indexOf(document.activeElement);
+    var next = direction === 'up' ? idx - 1 : idx + 1;
+    if (next < 0) next = items.length - 1;
+    if (next >= items.length) next = 0;
+    items[next].focus({ preventScroll: true });
+    items[next].scrollIntoView({ block: 'nearest' });
+  }
+
+  function restoreVisitLogListFocus(list, optionValue) {
+    if (!optionValue) return;
+    var btn = Array.prototype.find.call(list.querySelectorAll('.bakery-ms__option'), function (el) { return el.dataset.option === optionValue; });
+    if (btn) btn.focus({ preventScroll: true });
+  }
+
   // Bakery Reports shares the Overview filter bar's checkbox/chip UI, while a
   // hidden native multiple select remains the single source of filter state.
   function createVisitLogMultiSelect(config) {
@@ -3518,6 +3540,7 @@ window.GAILS = window.GAILS || {};
         button.className = 'bakery-ms__option' + (checked ? ' is-checked' : '');
         button.setAttribute('role', 'option');
         button.setAttribute('aria-selected', checked ? 'true' : 'false');
+        button.dataset.option = option.value;
         var box = document.createElement('span');
         box.className = 'bakery-ms__checkbox';
         box.setAttribute('aria-hidden', 'true');
@@ -3529,8 +3552,14 @@ window.GAILS = window.GAILS || {};
           var next = values();
           var index = next.indexOf(option.value);
           if (index === -1) next.push(option.value); else next.splice(index, 1);
+          var focusedOption = document.activeElement && document.activeElement.classList.contains('bakery-ms__option') ? option.value : null;
           setVisitLogFilterValues(select, next);
+          restoreVisitLogListFocus(list, focusedOption);
           select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        button.addEventListener('keydown', function (event) {
+          if (event.key === 'ArrowDown') { event.preventDefault(); focusVisitLogListOption(list, 'down'); }
+          else if (event.key === 'ArrowUp') { event.preventDefault(); focusVisitLogListOption(list, 'up'); }
         });
         list.appendChild(button);
       });
@@ -3561,11 +3590,25 @@ window.GAILS = window.GAILS || {};
       if (search) search.value = '';
       renderList();
       renderSelected();
+      // Reopening should always show the list from the top, not wherever it
+      // was scrolled to last time.
+      list.scrollTop = 0;
       if (search) search.focus({ preventScroll: true });
     }
 
     trigger.addEventListener('click', function () { if (isOpen) close(); else open(); });
     if (search) search.addEventListener('input', renderList);
+    if (search) search.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        var first = list.querySelector('.bakery-ms__option:not(:disabled)');
+        if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ block: 'nearest' }); }
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        var firstMatch = list.querySelector('.bakery-ms__option:not(:disabled)');
+        if (firstMatch) firstMatch.click();
+      }
+    });
     clearBtn.addEventListener('click', function () {
       setVisitLogFilterValues(select, []);
       select.dispatchEvent(new Event('change', { bubbles: true }));

@@ -226,16 +226,17 @@
       closeAll(wrapper);
       wrapper.classList.add('is-open');
       trigger.setAttribute('aria-expanded', 'true');
+      // Reopening should always show the list from the top, not wherever the
+      // current selection happens to sit — so focus starts on the first row
+      // rather than jumping (and scrolling) to the selected one.
+      optionsList.scrollTop = 0;
       if (searchable) {
         searchInput.value = '';
         filterOptions('');
         searchInput.focus({ preventScroll: true });
       } else {
-        var selected = optionsList.querySelector('.filter-select__option.is-selected') || optionsList.querySelector('.filter-select__option:not(:disabled)');
-        if (selected) {
-          selected.focus({ preventScroll: true });
-          scrollIntoViewInsideContainer(selected, optionsList);
-        }
+        var first = optionsList.querySelector('.filter-select__option:not(:disabled)');
+        if (first) first.focus({ preventScroll: true });
       }
     }
 

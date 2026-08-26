@@ -818,11 +818,16 @@ body[data-dash-tab="feedback"] .filter-control--view {
   transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
-.filter-select__option:hover,
+.filter-select__option:hover {
+  background: rgba(34, 31, 26, 0.06);
+  color: var(--text);
+}
+
 .filter-select__option:focus-visible {
   background: rgba(34, 31, 26, 0.06);
   color: var(--text);
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .filter-select__option.is-selected {
@@ -1083,11 +1088,16 @@ body[data-dash-tab="feedback"] .filter-control--view {
   transition: background 0.14s, color 0.14s;
 }
 
-.bakery-ms__option:hover,
+.bakery-ms__option:hover {
+  background: rgba(34, 31, 26, 0.06);
+  color: var(--text);
+}
+
 .bakery-ms__option:focus-visible {
   background: rgba(34, 31, 26, 0.06);
   color: var(--text);
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* Custom checkbox */

@@ -1598,6 +1598,31 @@
     });
   })();
 
+  // Shared by the Bakery/Region/Ops checkbox dropdowns below: Up/Down walks
+  // between option rows the same way the custom-select menus already do.
+  // Enter/Space need no extra wiring — these rows are native <button>s, which
+  // fire their own click on both keys.
+  function focusMsListOption(list, direction) {
+    var items = Array.prototype.filter.call(list.querySelectorAll('.bakery-ms__option'), function (el) { return !el.disabled; });
+    if (!items.length) return;
+    var idx = items.indexOf(document.activeElement);
+    var next = direction === 'up' ? idx - 1 : idx + 1;
+    if (next < 0) next = items.length - 1;
+    if (next >= items.length) next = 0;
+    items[next].focus({ preventScroll: true });
+    items[next].scrollIntoView({ block: 'nearest' });
+  }
+
+  // Toggling a checkbox rebuilds the whole list (see renderList in each
+  // dropdown below), which throws away the focused button's DOM node and
+  // silently killed arrow-key navigation right after a selection. Re-find
+  // the recreated row for the same option and hand focus back to it.
+  function restoreMsListFocus(list, optionValue) {
+    if (!optionValue) return;
+    var btn = Array.prototype.find.call(list.querySelectorAll('.bakery-ms__option'), function (el) { return el.dataset.option === optionValue; });
+    if (btn) btn.focus({ preventScroll: true });
+  }
+
   // ========== BAKERY MULTI-SELECT ==========
   (function () {
     var selected = state.searchBakery;
@@ -1667,6 +1692,7 @@
         btn.className = 'bakery-ms__option' + (isSel ? ' is-checked' : '');
         btn.setAttribute('role', 'option');
         btn.setAttribute('aria-selected', isSel ? 'true' : 'false');
+        btn.dataset.option = name;
         var box = document.createElement('span');
         box.className = 'bakery-ms__checkbox';
         box.setAttribute('aria-hidden', 'true');
@@ -1675,6 +1701,10 @@
         btn.appendChild(box);
         btn.appendChild(txt);
         btn.addEventListener('click', function () { toggleBakery(name); });
+        btn.addEventListener('keydown', function (event) {
+          if (event.key === 'ArrowDown') { event.preventDefault(); focusMsListOption(msList, 'down'); }
+          else if (event.key === 'ArrowUp') { event.preventDefault(); focusMsListOption(msList, 'up'); }
+        });
         msList.appendChild(btn);
       });
     }
@@ -1682,9 +1712,11 @@
     function toggleBakery(name) {
       var idx = selected.indexOf(name);
       if (idx === -1) { selected.push(name); } else { selected.splice(idx, 1); }
+      var focusedOption = document.activeElement && document.activeElement.classList.contains('bakery-ms__option') ? name : null;
       renderList(msSearch.value);
       renderSelected();
       updateLabel();
+      restoreMsListFocus(msList, focusedOption);
       refresh();
     }
 
@@ -1696,6 +1728,9 @@
       msSearch.value = '';
       renderList('');
       renderSelected();
+      // Reopening should always show the list from the top, not wherever it
+      // was scrolled to last time.
+      msList.scrollTop = 0;
       msSearch.focus({ preventScroll: true });
     }
 
@@ -1708,6 +1743,17 @@
 
     msTrigger.addEventListener('click', function () { isOpen ? closeDropdown() : openDropdown(); });
     msSearch.addEventListener('input', function () { renderList(this.value); });
+    msSearch.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        var first = msList.querySelector('.bakery-ms__option:not(:disabled)');
+        if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ block: 'nearest' }); }
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        var firstMatch = msList.querySelector('.bakery-ms__option:not(:disabled)');
+        if (firstMatch) firstMatch.click();
+      }
+    });
     msClearBtn.addEventListener('click', function () {
       selected.splice(0, selected.length);
       updateLabel();
@@ -1861,6 +1907,7 @@
         btn.className = 'bakery-ms__option' + (isSel ? ' is-checked' : '');
         btn.setAttribute('role', 'option');
         btn.setAttribute('aria-selected', isSel ? 'true' : 'false');
+        btn.dataset.option = name;
         var box = document.createElement('span');
         box.className = 'bakery-ms__checkbox';
         box.setAttribute('aria-hidden', 'true');
@@ -1869,6 +1916,10 @@
         btn.appendChild(box);
         btn.appendChild(txt);
         btn.addEventListener('click', function () { toggleRegion(name); });
+        btn.addEventListener('keydown', function (event) {
+          if (event.key === 'ArrowDown') { event.preventDefault(); focusMsListOption(msList, 'down'); }
+          else if (event.key === 'ArrowUp') { event.preventDefault(); focusMsListOption(msList, 'up'); }
+        });
         msList.appendChild(btn);
       });
     }
@@ -1876,9 +1927,11 @@
     function toggleRegion(name) {
       var idx = selected.indexOf(name);
       if (idx === -1) { selected.push(name); } else { selected.splice(idx, 1); }
+      var focusedOption = document.activeElement && document.activeElement.classList.contains('bakery-ms__option') ? name : null;
       renderList();
       renderSelected();
       updateLabel();
+      restoreMsListFocus(msList, focusedOption);
       onRegionChange();
     }
 
@@ -1905,6 +1958,9 @@
       msTrigger.classList.add('is-open');
       renderList();
       renderSelected();
+      // Reopening should always show the list from the top, not wherever it
+      // was scrolled to last time.
+      msList.scrollTop = 0;
     }
 
     function closeDropdown() {
@@ -2014,6 +2070,7 @@
         btn.className = 'bakery-ms__option' + (isSel ? ' is-checked' : '');
         btn.setAttribute('role', 'option');
         btn.setAttribute('aria-selected', isSel ? 'true' : 'false');
+        btn.dataset.option = name;
         var box = document.createElement('span');
         box.className = 'bakery-ms__checkbox';
         box.setAttribute('aria-hidden', 'true');
@@ -2022,6 +2079,10 @@
         btn.appendChild(box);
         btn.appendChild(txt);
         btn.addEventListener('click', function () { toggleOps(name); });
+        btn.addEventListener('keydown', function (event) {
+          if (event.key === 'ArrowDown') { event.preventDefault(); focusMsListOption(msList, 'down'); }
+          else if (event.key === 'ArrowUp') { event.preventDefault(); focusMsListOption(msList, 'up'); }
+        });
         msList.appendChild(btn);
       });
     }
@@ -2029,9 +2090,11 @@
     function toggleOps(name) {
       var idx = selected.indexOf(name);
       if (idx === -1) { selected.push(name); } else { selected.splice(idx, 1); }
+      var focusedOption = document.activeElement && document.activeElement.classList.contains('bakery-ms__option') ? name : null;
       renderList(msSearch.value);
       renderSelected();
       updateLabel();
+      restoreMsListFocus(msList, focusedOption);
       onOpsChange();
     }
 
@@ -2058,6 +2121,9 @@
       msSearch.value = '';
       renderList('');
       renderSelected();
+      // Reopening should always show the list from the top, not wherever it
+      // was scrolled to last time.
+      msList.scrollTop = 0;
       msSearch.focus({ preventScroll: true });
     }
 
@@ -2070,6 +2136,17 @@
 
     msTrigger.addEventListener('click', function () { isOpen ? closeDropdown() : openDropdown(); });
     msSearch.addEventListener('input', function () { renderList(this.value); });
+    msSearch.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        var first = msList.querySelector('.bakery-ms__option:not(:disabled)');
+        if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ block: 'nearest' }); }
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        var firstMatch = msList.querySelector('.bakery-ms__option:not(:disabled)');
+        if (firstMatch) firstMatch.click();
+      }
+    });
     msClearBtn.addEventListener('click', function () {
       selected.splice(0, selected.length);
       updateLabel();
