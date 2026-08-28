@@ -72,6 +72,30 @@ test('reconstructs action-plan columns without sidebar controls or shifted field
   assert.equal(lines[1].some((line) => line === 'Change'), false);
 });
 
+// The heading can reconstruct with the running page header on its row. It has
+// to be recognised before the header strip runs — against the letter-spaced
+// banner that strip eats "L A N Cheapside ... 24 JUL 26" as one caps-word run.
+test('finds the action plan heading with the running page header on its row', () => {
+  const parser = loadParser();
+  const result = parser.parsePages([
+    ['GAILS BAKERY', 'Cheapside', 'CQV - Q3FY26', 'FRIDAY 24th July 2026'],
+    ['C O M M E N T S & A C T I O N P L A N CHEAPSIDE GAILS BAKERY 24 JUL 26'],
+    [
+      'Service >> Standards/Shine',
+      '(GA100000) Are efficient ways of working embedded? PRIORITY Medium',
+      'ASSIGNEE Cheapside',
+      "FINDINGS 'No' - Marked down due to the shift planner.",
+      'ACTION REQUIRED HB & BM to train the team.',
+      'D E C L A R A T I O N'
+    ]
+  ]);
+
+  assert.equal(result.record.actionPlan.length, 1);
+  assert.equal(result.record.actionPlan[0].sectionPath, 'Service >> Standards/Shine');
+  assert.equal(result.record.actionPlan[0].questionRef, 'GA100000');
+  assert.equal(result.record.actionPlan[0].actionRequired, 'HB & BM to train the team.');
+});
+
 test('removes a merged Change control from pre-reconstructed action-plan lines', () => {
   const parser = loadParser();
   const result = parser.parsePages([

@@ -118,8 +118,7 @@ window.GAILS = window.GAILS || {};
       });
 
       var pageHasActionPlanHeading = rows.some(function(row) {
-        var text = cleanLine(row.items.map(function(item) { return item.str; }).join(' '));
-        return RE_ACTION_PLAN_HEADING.test(text.replace(/\s+/g, ''));
+        return isActionPlanHeading(row.items.map(function(item) { return item.str; }).join(' '));
       });
       if (inActionPlanTextLayer || pageHasActionPlanHeading) {
         alignActionPlanFieldMarkers(rows, pageWidth);
@@ -140,7 +139,7 @@ window.GAILS = window.GAILS || {};
           });
         }
         var reconstructed = cleanLine(rowItems.map(function(it) { return it.str; }).join(' '));
-        if (RE_ACTION_PLAN_HEADING.test(reconstructed.replace(/\s+/g, ''))) {
+        if (isActionPlanHeading(reconstructed)) {
           inActionPlanTextLayer = true;
         } else if (RE_DECLARATION_HEADING.test(reconstructed)) {
           inActionPlanTextLayer = false;
@@ -379,7 +378,18 @@ window.GAILS = window.GAILS || {};
   var RE_MAP_FOOTER = /^(?:Google|Map data\b.*)$/i;
   var RE_COMMENTS_ROW = /^\d+\s+Comments and photos?$/i;
   var RE_DECLARATION_HEADING = /^D\s*E\s*C\s*L\s*A\s*R\s*A\s*T\s*I\s*O\s*N$/i;
-  var RE_ACTION_PLAN_HEADING = /^C\s*O\s*M\s*M\s*E\s*N\s*T\s*S\s*&?\s*A\s*C\s*T\s*I\s*O\s*N\s*P\s*L\s*A\s*N$/i;
+  // The Comments & Action Plan banner is centred on its own band of the page,
+  // so anything else printed on that band — the running page header, or the
+  // first block header ("Visit 1 >> Efficiency") — can reconstruct onto the
+  // end of its row. Matched as a whole line the banner is then missed, and
+  // nothing downstream (the field-marker alignment above, either parse loop)
+  // learns the action plan has started: every following row reads as trailing
+  // report text and lands in the last question's coaching note. So match it as
+  // a prefix and hand back whatever trailed it. Stripping the running header
+  // first is no help — against a letter-spaced banner that strip eats the tail
+  // of the banner itself, since "L A N <SITE> GAILS BAKERY 30 JUL 26" is
+  // exactly its caps-words-before-a-date shape.
+  var RE_ACTION_PLAN_HEADING_ROW = /^C\s*O\s*M\s*M\s*E\s*N\s*T\s*S\s*&?\s*A\s*C\s*T\s*I\s*O\s*N\s*P\s*L\s*A\s*N(?=\s|$)/i;
   var RE_SUMMARY_HEADING = /^S\s*U\s*M\s*M\s*A\s*R\s*Y$/i;
   var RE_SCORE_BY_SECTION_HEADING = /^S\s*C\s*O\s*R\s*E\s*B\s*Y\s*S\s*E\s*C\s*T\s*I\s*O\s*N$/i;
   var RE_SCORE_BY_CATEGORY_HEADING = /^S\s*C\s*O\s*R\s*E\s*B\s*Y\s*C\s*A\s*T\s*E\s*G\s*O\s*R\s*Y$/i;
@@ -398,6 +408,18 @@ window.GAILS = window.GAILS || {};
   // caps-words-plus-date shape this would eat — the action-plan handler
   // strips headers itself after extracting the sidebar values.
   var RE_TRAILING_RUNNING_HEADER = /(?:^|\s+)[A-Z][A-Z']*(?:\s+[A-Z][A-Z']*){0,5}\s+\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}\s*$/;
+
+  // null when the row isn't the heading; otherwise the text that trailed it on
+  // the same row ('' when the banner had the row to itself).
+  function splitActionPlanHeading(line) {
+    var text = cleanLine(line);
+    var m = text.match(RE_ACTION_PLAN_HEADING_ROW);
+    return m ? cleanLine(text.slice(m[0].length)) : null;
+  }
+
+  function isActionPlanHeading(line) {
+    return splitActionPlanHeading(line) !== null;
+  }
 
   function isNoiseLine(line) {
     return RE_PAGE_FOOTER.test(line)
@@ -625,6 +647,17 @@ window.GAILS = window.GAILS || {};
         if (RE_PREV_RESPONSE_ONLY.test(line)) continue;
       }
 
+      // Tested before the strip below, which would eat the tail of the
+      // letter-spaced banner — see RE_ACTION_PLAN_HEADING_ROW. Anything that
+      // shared the banner's row is the action plan's first line.
+      var actionPlanRest = splitActionPlanHeading(line);
+      if (actionPlanRest !== null) {
+        inActionPlan = true;
+        reconcileFloatingText();
+        if (actionPlanRest) actionPlan.handleLine(actionPlanRest);
+        continue;
+      }
+
       // The running header can also land merged onto the end of a real
       // content line — strip it. Skipped inside the action plan (see the
       // RE_TRAILING_RUNNING_HEADER comment).
@@ -632,8 +665,6 @@ window.GAILS = window.GAILS || {};
         line = cleanLine(line.replace(RE_TRAILING_RUNNING_HEADER, ''));
         if (!line) continue;
       }
-
-      if (RE_ACTION_PLAN_HEADING.test(line.replace(/\s+/g, ''))) { inActionPlan = true; reconcileFloatingText(); continue; }
       // DECLARATION is the signature block that closes every report —
       // nothing after it (auditor name, embedded map labels) is content.
       if (RE_DECLARATION_HEADING.test(line)) { reconcileFloatingText(); actionPlan.flush(); break; }
@@ -836,7 +867,8 @@ window.GAILS = window.GAILS || {};
     // Shared with js/nbo-parser.js — see createActionPlanCollector above.
     createActionPlanCollector: createActionPlanCollector,
     buildSiteNameFragmentRe: buildSiteNameFragmentRe,
-    isActionPlanHeading: function(line) { return RE_ACTION_PLAN_HEADING.test(String(line).replace(/\s+/g, '')); },
+    isActionPlanHeading: isActionPlanHeading,
+    splitActionPlanHeading: splitActionPlanHeading,
     buildRecordFromPdf: async function(arrayBuffer) {
       var pages = await extractPageLines(arrayBuffer);
       var result = parsePages(pages);

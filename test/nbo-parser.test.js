@@ -150,6 +150,39 @@ test('does not spill the action plan into the last question note', () => {
   assert.equal(record.questions.some((q) => /COMMENTS|C O M M E N T S/.test(q.label)), false);
 });
 
+// The banner is centred on a band of the page it usually has to itself, but
+// not always: on a real export it reconstructed with the running page header
+// glued to its row, so the heading was never recognised, the whole action plan
+// read as trailing text, and it printed as the coaching note on question 22 —
+// a question answered Yes, which cannot carry one.
+test('finds the action plan when its heading shares a row with other text', () => {
+  const parser = loadParser();
+  const merged = (tail, dropFromPlan) => {
+    const pages = kingsCrossPages();
+    const heading = 'C O M M E N T S & A C T I O N P L A N';
+    pages[2][pages[2].indexOf(heading)] = heading + ' ' + tail;
+    if (dropFromPlan) pages[3] = pages[3].filter((line) => line !== dropFromPlan);
+    return pages;
+  };
+
+  [
+    // the running page header, which prints on the same band
+    merged('KINGS CROSS STATION GAILS BAKERY 30 JUL 26'),
+    // the first block header, printed directly under the banner
+    merged('Visit 1 >> Efficiency', 'Visit 1 >> Efficiency')
+  ].forEach((pages) => {
+    const { record } = parser.parsePages(pages);
+    const q22 = record.questions.find((q) => q.qNum === 22);
+
+    assert.equal(q22.note, '');
+    assert.equal(record.questions.some((q) => /ACTION REQUIRED|C O M M E N T S/.test(q.note || '')), false);
+    assert.equal(record.actionPlan.length, 2);
+    assert.equal(record.actionPlan[0].sectionPath, 'Visit 1 >> Efficiency');
+    assert.equal(record.actionPlan[0].questionRef, 'GA100000');
+    assert.equal(record.actionPlan[1].sectionPath, 'Visit 1 >> Quality');
+  });
+});
+
 test('parses each action plan block into its own item', () => {
   const { record } = loadParser().parsePages(kingsCrossPages());
 

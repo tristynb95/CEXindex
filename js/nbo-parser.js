@@ -356,11 +356,16 @@ window.GAILS = window.GAILS || {};
 
       // Everything from here to the declaration is the action plan. Without
       // this the whole block reads as untitled trailing text and lands in the
-      // last question's coaching note.
-      if (window.GAILS.CQV.isActionPlanHeading(line)) {
+      // last question's coaching note. Checked before the trailing-header
+      // strip further down, because the banner can reconstruct with the
+      // running page header — or the first block header — glued onto its
+      // row; whatever trailed it there is the action plan's first line.
+      var actionPlanRest = window.GAILS.CQV.splitActionPlanHeading(line);
+      if (actionPlanRest !== null) {
         closeCurrent();
         inSummary = false;
         inActionPlan = true;
+        if (actionPlanRest) actionPlan.handleLine(actionPlanRest);
         continue;
       }
       if (isRunningHeader(line)) continue;
