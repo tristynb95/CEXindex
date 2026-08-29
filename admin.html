@@ -26,7 +26,7 @@
   <!-- SheetJS and pdf.js are both import-time only, and together weighed more
        than the rest of this page combined. js/lazy-lib.js now fetches them when
        an upload actually needs them (and sets pdf.js's worker URL on arrival). -->
-  <link rel="stylesheet" href="css/styles.css?v=20260811-checkin-context-14-visit-history-table-01-unvisited-sites-table-01-audit-report-modals-03">
+  <link rel="stylesheet" href="css/styles.css?v=20260811-checkin-context-14-visit-history-table-01-unvisited-sites-table-01-audit-report-modals-03-notification-dot-01">
   <link rel="stylesheet" href="css/admin.css?v=20260817-admin-overhaul-01">
 </head>
 
@@ -70,8 +70,10 @@
               <div class="profile-menu profile-menu--light" data-profile-menu>
                 <button type="button" id="adminProfileMenuBtn" class="admin-secondary-btn profile-menu__trigger"
                   aria-haspopup="menu" aria-expanded="false" aria-controls="adminProfileMenuPopover">
-                  <span id="adminProfileMenuAvatar" class="profile-menu__avatar" aria-hidden="true">P</span>
-                  <span class="profile-menu__dot" data-notification-dot hidden></span>
+                  <span class="profile-menu__badge">
+                    <span id="adminProfileMenuAvatar" class="profile-menu__avatar" aria-hidden="true">P</span>
+                    <span class="profile-menu__dot" data-notification-dot hidden></span>
+                  </span>
                   <span>Profile</span>
                   <svg class="profile-menu__chevron" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
                     <path d="m6 8 4 4 4-4" />

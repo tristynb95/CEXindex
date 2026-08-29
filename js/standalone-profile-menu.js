@@ -17,8 +17,10 @@ export function mountStandaloneProfileMenu(options) {
     '<div class="profile-menu standalone-profile-menu" data-profile-menu>' +
       '<button type="button" class="profile-menu__trigger standalone-profile-menu__trigger"' +
         ' aria-label="Open profile menu" aria-haspopup="menu" aria-expanded="false">' +
-        '<span class="profile-menu__avatar" data-profile-menu-avatar aria-hidden="true">P</span>' +
-        '<span class="profile-menu__dot" data-notification-dot hidden></span>' +
+        '<span class="profile-menu__badge">' +
+          '<span class="profile-menu__avatar" data-profile-menu-avatar aria-hidden="true">P</span>' +
+          '<span class="profile-menu__dot" data-notification-dot hidden></span>' +
+        '</span>' +
         '<span class="standalone-profile-menu__label">Profile</span>' +
         '<svg class="profile-menu__chevron" viewBox="0 0 20 20" aria-hidden="true" focusable="false">' +
           '<path d="m6 8 4 4 4-4"></path>' +

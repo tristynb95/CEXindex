@@ -16978,26 +16978,34 @@ table.nps-splits-collapsed .nps-split-col {
   display: none;
 }
 
-/* The unread marker on the closed trigger. Positioned against the avatar so it
-   reads as belonging to the person, not floating in the header. */
-.profile-menu__trigger {
+/* The unread marker on the closed trigger. It has to hang off the avatar, and
+   the only reliable way to do that is to make the avatar's own wrapper the
+   containing block. Positioning it against the button instead needs a fixed
+   offset, and the three triggers do not share one: `.header button` pads 16px,
+   the standalone pill 14px, the admin secondary button its own amount. The one
+   offset that was tuned for the dashboard dropped the dot on top of the
+   initials there and left it adrift of the avatar everywhere else. */
+.profile-menu__badge {
   position: relative;
+  display: inline-grid;
+  flex: 0 0 22px;
 }
 
+/* Brighter than --accent deliberately: the brand red is the header band, so a
+   brand-red dot on it has nothing to be seen against. The white ring is what
+   separates the dot from whatever sits behind it — the red band, the white
+   avatar, or the light variant's red avatar — so it applies to every variant
+   rather than being patched back in per variant. Sitting proud of the avatar's
+   top-right corner keeps it clear of the initials. */
 .profile-menu__dot {
   position: absolute;
-  top: 3px;
-  left: 24px;
+  top: -2px;
+  right: -2px;
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 2px rgba(150, 33, 27, 0.95);
-}
-
-.profile-menu--light .profile-menu__dot,
-.standalone-profile-menu .profile-menu__dot {
-  box-shadow: 0 0 0 2px #fff;
+  background: #DE3A2C;
+  box-shadow: 0 0 0 2px #fff, 0 1px 2px rgba(48, 36, 22, 0.45);
 }
 
 .profile-menu__dot[hidden] {
