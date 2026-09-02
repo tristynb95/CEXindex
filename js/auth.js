@@ -5,6 +5,9 @@ import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPa
 import { createProfileMenu } from './profile-menu.js';
 import { recordNotification, followUpTargets } from './notification-write.js';
 import { mountNotificationCentre } from './notification-centre.js';
+import { trackSessionRevocation } from './session-guard.js';
+import { trackIdleTimeout } from './idle-timeout.js';
+import { consumeSignOutNotice } from './sign-out-notice.js';
 import { subscribeVisits, fetchVisit } from './visit-feed.js';
 import { readDatasetCache, writeDatasetCache, clearDatasetCache } from './dataset-cache.js';
 
@@ -851,6 +854,8 @@ async function loadSharedDashboardData(canUpload, metaPromise) {
 }
 
 onAuthStateChanged(auth, async (user) => {
+  trackSessionRevocation(auth, db, user);
+  trackIdleTimeout(auth, user);
   if (user) {
     const adminRef = ref(db, `admins/${user.uid}`);
     const userRef = ref(db, `users/${user.uid}`);
@@ -1006,6 +1011,14 @@ onAuthStateChanged(auth, async (user) => {
     applyMyTeamAccess(null);
     applySiteMeta(null);
     clearLoginForm();
+    // Anybody signed out automatically — by an administrator, or by the idle
+    // timeout — lands back here with no idea why, so say which it was.
+    // clearLoginForm has just blanked the same element.
+    var signOutNotice = consumeSignOutNotice();
+    if (signOutNotice && loginError) {
+      loginError.textContent = signOutNotice;
+      loginError.style.display = 'block';
+    }
     updateProfileMenu(null);
     pendingInvitationUserRef = null;
     invitationNotice.hidden = true;

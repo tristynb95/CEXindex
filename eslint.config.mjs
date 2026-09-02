@@ -18,6 +18,9 @@ const ESM_FILES = [
   'js/permissions.js',
   'js/profile-menu.js',
   'js/profile-page.js',
+  'js/idle-timeout.js',
+  'js/session-guard.js',
+  'js/sign-out-notice.js',
   'js/standalone-profile-menu.js',
   'js/visit-feed.js',
   'js/dataset-cache.js'

@@ -79,6 +79,14 @@
       ".write": false
     },
 
+    "sessionRevocations": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".write": false,
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+
     "routineVisits": {
       ".read": "auth != null",
       ".indexOn": ["date", "bakeryKey"],

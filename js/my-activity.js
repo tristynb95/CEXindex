@@ -13,6 +13,8 @@
 // Personal stats and History remain based on the signed-in user's own records.
 
 import { auth, db } from './firebase-config.js';
+import { trackSessionRevocation } from './session-guard.js';
+import { trackIdleTimeout } from './idle-timeout.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { ref, get, onValue, update, remove, push, set } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
@@ -3356,6 +3358,8 @@ async function loadActivityHub(user) {
 }
 
 onAuthStateChanged(auth, function (user) {
+  trackSessionRevocation(auth, db, user);
+  trackIdleTimeout(auth, user);
   if (!user) {
     window.location.replace('index.html');
     return;

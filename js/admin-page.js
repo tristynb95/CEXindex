@@ -14,11 +14,14 @@ import {
 import { createProfileMenu } from './profile-menu.js';
 import { recordNotification } from './notification-write.js';
 import { mountNotificationCentre } from './notification-centre.js';
+import { trackSessionRevocation } from './session-guard.js';
+import { trackIdleTimeout } from './idle-timeout.js';
 
 const secondaryApp = initializeApp(firebaseConfig, 'AdminPage');
 const secondaryAuth = getAuth(secondaryApp);
 const functionsClient = getFunctions();
 const setUserPasswordCall = httpsCallable(functionsClient, 'setUserPassword');
+const revokeUserSessionsCall = httpsCallable(functionsClient, 'revokeUserSessions');
 
 // ── DOM refs ──
 const authGuard       = document.getElementById('authGuard');
@@ -68,6 +71,7 @@ const userAccessSave    = document.getElementById('userAccessSave');
 const userAccessRemove  = document.getElementById('userAccessRemove');
 const userAccessResetPw = document.getElementById('userAccessResetPassword');
 const userAccessSetPassword = document.getElementById('userAccessSetPassword');
+const userAccessSignOutEverywhere = document.getElementById('userAccessSignOutEverywhere');
 const userAccessPasswordPanel = document.getElementById('userAccessPasswordPanel');
 const userAccessPasswordMsg = document.getElementById('userAccessPasswordMsg');
 const userAccessNewPassword = document.getElementById('userAccessNewPassword');
@@ -1871,6 +1875,15 @@ function managedPasswordErrorMessage(error) {
   return error && error.message ? error.message : 'The password could not be changed. Please try again.';
 }
 
+function sessionRevocationErrorMessage(error) {
+  var code = String(error && error.code || '').replace(/^functions\//, '');
+  if (code === 'permission-denied') return 'Only a full administrator can sign someone out of every device.';
+  if (code === 'unauthenticated') return 'Your session has expired. Sign in again and retry.';
+  if (code === 'failed-precondition') return error.message || 'That account is not ready to be signed out.';
+  if (code === 'not-found' || code === 'unimplemented') return 'The secure account service has not been deployed yet.';
+  return error && error.message ? error.message : 'Their sessions could not be ended. Please try again.';
+}
+
 function openAccessModal(uid) {
   var user = findUser(uid);
   if (!user || !userAccessModal) return;
@@ -1943,6 +1956,10 @@ function openAccessModal(uid) {
   if (userAccessSetPassword) {
     userAccessSetPassword.hidden = !state.isFullAdmin || isCurrent;
     userAccessSetPassword.disabled = false;
+  }
+  if (userAccessSignOutEverywhere) {
+    userAccessSignOutEverywhere.hidden = !state.isFullAdmin || isCurrent;
+    userAccessSignOutEverywhere.disabled = false;
   }
   if (userAccessRemove) userAccessRemove.hidden = !editable;
   if (userAccessSave) userAccessSave.hidden = !canEdit('users');
@@ -4404,6 +4421,8 @@ function applyAdminAccessUI() {
 }
 
 onAuthStateChanged(primaryAuth, async function(user) {
+  trackSessionRevocation(primaryAuth, db, user);
+  trackIdleTimeout(primaryAuth, user);
   if (!user) {
     window.location.replace('index.html');
     return;
@@ -5026,6 +5045,32 @@ if (userAccessRemove) {
       setMessage(userAccessMsg, 'error', 'Could not remove access: ' + err.message);
     } finally {
       userAccessRemove.disabled = false;
+    }
+  });
+}
+
+if (userAccessSignOutEverywhere) {
+  userAccessSignOutEverywhere.addEventListener('click', async function() {
+    var uid = state.accessUserUid;
+    var user = findUser(uid);
+    if (!user || !state.isFullAdmin || uid === currentUserId()) return;
+    var who = user.email || userLabel(user);
+    if (!confirm('Sign ' + who + ' out of every device? They will need to sign in again everywhere, including on their phone.')) return;
+
+    userAccessSignOutEverywhere.disabled = true;
+    setMessage(userAccessMsg, 'info', 'Ending their sessions...');
+    try {
+      var result = await revokeUserSessionsCall({ uid: uid });
+      // The refresh tokens are gone either way. Without the stamp, open tabs
+      // stay live until their token expires, so say so rather than claim more.
+      var partial = result.data && result.data.stampRecorded === false;
+      setMessage(userAccessMsg, partial ? 'info' : 'success', partial
+        ? 'Signed ' + who + ' out. Any tab they already have open may stay usable for up to an hour.'
+        : 'Signed ' + who + ' out of every device.');
+    } catch (error) {
+      setMessage(userAccessMsg, 'error', sessionRevocationErrorMessage(error));
+    } finally {
+      userAccessSignOutEverywhere.disabled = false;
     }
   });
 }

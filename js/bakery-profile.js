@@ -1,4 +1,6 @@
 import { auth, db } from './firebase-config.js';
+import { trackSessionRevocation } from './session-guard.js';
+import { trackIdleTimeout } from './idle-timeout.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import {
   get,
@@ -2003,6 +2005,8 @@ window.addEventListener('beforeunload', function() {
 });
 
 onAuthStateChanged(auth, function(user) {
+  trackSessionRevocation(auth, db, user);
+  trackIdleTimeout(auth, user);
   if (!user) {
     window.location.replace('index.html');
     return;

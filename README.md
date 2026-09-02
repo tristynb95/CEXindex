@@ -18,8 +18,9 @@ exists only for tooling (ESLint); nothing is bundled, compiled, or minified.
 | `my-activity.html` | `js/my-activity.js` | The signed-in user's own open actions and visits (both filterable and exportable to Excel), plus their activity feed. Opt-in per user — see below |
 | `my-team.html` | `js/my-team.js` | A manager's view of their team's visits, tasks, and coverage. Granted by role — see below |
 
-`functions/index.js` exposes the full-admin-only `setUserPassword` callable;
-the rest of the user interface remains an unbundled static frontend.
+`functions/index.js` exposes the full-admin-only `setUserPassword` and
+`revokeUserSessions` callables; the rest of the user interface remains an
+unbundled static frontend.
 
 ## The two JavaScript worlds
 
@@ -519,6 +520,55 @@ cannot renew, and records only actor, target, and timestamp metadata under
 Custom roles with permission to edit People do not receive this control. Admins
 also cannot use it on their own account; their Profile page retains the normal
 current-password confirmation flow.
+
+## Sign out everywhere
+
+Beside **Set password**, the same modal offers **Sign out everywhere** — for a
+lost phone, a shared machine, or somebody who has left. It is gated identically:
+full administrators only, and never on your own account.
+
+`revokeUserSessions` calls `revokeRefreshTokens`, which stops every device
+renewing its ID token. That alone signs the person out of any page they reload,
+but a tab they already have open keeps the token it is holding until it expires,
+up to an hour later. So the function also writes a millisecond stamp to
+`sessionRevocations/{uid}`, and `js/session-guard.js` — imported by all six
+signed-in pages — watches that row and signs the tab out the moment a stamp
+later than its own `auth_time` lands. Seconds granularity, so an administrator's
+click racing a fresh login does not eject someone who has just signed back in.
+
+The node is server-written only (`.write: false`; the Admin SDK bypasses rules)
+and readable by the person it describes and by full admins. `setUserPassword`
+writes the same stamp, so a password change also clears open tabs at once.
+Every revocation is recorded under `securityAudit/sessionRevocations`.
+
+## Idle timeout
+
+`js/idle-timeout.js` signs somebody out after an hour without activity. Five
+minutes before the deadline a dialogue asks whether to stay signed in, counting
+down; **Stay signed in** resets the hour and forces a fresh ID token, **Sign out
+now** goes immediately.
+
+Two rules are deliberate and easy to break by "fixing" them:
+
+- **Once the dialogue is up, only the button extends the session.** Ordinary
+  activity is ignored while it is showing. If a stray mouse move dismissed it,
+  the warning would vanish before the person ever read it, which is worse than
+  not warning at all.
+- **Activity is shared across tabs** through the `gails:lastActivityAt`
+  localStorage stamp. Somebody writing a visit report in one tab must not be
+  timed out by the dashboard sitting idle in another, so every tab reads the
+  same stamp and the `storage` event calls off a dialogue that a sibling tab has
+  already made moot.
+
+`js/sign-out-notice.js` carries the reason through the redirect in
+sessionStorage, so anyone signed out automatically — by the idle timer or by an
+administrator — is told which it was on the login screen instead of arriving at
+a blank form. The dialogue is injected from JS rather than written into six HTML
+files, and follows the Focus Bakery modal kit with an amber accent, because this
+is a warning about time rather than a destructive action.
+
+`test/idle-timeout.test.js` runs the module in a vm with a fake clock, storage
+and DOM, so the timing rules are exercised rather than pattern-matched.
 
 The frontend button requires the callable function to be deployed. Cloud
 Functions deployment requires the Firebase project to use the Blaze plan:

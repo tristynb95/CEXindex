@@ -1,4 +1,6 @@
 import { auth, db } from './firebase-config.js';
+import { trackSessionRevocation } from './session-guard.js';
+import { trackIdleTimeout } from './idle-timeout.js';
 import {
   EmailAuthProvider,
   onAuthStateChanged,
@@ -227,6 +229,8 @@ function closeEmailModal() {
 }
 
 onAuthStateChanged(auth, async function(user) {
+  trackSessionRevocation(auth, db, user);
+  trackIdleTimeout(auth, user);
   if (!user) {
     window.location.replace('index.html');
     return;

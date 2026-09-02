@@ -29,6 +29,8 @@
 // can see about a bakery — it changes whose work is in view, not which sites.
 
 import { auth, db } from './firebase-config.js';
+import { trackSessionRevocation } from './session-guard.js';
+import { trackIdleTimeout } from './idle-timeout.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 import { BUILTIN_ROLES, resolveRolePermissions, teamScopeOf } from './permissions.js';
@@ -2023,6 +2025,8 @@ async function loadTeam(user) {
 }
 
 onAuthStateChanged(auth, function (user) {
+  trackSessionRevocation(auth, db, user);
+  trackIdleTimeout(auth, user);
   if (!user) {
     window.location.replace('index.html');
     return;

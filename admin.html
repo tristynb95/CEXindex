@@ -26,7 +26,7 @@
   <!-- SheetJS and pdf.js are both import-time only, and together weighed more
        than the rest of this page combined. js/lazy-lib.js now fetches them when
        an upload actually needs them (and sets pdf.js's worker URL on arrival). -->
-  <link rel="stylesheet" href="css/styles.css?v=20260811-checkin-context-14-visit-history-table-01-unvisited-sites-table-01-audit-report-modals-03-notification-dot-01">
+  <link rel="stylesheet" href="css/styles.css?v=20260811-checkin-context-14-visit-history-table-01-unvisited-sites-table-01-audit-report-modals-03-notification-dot-01-idle-timeout-01">
   <link rel="stylesheet" href="css/admin.css?v=20260817-admin-overhaul-01">
 </head>
 
@@ -904,6 +904,7 @@
                       <button type="button" id="userAccessRemove" class="admin-inline-danger">Remove access</button>
                       <div class="access-modal__footer-main">
                         <button type="button" id="userAccessSetPassword" class="admin-inline-btn" aria-controls="userAccessPasswordPanel" aria-expanded="false">Set password</button>
+                        <button type="button" id="userAccessSignOutEverywhere" class="admin-inline-btn">Sign out everywhere</button>
                         <button type="button" id="userAccessResetPassword" class="admin-inline-btn">Reset password</button>
                         <button type="button" id="userAccessCancel" class="admin-secondary-btn">Cancel</button>
                         <button type="button" id="userAccessSave" class="btn">Save access</button>
