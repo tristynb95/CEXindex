@@ -8,6 +8,7 @@ window.GAILS = window.GAILS || {};
   var CHART_ID = 'visitReportScoreChart';
   var WAIT_TIME_TARGET_SECONDS = 120;
   var saveConfirmReturnFocus = null;
+  var addSiteVisitPristine = null;
   var visitReportReturnFocus = null;
   var visitReportSectionSpy = null;
   var visitReportContextMap = null;
@@ -2982,6 +2983,78 @@ window.GAILS = window.GAILS || {};
     wrap.hidden = false;
   }
 
+  // ── Unsaved-work guard for the Log Visit modal ──
+  // A check-in is a long form (notes, follow-ups to tick off, follow-ups to
+  // raise), and the modal closes on a stray backdrop click. Rather than guess
+  // which fields count as "filled in", we snapshot the form the moment it opens
+  // — after every default has been applied — and compare against that snapshot
+  // when the user tries to leave. Anything they changed, including clearing a
+  // prefilled field, counts as work worth keeping.
+  function addSiteVisitSnapshot() {
+    function val(id) {
+      var el = document.getElementById(id);
+      return el ? el.value : '';
+    }
+    var ticked = Array.prototype.map.call(
+      document.querySelectorAll('#addVisitOpenTasksList .follow-up-check__box:checked'),
+      function (box) { return box.getAttribute('data-task-id'); }
+    );
+    var rows = document.getElementById('addVisitNewTasks');
+    var newTasks = rows ? Array.prototype.map.call(
+      rows.querySelectorAll('.follow-up-builder__row'),
+      function (row) {
+        function field(sel) {
+          var el = row.querySelector(sel);
+          return el ? el.value : '';
+        }
+        return [
+          field('.follow-up-builder__title'),
+          field('.follow-up-builder__date'),
+          field('.follow-up-builder__priority')
+        ];
+      }
+    ) : [];
+    return JSON.stringify({
+      bakery: val('addVisitBakery'),
+      kind: val('addVisitType'),
+      date: val('addVisitDate'),
+      time: val('addVisitTime'),
+      partner: val('addVisitPartner'),
+      mod: val('addVisitMod'),
+      comments: val('addVisitComments'),
+      ticked: ticked,
+      newTasks: newTasks
+    });
+  }
+
+  function addSiteVisitIsDirty() {
+    // No snapshot means the modal was never opened through the normal path —
+    // fail open and let the close happen rather than trapping the user.
+    if (addSiteVisitPristine === null) return false;
+    return addSiteVisitSnapshot() !== addSiteVisitPristine;
+  }
+
+  // Every user-driven way out of the Log Visit modal (backdrop click, the close
+  // button) routes through here. closeAddSiteVisitModal stays the unconditional
+  // close, so a successful save still dismisses the form without a prompt.
+  window.GAILS.requestCloseAddSiteVisitModal = function () {
+    var modal = document.getElementById('addSiteVisitModal');
+    if (!modal || modal.style.display === 'none') return;
+    if (!addSiteVisitIsDirty()) {
+      window.GAILS.closeAddSiteVisitModal();
+      return;
+    }
+    window.GAILS.openSaveConfirmModal({
+      title: 'Discard this check-in?',
+      subtitle: 'Your notes and follow-ups have not been saved.',
+      message: 'You have unsaved work on this check-in. Discard it and close the form, or carry on where you left off?',
+      confirmLabel: 'Discard check-in',
+      cancelLabel: 'Continue check-in',
+      tone: 'danger',
+      onConfirm: function () { window.GAILS.closeAddSiteVisitModal(); }
+    });
+  };
+
   window.GAILS.openAddSiteVisitModal = function (presetBakery) {
     if (!canLogVisits()) return;
     var modal = document.getElementById('addSiteVisitModal');
@@ -3053,12 +3126,17 @@ window.GAILS = window.GAILS || {};
 
     modal.style.display = 'flex';
     lockBackgroundScroll();
+
+    // Baseline for the unsaved-work guard, taken once the form is fully set up
+    // so the prefilled date, time, partner and preset bakery don't read as edits.
+    addSiteVisitPristine = addSiteVisitSnapshot();
   };
 
   window.GAILS.closeAddSiteVisitModal = function () {
     var modal = document.getElementById('addSiteVisitModal');
     if (!modal) return;
     modal.style.display = 'none';
+    addSiteVisitPristine = null;
     unlockBackgroundScroll();
   };
 
@@ -3383,6 +3461,10 @@ window.GAILS = window.GAILS || {};
     }
     if (messageEl) messageEl.textContent = opts.message || 'Are you sure you want to save this?';
     confirmBtn.textContent = opts.confirmLabel || 'Confirm';
+    // "Cancel" is the right word for backing out of a save, but not for backing
+    // out of a discard — there the cancel button is the one that keeps your
+    // work, so callers can name it. closeSaveConfirmModal puts it back.
+    if (cancelBtn) cancelBtn.textContent = opts.cancelLabel || 'Cancel';
     confirmBtn.disabled = false;
     modal.setAttribute('data-confirm-tone', opts.tone === 'danger' ? 'danger' : 'default');
     saveConfirmReturnFocus = document.activeElement;
@@ -3408,6 +3490,8 @@ window.GAILS = window.GAILS || {};
     if (modal) {
       modal.style.display = 'none';
       modal.removeAttribute('data-confirm-tone');
+      var cancelBtn = modal.querySelector('[data-save-confirm-cancel]');
+      if (cancelBtn) cancelBtn.textContent = 'Cancel';
     }
     if (saveConfirmReturnFocus && typeof saveConfirmReturnFocus.focus === 'function') {
       saveConfirmReturnFocus.focus();

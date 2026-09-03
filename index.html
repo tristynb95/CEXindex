@@ -2364,7 +2364,7 @@
 
     <!-- ADD SITE VISIT MODAL -->
     <div id="addSiteVisitModal" class="drill-modal" style="display:none;"
-      onclick="if(event.target===this)GAILS.closeAddSiteVisitModal()">
+      onclick="if(event.target===this)GAILS.requestCloseAddSiteVisitModal()">
       <div class="drillInner form-modal form-modal--wide">
         <div class="drill-modal-header form-modal__header">
           <div>
@@ -2372,7 +2372,7 @@
             <p class="form-modal__subtitle">Record a check-in or NBO visit, and manage this site's follow-up actions.
             </p>
           </div>
-          <button type="button" class="modal-close-btn" onclick="GAILS.closeAddSiteVisitModal()"
+          <button type="button" class="modal-close-btn" onclick="GAILS.requestCloseAddSiteVisitModal()"
             aria-label="Close log visit form" title="Close">&#10005;</button>
         </div>
 
