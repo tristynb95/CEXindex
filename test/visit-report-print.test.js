@@ -217,3 +217,17 @@ test('every page hosting the report keeps it out of the printable page shell', (
     }
   }
 });
+
+test('the print button remains available in the mobile report modal', () => {
+  const mobileBlocks = Array.from(styles.matchAll(/@media \(max-width: 760px\) \{/g))
+    .map((match) => styles.slice(match.index, styles.indexOf('\n}', match.index)));
+
+  assert.ok(mobileBlocks.length, 'the report should have mobile layout rules');
+  for (const block of mobileBlocks) {
+    assert.doesNotMatch(
+      block,
+      /\.visit-report-print-btn\s*\{[^}]*display:\s*none/,
+      'mobile layout must not hide the report print action'
+    );
+  }
+});

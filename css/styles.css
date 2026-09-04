@@ -24102,8 +24102,7 @@ body[data-dash-tab="cei"] .methodology {
     padding-right: 13px;
   }
 
-  .drill-modal--visit-report .drill-modal-badge,
-  .drill-modal--visit-report .visit-report-print-btn {
+  .drill-modal--visit-report .drill-modal-badge {
     display: none;
   }
 
@@ -24519,7 +24518,9 @@ body[data-dash-tab="cei"] .methodology {
   }
 
   #visitReportModal .visit-report-body--railed .visit-report-layout {
-    grid-template-columns: 236px minmax(0, 1fr);
+    /* Match the check-in facts rail so every report opens with the same-sized
+       overview and Jump to cards. */
+    grid-template-columns: 260px minmax(0, 1fr);
   }
 
   /* The rail must never grow a scrollbar of its own: one sitting beside the
@@ -24710,7 +24711,7 @@ body[data-dash-tab="cei"] .methodology {
       grid-template-rows: auto minmax(0, 1fr);
     }
 
-    /* Losing the rail's 236px does not buy back a third section column. */
+    /* Losing the rail's 260px does not buy back a third section column. */
     #visitReportModal .visit-report-content {
       grid-template-columns: repeat(var(--report-cols-md, 2), minmax(0, 1fr));
     }
@@ -26083,7 +26084,8 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
   #visitReportModal[data-report-type='nbo'] #visitReportBody,
   #visitReportModal[data-report-type='routine'] #visitReportBody {
     gap: 10px;
-    padding-top: 10px;
+    /* Match the check-in workspace's spacing below the modal banner. */
+    padding-top: 15px;
   }
 
   #visitReportModal .visit-report-rail {
@@ -26110,7 +26112,7 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
     align-items: center;
     grid-template-columns: 106px minmax(0, 1fr);
     gap: 8px;
-    min-height: 36px;
+    min-height: 32px;
     padding: 6px 12px;
     border-right: 0;
     border-bottom: 1px solid rgba(146, 137, 120, 0.18);
@@ -26137,7 +26139,7 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
   @media screen and (max-height: 860px) {
     #visitReportModal .visit-report-overview .visit-report-stat {
       min-height: 32px;
-      padding: 4px 12px;
+      padding: 6px 12px;
     }
 
     #visitReportModal .visit-report-rail .visit-report-toc {
@@ -26153,13 +26155,11 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
 
   @media screen and (max-height: 720px) {
 
-    /* 26px, not 28px: a seven-fact routine strip is the tallest there is, and
-       the two pixels a row buys back here are exactly what its eight jump
-       links needed to all fit. These rows are read, not clicked, so their
-       height is a typographic decision rather than a target-size one. */
+    /* Keep the overview rows aligned with the check-in facts card even when
+       the navigation below becomes more compact. */
     #visitReportModal .visit-report-overview .visit-report-stat {
-      min-height: 26px;
-      padding: 3px 10px;
+      min-height: 32px;
+      padding: 6px 12px;
     }
 
     #visitReportModal .visit-report-rail .visit-report-toc {
@@ -26214,10 +26214,9 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
   #visitReportModal[data-report-type='followup'] .visit-report-body--railed .visit-report-layout,
   #visitReportModal[data-report-type='nbo'] .visit-report-body--railed .visit-report-layout,
   #visitReportModal[data-report-type='routine'] .visit-report-body--railed .visit-report-layout {
-    /* One rail width for all four analytical report types. It was 240.6px,
-       which was a magic number with no derivation and did not in fact match
-       the check-in workspace rail (260px) its comment claimed to. */
-    grid-template-columns: 236px minmax(0, 1fr);
+    /* One rail width for all analytical report types, matching the check-in
+       workspace rail so their overview and navigation cards align. */
+    grid-template-columns: 260px minmax(0, 1fr);
     gap: 14px;
   }
 

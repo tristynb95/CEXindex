@@ -150,7 +150,8 @@ test('Bakery Reports identify report type and provide navigable responsive secti
   assert.doesNotMatch(script, /visit-report-overview-stack/);
 
   assert.match(styles, /#visitReportModal\.drill-modal--visit-report #visitReportBody \{[\s\S]*?display: flex;[\s\S]*?overflow: hidden/);
-  assert.match(styles, /\.visit-report-body--railed \.visit-report-layout \{[\s\S]*?grid-template-columns: 236px/);
+  assert.match(styles, /\.visit-report-body--railed \.visit-report-layout \{[\s\S]*?grid-template-columns: 260px/);
+  assert.match(styles, /data-report-type='cqv'\] #visitReportBody,[\s\S]*?data-report-type='routine'\] #visitReportBody \{[\s\S]*?padding-top: 15px/);
   // The sections grid takes its column count from how many narrow sections
   // the report has. An auto-fit count left a CQV — which has exactly two —
   // with a permanently empty third track, because the full-width Action Plan
@@ -160,16 +161,16 @@ test('Bakery Reports identify report type and provide navigable responsive secti
   // The label column fits "COFFEE PARTNER" — the widest label any report type
   // uses — on one line. Wrapping it pushed those rows to ~45px, which is what
   // made a seven-fact routine rail taller than the panel it sits in.
-  assert.match(styles, /#visitReportModal \.visit-report-overview \.visit-report-stat \{[\s\S]*?min-height: 36px/);
+  assert.match(styles, /#visitReportModal \.visit-report-overview \.visit-report-stat \{[\s\S]*?min-height: 32px/);
   assert.match(styles, /#visitReportModal \.visit-report-overview \.visit-report-stat \{[\s\S]*?grid-template-columns: 106px minmax\(0, 1fr\)/);
   // The rail itself never scrolls; if anything overflows it is the jump list,
   // inside itself, with no scrollbar chrome.
   assert.match(styles, /#visitReportModal \.visit-report-rail \{[\s\S]*?overflow: hidden/);
   assert.match(styles, /#visitReportModal \.visit-report-rail \.visit-report-toc > div \{[\s\S]*?overflow-y: auto;[\s\S]*?scrollbar-width: none/);
-  // Short windows tighten the rail by steps so every jump link stays visible
-  // rather than part of the list scrolling out of sight.
+  // Short windows tighten the navigation while overview rows retain the same
+  // 32px rhythm as the check-in facts card.
   assert.match(styles, /@media screen and \(max-height: 860px\)[\s\S]*?\.visit-report-stat \{[\s\S]*?min-height: 32px/);
-  assert.match(styles, /@media screen and \(max-height: 720px\)[\s\S]*?\.visit-report-stat \{[\s\S]*?min-height: 26px/);
+  assert.match(styles, /@media screen and \(max-height: 720px\)[\s\S]*?\.visit-report-stat \{[\s\S]*?min-height: 32px/);
   // A clicked jump link stays marked, rather than the scroll spy immediately
   // handing the highlight to whichever peer shares the top of its grid row.
   assert.match(script, /pinnedId = id;/);
