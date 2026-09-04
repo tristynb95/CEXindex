@@ -256,7 +256,7 @@ test('every signed-in page starts the idle timer', () => {
 
 test('the login screen explains an idle sign-out in plain words', () => {
   const notice = read('js/sign-out-notice.js');
-  assert.match(notice, /idle: 'You were signed out after an hour without activity/);
+  assert.match(notice, /idle: 'You were signed out after a period of inactivity/);
   assert.match(read('js/auth.js'), /var signOutNotice = consumeSignOutNotice\(\);/);
 });
 
