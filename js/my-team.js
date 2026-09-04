@@ -91,6 +91,8 @@ const selectionText = document.getElementById('myTeamSelectionText');
 const selectionClear = document.getElementById('myTeamSelectionClear');
 const jumpNav = document.getElementById('myTeamJump');
 
+// Also listed in GAILS.FILTER_STORAGE_KEYS (js/utils.js), which a new sign-in
+// clears — the two are pinned together by a test.
 const FILTER_STORAGE_KEY = 'gails_my_team_filters';
 const VISIT_CHUNK = 20;
 const ROSTER_CHUNK = 25;

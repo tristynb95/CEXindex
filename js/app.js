@@ -2236,6 +2236,37 @@
   window.addEventListener('hashchange', activateDashboardHashTarget);
   activateDashboardHashTarget();
 
+  // Signing out does not reload the page — the login form simply goes up over
+  // a dashboard still sitting in whatever tab, filters and open modal the last
+  // session left behind, so signing back in would resume that state rather
+  // than start clean (and on a shared laptop, resume somebody else's). Called
+  // from js/auth.js at both ends of the gap: when the session ends, and again
+  // as a new sign-in begins, since a session can also end on another page.
+  function resetDashboardSession() {
+    if (G.closeDrillDown) G.closeDrillDown();
+    if (G.closeFocusDetail) G.closeFocusDetail();
+    if (G.closeVisitReport) G.closeVisitReport();
+    closeDashboardNavPopover();
+    setDashboardNavAccordion('');
+    // A deep link (#visit-log, from a Bakery Profile) is honoured on load and
+    // on every hashchange, so a hash left over from the last session would
+    // send the new one straight back out of the Overview.
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    activateDashboardTab('overview');
+    // The two filter sets the dashboard keeps outside the shared filter bar.
+    // Bakery Reports persists its own, so this has to run whether or not that
+    // tab was ever opened this session.
+    if (G.resetFocusFilters) G.resetFocusFilters();
+    if (G.resetVisitLogFilters) G.resetVisitLogFilters();
+    // My Activity and My Team persist theirs too, and both sign out back to
+    // this page, so their stored state is cleared from here as well.
+    if (G.clearStoredFilterState) G.clearStoredFilterState();
+    resetAllFilters();
+  }
+  G.resetDashboardSession = resetDashboardSession;
+
   if (dashboardSidebarToggleBtn) {
     dashboardSidebarToggleBtn.addEventListener('click', function () {
       if (compactDashboardSidebarMedia.matches) {

@@ -10,7 +10,7 @@ const SIGN_OUT_REASON_KEY = 'gails:signedOutReason';
 
 const REASON_MESSAGES = {
   revoked: 'An administrator signed you out of every device. Sign in again to continue.',
-  idle: 'You were signed out after an hour without activity, to keep the dashboard secure. Sign in again to pick up where you left off.'
+  idle: 'You were signed out after an hour without activity, to keep the dashboard secure. Sign in again to continue.'
 };
 
 export function noteSignOutReason(reason) {

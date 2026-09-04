@@ -1970,6 +1970,21 @@ window.GAILS = window.GAILS || {};
       window.GAILS.closeSaveConfirmModal();
       return;
     }
+    // Escape backs out of a half-written check-in through the same unsaved-work
+    // guard as clicking the backdrop, so the key can't lose the form either.
+    var logVisit = document.getElementById('addSiteVisitModal');
+    if (logVisit && logVisit.style.display !== 'none') {
+      // The searchable bakery dropdown and the Coffee Partner mention menu both
+      // claim Escape for closing themselves, and both handle it on the element,
+      // which runs before this document listener — by the time we get here they
+      // have already closed, so only the target still says the key was theirs.
+      // Escape from anywhere else in the form is a request to leave it.
+      var ownedByField = event.target && event.target.closest
+        ? event.target.closest('.filter-select, .mention-field')
+        : null;
+      if (!ownedByField) window.GAILS.requestCloseAddSiteVisitModal();
+      return;
+    }
     window.GAILS.closeVisitReport();
   });
 
@@ -4264,7 +4279,21 @@ window.GAILS = window.GAILS || {};
     }
   }
 
+  // Also listed in GAILS.FILTER_STORAGE_KEYS (js/utils.js), which a new
+  // sign-in clears — the two are pinned together by a test.
   var VISIT_LOG_FILTER_STORAGE_KEY = 'gails.visitLogFilters';
+
+  // Set once the filter bar is wired (below, in renderVisitLog). Held here so
+  // a new sign-in can put the live controls back to their defaults; when
+  // Bakery Reports was never opened there is nothing on screen to reset and
+  // clearing the stored filters is the whole job.
+  var visitLogFilterReset = null;
+
+  window.GAILS.resetVisitLogFilters = function () {
+    try { localStorage.removeItem(VISIT_LOG_FILTER_STORAGE_KEY); } catch (e) { /* storage unavailable */ }
+    if (window.GAILS.resetVisitLogView) window.GAILS.resetVisitLogView();
+    if (visitLogFilterReset) visitLogFilterReset();
+  };
 
   // Rows rendered per page of the history list; "Show more" adds another
   // chunk. Keeps the innerHTML rebuild cheap when "All Time" is selected.
@@ -5248,6 +5277,7 @@ window.GAILS = window.GAILS || {};
           }
           window.GAILS.renderVisitLog();
         };
+        visitLogFilterReset = handleVisitLogFilterReset;
         if (resetBtn) resetBtn.addEventListener('click', handleVisitLogFilterReset);
         if (resetBarBtn) resetBarBtn.addEventListener('click', handleVisitLogFilterReset);
       }

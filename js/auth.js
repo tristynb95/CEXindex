@@ -853,6 +853,19 @@ async function loadSharedDashboardData(canUpload, metaPromise) {
   }
 }
 
+// Puts the dashboard back to a clean Overview with the last session's filters
+// cleared (js/app.js resetDashboardSession). Signing out never reloads the
+// page, so without this the login form goes up over the previous session's
+// view and signing back in resumes it. Housekeeping behind the form, so a
+// failure here is logged rather than allowed to surface as a sign-in error.
+function resetDashboardForNewSession() {
+  try {
+    if (window.GAILS && window.GAILS.resetDashboardSession) window.GAILS.resetDashboardSession();
+  } catch (resetErr) {
+    console.warn('Could not reset the dashboard between sessions:', resetErr);
+  }
+}
+
 onAuthStateChanged(auth, async (user) => {
   trackSessionRevocation(auth, db, user);
   trackIdleTimeout(auth, user);
@@ -998,6 +1011,11 @@ onAuthStateChanged(auth, async (user) => {
       showApp(undefined);
     }
   } else {
+    // Nothing of the session that just ended is left on the dashboard behind
+    // the login screen — an open full-bleed modal included, since those pin
+    // <body> and would strand the form. Done first, while the dashboard still
+    // has the data its panels render from.
+    resetDashboardForNewSession();
     stopSiteMetaSync();
     stopDashboardDataSync();
     stopRoutineVisitsSync();
@@ -1124,6 +1142,11 @@ async function handleLogin(event) {
 
   try {
     _freshLogin = true;
+    // Again here, and before the sign-in rather than after: a session can end
+    // on another page (My Activity and My Team both sign out back to here), so
+    // the dashboard never saw it, and Bakery Reports warms itself off the
+    // stored filters as soon as this session's data starts loading.
+    resetDashboardForNewSession();
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
     _freshLogin = false;

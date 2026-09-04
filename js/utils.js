@@ -578,6 +578,27 @@ window.GAILS.mountDrawerMenus = function (panel) {
   panel.addEventListener('scroll', syncMenus, true);
 };
 
+// ---------- stored filter state ----------
+// Every filter selection that outlives a page load, in one place because
+// signing in has to clear all of them (resetDashboardSession in js/app.js) and
+// only the dashboard sees a sign-in — My Activity and My Team both sign out
+// back to it. The owning modules declare their own key (they load, and are
+// tested, without utils.js in front of them); the two copies are pinned
+// together by test/session-reset-on-login.test.js.
+window.GAILS.FILTER_STORAGE_KEYS = {
+  visitLog: 'gails.visitLogFilters',
+  myActivity: 'gails_my_activity_filters',
+  myTeam: 'gails_my_team_filters'
+};
+
+window.GAILS.clearStoredFilterState = function () {
+  Object.keys(window.GAILS.FILTER_STORAGE_KEYS).forEach(function (name) {
+    try {
+      window.localStorage.removeItem(window.GAILS.FILTER_STORAGE_KEYS[name]);
+    } catch (e) { /* storage unavailable */ }
+  });
+};
+
 // ---------- drawer anchoring ----------
 // The filter panels drop from under the banner as a full-bleed strip, so
 // they read as coming out of the chips that open them while keeping the

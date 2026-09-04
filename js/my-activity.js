@@ -103,6 +103,8 @@ const taskSaveBtn = document.getElementById('myActivityTaskSave');
 const taskDeleteBtn = document.getElementById('myActivityTaskDelete');
 const taskErrorEl = document.getElementById('myActivityTaskError');
 
+// Also listed in GAILS.FILTER_STORAGE_KEYS (js/utils.js), which a new sign-in
+// clears — the two are pinned together by a test.
 const FILTER_STORAGE_KEY = 'gails_my_activity_filters';
 const TIMELINE_CHUNK = 25;
 
