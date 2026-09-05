@@ -910,6 +910,16 @@
           <!-- OVERVIEW -->
           <div class="tab-content active" id="tab-overview">
             <div class="kpi-row" id="kpis"></div>
+            <section class="overview-attention" id="overviewAttention" aria-labelledby="overviewAttentionTitle">
+              <div class="overview-attention__header">
+                <div class="overview-attention__intro">
+                  <h2 id="overviewAttentionTitle">Bakeries needing attention</h2>
+                  <p id="overviewAttentionReference" class="overview-attention__reference" role="status" aria-live="polite">Loading priority bakeries…</p>
+                </div>
+                <button type="button" id="overviewAttentionOpenPriority" class="overview-attention__link">View priority overview <span aria-hidden="true">&rarr;</span></button>
+              </div>
+              <div id="overviewAttentionRows" class="overview-attention__rows"></div>
+            </section>
             <div class="section overview-card overview-card--scatter">
               <h2 id="npsScatterTitle">NPS (Drink + Meal) vs Benchmark Score</h2>
               <div class="overview-chart"><canvas id="npsVsCei"></canvas></div>

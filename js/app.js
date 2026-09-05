@@ -1036,6 +1036,7 @@
       fitKpiValues();
       publishKpiBlockHeight();
       G.renderOverviewCharts(viewData);
+      if (G.renderOverviewAttention) G.renderOverviewAttention();
       G._lastData = data;
       renderOrDeferPanels({
         trends: function () { G.renderTrendCharts(scoredViewData); },
@@ -1277,6 +1278,7 @@
     // plot whatever rows the View toggle selected, but the two component
     // charts are estate averages and have to agree with the KPI row above them.
     G.renderOverviewCharts(viewData, scoredData);
+    if (G.renderOverviewAttention) G.renderOverviewAttention();
     G._lastData = data;
     renderOrDeferPanels({
       trends: function () { G.renderTrendCharts(scoredViewData); },
@@ -2310,6 +2312,32 @@
         scrollToTop();
       }
     });
+  });
+
+  function openOverviewPriority(name) {
+    if (G.permissions && G.permissions.tabs && G.permissions.tabs.target === false) return;
+    closeDashboardNavPopover();
+    activateDashboardTab('target');
+    setDashboardNavAccordion('target');
+    activateTargetSubtab('summary');
+    scrollToTop();
+    if (name && G.openFocusDetail) G.openFocusDetail(name);
+    else {
+      var heading = document.getElementById('focusPriorityOverviewTitle');
+      if (heading) {
+        heading.setAttribute('tabindex', '-1');
+        heading.focus({ preventScroll: true });
+      }
+    }
+  }
+  var overviewPriorityButton = document.getElementById('overviewAttentionOpenPriority');
+  if (overviewPriorityButton) overviewPriorityButton.addEventListener('click', function () {
+    openOverviewPriority();
+  });
+  var overviewPriorityRows = document.getElementById('overviewAttentionRows');
+  if (overviewPriorityRows) overviewPriorityRows.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-overview-focus-detail]');
+    if (button && overviewPriorityRows.contains(button)) openOverviewPriority(button.getAttribute('data-overview-focus-detail'));
   });
 
   document.querySelectorAll('.target-subtab[data-target-subtab]').forEach(function (tab) {
