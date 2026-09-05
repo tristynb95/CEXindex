@@ -307,16 +307,19 @@ function _renderFocusDataStatus(context, targets) {
     : '';
 }
 
-// One ranking model for the full Focus hub and the compact Overview preview.
-// The caller supplies its own fresh closed-month context; Overview never relies
-// on the deferred Focus panel having rendered, or changes its local filters.
-function _buildFocusPriorityRows(targets, focusContext, bf, cf, highBand, lowBand, isAbsolute) {
+function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
   var G = GAILS;
+  var esc = G.escapeHtml;
   var state = G.state;
+  var focusContext = G._focusDataContext || {};
   var FM = focusContext.closedMonths || state.selectedMonths || [];
   var recentFM = focusContext.recentMonths || FM.slice(-6);
   var escapeLine = isAbsolute ? 75 : 50;
   var severeLine = isAbsolute ? 60 : 25;
+  var queueEl = document.getElementById('targetHubQueue');
+  var priorityOverviewTitle = document.getElementById('focusPriorityOverviewTitle');
+  if (priorityOverviewTitle) priorityOverviewTitle.textContent = _focusTitleWithReferencePeriod('Priority Overview');
+
   var rows = targets.map(function (rec) {
     var trend = _computeBakeryTrend(rec.b, cf, FM);
     var recentTrend = _computeBakeryTrend(rec.b, cf, recentFM);
@@ -359,23 +362,6 @@ function _buildFocusPriorityRows(targets, focusContext, bf, cf, highBand, lowBan
     return (a.score || 0) - (b.score || 0);
   });
   rows.forEach(function (r, i) { r.rank = i + 1; });
-
-  return rows;
-}
-
-function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
-  var G = GAILS;
-  var esc = G.escapeHtml;
-  var state = G.state;
-  var focusContext = G._focusDataContext || {};
-  var FM = focusContext.closedMonths || state.selectedMonths || [];
-  var escapeLine = isAbsolute ? 75 : 50;
-  var severeLine = isAbsolute ? 60 : 25;
-  var queueEl = document.getElementById('targetHubQueue');
-  var priorityOverviewTitle = document.getElementById('focusPriorityOverviewTitle');
-  if (priorityOverviewTitle) priorityOverviewTitle.textContent = _focusTitleWithReferencePeriod('Priority Overview');
-
-  var rows = _buildFocusPriorityRows(targets, focusContext, bf, cf, highBand, lowBand, isAbsolute);
 
   var byName = {};
   rows.forEach(function (r) { byName[r.name] = r; });
@@ -2592,54 +2578,6 @@ document.addEventListener('keydown', function (event) {
     window.GAILS.closeUnmappedSitesModal();
   });
 })();
-
-// A preview of the existing priority queue, not another dashboard-period score.
-window.GAILS.renderOverviewAttention = function () {
-  var G = GAILS;
-  var host = document.getElementById('overviewAttentionRows');
-  if (!host) return;
-  var section = document.getElementById('overviewAttention');
-  var allowed = !(G.permissions && G.permissions.tabs && G.permissions.tabs.target === false);
-  if (section) section.hidden = !allowed;
-  if (!allowed) {
-    host.innerHTML = '';
-    return;
-  }
-  var reference = document.getElementById('overviewAttentionReference');
-  if (!G.buildFocusDataset) {
-    host.innerHTML = '<p class="overview-attention__empty">Priority data is not available yet.</p>';
-    if (reference) reference.textContent = 'Focus uses completed months, separately from the selected chart period.';
-    return;
-  }
-  var context = G.buildFocusDataset({ isAbsolute: true });
-  var targets = context.data.filter(function (row) {
-    return row.acb === 'Below Standard' || row.acb === 'Approaching';
-  }).sort(function (a, b) { return a.ac - b.ac; });
-  var rows = _buildFocusPriorityRows(targets, context, 'acb', 'ac', 'Below Standard', 'Approaching', true);
-  var reviewCount = (context.dataReview || []).length;
-  var onboardingCount = (context.onboarding || []).length;
-  if (reference) reference.textContent = (context.latestClosedMonth
-    ? 'Focus through ' + context.latestClosedMonth + ': completed history, weighted towards recent months.'
-    : 'No completed-month priority data is available yet.') +
-    ' Separate from the selected chart period; uses your current bakery scope and band filter.' +
-    (reviewCount ? ' ' + reviewCount + ' bakeries need data review.' : '') +
-    (onboardingCount ? ' ' + onboardingCount + ' bakeries are still building history.' : '');
-  if (!rows.length) {
-    host.innerHTML = '<p class="overview-attention__empty">' + (context.latestClosedMonth
-      ? 'No eligible bakeries in the current filters need focus.'
-      : 'Priority bakeries will appear once completed-month data is available.') + '</p>';
-    return;
-  }
-  var esc = G.escapeHtml;
-  host.innerHTML = rows.slice(0, 3).map(function (row) {
-    return '<article class="overview-attention__row">' +
-      '<div class="overview-attention__identity"><strong class="overview-attention__name">' + esc(row.name) + '</strong>' +
-      '<span class="overview-attention__reason">' + esc(row.weakest ? 'Focus: ' + row.weakest.label : 'Review performance and visit coverage') +
-      (row.dataStatus === 'provisional' ? ' · Provisional data' : '') + '</span></div>' +
-      '<div class="overview-attention__metric"><span class="overview-attention__status focus-tier--' + row.tier + '">' + esc(_priorityText(row)) + '</span></div>' +
-      '<button type="button" class="overview-attention__action" data-overview-focus-detail="' + esc(row.name) + '" aria-label="Review ' + esc(row.name) + '">Review</button></article>';
-  }).join('');
-};
 
 window.GAILS.renderTargets = function (data) {
   var G = GAILS;
