@@ -2204,6 +2204,351 @@ canvas {
   }
 }
 
+/* ── At A Glance ──
+   The Overview lead-in card: who is leading the current selection, who is
+   moving, who needs support, and how well it is being visited. It sits beside
+   the KPI grid and is sized by it — the grid row stretches to whichever is
+   taller, so the card never needs a height of its own. */
+.at-a-glance {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.at-a-glance__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.at-a-glance h2 {
+  margin-bottom: 0;
+  flex: none;
+}
+
+.ataglance-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  flex: none;
+}
+
+/* Each tab is its label. Inactive ones shrink to a dot; the current one opens
+   out into a pill and names the slide. That keeps the slide name on the title
+   row without a second element competing for the width — which is what
+   truncated it to "PERFORM..." when the name sat on its own. */
+.ataglance-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+
+.ataglance-dot__label {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(122, 113, 98, 0.38);
+  text-indent: -999em;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.ataglance-dot:hover .ataglance-dot__label {
+  background: rgba(122, 113, 98, 0.7);
+}
+
+.ataglance-dot.is-active .ataglance-dot__label {
+  width: auto;
+  height: auto;
+  padding: 2px 8px 3px;
+  border-radius: 999px;
+  text-indent: 0;
+  background: rgba(178, 42, 36, 0.09);
+  color: var(--accent);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ataglance-dot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.at-a-glance__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.ataglance-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ataglance-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 0;
+  min-width: 0;
+}
+
+.ataglance-row + .ataglance-row {
+  border-top: 1px solid var(--stroke-subtle, rgba(34, 31, 26, 0.09));
+}
+
+.ataglance-row__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.63rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted-l);
+}
+
+/* A dot rather than an edge bar: it carries the same semantic colour without
+   putting another vertical rule down the side of a card. */
+.ataglance-row__dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ataglance-tone, var(--muted));
+}
+
+.ataglance-row__dot--blue { --ataglance-tone: var(--blue); }
+.ataglance-row__dot--green { --ataglance-tone: var(--green); }
+.ataglance-row__dot--gold { --ataglance-tone: var(--gold); }
+.ataglance-row__dot--amber { --ataglance-tone: var(--gold); }
+.ataglance-row__dot--red { --ataglance-tone: var(--accent); }
+.ataglance-row__dot--muted { --ataglance-tone: rgba(122, 113, 98, 0.55); }
+
+.ataglance-row__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ataglance-row__value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.ataglance-row__name {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The qualifier gives up its width before the bakery name does. Both can
+   shrink, but an equal shrink factor clipped them together — "Clapham Old
+   To..." next to "3 days a..." — so the meta is weighted to absorb the whole
+   deficit first and the name only starts truncating once it has nothing left. */
+.ataglance-row__meta {
+  flex: 0 999 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--muted-l);
+  white-space: nowrap;
+}
+
+.ataglance-row__stat {
+  flex: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ataglance-tone, var(--text));
+}
+
+.ataglance-row__stat--blue { --ataglance-tone: var(--blue); }
+.ataglance-row__stat--green { --ataglance-tone: var(--green); }
+.ataglance-row__stat--gold { --ataglance-tone: var(--gold); }
+.ataglance-row__stat--amber { --ataglance-tone: var(--gold); }
+.ataglance-row__stat--red { --ataglance-tone: var(--accent); }
+.ataglance-row__stat--muted { --ataglance-tone: var(--text-2); }
+
+/* The last-visit date doubles as the way into that visit's report:
+   [data-visit-report] is picked up by the document-level handler in
+   js/visit-report.js. Styled as the figure it already was, plus the
+   affordance that it can be pressed. */
+.ataglance-row__stat--link {
+  --ataglance-tone: var(--text);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.18s ease;
+}
+
+.ataglance-row__stat--link:hover {
+  --ataglance-tone: var(--accent);
+}
+
+.ataglance-row__stat--link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.ataglance-row--empty .ataglance-row__value {
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--muted-l);
+  white-space: normal;
+}
+
+/* The two visit figures read as one block, so they get a tinted panel rather
+   than borders of their own. */
+.ataglance-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 12px;
+  background: var(--surface-subtle, #FBF9F3);
+}
+
+.ataglance-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  text-align: center;
+  min-width: 0;
+}
+
+.ataglance-stat + .ataglance-stat {
+  border-left: 1px solid var(--stroke-subtle, rgba(34, 31, 26, 0.09));
+}
+
+.ataglance-stat strong {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.ataglance-stat span {
+  font-size: 0.63rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted-l);
+}
+
+.ataglance-scope {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--muted-l);
+  /* Two lines' worth whether or not this slide fills them, so advancing the
+     rotation cannot jog the height of the whole Overview band. */
+  min-height: 2.9em;
+}
+
+.at-a-glance__body.is-entering {
+  animation: ataglance-enter 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes ataglance-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .at-a-glance__body.is-entering {
+    animation: none;
+  }
+
+  .ataglance-dot__label {
+    transition: none;
+  }
+}
+
+.ataglance-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted-l);
+}
+
+/* Below the Overview grid breakpoint the card sits full width above the KPI
+   row, where one tall column would leave the rows stretched across the whole
+   page. Two columns keep the reading width close to what it is on desktop. */
+@media (min-width: 721px) and (max-width: 1180px) {
+  .at-a-glance__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 10px 22px;
+    align-items: start;
+  }
+
+  .ataglance-list {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .ataglance-strip {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ataglance-scope {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
 .overview-rankings-toolbar {
   display: flex;
   align-items: flex-end;
@@ -26429,8 +26774,17 @@ body {
     gap: 14px;
   }
 
+  /* At A Glance leads the first band and the KPI grid takes the rest of it.
+     The row is as tall as whichever of the two is taller, and .kpi-row is
+     grid-auto-rows: 1fr, so the KPI cards stretch to meet the panel rather
+     than either one being pinned to a guessed height. */
+  #tab-overview>.at-a-glance {
+    grid-column: span 3;
+    margin-bottom: 0;
+  }
+
   #tab-overview>.kpi-row {
-    grid-column: 1 / -1;
+    grid-column: span 9;
     margin-bottom: 0;
   }
 
@@ -26456,6 +26810,22 @@ body {
   #tab-overview .overview-card--drags,
   #tab-overview .overview-card--score {
     margin-bottom: 0;
+  }
+
+  /* At A Glance takes three of the row's twelve columns, so each KPI card has
+     about a quarter less width than it used to. Tighten the gutters and the
+     delta pill to buy that back off the chrome: without it titles like
+     "NPS (Drink & Meal)" wrap to a second line, and since .kpi-row is
+     grid-auto-rows: 1fr one wrapped title makes all eight cards taller. */
+  #tab-overview .kpi {
+    padding-left: 13px;
+    padding-right: 13px;
+    column-gap: 9px;
+  }
+
+  #tab-overview .kpi__delta {
+    font-size: 0.63rem;
+    padding: 2px 6px 2px 4px;
   }
 }
 

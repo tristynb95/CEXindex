@@ -909,6 +909,14 @@
 
           <!-- OVERVIEW -->
           <div class="tab-content active" id="tab-overview">
+            <section class="section overview-card at-a-glance" id="atAGlance" aria-labelledby="atAGlanceTitle">
+              <div class="at-a-glance__head">
+                <h2 id="atAGlanceTitle">At A Glance</h2>
+                <div class="ataglance-dots" id="atAGlanceDots" role="tablist"
+                  aria-label="At A Glance views"></div>
+              </div>
+              <div class="at-a-glance__body" id="atAGlanceBody" role="tabpanel"></div>
+            </section>
             <div class="kpi-row" id="kpis"></div>
             <div class="section overview-card overview-card--scatter">
               <h2 id="npsScatterTitle">NPS (Drink + Meal) vs Benchmark Score</h2>
@@ -2656,6 +2664,7 @@
   <script defer src="js/charts.js?v=20260811-fullbleed-modals-01"></script>
   <script defer src="js/support-score.js"></script>
   <script defer src="js/targets.js?v=20260720-focus-run-threshold-12"></script>
+  <script defer src="js/at-a-glance.js"></script>
   <script defer src="js/cqv-criticals.js"></script>
   <script defer src="js/cqv-shared.js"></script>
   <script defer src="js/nbo-shared.js"></script>

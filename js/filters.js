@@ -259,6 +259,36 @@ window.GAILS.getRollingMonths = function() {
     return filterValue.indexOf('abs:') === 0 ? filterValue.slice(4) : filterValue;
   }
 
+  // The period immediately before the selected one, the same number of months
+  // long and narrowed by the same region/ops/search filters — the comparison
+  // basis behind the KPI deltas and the At A Glance movers. Raw monthly rows,
+  // not period aggregates, so callers average or sum whichever fields they
+  // compare. Null when the dataset does not reach that far back, which is the
+  // signal to show no comparison at all rather than a misleading one.
+  G.getPriorPeriodRecords = function() {
+    var state = G.state;
+    var selected = state.selectedMonths;
+    var all = state.MONTHS;
+    if (!selected || selected.length === 0 || !all || all.length === 0) return null;
+    var indices = selected.map(function(month) { return all.indexOf(month); })
+      .filter(function(index) { return index >= 0; });
+    if (indices.length === 0) return null;
+    indices.sort(function(first, second) { return first - second; });
+    var length = indices.length;
+    var firstIndex = indices[0];
+    if (firstIndex < length) return null;
+    var months = all.slice(firstIndex - length, firstIndex);
+    var records = state.ALL.filter(function(record) {
+      return months.indexOf(record.m) >= 0 && passesNonBandFilters(record);
+    });
+    if (records.length === 0) return null;
+    return {
+      records: records,
+      months: months,
+      label: length === 1 ? months[0] : 'prior ' + length + 'm'
+    };
+  };
+
   G.getCompanyPeriodData = buildCompanyPeriodData;
 
   G.getAvailableBands = function() {

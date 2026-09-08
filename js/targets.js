@@ -117,6 +117,9 @@ var _hubLockedScrollY = 0;
 // step in. Internal keys stay critical/high/watch.
 var _TIER_LABEL = { critical: 'High', high: 'Medium', watch: 'Monitor' };
 
+// Shared with the Overview At A Glance panel, which names the same tiers.
+window.GAILS.SUPPORT_TIER_LABELS = _TIER_LABEL;
+
 var _DRIVER_ACTIONS = {
   dr: 'Run a drink-standards calibration with the coffee lead — check espresso dial-in, milk texturing and presentation against spec.',
   ef: 'Review peak-hour deployment and the barista rota. Customer-rated efficiency carries 20% of the experience index, so gains here have a meaningful impact.',
@@ -307,18 +310,23 @@ function _renderFocusDataStatus(context, targets) {
     : '';
 }
 
-function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
+// The support queue: one row per focus-list bakery, carrying the canonical
+// 0-100 support score and the triage tier derived from it. Split out of
+// _renderFocusHub so the Overview At A Glance panel can name the bakery most
+// in need of support without building the hub — two places working out
+// "who needs most support" independently is exactly how that panel and the
+// Support List would come to name different bakeries.
+//
+// FM/recentFM come from the focus context rather than the month filter: the
+// support score is deliberately scored over its own window of closed months,
+// so it reads the same whichever period the Overview is showing.
+function _buildSupportRows(targets, focusContext, bf, cf, highBand, lowBand, isAbsolute) {
   var G = GAILS;
-  var esc = G.escapeHtml;
   var state = G.state;
-  var focusContext = G._focusDataContext || {};
   var FM = focusContext.closedMonths || state.selectedMonths || [];
   var recentFM = focusContext.recentMonths || FM.slice(-6);
   var escapeLine = isAbsolute ? 75 : 50;
   var severeLine = isAbsolute ? 60 : 25;
-  var queueEl = document.getElementById('targetHubQueue');
-  var priorityOverviewTitle = document.getElementById('focusPriorityOverviewTitle');
-  if (priorityOverviewTitle) priorityOverviewTitle.textContent = _focusTitleWithReferencePeriod('Priority Overview');
 
   var rows = targets.map(function (rec) {
     var trend = _computeBakeryTrend(rec.b, cf, FM);
@@ -362,6 +370,68 @@ function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
     return (a.score || 0) - (b.score || 0);
   });
   rows.forEach(function (r, i) { r.rank = i + 1; });
+  return rows;
+}
+
+// Scoring a row walks every focus bakery's month history twice, so the result
+// is cached against the two things it is derived from: the focus snapshot
+// array (replaced wholesale whenever the dataset or the region/ops/search
+// filters change) and the visits object behind each row's coverage points.
+// Without this, every Overview refresh would re-walk the whole focus list
+// purely to fill in one line of the At A Glance panel.
+var _supportRowsCache = null;
+
+function _supportRows(targets, focusContext, bf, cf, highBand, lowBand, isAbsolute) {
+  var snapshots = focusContext && focusContext.allSnapshots;
+  var visits = GAILS._allVisitsObj || null;
+  var band = (GAILS.state && GAILS.state.bandFilter) || '';
+  var cacheable = Array.isArray(snapshots);
+  if (cacheable && _supportRowsCache &&
+      _supportRowsCache.snapshots === snapshots &&
+      _supportRowsCache.visits === visits &&
+      _supportRowsCache.band === band &&
+      _supportRowsCache.targetCount === targets.length) {
+    return _supportRowsCache.rows;
+  }
+  var rows = _buildSupportRows(targets, focusContext || {}, bf, cf, highBand, lowBand, isAbsolute);
+  _supportRowsCache = cacheable
+    ? { snapshots: snapshots, visits: visits, band: band, targetCount: targets.length, rows: rows }
+    : null;
+  return rows;
+}
+
+// The focus list and its support scores, built from the same dataset the
+// Focus Bakeries hub uses. Region/ops/search filters apply (the focus dataset
+// honours them); the month filter does not, for the reason above. Rows come
+// back highest support score first.
+window.GAILS.getSupportPriorityRows = function () {
+  var G = GAILS;
+  var isAbsolute = true;
+  var bf = 'acb';
+  var cf = 'ac';
+  var highBand = 'Below Standard';
+  var lowBand = 'Approaching';
+  if (!G.buildFocusDataset || !G.computeSupportPriority) return [];
+  var focusContext = G.buildFocusDataset({ isAbsolute: isAbsolute });
+  var targets = focusContext.data.filter(function (b) {
+    return b[bf] === highBand || b[bf] === lowBand;
+  }).sort(function (a, b) { return a[cf] - b[cf]; });
+  return _supportRows(targets, focusContext, bf, cf, highBand, lowBand, isAbsolute);
+};
+
+function _renderFocusHub(targets, data, bf, cf, highBand, lowBand, isAbsolute) {
+  var G = GAILS;
+  var esc = G.escapeHtml;
+  var state = G.state;
+  var focusContext = G._focusDataContext || {};
+  var FM = focusContext.closedMonths || state.selectedMonths || [];
+  var escapeLine = isAbsolute ? 75 : 50;
+  var severeLine = isAbsolute ? 60 : 25;
+  var queueEl = document.getElementById('targetHubQueue');
+  var priorityOverviewTitle = document.getElementById('focusPriorityOverviewTitle');
+  if (priorityOverviewTitle) priorityOverviewTitle.textContent = _focusTitleWithReferencePeriod('Priority Overview');
+
+  var rows = _supportRows(targets, focusContext, bf, cf, highBand, lowBand, isAbsolute);
 
   var byName = {};
   rows.forEach(function (r) { byName[r.name] = r; });

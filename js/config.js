@@ -720,11 +720,12 @@ function _buildVisitPeriodIndex(visits) {
     var key = window.GAILS.resolveBakeryMetaKey(v.bakery) || v.bakery;
     var entry = index[key];
     if (!entry) {
-      entry = index[key] = { any: false, months: Object.create(null) };
+      entry = index[key] = { any: false, total: 0, months: Object.create(null) };
     }
     entry.any = true;
+    entry.total++;
     var label = _isoDateToMonthLabel(v.date);
-    if (label) entry.months[label] = true;
+    if (label) entry.months[label] = (entry.months[label] || 0) + 1;
   });
   return index;
 }
@@ -748,9 +749,27 @@ window.GAILS.isBakeryVisitedInPeriod = function (b, months) {
   var monthSet = months || [];
   if (!monthSet.length) return entry.any;
   for (var i = 0; i < monthSet.length; i++) {
-    if (entry.months[monthSet[i]] === true) return true;
+    if (entry.months[monthSet[i]] > 0) return true;
   }
   return false;
+};
+
+// How many routine visits bakery b has logged inside the given dashboard
+// month labels (an empty list means every visit ever logged). The Overview
+// At A Glance panel reports visits per bakery, which needs the tally rather
+// than the yes/no isBakeryVisitedInPeriod above answers — both read the same
+// per-month counts off the shared index.
+window.GAILS.getVisitCountInPeriod = function (b, months) {
+  var key = window.GAILS.resolveBakeryMetaKey(b) || b;
+  var entry = _getVisitPeriodIndex()[key];
+  if (!entry) return 0;
+  var monthSet = months || [];
+  if (!monthSet.length) return entry.total;
+  var total = 0;
+  for (var i = 0; i < monthSet.length; i++) {
+    total += entry.months[monthSet[i]] || 0;
+  }
+  return total;
 };
 
 // ========== COLOUR MAPS ==========

@@ -797,24 +797,13 @@
 
   // ========== KPI DELTA & GAP HELPERS ==========
 
+  // Period selection and filtering live in G.getPriorPeriodRecords (filters.js)
+  // so the KPI deltas and the At A Glance movers compare against exactly the
+  // same prior period; this only averages the rows it hands back.
   function getPriorAvgs() {
-    var sel = state.selectedMonths;
-    var all = state.MONTHS;
-    if (!sel || sel.length === 0 || all.length === 0) return null;
-    var indices = sel.map(function (m) { return all.indexOf(m); }).filter(function (i) { return i >= 0; });
-    if (indices.length === 0) return null;
-    indices.sort(function (a, b) { return a - b; });
-    var firstIdx = indices[0];
-    var n = indices.length;
-    if (firstIdx < n) return null;
-    var priorMonths = all.slice(firstIdx - n, firstIdx);
-    var recs = state.ALL.filter(function (r) { return priorMonths.indexOf(r.m) >= 0; });
-    if (state.regionFilter.length) recs = recs.filter(function (r) { return state.regionFilter.indexOf(G.getBakeryRegion(r.b)) >= 0; });
-    if (state.opsFilter.length) recs = recs.filter(function (r) { return state.opsFilter.indexOf(G.getBakeryOps(r.b)) >= 0; });
-    if (state.searchBakery && state.searchBakery.length) recs = recs.filter(function (r) {
-      return G.isSelectedBakery(r.b, state.searchBakery);
-    });
-    if (recs.length === 0) return null;
+    var prior = G.getPriorPeriodRecords ? G.getPriorPeriodRecords() : null;
+    if (!prior) return null;
+    var recs = prior.records;
     var avg = function (key) { return recs.reduce(function (a, r) { return a + (r[key] || 0); }, 0) / recs.length; };
     // Sparse metrics (e.g. avg wait) may be absent on older records — average only
     // the rows that have them; NaN when none do, so kpiDeltaHtml skips the delta.
@@ -822,7 +811,6 @@
       var vs = recs.filter(function (r) { return typeof r[key] === 'number' && !isNaN(r[key]); });
       return vs.length ? vs.reduce(function (a, r) { return a + r[key]; }, 0) / vs.length : NaN;
     };
-    var label = n === 1 ? priorMonths[0] : 'prior ' + n + 'm';
     return {
       n: avg('n'), c: avg('c'), ac: avg('ac'),
       dr: avg('dr'), ef: avg('ef'), fr: avg('fr'),
@@ -835,7 +823,7 @@
         var vs = recs.filter(function (r) { return typeof r.td === 'number' && !isNaN(r.td) && r.td > 0; });
         return vs.length ? vs.reduce(function (a, r) { return a + r.td; }, 0) : NaN;
       })(),
-      label: label
+      label: prior.label
     };
   }
 
@@ -1035,6 +1023,7 @@
       }).join('');
       fitKpiValues();
       publishKpiBlockHeight();
+      G.renderAtAGlance(data);
       G.renderOverviewCharts(viewData);
       G._lastData = data;
       renderOrDeferPanels({
@@ -1272,6 +1261,7 @@
     }).join('');
     fitKpiValues();
     publishKpiBlockHeight();
+    G.renderAtAGlance(data);
 
     // Second argument is the bakery-level cohort: the band split and scatter
     // plot whatever rows the View toggle selected, but the two component
