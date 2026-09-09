@@ -1,7 +1,7 @@
 import { auth, db } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { ref, get, set, update, remove, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess, canSeeTeam } from './permissions.js';
+import { BUILTIN_ROLES, normalizePermissions, resolveRolePermissions, hasAdminPanelAccess, canSeeTeam, PERSONAL_HUBS_ADMIN_MENU_ONLY } from './permissions.js';
 import { createProfileMenu } from './profile-menu.js';
 import { recordNotification, followUpTargets } from './notification-write.js';
 import { mountNotificationCentre } from './notification-centre.js';
@@ -618,6 +618,11 @@ function applyLastVisitDates(visitsObj) {
     if (typeof window.GAILS.refreshMapVisitFilters === 'function') {
       window.GAILS.refreshMapVisitFilters();
     }
+    // The Overview's At A Glance panel reports visit coverage, and is rendered
+    // from the CEX data long before this node arrives.
+    if (typeof window.GAILS.refreshAtAGlanceVisits === 'function') {
+      window.GAILS.refreshAtAGlanceVisits();
+    }
     // A ?visit=<id> link from the My Activity hub can only be honoured once
     // the record it names has arrived.
     if (typeof window.GAILS.openVisitFromDeepLink === 'function') {
@@ -1049,7 +1054,10 @@ onAuthStateChanged(auth, async (user) => {
 // Absent means off — the hub is invisible until someone grants it.
 function applyMyActivityAccess(userProfile) {
   var link = document.querySelector('.header [data-my-activity-link]');
-  if (link) link.hidden = !(userProfile && userProfile.myActivity === true);
+  // Admin-portal menu only for now, so the dashboard entry stays hidden even
+  // for an account that has been granted the hub.
+  var granted = !PERSONAL_HUBS_ADMIN_MENU_ONLY && !!(userProfile && userProfile.myActivity === true);
+  if (link) link.hidden = !granted;
 }
 
 // My Team comes from the *role* rather than a per-user switch: a manager needs
@@ -1058,7 +1066,10 @@ function applyMyActivityAccess(userProfile) {
 // roster read — this only decides whether the menu entry appears.
 function applyMyTeamAccess(permissions) {
   var link = document.querySelector('.header [data-my-team-link]');
-  if (link) link.hidden = !canSeeTeam(permissions);
+  // Same as My Activity: the role check still decides access, the dashboard
+  // menu just isn't an entry point while the hubs live in the admin menu.
+  var granted = !PERSONAL_HUBS_ADMIN_MENU_ONLY && canSeeTeam(permissions);
+  if (link) link.hidden = !granted;
 }
 
 // Hides dashboard tab buttons (desktop nav + mobile bottom nav) that the

@@ -1803,7 +1803,21 @@ body[data-dash-tab="feedback"] .filter-control--view {
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
-  margin-bottom: 6px;
+  margin-bottom: 0;
+}
+
+.kpi__metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 0;
+  flex: 1;
+}
+
+.kpi__reading {
+  min-width: 0;
 }
 
 .kpi__eyebrow {
@@ -1866,8 +1880,8 @@ body[data-dash-tab="feedback"] .filter-control--view {
 }
 
 .kpi__meta {
-  margin-top: 6px;
-  padding-top: 6px;
+  margin-top: 0;
+  padding-top: 8px;
   border-top: 1px solid rgba(34, 31, 26, 0.075);
   color: var(--muted);
   font-size: 0.68rem;
@@ -1919,40 +1933,13 @@ body[data-dash-tab="feedback"] .filter-control--view {
 
 @media (min-width: 721px) {
   .kpi {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto auto minmax(6px, 1fr) auto;
-    column-gap: 14px;
-    align-items: start;
+    display: flex;
   }
 
-  .kpi__top {
-    grid-column: 1 / -1;
-    grid-row: 1;
-  }
-
-  .kpi__value {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .kpi__title {
-    grid-column: 1;
-    grid-row: 3;
-    min-width: 0;
-  }
-
-  .kpi__delta {
-    grid-column: 2;
-    grid-row: 2 / span 2;
+  .kpi__metric .kpi__delta {
     align-self: center;
-    justify-self: end;
+    flex-shrink: 0;
     margin-top: 0;
-  }
-
-  .kpi__meta {
-    grid-column: 1 / -1;
-    grid-row: 5;
   }
 }
 
@@ -2007,7 +1994,15 @@ body[data-dash-tab="feedback"] .filter-control--view {
     align-items: center;
     justify-content: space-between;
     gap: 6px;
-    margin-bottom: 10px;
+    margin-bottom: 0;
+  }
+
+  .kpi__metric {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+    padding: 10px 0;
   }
 
   .kpi__eyebrow {
@@ -26820,7 +26815,10 @@ body {
   #tab-overview .kpi {
     padding-left: 13px;
     padding-right: 13px;
-    column-gap: 9px;
+  }
+
+  #tab-overview .kpi__metric {
+    gap: 9px;
   }
 
   #tab-overview .kpi__delta {

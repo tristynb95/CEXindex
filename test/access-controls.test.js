@@ -16,6 +16,7 @@ const teamScript = read('js/my-team.js');
 const teamHtml = read('my-team.html');
 const profileScript = read('js/profile-page.js');
 const standaloneMenuScript = read('js/standalone-profile-menu.js');
+const permissionsScript = read('js/permissions.js');
 const rules = JSON.parse(read('database.rules.json'));
 
 // ── One place for both questions ──────────────────────────────────────────
@@ -189,10 +190,26 @@ test('My Team is granted by the role, not a per-user switch', () => {
   assert.match(standaloneMenuScript, /data-standalone-team-link hidden/);
   assert.match(profileScript, /showTeam: canSeeTeam\(currentPermissions\)/);
   assert.match(authScript, /function applyMyTeamAccess\(permissions\)/);
-  assert.match(authScript, /link\.hidden = !canSeeTeam\(permissions\)/);
+  assert.match(authScript, /canSeeTeam\(permissions\);[\s\S]*?if \(link\) link\.hidden = !granted/);
   // …and the page refuses a typed URL, which a hidden menu entry cannot do.
   assert.match(teamScript, /if \(teamScope === 'none'\) \{/);
   assert.match(teamScript, /showGuardError\('My Team is not switched on for your role/);
+});
+
+// ── Admin-menu-only routing ───────────────────────────────
+
+test('My Activity and My Team are entered from the admin portal menu only', () => {
+  // One switch decides it, so the entries come back everywhere together.
+  assert.match(permissionsScript, /export const PERSONAL_HUBS_ADMIN_MENU_ONLY = true;/);
+  // Dashboard menu: both entries stay hidden whatever the account was granted.
+  assert.match(authScript, /!PERSONAL_HUBS_ADMIN_MENU_ONLY && !!\(userProfile && userProfile\.myActivity === true\)/);
+  assert.match(authScript, /!PERSONAL_HUBS_ADMIN_MENU_ONLY && canSeeTeam\(permissions\)/);
+  // Standalone page headers: same, after their own access check has run.
+  assert.match(standaloneMenuScript, /if \(PERSONAL_HUBS_ADMIN_MENU_ONLY\) \{[\s\S]*?activityLink\.hidden = true;[\s\S]*?teamLink\.hidden = true;/);
+  // The admin portal's own menu is the one entry point, so it is not gated.
+  assert.doesNotMatch(adminScript, /PERSONAL_HUBS_ADMIN_MENU_ONLY/);
+  assert.match(adminScript, /myActivityLink\.hidden = !\(profile && profile\.myActivity === true\)/);
+  assert.match(adminScript, /myTeamLink\.hidden = !canSeeTeam\(state\.permissions\)/);
 });
 
 test('Admin Portal is available from every profile menu only with admin access', () => {
@@ -200,7 +217,7 @@ test('Admin Portal is available from every profile menu only with admin access',
   assert.match(authScript, /adminPortalLink\.hidden = !\(isAdmin \|\| hasAdminPanelAccess\(permissions\)\)/);
 
   assert.match(standaloneMenuScript, /href="admin\.html" role="menuitem"[\s\S]*?data-admin-portal-link hidden/);
-  assert.match(standaloneMenuScript, /import \{ hasAdminPanelAccess \} from '\.\/permissions\.js'/);
+  assert.match(standaloneMenuScript, /import \{ hasAdminPanelAccess,[^}]*\} from '\.\/permissions\.js'/);
   assert.match(standaloneMenuScript, /adminLink\.hidden = !hasAdminPanelAccess\(settings\.permissions\)/);
 
   assert.match(adminHtml, /href="admin\.html" role="menuitem"[\s\S]*?data-admin-portal-link hidden/);

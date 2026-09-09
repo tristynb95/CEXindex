@@ -21,6 +21,12 @@
 // roles below ('admin' and 'viewer') are hardcoded so existing user records
 // keep working and can never be edited or deleted from the role creator.
 
+// My Activity and My Team are reachable from the Admin Portal's profile menu
+// only for now: the entries stay out of the dashboard menu and the standalone
+// page menus. The per-user and per-role access checks below are untouched, so
+// putting the entries back everywhere is a matter of flipping this to false.
+export const PERSONAL_HUBS_ADMIN_MENU_ONLY = true;
+
 export const DASHBOARD_TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'target', label: 'Focus Bakeries' },

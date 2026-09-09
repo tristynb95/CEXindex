@@ -1,6 +1,6 @@
 import { createProfileMenu } from './profile-menu.js';
 import { mountNotificationCentre } from './notification-centre.js';
-import { hasAdminPanelAccess } from './permissions.js';
+import { hasAdminPanelAccess, PERSONAL_HUBS_ADMIN_MENU_ONLY } from './permissions.js';
 
 // Mounts the dashboard account menu in standalone page headers. Keeping the
 // markup and interaction here means Profile, Bakery Profile, My Activity, and
@@ -111,6 +111,13 @@ export function mountStandaloneProfileMenu(options) {
 
   activityLink.hidden = settings.showActivity !== true;
   teamLink.hidden = settings.showTeam !== true;
+  // …and hidden regardless while the hubs are reachable from the admin
+  // portal's menu only. Each page still guards its own URL, so this only
+  // removes the standalone headers as an entry point.
+  if (PERSONAL_HUBS_ADMIN_MENU_ONLY) {
+    activityLink.hidden = true;
+    teamLink.hidden = true;
+  }
   adminLink.hidden = !hasAdminPanelAccess(settings.permissions);
   ui.update(settings.user || null, settings.profile || null);
 

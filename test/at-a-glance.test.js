@@ -13,6 +13,7 @@ const cssSource = read('css', 'styles.css');
 const targetsSource = read('js', 'targets.js');
 const visitReportSource = read('js', 'visit-report.js');
 const glanceSource = read('js', 'at-a-glance.js');
+const authSource = read('js', 'auth.js');
 
 // ========== HARNESS ==========
 // The panel talks to the page through a handful of GAILS helpers and a few
@@ -120,14 +121,14 @@ function slide(label, overrides) {
 
 // ========== ROTATION ==========
 
-test('rotates through performance, leaders, growth levers and visits', () => {
+test('rotates through performance, leaders, opportunities and visits', () => {
   const app = mount();
   app.GAILS.renderAtAGlance(ROWS);
   assert.equal(app.scope(), 'Performance');
   app.tick();
   assert.equal(app.scope(), 'Leaders');
   app.tick();
-  assert.equal(app.scope(), 'Growth levers');
+  assert.equal(app.scope(), 'Opportunities');
   app.tick();
   assert.equal(app.scope(), 'Visits');
   app.tick();
@@ -166,7 +167,7 @@ test('the support pick names the bakery and its tier, and nothing else', () => {
   assert.doesNotMatch(slide('Performance').html(), /Needs most support[\s\S]*?Ana Ruiz/);
 });
 
-// ========== LEADERS & GROWTH LEVERS ==========
+// ========== LEADERS & OPPORTUNITIES ==========
 
 test('leaders and levers show the same four metrics from opposite ends', () => {
   const leaders = slide('Leaders').html();
@@ -174,7 +175,7 @@ test('leaders and levers show the same four metrics from opposite ends', () => {
   assert.match(leaders, /Best drink quality[\s\S]*?<a>Soho<\/a>[\s\S]*?92%/);
   assert.match(leaders, /Best efficiency[\s\S]*?<a>Soho<\/a>[\s\S]*?91%/);
 
-  const levers = slide('Growth levers').html();
+  const levers = slide('Opportunities').html();
   assert.match(levers, /Lowest NPS[\s\S]*?<a>Barnes<\/a>[\s\S]*?>30</);
   assert.match(levers, /Lowest drink quality[\s\S]*?<a>Windsor<\/a>[\s\S]*?74%/);
   assert.match(levers, /Lowest efficiency[\s\S]*?<a>Barnes<\/a>[\s\S]*?70%/);
@@ -191,7 +192,7 @@ test('a tie hands the row to a bakery not already named on the slide', () => {
 test('a strictly better figure is never passed over to spread the names', () => {
   // Barnes is lowest on both NPS and efficiency by a clear margin, so it leads
   // both rows — the repetition is the finding, not a bug to design away.
-  const levers = slide('Growth levers').html();
+  const levers = slide('Opportunities').html();
   assert.equal((levers.match(/<a>Barnes<\/a>/g) || []).length, 2);
 });
 
@@ -237,7 +238,7 @@ test('most visited counts visits in the selected period, and says so', () => {
 // ========== FOOTER ==========
 
 test('the footer reports coverage and scope on every slide', () => {
-  for (const label of ['Performance', 'Leaders', 'Growth levers', 'Visits']) {
+  for (const label of ['Performance', 'Leaders', 'Opportunities', 'Visits']) {
     const html = slide(label).html();
     // Two of four bakeries visited, three visits between them.
     assert.match(html, /50%[\s\S]*?visited this period/);
@@ -266,6 +267,43 @@ test('an empty selection replaces the panel rather than rendering blank rows', (
   assert.equal(app.els.atAGlanceDots.innerHTML, '');
 });
 
+// ========== LATE VISIT DATA ==========
+
+// The panel is rendered from the CEX period rows, which arrive first; the
+// routine-visit index comes from a separate Firebase subscription, so the visit
+// figures are computed against an empty index on the first paint.
+
+test('the visit figures redraw when the routine-visit feed lands after the render', () => {
+  let counts = {};
+  const app = mount({ getVisitCountInPeriod: (name) => counts[name] || 0 });
+  app.GAILS.renderAtAGlance(ROWS);
+  assert.match(app.html(), /<strong>0%<\/strong>/, 'the strip opens on zeros');
+
+  counts = VISIT_COUNTS;
+  app.GAILS.refreshAtAGlanceVisits();
+  assert.match(app.html(), /<strong>50%<\/strong>/);
+  assert.match(app.html(), /<strong>0\.8<\/strong>/);
+});
+
+test('the late redraw holds the reader on their slide and does not replay the fade', () => {
+  const app = mount();
+  app.GAILS.renderAtAGlance(ROWS);
+  app.tick();
+  assert.equal(app.scope(), 'Leaders');
+
+  app.els.atAGlanceBody.classList.remove('is-entering');
+  app.GAILS.refreshAtAGlanceVisits();
+  assert.equal(app.scope(), 'Leaders', 'a redraw nobody asked for must not move the slide');
+  assert.equal(app.els.atAGlanceBody.classes.has('is-entering'), false,
+    'the entry fade announces a new slide, not a refreshed one');
+});
+
+test('the late redraw is a no-op before the panel has anything to draw', () => {
+  const app = mount();
+  app.GAILS.refreshAtAGlanceVisits();
+  assert.equal(app.html(), '');
+});
+
 // ========== WIRING ==========
 
 test('the panel is mounted on the Overview and loaded before the app', () => {
@@ -284,6 +322,13 @@ test('the panel is mounted on the Overview and loaded before the app', () => {
 test('both refresh paths render the panel, so it is never left showing a stale selection', () => {
   const calls = appSource.match(/G\.renderAtAGlance\(data\)/g) || [];
   assert.equal(calls.length, 2, 'expected the no-data and scored refresh paths to both render it');
+});
+
+test('the routine-visit feed redraws the panel when it lands', () => {
+  // Without this the two visit figures sit on the empty index they were first
+  // drawn against until the rotation happens to tick.
+  assert.match(authSource, /refreshAtAGlanceVisits\(\);/);
+  assert.match(glanceSource, /G\.refreshAtAGlanceVisits = function/);
 });
 
 test('the support pick reuses the Focus queue rather than ranking bakeries a second way', () => {

@@ -220,6 +220,14 @@
   width: 12px;
 }
 
+/* The workspace banner is sticky at z-index 20 and sits later in the DOM, so at
+   equal z-index it painted over this menu's popover (and the notification panel
+   nested inside it). The menu lives in the header, which is above the scrolling
+   workspace, so it takes the higher layer. */
+.admin-body .profile-menu {
+  z-index: 60;
+}
+
 .admin-body .profile-menu__popover {
   top: calc(100% + 8px);
   right: 0;

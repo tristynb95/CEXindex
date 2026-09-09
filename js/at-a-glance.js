@@ -5,7 +5,7 @@
 // — so one small card can carry more than four facts without burying any of
 // them.
 //
-// Leaders and Growth levers are deliberately a pair. Four rows of laggards on
+// Leaders and Opportunities are deliberately a pair. Four rows of laggards on
 // their own read as a naughty list; the same four metrics shown from both ends,
 // one slide apart, say the same thing without it.
 //
@@ -46,9 +46,10 @@ window.GAILS = window.GAILS || {};
   var TIER_TONE = { critical: 'red', high: 'amber', watch: 'gold' };
   var RAG_TONE = { green: 'green', amber: 'amber', red: 'red' };
 
-  // The four metrics the KPI row leads with, in its order. Leaders and Growth
-  // levers are the two ends of the same four measures, so a slide of sites to
-  // learn from always sits opposite the slide of sites with ground to make up.
+  // The four metrics the KPI row leads with, in its order. Leaders and
+  // Opportunities are the two ends of the same four measures, so a slide of
+  // sites to learn from always sits opposite the slide of sites with ground to
+  // make up.
   var METRICS = [
     { key: 'n', high: 'Highest NPS', low: 'Lowest NPS', format: function (v) { return String(Math.round(v)); } },
     { key: 'dr', high: 'Best drink quality', low: 'Lowest drink quality', format: percent },
@@ -59,7 +60,7 @@ window.GAILS = window.GAILS || {};
   var SLIDES = [
     { id: 'performance', label: 'Performance', build: performanceRows },
     { id: 'leaders', label: 'Leaders', build: leaderRows },
-    { id: 'levers', label: 'Growth levers', build: leverRows },
+    { id: 'levers', label: 'Opportunities', build: leverRows },
     { id: 'visits', label: 'Visits', build: visitRows }
   ];
 
@@ -255,7 +256,7 @@ window.GAILS = window.GAILS || {};
       supportRow();
   }
 
-  // ========== LEADERS & GROWTH LEVERS ==========
+  // ========== LEADERS & OPPORTUNITIES ==========
 
   // The bakery at one end of one metric. The extreme is always the true one:
   // the four measures are correlated, so a site can legitimately lead several
@@ -528,16 +529,21 @@ window.GAILS = window.GAILS || {};
     }).join('');
   }
 
-  function show(next) {
+  // `quiet` redraws the slide in place without the entry fade, for a refresh
+  // the reader did not ask for: the fade announces a new slide, and playing it
+  // over the slide they are already reading reads as a glitch.
+  function show(next, quiet) {
     index = ((next % SLIDES.length) + SLIDES.length) % SLIDES.length;
     var body = document.getElementById('atAGlanceBody');
     if (!body) return;
     body.innerHTML = slideHtml(SLIDES[index]);
-    // Replay the entry fade: on an element that is already in the document the
-    // class has to come off, force a reflow, and go back on.
-    body.classList.remove('is-entering');
-    void body.offsetWidth;
-    body.classList.add('is-entering');
+    if (!quiet) {
+      // Replay the entry fade: on an element that is already in the document
+      // the class has to come off, force a reflow, and go back on.
+      body.classList.remove('is-entering');
+      void body.offsetWidth;
+      body.classList.add('is-entering');
+    }
     renderChrome();
   }
 
@@ -563,5 +569,18 @@ window.GAILS = window.GAILS || {};
     // update what they are looking at, not snap them back to the first slide.
     show(index);
     startRotation();
+  };
+
+  // The visit figures are the one thing on this card that does not come out of
+  // the period rows: they are read from the routine-visit index, which arrives
+  // from Firebase after the first render (js/auth.js). Until it lands every
+  // bakery reads as never visited, so the card opens on "0% visited this
+  // period" and only corrects itself whenever the rotation next ticks — which
+  // is nine seconds later, or never, if the reader has hovered or asked for
+  // reduced motion. Redrawing when the feed lands is what makes those two
+  // figures true on first sight.
+  G.refreshAtAGlanceVisits = function () {
+    if (!currentData || !currentData.length) return;
+    show(index, true);
   };
 })();
