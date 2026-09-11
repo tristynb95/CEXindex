@@ -201,8 +201,8 @@ test('keeps the reader on their slide across a filter change', () => {
 test('the performance slide carries the top scorer, both movers and the support pick', () => {
   const html = slide('Performance').html();
   assert.match(html, /Top bakery[\s\S]*?<a>Soho<\/a>[\s\S]*?88/);
-  assert.match(html, /Biggest riser[\s\S]*?<a>Balham<\/a>[\s\S]*?vs Jul 26[\s\S]*?\+11\.0/);
-  assert.match(html, /Biggest faller[\s\S]*?<a>Barnes<\/a>[\s\S]*?vs Jul 26[\s\S]*?−15\.0/);
+  assert.match(html, /Biggest rise[\s\S]*?<a>Balham<\/a>[\s\S]*?vs Jul 26[\s\S]*?\+11\.0/);
+  assert.match(html, /Biggest dip[\s\S]*?<a>Barnes<\/a>[\s\S]*?vs Jul 26[\s\S]*?−15\.0/);
   assert.match(html, /Needs most support[\s\S]*?<a>Barnes<\/a>[\s\S]*?High priority[\s\S]*?82/);
 });
 
@@ -339,17 +339,20 @@ test('an area moves on the mean of its own bakeries, then and now', () => {
   // 70. Chris Kral holds Barnes (55, was 70) and Windsor (62, was 61): 58.5
   // against 65.5.
   const html = groupSlide('Performance', grouped(OPS, 'ops')).html();
-  assert.match(html, /Biggest riser[\s\S]*?Kate Downes[\s\S]*?>\+9\.5</);
-  assert.match(html, /Biggest faller[\s\S]*?Chris Kral[\s\S]*?>−7\.0</);
+  assert.match(html, /Biggest rise[\s\S]*?Kate Downes[\s\S]*?>\+9\.5</);
+  assert.match(html, /Biggest dip[\s\S]*?Chris Kral[\s\S]*?>−7\.0</);
 });
 
 test('the two rows a group cannot inherit ask the group question instead', () => {
-  // Barnes and Windsor are both Chris Kral's, so his patch carries the list.
+  // One label for one question in every view; what changes underneath is the
+  // measure. A bakery answers it with its own support score, a patch with how
+  // many of its sites are on the list at all — Barnes and Windsor are both
+  // Chris Kral's, so their patch is carrying it.
   const html = groupSlide('Performance', grouped(OPS, 'ops')).html();
-  assert.match(html, /Most on the focus list[\s\S]*?Chris Kral[\s\S]*?>2 sites</);
-  assert.doesNotMatch(html, /Needs most support/);
+  assert.match(html, /Needs most support[\s\S]*?Chris Kral[\s\S]*?>2 sites</);
+  assert.doesNotMatch(html, /<a>Barnes<\/a>/, 'the area view must not answer with a bakery');
   // A name, a second name and a figure is one thing more than the row fits, so
-  // which of his sites is worst rides in the row's title instead.
+  // which of its sites is the highest priority rides in the title instead.
   assert.match(html, /title="Chris Kral — 2 sites on the focus list, Barnes the highest at 82\/100"/);
 });
 
@@ -358,8 +361,8 @@ test('the area view swaps the visit slide for coverage of each patch', () => {
     getVisitCountInPeriod: (name) => ({ Soho: 2, Balham: 1 })[name] || 0
   });
   const html = app.html();
-  assert.match(html, /Best covered[\s\S]*?Kate Downes[\s\S]*?>100%</);
-  assert.match(html, /Least covered[\s\S]*?Chris Kral[\s\S]*?>0%</);
+  assert.match(html, /Highest coverage[\s\S]*?Kate Downes[\s\S]*?>100%</);
+  assert.match(html, /Lowest coverage[\s\S]*?Chris Kral[\s\S]*?>0%</);
   // Barnes has never been visited at all, and that is Chris Kral's.
   assert.match(html, /No visit yet[\s\S]*?Chris Kral[\s\S]*?>1 site</);
   // The site to chase is still a site; whose patch it is on rides in the title.
@@ -381,9 +384,9 @@ test('coverage ties are spread across the rows rather than naming one patch thri
 
 test('an empty end of the coverage pair says so rather than colouring a nought', () => {
   const none = groupSlide('Coverage', grouped(OPS, 'ops'), { getVisitCountInPeriod: () => 0 });
-  assert.match(none.html(), /Best covered[\s\S]*?No visits logged in this period/);
+  assert.match(none.html(), /Highest coverage[\s\S]*?No visits logged in this period/);
   const all = groupSlide('Coverage', grouped(OPS, 'ops'), { getVisitCountInPeriod: () => 1 });
-  assert.match(all.html(), /Least covered[\s\S]*?Every bakery in scope was visited this period/);
+  assert.match(all.html(), /Lowest coverage[\s\S]*?Every bakery in scope was visited this period/);
 });
 
 test('a single ops area gets its own standing, with its worst site named', () => {
@@ -401,14 +404,14 @@ test('a single ops area gets its own standing, with its worst site named', () =>
 test('the region view names a bakery in every region rather than ranking regions', () => {
   // Four regions of sixty-odd bakeries each all average out to the same place,
   // so the rows are the regions and what they name is a site to act on.
-  const strongest = groupSlide('Strongest', grouped(REGIONS, 'region')).html();
-  assert.doesNotMatch(strongest, /Top region|Highest NPS/);
-  assert.match(strongest, /London Region[\s\S]*?<a>Soho<\/a>[\s\S]*?>88</);
-  assert.match(strongest, /South Region[\s\S]*?<a>Windsor<\/a>[\s\S]*?>62</);
+  const leaders = groupSlide('Leaders', grouped(REGIONS, 'region')).html();
+  assert.doesNotMatch(leaders, /Top region|Highest NPS/);
+  assert.match(leaders, /London Region[\s\S]*?<a>Soho<\/a>[\s\S]*?>88</);
+  assert.match(leaders, /South Region[\s\S]*?<a>Windsor<\/a>[\s\S]*?>62</);
 
-  const weakest = groupSlide('Weakest', grouped(REGIONS, 'region')).html();
-  assert.match(weakest, /London Region[\s\S]*?<a>Balham<\/a>[\s\S]*?>71</);
-  assert.match(weakest, /South Region[\s\S]*?<a>Barnes<\/a>[\s\S]*?>55</);
+  const opportunities = groupSlide('Opportunities', grouped(REGIONS, 'region')).html();
+  assert.match(opportunities, /London Region[\s\S]*?<a>Balham<\/a>[\s\S]*?>71</);
+  assert.match(opportunities, /South Region[\s\S]*?<a>Barnes<\/a>[\s\S]*?>55</);
 });
 
 test('the region support slide names who each region is carrying, or says nobody', () => {

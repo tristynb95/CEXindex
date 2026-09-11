@@ -94,8 +94,8 @@ window.GAILS = window.GAILS || {};
   // the bakeries inside it (see REGIONS).
   function regionSlides() {
     return [
-      { id: 'region-leaders', label: 'Strongest', build: regionLeaderRows },
-      { id: 'region-levers', label: 'Weakest', build: regionLeverRows },
+      { id: 'region-leaders', label: 'Leaders', build: regionLeaderRows },
+      { id: 'region-levers', label: 'Opportunities', build: regionLeverRows },
       { id: 'region-support', label: 'Support', build: regionSupportRows },
       { id: 'region-coverage', label: 'Coverage', build: regionCoverageRows }
     ];
@@ -310,8 +310,8 @@ window.GAILS = window.GAILS || {};
   }
 
   // The change on one bakery, or null where there is nothing to compare it
-  // with. Both movers share one pass, so the riser and the faller are always
-  // drawn from the same comparison.
+  // with. Both movers share one pass, so the rise and the dip are always drawn
+  // from the same comparison.
   function changeOn(record, prior) {
     if (!prior || !scored(record) || !isNumber(record.ac)) return null;
     var mean = prior.averages[record.b];
@@ -338,8 +338,8 @@ window.GAILS = window.GAILS || {};
     var pick = config.rising ? found.up : found.down;
     var moved = pick && (config.rising ? pick.change > 0 : pick.change < 0);
     if (!moved) {
-      return emptyRow(config.label, 'No ' + words().unit + ' ' +
-        (config.rising ? 'gained' : 'lost') + ' ground on ' + found.label);
+      return emptyRow(config.label, 'No ' + words().unit +
+        (config.rising ? ' gained ground on ' : ' dipped on ') + found.label);
     }
     var change = round1(Math.abs(pick.change)).toFixed(1);
     return row({
@@ -371,8 +371,8 @@ window.GAILS = window.GAILS || {};
   function performanceRows() {
     var found = movers();
     return topPerformerRow() +
-      moverRow({ label: 'Biggest riser', rising: true, movers: found }) +
-      moverRow({ label: 'Biggest faller', rising: false, movers: found }) +
+      moverRow({ label: 'Biggest rise', rising: true, movers: found }) +
+      moverRow({ label: 'Biggest dip', rising: false, movers: found }) +
       (grouping() === 'bakeries' ? supportRow() : groupSupportRow());
   }
 
@@ -497,8 +497,8 @@ window.GAILS = window.GAILS || {};
   // than a ranking: the question is whether this bakery is on the focus list,
   // not which bakery is highest up it.
   // On a slide that is already about one group, the group's own name is the
-  // pill above it. What this row has to add is which of its bakeries is worst,
-  // and how much of the list it is carrying.
+  // pill above it. What this row has to add is which of its bakeries is the
+  // highest priority, and how much of the list it is carrying.
   function groupFocusRow(group) {
     var queue = G.getSupportPriorityRows ? G.getSupportPriorityRows() : [];
     var mine = queue.filter(function (item) { return memberKey(item.name) === group.b; });
@@ -662,36 +662,36 @@ window.GAILS = window.GAILS || {};
     return count + ' site' + (count === 1 ? '' : 's');
   }
 
-  // Which patch carries the most of the focus list. The queue is ranked by
-  // support score, so the first entry found in a group is also its worst site,
-  // and a tie on count goes to whichever group holds the worse one.
+  // Which patch is carrying the most of the focus list. The queue is ranked by
+  // support score, so the first entry found in a group is also its highest
+  // priority, and a tie on count goes to whichever group holds the higher one.
   function groupSupportRow() {
     var queue = G.getSupportPriorityRows ? G.getSupportPriorityRows() : [];
     if (!queue.length) {
-      return emptyRow('Most on the focus list', 'No bakery in this selection is on the focus list');
+      return emptyRow('Needs most support', 'No bakery in this selection is on the focus list');
     }
     var counts = {};
-    var worst = {};
+    var highest = {};
     queue.forEach(function (item) {
       var key = memberKey(item.name);
       counts[key] = (counts[key] || 0) + 1;
-      if (!worst[key]) worst[key] = item;
+      if (!highest[key]) highest[key] = item;
     });
     var pick = null;
     subjects().forEach(function (record) {
       var count = counts[record.b] || 0;
       if (!count) return;
       if (!pick || count > pick.count) { pick = { record: record, count: count }; return; }
-      if (count === pick.count && worst[record.b].priority > worst[pick.record.b].priority) {
+      if (count === pick.count && highest[record.b].priority > highest[pick.record.b].priority) {
         pick = { record: record, count: count };
       }
     });
     if (!pick) {
-      return emptyRow('Most on the focus list', 'No bakery in this selection is on the focus list');
+      return emptyRow('Needs most support', 'No bakery in this selection is on the focus list');
     }
-    var top = worst[pick.record.b];
+    var top = highest[pick.record.b];
     return row({
-      label: 'Most on the focus list',
+      label: 'Needs most support',
       tone: TIER_TONE[top.tier] || 'muted',
       value: subjectName(pick.record),
       plain: pick.record.b + ' — ' + sites(pick.count) + ' on the focus list, ' +
@@ -706,13 +706,13 @@ window.GAILS = window.GAILS || {};
   function coverageRows() {
     var named = {};
     if (!G.getVisitCountInPeriod) {
-      return emptyRow('Best covered', 'Visit data unavailable') +
-        emptyRow('Least covered', 'Visit data unavailable') +
+      return emptyRow('Highest coverage', 'Visit data unavailable') +
+        emptyRow('Lowest coverage', 'Visit data unavailable') +
         emptyRow('No visit yet', 'Visit data unavailable') +
         longestGapRow();
     }
     return groupExtremeRow({
-      label: 'Best covered',
+      label: 'Highest coverage',
       named: named,
       highest: true,
       tone: 'green',
@@ -722,7 +722,7 @@ window.GAILS = window.GAILS || {};
       plain: coverageText,
       stat: function (share) { return percent(share * 100); }
     }) + groupExtremeRow({
-      label: 'Least covered',
+      label: 'Lowest coverage',
       named: named,
       highest: false,
       tone: 'red',
@@ -761,8 +761,8 @@ window.GAILS = window.GAILS || {};
   //
   // So the region view inverts: every row is a region, and what it names is a
   // bakery inside it. Four regions make four rows, which is the card's own
-  // rhythm, and each slide asks one question of all of them at once — where
-  // each region is strongest, where it is weakest, who it is carrying, and how
+  // rhythm, and each slide asks one question of all of them at once — who is
+  // leading it, where its biggest opportunity sits, who it is carrying, and how
   // much of it is being walked.
   function perRegionRows(build) {
     return subjects().map(function (group) {
