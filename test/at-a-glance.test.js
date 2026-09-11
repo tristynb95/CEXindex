@@ -37,6 +37,36 @@ const LAST_VISITS = {
 
 const VISIT_COUNTS = { Soho: 2, Windsor: 1 };
 
+// Ops areas are named after the ops manager who runs them; regions are not.
+const OPS = { Soho: 'Kate Downes', Balham: 'Kate Downes', Barnes: 'Chris Kral', Windsor: 'Chris Kral' };
+const REGIONS = {
+  Soho: 'London Region', Balham: 'London Region',
+  Barnes: 'South Region', Windsor: 'South Region'
+};
+const GROUP_BANDS = {
+  'Kate Downes': 'Meeting', 'Chris Kral': 'Below Standard',
+  'London Region': 'Meeting', 'South Region': 'Below Standard'
+};
+
+// The rows the View toggle hands the card: one aggregate per group, shaped the
+// way buildGroupAggregate shapes them (js/filters.js).
+function grouped(map, type) {
+  const byKey = {};
+  ROWS.forEach((record) => {
+    (byKey[map[record.b]] = byKey[map[record.b]] || []).push(record);
+  });
+  return Object.keys(byKey).map((key) => {
+    const members = byKey[key];
+    const avg = (field) =>
+      Math.round((members.reduce((total, r) => total + r[field], 0) / members.length) * 10) / 10;
+    return {
+      b: key, isGroup: true, groupType: type, memberCount: members.length,
+      ac: avg('ac'), acb: GROUP_BANDS[key],
+      n: avg('n'), dr: avg('dr'), ef: avg('ef'), fr: avg('fr')
+    };
+  });
+}
+
 function element() {
   const el = {
     innerHTML: '',
@@ -76,6 +106,8 @@ function mount(overrides) {
     escapeHtml: (value) => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'),
     bakeryProfileLink: (name) => '<a>' + name + '</a>',
     metricRagTone: () => 'red',
+    getBakeryOps: (name) => OPS[name],
+    getBakeryRegion: (name) => REGIONS[name],
     getLastVisitDate: (name) => LAST_VISITS[name] || null,
     getVisitCountInPeriod: (name) => VISIT_COUNTS[name] || 0,
     getPriorPeriodRecords: () => ({
@@ -116,6 +148,16 @@ function mount(overrides) {
 function slide(label, overrides) {
   const app = mount(overrides);
   app.GAILS.renderAtAGlance(ROWS);
+  for (let i = 0; i < 4 && app.scope() !== label; i++) app.tick();
+  assert.equal(app.scope(), label, 'expected to reach the ' + label + ' slide');
+  return app;
+}
+
+// Renders the card the way the View toggle does — bakery rows, plus the
+// grouped rows the page is actually showing — and steps to the named slide.
+function groupSlide(label, viewData, overrides) {
+  const app = mount(overrides);
+  app.GAILS.renderAtAGlance(ROWS, viewData);
   for (let i = 0; i < 4 && app.scope() !== label; i++) app.tick();
   assert.equal(app.scope(), label, 'expected to reach the ' + label + ' slide');
   return app;
@@ -280,6 +322,107 @@ test('an empty selection replaces the panel rather than rendering blank rows', (
   assert.equal(app.els.atAGlanceDots.innerHTML, '');
 });
 
+// ========== OPS AREAS ==========
+
+test('the area view ranks areas, and names them as areas rather than bakeries', () => {
+  const app = groupSlide('Performance', grouped(OPS, 'ops'));
+  const html = app.html();
+  assert.match(html, /Top area[\s\S]*?Kate Downes[\s\S]*?>80</);
+  assert.doesNotMatch(html, /Top bakery/);
+  // An area has no bakery profile to open, so it must not be dressed as a link.
+  assert.doesNotMatch(html, /<a>Kate Downes<\/a>/);
+  assert.match(html, /2 ops areas · 1 meeting or better · 1 below standard/);
+});
+
+test('an area moves on the mean of its own bakeries, then and now', () => {
+  // Kate Downes holds Soho (88, was 80) and Balham (71, was 60): 79.5 against
+  // 70. Chris Kral holds Barnes (55, was 70) and Windsor (62, was 61): 58.5
+  // against 65.5.
+  const html = groupSlide('Performance', grouped(OPS, 'ops')).html();
+  assert.match(html, /Biggest riser[\s\S]*?Kate Downes[\s\S]*?>\+9\.5</);
+  assert.match(html, /Biggest faller[\s\S]*?Chris Kral[\s\S]*?>−7\.0</);
+});
+
+test('the two rows a group cannot inherit ask the group question instead', () => {
+  // Barnes and Windsor are both Chris Kral's, so his patch carries the list.
+  const html = groupSlide('Performance', grouped(OPS, 'ops')).html();
+  assert.match(html, /Most on the focus list[\s\S]*?Chris Kral[\s\S]*?>2 sites</);
+  assert.doesNotMatch(html, /Needs most support/);
+  // A name, a second name and a figure is one thing more than the row fits, so
+  // which of his sites is worst rides in the row's title instead.
+  assert.match(html, /title="Chris Kral — 2 sites on the focus list, Barnes the highest at 82\/100"/);
+});
+
+test('the area view swaps the visit slide for coverage of each patch', () => {
+  const app = groupSlide('Coverage', grouped(OPS, 'ops'), {
+    getVisitCountInPeriod: (name) => ({ Soho: 2, Balham: 1 })[name] || 0
+  });
+  const html = app.html();
+  assert.match(html, /Best covered[\s\S]*?Kate Downes[\s\S]*?>100%</);
+  assert.match(html, /Least covered[\s\S]*?Chris Kral[\s\S]*?>0%</);
+  // Barnes has never been visited at all, and that is Chris Kral's.
+  assert.match(html, /No visit yet[\s\S]*?Chris Kral[\s\S]*?>1 site</);
+  // The site to chase is still a site; whose patch it is on rides in the title.
+  assert.match(html, /Longest since a visit[\s\S]*?<a>Balham<\/a>/);
+  assert.match(html, /title="Balham \(Kate Downes\) — last visited/);
+});
+
+test('coverage ties are spread across the rows rather than naming one patch thrice', () => {
+  // Nothing has been visited and nothing ever has been, so every area ties on
+  // every row. Four rows naming four areas tell a reader more than four naming
+  // one — the same rule the Leaders slide plays by.
+  const app = groupSlide('Coverage', grouped(OPS, 'ops'), {
+    getVisitCountInPeriod: () => 0,
+    getLastVisitDate: () => null
+  });
+  const names = [...app.html().matchAll(/ataglance-row__name">([^<]*)</g)].map((m) => m[1]);
+  assert.deepEqual(names, ['Kate Downes', 'Chris Kral'], 'the tied rows must not repeat a name');
+});
+
+test('an empty end of the coverage pair says so rather than colouring a nought', () => {
+  const none = groupSlide('Coverage', grouped(OPS, 'ops'), { getVisitCountInPeriod: () => 0 });
+  assert.match(none.html(), /Best covered[\s\S]*?No visits logged in this period/);
+  const all = groupSlide('Coverage', grouped(OPS, 'ops'), { getVisitCountInPeriod: () => 1 });
+  assert.match(all.html(), /Least covered[\s\S]*?Every bakery in scope was visited this period/);
+});
+
+test('a single ops area gets its own standing, with its worst site named', () => {
+  const app = mount();
+  app.GAILS.renderAtAGlance(ROWS, [grouped(OPS, 'ops')[1]]);
+  assert.equal(app.scope(), 'Chris Kral');
+  const html = app.html();
+  assert.match(html, /Benchmark score[\s\S]*?Below Standard[\s\S]*?>59</);
+  assert.match(html, /Support[\s\S]*?<a>Barnes<\/a>[\s\S]*?High[\s\S]*?>2 sites</);
+  assert.match(html, /Visited[\s\S]*?1 of 2[\s\S]*?>50%</);
+});
+
+// ========== REGIONS ==========
+
+test('the region view names a bakery in every region rather than ranking regions', () => {
+  // Four regions of sixty-odd bakeries each all average out to the same place,
+  // so the rows are the regions and what they name is a site to act on.
+  const strongest = groupSlide('Strongest', grouped(REGIONS, 'region')).html();
+  assert.doesNotMatch(strongest, /Top region|Highest NPS/);
+  assert.match(strongest, /London Region[\s\S]*?<a>Soho<\/a>[\s\S]*?>88</);
+  assert.match(strongest, /South Region[\s\S]*?<a>Windsor<\/a>[\s\S]*?>62</);
+
+  const weakest = groupSlide('Weakest', grouped(REGIONS, 'region')).html();
+  assert.match(weakest, /London Region[\s\S]*?<a>Balham<\/a>[\s\S]*?>71</);
+  assert.match(weakest, /South Region[\s\S]*?<a>Barnes<\/a>[\s\S]*?>55</);
+});
+
+test('the region support slide names who each region is carrying, or says nobody', () => {
+  const html = groupSlide('Support', grouped(REGIONS, 'region')).html();
+  assert.match(html, /South Region[\s\S]*?<a>Barnes<\/a>[\s\S]*?High[\s\S]*?>82</);
+  assert.match(html, /London Region[\s\S]*?No bakery here is on the focus list/);
+});
+
+test('the region coverage slide counts the bakeries inside each region', () => {
+  const html = groupSlide('Coverage', grouped(REGIONS, 'region')).html();
+  assert.match(html, /London Region[\s\S]*?1 of 2 visited[\s\S]*?>50%</);
+  assert.match(html, /South Region[\s\S]*?1 of 2 visited[\s\S]*?>50%</);
+});
+
 // ========== A SINGLE BAKERY ==========
 
 const SOHO = ROWS[0];
@@ -418,7 +561,10 @@ test('the panel is mounted on the Overview and loaded before the app', () => {
 });
 
 test('both refresh paths render the panel, so it is never left showing a stale selection', () => {
-  const calls = appSource.match(/G\.renderAtAGlance\(data\)/g) || [];
+  // Both the bakery rows and the rows the View toggle is showing: the card
+  // ranks whichever the page is about, and still reaches for the bakeries
+  // underneath a group for anything only a bakery has.
+  const calls = appSource.match(/G\.renderAtAGlance\(data, viewData\)/g) || [];
   assert.equal(calls.length, 2, 'expected the no-data and scored refresh paths to both render it');
 });
 

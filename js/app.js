@@ -1027,7 +1027,7 @@
       }).join('');
       fitKpiValues();
       publishKpiBlockHeight();
-      G.renderAtAGlance(data);
+      G.renderAtAGlance(data, viewData);
       G.renderOverviewCharts(viewData);
       G._lastData = data;
       renderOrDeferPanels({
@@ -1269,7 +1269,7 @@
     }).join('');
     fitKpiValues();
     publishKpiBlockHeight();
-    G.renderAtAGlance(data);
+    G.renderAtAGlance(data, viewData);
 
     // Second argument is the bakery-level cohort: the band split and scatter
     // plot whatever rows the View toggle selected, but the two component

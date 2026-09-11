@@ -941,6 +941,75 @@ window.GAILS = window.GAILS || {};
 
   var CQV_CHART_ID = 'cqvReportScoreChart';
 
+  // ── Printing the chart ──
+  // Chart.js writes the canvas size in pixels, measured from the modal as it
+  // stands on screen (~1340px wide). That inline size is what the print layout
+  // inherits, so the canvas — and with it the "earned / available" column, which
+  // pointsValuePlugin draws against the canvas's right edge — ran straight off
+  // the right of the sheet and the values printed clipped in half.
+  //
+  // The chart is therefore redrawn at a printable column width, which keeps the
+  // labels, ticks and values at the sizes they were designed at rather than
+  // leaving the print stylesheet to scale a too-wide bitmap down to a fifth of
+  // a point. A4 at 96dpi is 794px, less the browser's default page margins and
+  // the report's own 40px print gutters; Letter is wider, so sizing for A4 is
+  // the safe end of the two.
+  var PRINT_CHART_WIDTH = 638;
+
+  // What gets printed is a snapshot taken at that width, not the live chart
+  // resized: the resize, the copy and the restore all happen inside the one
+  // beforeprint handler, so the browser never paints an intermediate frame and
+  // the chart on screen is never seen to shrink behind the print dialog.
+  //
+  // The snapshot is a second canvas holding a pixel copy, not an <img> of a
+  // data URL. Assigning a data URL to an <img> only *starts* a decode, so the
+  // first print of a report laid the sheet out against an image that was still
+  // empty and the chart card came out blank — and only the first, because by
+  // the second print the decode had long finished. drawImage is synchronous, so
+  // the snapshot has its pixels by the time this handler returns.
+  //
+  // Both report types draw into drawPointsChart and only one is ever open, so
+  // snapshotting the pair is simpler than tracking which one is live.
+  function captureReportChartsForPrint() {
+    if (typeof window.GAILS.getChart !== 'function') return;
+    [CHART_ID, CQV_CHART_ID].forEach(function (id) {
+      var chart = window.GAILS.getChart(id);
+      if (!chart || !chart.canvas || !chart.canvas.parentNode) return;
+      var wrap = chart.canvas.parentNode;
+      var snapshot = wrap.querySelector('.visit-report-chart-print');
+      if (!snapshot) {
+        snapshot = document.createElement('canvas');
+        snapshot.className = 'visit-report-chart-print';
+        // A duplicate of the canvas beside it, and print-only.
+        snapshot.setAttribute('aria-hidden', 'true');
+        wrap.appendChild(snapshot);
+      }
+      // Chart.js defers a resize for as long as the animator is running, so a
+      // report printed while the chart is still playing its entry animation
+      // would otherwise snapshot at the on-screen width — the very bug this is
+      // here to fix. Stopping first makes the copy the finished chart.
+      chart.stop();
+      try {
+        chart.resize(PRINT_CHART_WIDTH, chart.height);
+        // Backing store, not CSS size, so the copy keeps the device pixel
+        // ratio the chart was rendered at. Setting either clears the canvas,
+        // which is what we want before redrawing into it.
+        snapshot.width = chart.canvas.width;
+        snapshot.height = chart.canvas.height;
+        snapshot.getContext('2d').drawImage(chart.canvas, 0, 0);
+        // Only now does the print stylesheet swap the canvas for the snapshot;
+        // if the copy threw, the canvas prints scaled rather than nothing.
+        wrap.classList.add('visit-report-chart-wrap--printable');
+      } finally {
+        chart.resize();
+      }
+    });
+  }
+
+  if (window.addEventListener) {
+    window.addEventListener('beforeprint', captureReportChartsForPrint);
+  }
+
   // Shared with the admin CQV table — see js/cqv-shared.js.
   var cqvHasCriticalFail = GAILS.CQVShared.hasCriticalFail;
   var cqvBand = GAILS.CQVShared.band;

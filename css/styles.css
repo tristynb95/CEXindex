@@ -2252,6 +2252,7 @@ canvas {
 .ataglance-dot__label {
   width: 6px;
   height: 6px;
+  min-width: 0;
   border-radius: 50%;
   background: rgba(122, 113, 98, 0.38);
   text-indent: -999em;
@@ -2267,7 +2268,7 @@ canvas {
 .ataglance-dot.is-active .ataglance-dot__label {
   width: auto;
   height: auto;
-  max-width: 14ch;
+  max-width: 100%;
   padding: 2px 8px 3px;
   border-radius: 999px;
   text-indent: 0;
@@ -10268,6 +10269,13 @@ body.table-fullscreen-lock {
   margin-bottom: 20px;
 }
 
+/* Print-only snapshot of the chart — a second canvas holding a pixel copy of
+   the live one, taken at print width by captureReportChartsForPrint in
+   js/visit-report.js. It sits beside the chart and never shows on screen. */
+.visit-report-chart-print {
+  display: none;
+}
+
 .visit-report-note {
   color: var(--muted);
   font-size: 0.86rem;
@@ -10705,6 +10713,32 @@ body.table-fullscreen-lock {
   /* The lane-per-section height set inline at draw time is what makes the
      chart printable; a fixed print height would squash it back. */
   #visitReportModal .visit-report-chart-wrap {
+    height: auto !important;
+  }
+
+  /* Chart.js pins the canvas to a pixel size measured from the on-screen modal,
+     and that size carries into the print layout — wide enough that the value
+     column drawn against the canvas's right edge fell off the page.
+
+     captureReportChartsForPrint (js/visit-report.js) snapshots the chart at a
+     printable width on beforeprint and marks the wrap, and the sheet prints the
+     snapshot in place of the canvas, at full type size. Everything below is the
+     fallback for when there is no snapshot — a browser that doesn't fire
+     beforeprint, or a capture that failed — where scaling the canvas into the
+     column at least keeps the whole chart on the page. */
+  #visitReportModal .visit-report-chart-wrap canvas {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  #visitReportModal .visit-report-chart-wrap--printable canvas:not(.visit-report-chart-print) {
+    display: none !important;
+  }
+
+  #visitReportModal .visit-report-chart-wrap--printable .visit-report-chart-print {
+    display: block !important;
+    width: 100% !important;
     height: auto !important;
   }
 

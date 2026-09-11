@@ -10,13 +10,27 @@
 // one slide apart, say the same thing without it.
 //
 // All four slides rank the selection, so all four need something to rank. Filter
-// down to a single bakery and the card swaps them for that bakery's own standing
-// instead — see A SINGLE BAKERY.
+// down to a single subject and the card swaps them for that subject's own
+// standing instead — see A SINGLE SUBJECT.
 //
-// Every slide is bakery-level, whatever the View toggle is set to. The charts
-// below the KPI row already answer the grouped questions; a bakery is the unit
-// someone acts on, and it is the only unit a visit or a support score exists
-// for at all.
+// The View toggle changes what the card is about, because a finding that is
+// worth the space at one level is noise at another:
+//
+//   Bakeries     the four themes over the sites themselves. A bakery is the
+//                unit someone acts on, and the only unit a visit or a support
+//                score exists for at all.
+//   Ops Areas    the same four themes with the patch as the subject — twenty-odd
+//                areas of five to twelve sites is a field worth ranking. Only
+//                the two rows reporting something a group does not have are
+//                rebuilt: how much of a patch is on the focus list, and how much
+//                of it is being walked (see OPS AREAS).
+//   Regions      four regions of sixty-odd bakeries average out to the same
+//                place, so ranking them says nothing. The rows become the
+//                regions and what they name is a bakery inside each one (see
+//                REGIONS).
+//
+// Whatever the toggle says, anything that only a bakery has stays bakery-level
+// and reaches through the group to its members.
 //
 // Everything here is derived from figures other panels already own — nothing on
 // this card is computed a second way:
@@ -61,26 +75,47 @@ window.GAILS = window.GAILS || {};
     { key: 'fr', high: 'Highest friendliness', low: 'Lowest friendliness', format: percent }
   ];
 
-  var SLIDES = [
-    { id: 'performance', label: 'Performance', build: performanceRows },
-    { id: 'leaders', label: 'Leaders', build: leaderRows },
-    { id: 'levers', label: 'Opportunities', build: leverRows },
-    { id: 'visits', label: 'Visits', build: visitRows }
-  ];
+  // The four themes, ranking whatever the View toggle has made the unit of the
+  // page. Bakeries and ops areas share them: both are fields worth ranking, and
+  // only the two rows that report something a group does not have — a support
+  // score, a visit — are rebuilt for areas.
+  function estateSlides() {
+    var grouped = grouping() !== 'bakeries';
+    return [
+      { id: 'performance', label: 'Performance', build: performanceRows },
+      { id: 'leaders', label: 'Leaders', build: leaderRows },
+      { id: 'levers', label: 'Opportunities', build: leverRows },
+      { id: 'visits', label: grouped ? 'Coverage' : 'Visits', build: grouped ? coverageRows : visitRows }
+    ];
+  }
 
-  // Which set of slides the current selection has earned: the four estate
-  // themes, or the one bakery's own standing when there is nothing left to rank
-  // it against (see A SINGLE BAKERY).
+  // Regions are too few and too big to rank against each other, so they get
+  // their own four slides, each one asking every region the same question about
+  // the bakeries inside it (see REGIONS).
+  function regionSlides() {
+    return [
+      { id: 'region-leaders', label: 'Strongest', build: regionLeaderRows },
+      { id: 'region-levers', label: 'Weakest', build: regionLeverRows },
+      { id: 'region-support', label: 'Support', build: regionSupportRows },
+      { id: 'region-coverage', label: 'Coverage', build: regionCoverageRows }
+    ];
+  }
+
+  // Which set of slides the current selection has earned: one subject's own
+  // standing when there is nothing left to rank it against (see A SINGLE
+  // SUBJECT), the region slides, or the four estate themes.
   function slides() {
-    var data = rows();
-    if (data.length !== 1) return SLIDES;
-    return [bakerySlide(data[0])];
+    var data = subjects();
+    if (data.length === 1) return [subjectSlide(data[0])];
+    if (grouping() === 'region') return regionSlides();
+    return estateSlides();
   }
 
   var index = 0;
   var timer = null;
   var paused = false;
   var currentData = null;
+  var currentView = null;
   var listenersBound = false;
 
   function isNumber(value) {
@@ -107,8 +142,58 @@ window.GAILS = window.GAILS || {};
     return record && !record.noData && !record.incompletePeriod;
   }
 
+  // ========== SUBJECTS ==========
+  // The card always holds two sets of rows: the bakeries in the selection, and
+  // whatever the View toggle has made the unit of the page — the same bakeries,
+  // or the ops areas / regions they roll up into.
+  //
+  // Bakeries stay the unit of anything only a bakery has. A visit is logged
+  // against a site and a support score is scored for one, so those rows read
+  // the bakery set and reach for the group's members when they need to; every
+  // ranking reads the subject set, so "top" means top area when the page is
+  // about areas.
   function rows() {
     return currentData || [];
+  }
+
+  function subjects() {
+    return currentView && currentView.length ? currentView : rows();
+  }
+
+  // 'bakeries' | 'ops' | 'region' — what the rows on screen are counting.
+  function grouping() {
+    var first = subjects()[0];
+    return first && first.isGroup ? first.groupType : 'bakeries';
+  }
+
+  // The same fallback buildRankedGroups uses (js/filters.js), so a bakery with
+  // no area on record lands in the same bucket here as it does there.
+  function memberKey(bakery) {
+    var mode = grouping();
+    if (mode === 'ops') return (G.getBakeryOps ? G.getBakeryOps(bakery) : null) || 'Unknown';
+    if (mode === 'region') return (G.getBakeryRegion ? G.getBakeryRegion(bakery) : null) || 'Unknown';
+    return bakery;
+  }
+
+  function membersOf(subject) {
+    if (grouping() === 'bakeries') return [subject];
+    return rows().filter(function (record) { return memberKey(record.b) === subject.b; });
+  }
+
+  // A bakery name opens its profile; an ops area or a region has no profile to
+  // open, so it is named in plain text rather than dressed as a dead link.
+  function subjectName(record) {
+    return record.isGroup ? subject(record.b) : bakeryLink(record.b);
+  }
+
+  var SUBJECT_WORDS = {
+    bakeries: { top: 'Top bakery', unit: 'bakery', units: 'bakeries', none: 'No scored bakeries in this selection' },
+    ops: { top: 'Top area', unit: 'ops area', units: 'ops areas', none: 'No scored ops areas in this selection' },
+    region: { top: 'Top region', unit: 'region', units: 'regions', none: 'No scored regions in this selection' }
+  };
+
+  function words() {
+    return SUBJECT_WORDS[grouping()] || SUBJECT_WORDS.bakeries;
   }
 
   // "4 Sep" for the current year, "4 Sep 25" once it is old enough for the year
@@ -184,15 +269,15 @@ window.GAILS = window.GAILS || {};
 
   function topPerformerRow() {
     var best = null;
-    rows().forEach(function (record) {
+    subjects().forEach(function (record) {
       if (!scored(record) || !isNumber(record.ac)) return;
       if (!best || record.ac > best.ac) best = record;
     });
-    if (!best) return emptyRow('Top bakery', 'No scored bakeries in this selection');
+    if (!best) return emptyRow(words().top, words().none);
     return row({
-      label: 'Top bakery',
+      label: words().top,
       tone: BAND_TONE[best.acb] || 'muted',
-      value: bakeryLink(best.b),
+      value: subjectName(best),
       plain: best.b,
       stat: Math.round(best.ac)
     });
@@ -202,15 +287,20 @@ window.GAILS = window.GAILS || {};
   // against the mean of the same bakery over the period immediately before it.
   // The estate rows and the single-bakery rows both read this one map, so a
   // bakery's movement is the same figure whichever way the card is showing it.
+  // Prior rows are always bakery-level, so they are folded onto whatever the
+  // page is counting before the comparison — an area's movement is the mean of
+  // its bakeries then and now, which is how its score is built in the first
+  // place (buildGroupAggregate, js/filters.js).
   function priorAverages() {
     var prior = G.getPriorPeriodRecords ? G.getPriorPeriodRecords() : null;
     if (!prior) return null;
     var totals = {};
     prior.records.forEach(function (record) {
       if (!isNumber(record.ac) || record.noData || record.incompletePeriod) return;
-      if (!totals[record.b]) totals[record.b] = { sum: 0, count: 0 };
-      totals[record.b].sum += record.ac;
-      totals[record.b].count++;
+      var key = memberKey(record.b);
+      if (!totals[key]) totals[key] = { sum: 0, count: 0 };
+      totals[key].sum += record.ac;
+      totals[key].count++;
     });
     var averages = {};
     Object.keys(totals).forEach(function (bakery) {
@@ -233,7 +323,7 @@ window.GAILS = window.GAILS || {};
     if (!prior) return null;
     var up = null;
     var down = null;
-    rows().forEach(function (record) {
+    subjects().forEach(function (record) {
       var change = changeOn(record, prior);
       if (change === null) return;
       if (!up || change > up.change) up = { record: record, change: change };
@@ -248,14 +338,14 @@ window.GAILS = window.GAILS || {};
     var pick = config.rising ? found.up : found.down;
     var moved = pick && (config.rising ? pick.change > 0 : pick.change < 0);
     if (!moved) {
-      return emptyRow(config.label, 'No bakery ' + (config.rising ? 'gained' : 'lost') +
-        ' ground on ' + found.label);
+      return emptyRow(config.label, 'No ' + words().unit + ' ' +
+        (config.rising ? 'gained' : 'lost') + ' ground on ' + found.label);
     }
     var change = round1(Math.abs(pick.change)).toFixed(1);
     return row({
       label: config.label,
       tone: config.rising ? 'green' : 'red',
-      value: bakeryLink(pick.record.b) + meta('vs ' + found.label),
+      value: subjectName(pick.record) + meta('vs ' + found.label),
       plain: pick.record.b + ' — ' + (config.rising ? 'up ' : 'down ') + change + ' vs ' + found.label,
       stat: (config.rising ? '+' : '−') + change
     });
@@ -283,7 +373,7 @@ window.GAILS = window.GAILS || {};
     return topPerformerRow() +
       moverRow({ label: 'Biggest riser', rising: true, movers: found }) +
       moverRow({ label: 'Biggest faller', rising: false, movers: found }) +
-      supportRow();
+      (grouping() === 'bakeries' ? supportRow() : groupSupportRow());
   }
 
   // ========== LEADERS & OPPORTUNITIES ==========
@@ -305,7 +395,7 @@ window.GAILS = window.GAILS || {};
   function extremeRow(metric, highest, named) {
     var label = highest ? metric.high : metric.low;
     var pick = null;
-    rows().forEach(function (record) {
+    subjects().forEach(function (record) {
       if (!scored(record) || !isNumber(record[metric.key])) return;
       if (!pick) { pick = record; return; }
       var value = record[metric.key];
@@ -313,14 +403,14 @@ window.GAILS = window.GAILS || {};
       if (highest ? value > current : value < current) { pick = record; return; }
       if (value === current && named[pick.b] && !named[record.b]) pick = record;
     });
-    if (!pick) return emptyRow(label, 'No scored bakeries in this selection');
+    if (!pick) return emptyRow(label, words().none);
     named[pick.b] = true;
     var value = pick[metric.key];
     var tone = G.metricRagTone ? RAG_TONE[G.metricRagTone(metric.key, value)] : null;
     return row({
       label: label,
       tone: tone || 'muted',
-      value: bakeryLink(pick.b),
+      value: subjectName(pick),
       plain: pick.b + ' — ' + label.toLowerCase() + ' in scope, ' + metric.format(value),
       stat: metric.format(value)
     });
@@ -339,24 +429,26 @@ window.GAILS = window.GAILS || {};
     return metricRows(false);
   }
 
-  // ========== A SINGLE BAKERY ==========
+  // ========== A SINGLE SUBJECT ==========
 
-  // Ranking a bakery against itself says nothing. With one site selected every
-  // "highest" row and every "lowest" row names it, Leaders and Opportunities
-  // print the same four figures as each other, and a site sitting on 78% drink
-  // quality is announced as the best in scope. So a selection of one drops the
-  // ranking framing and gives the bakery a slide of its own standing instead.
+  // Ranking something against itself says nothing. With one bakery selected
+  // every "highest" row and every "lowest" row names it, Leaders and
+  // Opportunities print the same four figures as each other, and a site sitting
+  // on 78% drink quality is announced as the best in scope. So a selection of
+  // one drops the ranking framing and gives the subject a slide of its own
+  // standing instead — and that holds just as well for one ops area or one
+  // region, which is how a manager looking at their own patch arrives here.
   //
   // Two is where the ranking starts earning its keep again: "highest NPS" on
   // one site and "highest drink quality" on the other is a comparison, which is
-  // the thing someone selecting a pair of bakeries is usually after. So the cut
-  // is at one, not at some notion of a small selection.
+  // the thing someone selecting a pair is usually after. So the cut is at one,
+  // not at some notion of a small selection.
   //
-  // The four metrics are deliberately not repeated here: with a single bakery
+  // The four metrics are deliberately not repeated here: with a single subject
   // selected, the KPI row alongside this card is already showing exactly those
-  // figures for exactly that site. What nothing else on the Overview says at
-  // bakery level is where it stands on its own — its band, which way it is
-  // moving, whether it is on the focus list, and when anyone last walked in.
+  // figures for exactly it. What nothing else on the Overview says is where
+  // that subject stands on its own — its band, which way it is moving, what it
+  // is carrying on the focus list, and how recently anyone walked in.
 
   // Plain text in the slot the bakery name holds on the estate slides. The
   // bakery is the slide here, so naming it on all four rows would be four
@@ -404,7 +496,28 @@ window.GAILS = window.GAILS || {};
   // The queue is already filtered to the selection, so this is a lookup rather
   // than a ranking: the question is whether this bakery is on the focus list,
   // not which bakery is highest up it.
+  // On a slide that is already about one group, the group's own name is the
+  // pill above it. What this row has to add is which of its bakeries is worst,
+  // and how much of the list it is carrying.
+  function groupFocusRow(group) {
+    var queue = G.getSupportPriorityRows ? G.getSupportPriorityRows() : [];
+    var mine = queue.filter(function (item) { return memberKey(item.name) === group.b; });
+    if (!mine.length) return emptyRow('Support', 'No bakery here is on the focus list');
+    var top = mine[0];
+    var labels = G.SUPPORT_TIER_LABELS || {};
+    var tier = labels[top.tier] || '';
+    return row({
+      label: 'Support',
+      tone: TIER_TONE[top.tier] || 'muted',
+      value: bakeryLink(top.name) + (tier ? meta(tier) : ''),
+      plain: group.b + ' — ' + sites(mine.length) + ' on the focus list, ' +
+        top.name + ' the highest at ' + top.priority + '/100',
+      stat: sites(mine.length)
+    });
+  }
+
   function bakerySupportRow(record) {
+    if (record.isGroup) return groupFocusRow(record);
     var queue = G.getSupportPriorityRows ? G.getSupportPriorityRows() : [];
     var entry = null;
     queue.forEach(function (item) {
@@ -426,6 +539,7 @@ window.GAILS = window.GAILS || {};
   // The age is the reading and the date is the way in, so this row spends its
   // name column on how long it has been rather than on the bakery.
   function bakeryVisitRow(record) {
+    if (record.isGroup) return groupCoverageRow(record);
     if (!G.getLastVisitDate) return emptyRow('Last visit', 'Visit data unavailable');
     var date = G.getLastVisitDate(record.b);
     if (!date) return emptyRow('Last visit', 'No routine visit logged here yet');
@@ -439,9 +553,28 @@ window.GAILS = window.GAILS || {};
       '</span></li>';
   }
 
-  function bakerySlide(record) {
+  // How much of one group was walked this period, in the slot a single bakery
+  // spends on its own last visit.
+  function groupCoverageRow(group) {
+    var members = membersOf(group);
+    if (!G.getVisitCountInPeriod || !members.length) {
+      return emptyRow('Visited', 'Visit data unavailable');
+    }
+    var visited = 0;
+    members.forEach(function (record) { if (visitedInPeriod(record)) visited++; });
+    return row({
+      label: 'Visited',
+      tone: visited ? 'muted' : 'red',
+      value: subject(visited + ' of ' + members.length),
+      plain: group.b + ' — ' + visited + ' of ' + members.length +
+        ' bakeries visited this period',
+      stat: percent((visited / members.length) * 100)
+    });
+  }
+
+  function subjectSlide(record) {
     return {
-      id: 'bakery:' + record.b,
+      id: 'subject:' + record.b,
       label: record.b,
       build: function () {
         var prior = priorAverages();
@@ -449,6 +582,262 @@ window.GAILS = window.GAILS || {};
           bakerySupportRow(record) + bakeryVisitRow(record);
       }
     };
+  }
+
+  // ========== OPS AREAS ==========
+
+  // Twenty-odd areas of five to twelve bakeries each is a field worth ranking,
+  // so the area view keeps the four themes and swaps the subject: the rows name
+  // areas, and "top" means the best-performing patch. Two of the sixteen rows
+  // cannot simply change subject, because the thing they report only exists per
+  // bakery — a support score is scored for a site and a visit is logged against
+  // one. Those two are rebuilt below to ask the group question instead: how much
+  // of this patch is on the focus list, and how much of it is being walked.
+
+  // The group at one end of a measure taken over its own members.
+  //
+  // Ties are the rule rather than the exception here — coverage over five to
+  // twelve sites lands on the same handful of fractions, and nought is the most
+  // crowded of the lot. So a tie is broken the way the Leaders slide breaks its
+  // own: towards a group not already named on this slide, and then towards the
+  // larger group, since the same share across more bakeries is the bigger
+  // finding. A strictly worse figure still wins the row outright.
+  function groupExtremeRow(config) {
+    var named = config.named || {};
+    var pick = null;
+    subjects().forEach(function (record) {
+      var value = config.measure(record);
+      if (value === null || value === undefined) return;
+      if (!pick || (config.highest ? value > pick.value : value < pick.value)) {
+        pick = { record: record, value: value };
+        return;
+      }
+      if (value !== pick.value) return;
+      if (named[pick.record.b] && !named[record.b]) {
+        pick = { record: record, value: value };
+        return;
+      }
+      if (!named[record.b] === !named[pick.record.b] &&
+        (record.memberCount || 0) > (pick.record.memberCount || 0)) {
+        pick = { record: record, value: value };
+      }
+    });
+    // Claimed only once the row actually names it: a row that comes out as an
+    // empty state has not spent a name, and must not stop a later row using it.
+    if (!pick || (config.nothing && config.nothing(pick.value))) {
+      return emptyRow(config.label, config.empty);
+    }
+    named[pick.record.b] = true;
+    return row({
+      label: config.label,
+      tone: config.tone,
+      value: subjectName(pick.record),
+      plain: config.plain(pick.record, pick.value),
+      stat: config.stat(pick.value, pick.record)
+    });
+  }
+
+  function visitedInPeriod(record) {
+    var months = (G.state && G.state.selectedMonths) || [];
+    return !!(G.getVisitCountInPeriod && G.getVisitCountInPeriod(record.b, months));
+  }
+
+  // The share of a group's bakeries that saw anyone this period.
+  function visitedShare(group) {
+    if (!G.getVisitCountInPeriod) return null;
+    var members = membersOf(group);
+    if (!members.length) return null;
+    var visited = 0;
+    members.forEach(function (record) { if (visitedInPeriod(record)) visited++; });
+    return visited / members.length;
+  }
+
+  function coverageText(group, share) {
+    var members = membersOf(group).length;
+    return group.b + ' — ' + Math.round(share * members) + ' of ' + members +
+      ' bakeries visited this period';
+  }
+
+  function sites(count) {
+    return count + ' site' + (count === 1 ? '' : 's');
+  }
+
+  // Which patch carries the most of the focus list. The queue is ranked by
+  // support score, so the first entry found in a group is also its worst site,
+  // and a tie on count goes to whichever group holds the worse one.
+  function groupSupportRow() {
+    var queue = G.getSupportPriorityRows ? G.getSupportPriorityRows() : [];
+    if (!queue.length) {
+      return emptyRow('Most on the focus list', 'No bakery in this selection is on the focus list');
+    }
+    var counts = {};
+    var worst = {};
+    queue.forEach(function (item) {
+      var key = memberKey(item.name);
+      counts[key] = (counts[key] || 0) + 1;
+      if (!worst[key]) worst[key] = item;
+    });
+    var pick = null;
+    subjects().forEach(function (record) {
+      var count = counts[record.b] || 0;
+      if (!count) return;
+      if (!pick || count > pick.count) { pick = { record: record, count: count }; return; }
+      if (count === pick.count && worst[record.b].priority > worst[pick.record.b].priority) {
+        pick = { record: record, count: count };
+      }
+    });
+    if (!pick) {
+      return emptyRow('Most on the focus list', 'No bakery in this selection is on the focus list');
+    }
+    var top = worst[pick.record.b];
+    return row({
+      label: 'Most on the focus list',
+      tone: TIER_TONE[top.tier] || 'muted',
+      value: subjectName(pick.record),
+      plain: pick.record.b + ' — ' + sites(pick.count) + ' on the focus list, ' +
+        top.name + ' the highest at ' + top.priority + '/100',
+      stat: sites(pick.count)
+    });
+  }
+
+  // Coverage, from both ends, and then the two rows a coverage figure cannot
+  // carry: the sites nobody has ever been to, and the single site that has gone
+  // longest without anyone.
+  function coverageRows() {
+    var named = {};
+    if (!G.getVisitCountInPeriod) {
+      return emptyRow('Best covered', 'Visit data unavailable') +
+        emptyRow('Least covered', 'Visit data unavailable') +
+        emptyRow('No visit yet', 'Visit data unavailable') +
+        longestGapRow();
+    }
+    return groupExtremeRow({
+      label: 'Best covered',
+      named: named,
+      highest: true,
+      tone: 'green',
+      measure: visitedShare,
+      nothing: function (share) { return share === 0; },
+      empty: 'No visits logged in this period',
+      plain: coverageText,
+      stat: function (share) { return percent(share * 100); }
+    }) + groupExtremeRow({
+      label: 'Least covered',
+      named: named,
+      highest: false,
+      tone: 'red',
+      measure: visitedShare,
+      nothing: function (share) { return share === 1; },
+      empty: 'Every bakery in scope was visited this period',
+      plain: coverageText,
+      stat: function (share) { return percent(share * 100); }
+    }) + groupExtremeRow({
+      label: 'No visit yet',
+      named: named,
+      highest: true,
+      tone: 'red',
+      measure: function (group) {
+        if (!G.getLastVisitDate) return null;
+        return membersOf(group).filter(function (record) {
+          return !G.getLastVisitDate(record.b);
+        }).length;
+      },
+      nothing: function (count) { return count === 0; },
+      empty: 'Every bakery in scope has been visited',
+      plain: function (group, count) {
+        return group.b + ' — ' + sites(count) + ' with no routine visit on record';
+      },
+      stat: sites
+    }) + longestGapRow();
+  }
+
+  // ========== REGIONS ==========
+
+  // There are four regions and two of them hold a third of the estate each, so
+  // ranking them says almost nothing: every average lands in the same place,
+  // and "the North leads on friendliness by half a point" is not a finding
+  // anybody can act on. Averaged over sixty-five bakeries, a region is the one
+  // unit on this dashboard that cannot be wrong enough to be interesting.
+  //
+  // So the region view inverts: every row is a region, and what it names is a
+  // bakery inside it. Four regions make four rows, which is the card's own
+  // rhythm, and each slide asks one question of all of them at once — where
+  // each region is strongest, where it is weakest, who it is carrying, and how
+  // much of it is being walked.
+  function perRegionRows(build) {
+    return subjects().map(function (group) {
+      return build(group, membersOf(group));
+    }).join('');
+  }
+
+  function regionExtreme(group, members, highest) {
+    var pick = null;
+    members.forEach(function (record) {
+      if (!scored(record) || !isNumber(record.ac)) return;
+      if (!pick || (highest ? record.ac > pick.ac : record.ac < pick.ac)) pick = record;
+    });
+    if (!pick) return emptyRow(group.b, 'No scored bakeries in this region');
+    return row({
+      label: group.b,
+      tone: BAND_TONE[pick.acb] || 'muted',
+      value: bakeryLink(pick.b),
+      plain: group.b + ' — ' + pick.b + ', benchmark score ' + Math.round(pick.ac) +
+        (pick.acb ? ', ' + pick.acb : ''),
+      stat: Math.round(pick.ac)
+    });
+  }
+
+  function regionLeaderRows() {
+    return perRegionRows(function (group, members) {
+      return regionExtreme(group, members, true);
+    });
+  }
+
+  function regionLeverRows() {
+    return perRegionRows(function (group, members) {
+      return regionExtreme(group, members, false);
+    });
+  }
+
+  // The queue is already ranked by support score, so the first of a region's
+  // bakeries to appear in it is the one that region is carrying.
+  function regionSupportRows() {
+    var queue = G.getSupportPriorityRows ? G.getSupportPriorityRows() : [];
+    var labels = G.SUPPORT_TIER_LABELS || {};
+    return perRegionRows(function (group) {
+      var top = null;
+      queue.forEach(function (item) {
+        if (!top && memberKey(item.name) === group.b) top = item;
+      });
+      if (!top) return emptyRow(group.b, 'No bakery here is on the focus list');
+      var tier = labels[top.tier] || '';
+      return row({
+        label: group.b,
+        tone: TIER_TONE[top.tier] || 'muted',
+        value: bakeryLink(top.name) + (tier ? meta(tier) : ''),
+        plain: group.b + ' — ' + top.name + ', ' + (tier ? tier + ' priority, ' : '') +
+          'support score ' + top.priority + '/100',
+        stat: top.priority
+      });
+    });
+  }
+
+  function regionCoverageRows() {
+    return perRegionRows(function (group, members) {
+      if (!G.getVisitCountInPeriod) return emptyRow(group.b, 'Visit data unavailable');
+      if (!members.length) return emptyRow(group.b, 'No bakeries in this region');
+      var visited = 0;
+      members.forEach(function (record) { if (visitedInPeriod(record)) visited++; });
+      var share = visited / members.length;
+      return row({
+        label: group.b,
+        tone: visited ? 'muted' : 'red',
+        value: subject(visited + ' of ' + members.length + ' visited'),
+        plain: group.b + ' — ' + visited + ' of ' + members.length +
+          ' bakeries visited this period',
+        stat: percent(share * 100)
+      });
+    });
   }
 
   // ========== VISITS ==========
@@ -506,7 +895,11 @@ window.GAILS = window.GAILS || {};
       label: 'Longest since a visit',
       tone: months >= 12 ? 'red' : months >= 6 ? 'gold' : 'muted',
       value: bakeryLink(oldest.bakery),
-      plain: oldest.bakery + ' — last visited ' + formatVisitDate(oldest.date) + ', ' +
+      // Whose patch it is on rides in the title rather than the row: a name, a
+      // second name and a date is one thing more than this row fits, and the
+      // site is what the row is for.
+      plain: oldest.bakery + (grouping() === 'bakeries' ? '' : ' (' + memberKey(oldest.bakery) + ')') +
+        ' — last visited ' + formatVisitDate(oldest.date) + ', ' +
         relativeVisitLabel(oldest.date),
       stat: formatVisitDate(oldest.date)
     });
@@ -602,7 +995,7 @@ window.GAILS = window.GAILS || {};
   // rest were unaccounted for: 198 bakeries, 67 meeting or better and 76 below
   // standard leaves 54 sites a reader has to work out for themselves.
   function scopeLine() {
-    var data = rows();
+    var data = subjects();
     var strong = 0;
     var middle = 0;
     var weak = 0;
@@ -613,12 +1006,13 @@ window.GAILS = window.GAILS || {};
       else if (record.acb === 'Below Standard') weak++;
       else if (record.acb === 'No Data' || record.acb === 'Incomplete') unscored++;
     });
-    var parts = [data.length + ' baker' + (data.length === 1 ? 'y' : 'ies')];
-    parts.push(strong + ' meeting or better');
-    // The two ends are the point of the line and are stated even at nought;
-    // the bands between them only earn their place when they hold something.
+    var parts = [data.length + ' ' + (data.length === 1 ? words().unit : words().units)];
+    // A band only earns its place when it holds something. "0 below standard"
+    // reads as a fact about the estate when it is really a fact about the line,
+    // and on a selection of four regions two of the four counts are noughts.
+    if (strong) parts.push(strong + ' meeting or better');
     if (middle) parts.push(middle + ' approaching');
-    parts.push(weak + ' below standard');
+    if (weak) parts.push(weak + ' below standard');
     if (unscored) parts.push(unscored + ' not scored');
     return '<p class="ataglance-scope">' + esc(parts.join(' · ')) + '</p>';
   }
@@ -708,12 +1102,15 @@ window.GAILS = window.GAILS || {};
 
   // ========== RENDER ==========
 
-  // Called from refresh() with the filtered, bakery-level period rows.
-  G.renderAtAGlance = function (data) {
+  // Called from refresh() with the filtered period rows: the bakeries in the
+  // selection, and the rows the View toggle is showing — the same bakeries, or
+  // the ops areas / regions they roll up into.
+  G.renderAtAGlance = function (data, viewData) {
     var card = document.getElementById('atAGlance');
     var body = document.getElementById('atAGlanceBody');
     if (!body) return;
     currentData = data || [];
+    currentView = viewData && viewData.length ? viewData : currentData;
 
     if (!currentData.length) {
       stopRotation();
