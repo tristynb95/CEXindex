@@ -2228,7 +2228,8 @@ canvas {
   align-items: center;
   gap: 5px;
   margin-left: auto;
-  flex: none;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 /* Each tab is its label. Inactive ones shrink to a dot; the current one opens
@@ -2266,9 +2267,11 @@ canvas {
 .ataglance-dot.is-active .ataglance-dot__label {
   width: auto;
   height: auto;
+  max-width: 14ch;
   padding: 2px 8px 3px;
   border-radius: 999px;
   text-indent: 0;
+  text-overflow: ellipsis;
   background: rgba(178, 42, 36, 0.09);
   color: var(--accent);
   font-size: 0.6rem;

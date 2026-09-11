@@ -99,6 +99,8 @@ function mount(overrides) {
     GAILS: context.window.GAILS,
     els,
     tick: () => ticks.forEach((fn) => fn()),
+    // Whether the panel asked for a rotation at all.
+    rotating: () => ticks.length > 0,
     html: () => els.atAGlanceBody.innerHTML,
     // The current slide is named by the active tab: it is the only place the
     // name is rendered, so there is nothing else to read it from.
@@ -172,8 +174,8 @@ test('the support pick names the bakery and its tier, and nothing else', () => {
 test('leaders and levers show the same four metrics from opposite ends', () => {
   const leaders = slide('Leaders').html();
   assert.match(leaders, /Highest NPS[\s\S]*?<a>Soho<\/a>[\s\S]*?>70</);
-  assert.match(leaders, /Best drink quality[\s\S]*?<a>Soho<\/a>[\s\S]*?92%/);
-  assert.match(leaders, /Best efficiency[\s\S]*?<a>Soho<\/a>[\s\S]*?91%/);
+  assert.match(leaders, /Highest drink quality[\s\S]*?<a>Soho<\/a>[\s\S]*?92%/);
+  assert.match(leaders, /Highest efficiency[\s\S]*?<a>Soho<\/a>[\s\S]*?91%/);
 
   const levers = slide('Opportunities').html();
   assert.match(levers, /Lowest NPS[\s\S]*?<a>Barnes<\/a>[\s\S]*?>30</);
@@ -186,7 +188,7 @@ test('a tie hands the row to a bakery not already named on the slide', () => {
   // Soho and Balham are both on 95 friendliness, and Soho has already taken the
   // three rows above it. The row is equally true of either, so it goes to
   // Balham rather than printing one name four times.
-  assert.match(slide('Leaders').html(), /Best friendliness[\s\S]*?<a>Balham<\/a>[\s\S]*?95%/);
+  assert.match(slide('Leaders').html(), /Highest friendliness[\s\S]*?<a>Balham<\/a>[\s\S]*?95%/);
 });
 
 test('a strictly better figure is never passed over to spread the names', () => {
@@ -243,8 +245,19 @@ test('the footer reports coverage and scope on every slide', () => {
     // Two of four bakeries visited, three visits between them.
     assert.match(html, /50%[\s\S]*?visited this period/);
     assert.match(html, /0\.8[\s\S]*?visits per bakery/);
-    assert.match(html, /4 bakeries · 1 meeting or better · 1 below standard/);
+    // Every band is accounted for, so the counts reconcile to the total.
+    assert.match(html, /4 bakeries · 1 meeting or better · 2 approaching · 1 below standard/);
   }
+});
+
+test('the scope line drops a band that holds nothing rather than printing a nought', () => {
+  const app = mount();
+  app.GAILS.renderAtAGlance([
+    { b: 'Soho', ac: 88, acb: 'Meeting', n: 70, dr: 92, ef: 91, fr: 95 },
+    { b: 'Barnes', ac: 55, acb: 'Below Standard', n: 30, dr: 85, ef: 70, fr: 88 }
+  ]);
+  assert.match(app.html(), /2 bakeries · 1 meeting or better · 1 below standard/);
+  assert.doesNotMatch(app.html(), /approaching/);
 });
 
 test('says plainly when an insight has nothing to report rather than inventing one', () => {
@@ -265,6 +278,91 @@ test('an empty selection replaces the panel rather than rendering blank rows', (
   app.GAILS.renderAtAGlance([]);
   assert.match(app.html(), /No bakeries match the current filters/);
   assert.equal(app.els.atAGlanceDots.innerHTML, '');
+});
+
+// ========== A SINGLE BAKERY ==========
+
+const SOHO = ROWS[0];
+const BALHAM = ROWS[1];
+const WINDSOR = ROWS[3];
+
+test('a single bakery gets its own standing, not four rankings of one site', () => {
+  const app = mount();
+  app.GAILS.renderAtAGlance([SOHO]);
+  assert.equal(app.scope(), 'Soho', 'the tab names the bakery rather than a theme');
+
+  const html = app.html();
+  assert.doesNotMatch(html, /Highest|Lowest|Top bakery|Biggest/,
+    'nothing on the card may rank a bakery against itself');
+  assert.match(html, /Benchmark score[\s\S]*?Meeting[\s\S]*?>88</);
+  assert.match(html, /Movement[\s\S]*?Up on Jul 26[\s\S]*?>\+8\.0</);
+  assert.match(html, /Support[\s\S]*?Not on the focus list/);
+  assert.match(html, /Last visit[\s\S]*?data-visit-report="Soho"/);
+});
+
+test('a single bakery is a single slide, so the card does not rotate', () => {
+  const app = mount();
+  app.GAILS.renderAtAGlance([SOHO]);
+  assert.equal(app.rotating(), false);
+});
+
+test('two bakeries keep the ranking slides, because ranking two is comparing them', () => {
+  const app = mount();
+  app.GAILS.renderAtAGlance([SOHO, BALHAM]);
+  assert.equal(app.scope(), 'Performance');
+  assert.equal(app.rotating(), true);
+  assert.match(app.html(), /Top bakery[\s\S]*?<a>Soho<\/a>/);
+
+  // Which of the pair leads each measure is the comparison someone selecting
+  // two bakeries is after, and it is the estate slides that answer it.
+  app.tick();
+  assert.equal(app.scope(), 'Leaders');
+  assert.match(app.html(), /Highest NPS[\s\S]*?<a>Soho<\/a>/);
+  assert.match(app.html(), /Highest friendliness[\s\S]*?<a>Balham<\/a>/);
+});
+
+test('filtering down to one bakery cannot strand the card on a slide that is gone', () => {
+  const app = mount();
+  app.GAILS.renderAtAGlance(ROWS);
+  app.tick();
+  app.tick();
+  app.tick();
+  assert.equal(app.scope(), 'Visits');
+
+  app.GAILS.renderAtAGlance([SOHO]);
+  assert.equal(app.scope(), 'Soho');
+});
+
+test('the bakery slide reads its own support tier, not the top of the queue', () => {
+  // Windsor sits below Barnes in the queue; on its own slide the queue's
+  // ranking is beside the point.
+  const app = mount();
+  app.GAILS.renderAtAGlance([WINDSOR]);
+  assert.match(app.html(), /Support[\s\S]*?Monitor priority[\s\S]*?>40</);
+});
+
+test('the bakery slide says plainly when a row has nothing to report', () => {
+  const app = mount({ getPriorPeriodRecords: () => null, getLastVisitDate: () => null });
+  app.GAILS.renderAtAGlance([SOHO]);
+  assert.match(app.html(), /Movement[\s\S]*?No earlier period to compare with/);
+  assert.match(app.html(), /Last visit[\s\S]*?No routine visit logged here yet/);
+
+  const unscored = mount();
+  unscored.GAILS.renderAtAGlance([{ b: 'Kew', acb: 'No Data', noData: true }]);
+  assert.match(unscored.html(), /Benchmark score[\s\S]*?Not scored this period/);
+});
+
+test('a bakery that has held its score reads as level, not as a rise or a fall', () => {
+  const app = mount({
+    getPriorPeriodRecords: () => ({
+      records: [{ b: 'Soho', m: 'Jul 26', ac: 88 }],
+      months: ['Jul 26'],
+      label: 'Jul 26'
+    })
+  });
+  app.GAILS.renderAtAGlance([SOHO]);
+  assert.match(app.html(), /Movement[\s\S]*?Level with Jul 26/);
+  assert.match(app.html(), /ataglance-row__stat--muted">0\.0</);
 });
 
 // ========== LATE VISIT DATA ==========

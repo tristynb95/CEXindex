@@ -9,6 +9,10 @@
 // their own read as a naughty list; the same four metrics shown from both ends,
 // one slide apart, say the same thing without it.
 //
+// All four slides rank the selection, so all four need something to rank. Filter
+// down to a single bakery and the card swaps them for that bakery's own standing
+// instead — see A SINGLE BAKERY.
+//
 // Every slide is bakery-level, whatever the View toggle is set to. The charts
 // below the KPI row already answer the grouped questions; a bakery is the unit
 // someone acts on, and it is the only unit a visit or a support score exists
@@ -52,9 +56,9 @@ window.GAILS = window.GAILS || {};
   // make up.
   var METRICS = [
     { key: 'n', high: 'Highest NPS', low: 'Lowest NPS', format: function (v) { return String(Math.round(v)); } },
-    { key: 'dr', high: 'Best drink quality', low: 'Lowest drink quality', format: percent },
-    { key: 'ef', high: 'Best efficiency', low: 'Lowest efficiency', format: percent },
-    { key: 'fr', high: 'Best friendliness', low: 'Lowest friendliness', format: percent }
+    { key: 'dr', high: 'Highest drink quality', low: 'Lowest drink quality', format: percent },
+    { key: 'ef', high: 'Highest efficiency', low: 'Lowest efficiency', format: percent },
+    { key: 'fr', high: 'Highest friendliness', low: 'Lowest friendliness', format: percent }
   ];
 
   var SLIDES = [
@@ -63,6 +67,15 @@ window.GAILS = window.GAILS || {};
     { id: 'levers', label: 'Opportunities', build: leverRows },
     { id: 'visits', label: 'Visits', build: visitRows }
   ];
+
+  // Which set of slides the current selection has earned: the four estate
+  // themes, or the one bakery's own standing when there is nothing left to rank
+  // it against (see A SINGLE BAKERY).
+  function slides() {
+    var data = rows();
+    if (data.length !== 1) return SLIDES;
+    return [bakerySlide(data[0])];
+  }
 
   var index = 0;
   var timer = null;
@@ -187,9 +200,9 @@ window.GAILS = window.GAILS || {};
 
   // Movement is measured the way the KPI deltas are: this period's score
   // against the mean of the same bakery over the period immediately before it.
-  // Both movers share one pass, so the riser and the faller are always drawn
-  // from the same comparison.
-  function movers() {
+  // The estate rows and the single-bakery rows both read this one map, so a
+  // bakery's movement is the same figure whichever way the card is showing it.
+  function priorAverages() {
     var prior = G.getPriorPeriodRecords ? G.getPriorPeriodRecords() : null;
     if (!prior) return null;
     var totals = {};
@@ -199,13 +212,30 @@ window.GAILS = window.GAILS || {};
       totals[record.b].sum += record.ac;
       totals[record.b].count++;
     });
+    var averages = {};
+    Object.keys(totals).forEach(function (bakery) {
+      averages[bakery] = totals[bakery].sum / totals[bakery].count;
+    });
+    return { label: prior.label, averages: averages };
+  }
+
+  // The change on one bakery, or null where there is nothing to compare it
+  // with. Both movers share one pass, so the riser and the faller are always
+  // drawn from the same comparison.
+  function changeOn(record, prior) {
+    if (!prior || !scored(record) || !isNumber(record.ac)) return null;
+    var mean = prior.averages[record.b];
+    return mean === undefined ? null : record.ac - mean;
+  }
+
+  function movers() {
+    var prior = priorAverages();
+    if (!prior) return null;
     var up = null;
     var down = null;
     rows().forEach(function (record) {
-      if (!scored(record) || !isNumber(record.ac)) return;
-      var entry = totals[record.b];
-      if (!entry || !entry.count) return;
-      var change = record.ac - (entry.sum / entry.count);
+      var change = changeOn(record, prior);
+      if (change === null) return;
       if (!up || change > up.change) up = { record: record, change: change };
       if (!down || change < down.change) down = { record: record, change: change };
     });
@@ -307,6 +337,118 @@ window.GAILS = window.GAILS || {};
 
   function leverRows() {
     return metricRows(false);
+  }
+
+  // ========== A SINGLE BAKERY ==========
+
+  // Ranking a bakery against itself says nothing. With one site selected every
+  // "highest" row and every "lowest" row names it, Leaders and Opportunities
+  // print the same four figures as each other, and a site sitting on 78% drink
+  // quality is announced as the best in scope. So a selection of one drops the
+  // ranking framing and gives the bakery a slide of its own standing instead.
+  //
+  // Two is where the ranking starts earning its keep again: "highest NPS" on
+  // one site and "highest drink quality" on the other is a comparison, which is
+  // the thing someone selecting a pair of bakeries is usually after. So the cut
+  // is at one, not at some notion of a small selection.
+  //
+  // The four metrics are deliberately not repeated here: with a single bakery
+  // selected, the KPI row alongside this card is already showing exactly those
+  // figures for exactly that site. What nothing else on the Overview says at
+  // bakery level is where it stands on its own — its band, which way it is
+  // moving, whether it is on the focus list, and when anyone last walked in.
+
+  // Plain text in the slot the bakery name holds on the estate slides. The
+  // bakery is the slide here, so naming it on all four rows would be four
+  // repetitions of something the dot already says.
+  function subject(text) {
+    return '<span class="ataglance-row__name">' + esc(text) + '</span>';
+  }
+
+  function bakeryScoreRow(record) {
+    if (!scored(record) || !isNumber(record.ac)) {
+      return emptyRow('Benchmark score', 'Not scored this period');
+    }
+    var band = record.acb || '';
+    return row({
+      label: 'Benchmark score',
+      tone: BAND_TONE[band] || 'muted',
+      value: subject(band || 'Scored'),
+      plain: record.b + ' — ' + (band ? band + ', ' : '') + 'benchmark score ' +
+        Math.round(record.ac),
+      stat: Math.round(record.ac)
+    });
+  }
+
+  // Level is its own answer, and a muted one: a bakery that has held its score
+  // has not risen and has not fallen, and colouring it either way would say it
+  // had.
+  function bakeryMovementRow(record, prior) {
+    if (!prior) return emptyRow('Movement', 'No earlier period to compare with');
+    var change = changeOn(record, prior);
+    if (change === null) return emptyRow('Movement', 'Nothing logged here on ' + prior.label);
+    var size = round1(Math.abs(change)).toFixed(1);
+    var flat = size === '0.0';
+    var rising = change > 0;
+    var direction = flat ? 'Level with ' : (rising ? 'Up on ' : 'Down on ');
+    return row({
+      label: 'Movement',
+      tone: flat ? 'muted' : (rising ? 'green' : 'red'),
+      value: subject(direction + prior.label),
+      plain: record.b + ' — ' + direction.toLowerCase() + prior.label +
+        (flat ? '' : ' by ' + size),
+      stat: flat ? size : (rising ? '+' : '−') + size
+    });
+  }
+
+  // The queue is already filtered to the selection, so this is a lookup rather
+  // than a ranking: the question is whether this bakery is on the focus list,
+  // not which bakery is highest up it.
+  function bakerySupportRow(record) {
+    var queue = G.getSupportPriorityRows ? G.getSupportPriorityRows() : [];
+    var entry = null;
+    queue.forEach(function (item) {
+      if (!entry && item.name === record.b) entry = item;
+    });
+    if (!entry) return emptyRow('Support', 'Not on the focus list');
+    var labels = G.SUPPORT_TIER_LABELS || {};
+    var tier = labels[entry.tier] || '';
+    return row({
+      label: 'Support',
+      tone: TIER_TONE[entry.tier] || 'muted',
+      value: subject(tier ? tier + ' priority' : 'On the focus list'),
+      plain: record.b + ' — ' + (tier ? tier + ' priority, ' : '') +
+        'support score ' + entry.priority + '/100',
+      stat: entry.priority
+    });
+  }
+
+  // The age is the reading and the date is the way in, so this row spends its
+  // name column on how long it has been rather than on the bakery.
+  function bakeryVisitRow(record) {
+    if (!G.getLastVisitDate) return emptyRow('Last visit', 'Visit data unavailable');
+    var date = G.getLastVisitDate(record.b);
+    if (!date) return emptyRow('Last visit', 'No routine visit logged here yet');
+    return '<li class="ataglance-row">' +
+      '<span class="ataglance-row__label"><i class="ataglance-row__dot ataglance-row__dot--muted" aria-hidden="true"></i>Last visit</span>' +
+      '<span class="ataglance-row__line">' +
+      '<span class="ataglance-row__value" title="' +
+      esc(record.b + ' — ' + formatVisitDate(date) + ', ' + relativeVisitLabel(date)) + '">' +
+      subject(relativeVisitLabel(date)) + '</span>' +
+      visitReportButton(record.b, formatVisitDate(date)) +
+      '</span></li>';
+  }
+
+  function bakerySlide(record) {
+    return {
+      id: 'bakery:' + record.b,
+      label: record.b,
+      build: function () {
+        var prior = priorAverages();
+        return bakeryScoreRow(record) + bakeryMovementRow(record, prior) +
+          bakerySupportRow(record) + bakeryVisitRow(record);
+      }
+    };
   }
 
   // ========== VISITS ==========
@@ -454,18 +596,28 @@ window.GAILS = window.GAILS || {};
 
   // One line describing the selection, in the same bands the Index Band Split
   // card beside it plots.
+  //
+  // Every band is counted, so the figures add up to the estate total on the
+  // front of the line. Leaving the middle out made the line read as though the
+  // rest were unaccounted for: 198 bakeries, 67 meeting or better and 76 below
+  // standard leaves 54 sites a reader has to work out for themselves.
   function scopeLine() {
     var data = rows();
     var strong = 0;
+    var middle = 0;
     var weak = 0;
     var unscored = 0;
     data.forEach(function (record) {
       if (record.acb === 'Exceeding' || record.acb === 'Meeting') strong++;
+      else if (record.acb === 'Approaching') middle++;
       else if (record.acb === 'Below Standard') weak++;
       else if (record.acb === 'No Data' || record.acb === 'Incomplete') unscored++;
     });
     var parts = [data.length + ' baker' + (data.length === 1 ? 'y' : 'ies')];
     parts.push(strong + ' meeting or better');
+    // The two ends are the point of the line and are stated even at nought;
+    // the bands between them only earn their place when they hold something.
+    if (middle) parts.push(middle + ' approaching');
     parts.push(weak + ' below standard');
     if (unscored) parts.push(unscored + ' not scored');
     return '<p class="ataglance-scope">' + esc(parts.join(' · ')) + '</p>';
@@ -492,6 +644,9 @@ window.GAILS = window.GAILS || {};
   function startRotation() {
     stopRotation();
     if (paused || reducedMotion() || !currentData || !currentData.length) return;
+    // A single bakery is a single slide, and rotating it would redraw the same
+    // four rows every nine seconds.
+    if (slides().length < 2) return;
     timer = window.setInterval(function () {
       var panel = document.getElementById('tab-overview');
       if (document.hidden || !panel || !panel.classList.contains('active')) return;
@@ -521,9 +676,12 @@ window.GAILS = window.GAILS || {};
   function renderChrome() {
     var dots = document.getElementById('atAGlanceDots');
     if (!dots) return;
-    dots.innerHTML = SLIDES.map(function (slide, i) {
+    dots.innerHTML = slides().map(function (slide, i) {
+      // The pill is capped in width, so a name long enough to be trimmed still
+      // reads in full on hover and to a screen reader.
       return '<button type="button" role="tab" class="ataglance-dot' +
         (i === index ? ' is-active' : '') + '" data-glance-slide="' + i + '"' +
+        ' title="' + esc(slide.label) + '"' +
         ' aria-selected="' + (i === index) + '" aria-controls="atAGlanceBody">' +
         '<span class="ataglance-dot__label">' + esc(slide.label) + '</span></button>';
     }).join('');
@@ -533,10 +691,11 @@ window.GAILS = window.GAILS || {};
   // the reader did not ask for: the fade announces a new slide, and playing it
   // over the slide they are already reading reads as a glitch.
   function show(next, quiet) {
-    index = ((next % SLIDES.length) + SLIDES.length) % SLIDES.length;
+    var set = slides();
+    index = ((next % set.length) + set.length) % set.length;
     var body = document.getElementById('atAGlanceBody');
     if (!body) return;
-    body.innerHTML = slideHtml(SLIDES[index]);
+    body.innerHTML = slideHtml(set[index]);
     if (!quiet) {
       // Replay the entry fade: on an element that is already in the document
       // the class has to come off, force a reflow, and go back on.
