@@ -389,8 +389,8 @@ passwordForm.addEventListener('submit', async function(event) {
     setMessage(passwordMessageEl, 'error', 'Complete all three password fields.');
     return;
   }
-  if (newPassword.length < 6) {
-    setMessage(passwordMessageEl, 'error', 'Your new password must contain at least 6 characters.');
+  if (newPassword.length < 12) {
+    setMessage(passwordMessageEl, 'error', 'Your new password must contain at least 12 characters.');
     return;
   }
   if (newPassword !== confirmedPassword) {

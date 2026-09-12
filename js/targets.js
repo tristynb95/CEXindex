@@ -2716,7 +2716,7 @@ function _renderInsights(targets, bf, cf, lowBand, isAbsolute) {
 
   h += '<div class="insight-card"><h4>\u2B50 Quick Wins</h4>';
   if (quickWins.length > 0) {
-    h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' within 5 points of leaving focus &mdash; ' + quickWinsThreshold + '</p><ul>' + quickWins.map(function (b) { return '<li><strong>' + b.b + '</strong> \u2014 ' + b[cf] + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
+    h += '<p><span class="stat">' + quickWins.length + '</span> baker' + (quickWins.length === 1 ? 'y' : 'ies') + ' within 5 points of leaving focus &mdash; ' + quickWinsThreshold + '</p><ul>' + quickWins.map(function (b) { return '<li><strong>' + GAILS.escapeHtml(b.b) + '</strong> \u2014 ' + b[cf] + '</li>'; }).join('') + '</ul><div class="action">\u2192 Focus here for fastest gains</div>';
   } else {
     h += '<p style="color:var(--muted)">No bakeries within quick-win range of Meeting yet.</p>';
   }
@@ -2778,8 +2778,8 @@ function _renderTargetTable(targets, bf, cf, highBand, isAbsolute) {
           returnUrl: 'index.html#target',
           returnLabel: 'Focus Bakeries'
         }) + confTag + '</td>' +
-        '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryRegion(b.b) + '</td>' +
-        '<td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(b.b) + '</td>' +
+        '<td style="font-size:0.68rem;color:var(--muted)">' + G.escapeHtml(G.getBakeryRegion(b.b)) + '</td>' +
+        '<td style="font-size:0.68rem;color:var(--muted)">' + G.escapeHtml(G.getBakeryOps(b.b)) + '</td>' +
         '<td style="font-weight:700">' + b[cf] + '</td>' +
         '<td><span class="band ' + G.bc(b[bf]) + '">' + b[bf] + '</span></td>' +
         '<td' + G.metricRagStyle('n', b.n) + '>' + b.n + '</td>' +
@@ -2958,7 +2958,7 @@ function _renderTargetTrends(targets, bf, cf, highBand, lowBand, isAbsolute) {
         className: 'focus-name-link',
         returnUrl: 'index.html#target',
         returnLabel: 'Focus Bakeries'
-      }) + '</td><td style="font-size:0.68rem;color:var(--muted)">' + G.getBakeryOps(t.name) + '</td><td style="font-weight:700">' + (t.latest ? t.latest[cf] : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best[cf] + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst[cf] + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';
+      }) + '</td><td style="font-size:0.68rem;color:var(--muted)">' + G.escapeHtml(G.getBakeryOps(t.name)) + '</td><td style="font-weight:700">' + (t.latest ? t.latest[cf] : '\u2014') + '</td><td>' + changeStr(t.ceiChange) + '</td><td>' + dirIcon(t.direction) + '</td><td>' + changeStr(t.npsChange) + '</td><td>' + dirIcon(t.trend3m) + '</td><td>' + changeStr(t.cei3mChange) + '</td><td>' + changeStr(t.periodChange) + '</td><td style="' + streakWarn + '">' + (t.streak > 0 ? t.streak + ' month' + (t.streak > 1 ? 's' : '') : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.best ? t.best.m + ' (' + t.best[cf] + ')' : '\u2014') + '</td><td style="font-size:0.68rem">' + (t.worst ? t.worst.m + ' (' + t.worst[cf] + ')' : '\u2014') + '</td><td>' + (t.compTrends.drink !== undefined ? changeStr(t.compTrends.drink) : '\u2014') + '</td><td>' + (t.compTrends.efficiency !== undefined ? changeStr(t.compTrends.efficiency) : '\u2014') + '</td><td>' + (t.compTrends.friendliness !== undefined ? changeStr(t.compTrends.friendliness) : '\u2014') + '</td><td>' + (t.compTrends.timeliness !== undefined ? changeStr(t.compTrends.timeliness) : '\u2014') + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   var improvingDippingTitle = document.getElementById('targetTrendTable').querySelector('.tracker-table-header__title');
   if (improvingDippingTitle) improvingDippingTitle.textContent = _focusTitleWithReferencePeriod('Improving vs Dipping');
