@@ -1,3 +1,309 @@
+/* ========== Moved from css/styles.css (2026-09-12) ==========
+   These rules were duplicated in, or missing from, this file while living in
+   the shared stylesheet that every page loads. They are first in this file so
+   the cascade order they had before the move is preserved: everything below
+   still overrides them exactly as it did when they sat in styles.css. */
+
+/* ========== Bakery profile page ========== */
+/* Most of this section now lives in css/bakery-profile.css, which loads after
+   this file on bakery-profile.html. What remains here is what that file does
+   not fully re-declare, plus rules other pages depend on. */
+.bakery-profile-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.bakery-profile-header__brand img {
+  width: 57px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.bakery-profile-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bakery-profile-header__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 13px;
+  color: rgba(255, 255, 255, 0.82);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+
+.bakery-profile-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 34px;
+  padding: 32px clamp(24px, 4vw, 48px);
+  color: #fff;
+  background:
+    radial-gradient(circle at 88% 20%, rgba(201, 127, 18, 0.24), transparent 30%),
+    linear-gradient(135deg, #2b2721 0%, #413831 58%, #6d2925 100%);
+  border: 1px solid rgba(34, 31, 26, 0.08);
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.bakery-profile-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.bakery-profile-stat strong {
+  color: var(--text);
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.bakery-profile-card__head--notes {
+  margin-bottom: 22px;
+}
+
+.bakery-profile-tag,
+.bakery-profile-count {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 0 9px;
+  color: var(--accent);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  background: var(--accent-light);
+  border-radius: var(--r-pill);
+}
+
+.bakery-profile-map__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 30px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.bakery-profile-map .leaflet-control-attribution {
+  font-size: 9px;
+}
+
+.bakery-competition-scope dd {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bakery-profile-empty {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 170px;
+  padding: 28px;
+  color: var(--muted-l);
+  text-align: center;
+  background: var(--card-2);
+  border: 1px dashed var(--card-border);
+  border-radius: 13px;
+}
+
+.bakery-activity-row__top,
+.bakery-task-row__body>div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bakery-activity-row strong,
+.bakery-task-row strong {
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.bakery-profile-small-btn,
+.bakery-profile-secondary-btn,
+.bakery-note-entry__edit {
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.69rem;
+  font-weight: 800;
+  background: var(--accent-light);
+  border: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+
+.bakery-profile-small-btn {
+  min-height: 30px;
+  padding: 0 11px;
+}
+
+.bakery-profile-secondary-btn {
+  min-height: 36px;
+  padding: 0 13px;
+  color: var(--text-2);
+  background: rgba(34, 31, 26, 0.06);
+}
+
+.bakery-profile-inline-form label>span {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  color: var(--text-2);
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
+.bakery-profile-inline-form label>span em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.bakery-profile-inline-form>label+label {
+  margin-top: 11px;
+}
+
+.bakery-profile-inline-form__actions,
+.bakery-note-composer__footer,
+.bakery-note-composer__footer>div {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.bakery-profile-form-message.is-success {
+  color: var(--green);
+  background: var(--green-d);
+}
+
+.bakery-task-row__check--static {
+  cursor: default;
+}
+
+.bakery-priority {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 2px 7px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-transform: capitalize;
+  border-radius: var(--r-pill);
+}
+
+.bakery-note-composer__footer>span {
+  color: var(--muted-l);
+  font-size: 0.66rem;
+}
+
+.bakery-notes-timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.bakery-note-entry {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 0 0 22px;
+}
+
+.bakery-note-entry__edit {
+  padding: 4px 8px;
+  background: transparent;
+}
+
+.bakery-note-entry__edit:hover {
+  background: var(--accent-light);
+}
+
+.bakery-profile-empty--notes {
+  min-height: 130px;
+}
+
+@media (max-width: 1120px) {
+.bakery-profile-grid--map {
+    grid-template-columns: minmax(0, 1.2fr) minmax(290px, 0.8fr);
+  }
+
+}
+
+@media (max-width: 820px) {
+.bakery-profile-hero__asof {
+    min-width: 0;
+  }
+
+}
+
+@media (max-width: 560px) {
+.bakery-profile-header__brand small,
+  .bakery-profile-header__actions button {
+    display: none;
+  }
+
+.bakery-profile-header__brand strong {
+    font-size: 0.8rem;
+  }
+
+.bakery-profile-hero__meta {
+    gap: 6px;
+  }
+
+.bakery-profile-stat span {
+    margin-bottom: 9px;
+    font-size: 0.58rem;
+  }
+
+.bakery-competition-scope {
+    grid-template-columns: 1fr;
+  }
+
+.bakery-profile-inline-form__row {
+    grid-template-columns: 1fr;
+  }
+
+.bakery-note-composer__footer>div {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+.bakery-notes-timeline::before {
+    left: 14px;
+  }
+
+}
+
 /* Bakery Profile is a standalone authenticated dashboard page. */
 .bakery-profile-body {
   min-height: 100vh;
