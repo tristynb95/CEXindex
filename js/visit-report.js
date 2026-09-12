@@ -17,7 +17,7 @@ window.GAILS = window.GAILS || {};
   var OPEN_METEO_ARCHIVE_ENDPOINT = 'https://archive-api.open-meteo.com/v1/archive';
   var VISIT_MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  var escapeHtml = GAILS.escapeHtml;
+  function escapeHtml(value) { return GAILS.escapeHtml(value); }
 
   // ── Bakery Reports visibility scope ──
   // When an admin turns the master switch on (appSettings/reportVisibility) and
@@ -1011,9 +1011,9 @@ window.GAILS = window.GAILS || {};
   }
 
   // Shared with the admin CQV table — see js/cqv-shared.js.
-  var cqvHasCriticalFail = GAILS.CQVShared.hasCriticalFail;
-  var cqvBand = GAILS.CQVShared.band;
-  var cqvBandColor = GAILS.CQVShared.bandColor;
+  function cqvHasCriticalFail() { return GAILS.CQVShared.hasCriticalFail.apply(null, arguments); }
+  function cqvBand() { return GAILS.CQVShared.band.apply(null, arguments); }
+  function cqvBandColor() { return GAILS.CQVShared.bandColor.apply(null, arguments); }
 
   // The one stat-strip builder. It used to be two near-identical functions with
   // a capability each — this one could colour a value but only took plain text,
@@ -1059,9 +1059,9 @@ window.GAILS = window.GAILS || {};
     }).join('');
   }
 
-  var cqvPriorityColor = GAILS.CQVShared.priorityColor;
-  var cqvCriticalTag = GAILS.CQVShared.criticalTag;
-  var cqvLostPointItems = GAILS.CQVShared.lostPointItems;
+  function cqvPriorityColor() { return GAILS.CQVShared.priorityColor.apply(null, arguments); }
+  function cqvCriticalTag() { return GAILS.CQVShared.criticalTag.apply(null, arguments); }
+  function cqvLostPointItems() { return GAILS.CQVShared.lostPointItems.apply(null, arguments); }
 
   // One item component for both the CQV/NBO action plan and the NBO question
   // list. They were two builders drawing the same shape: a title, an optional
@@ -1257,8 +1257,8 @@ window.GAILS = window.GAILS || {};
   // Yes/No answers (see js/nbo-shared.js) and is deliberately left uncoloured
   // — there is no RAG band for these visits. The report's real substance is
   // the coaching note printed under each "No", which is why those lead.
-  var nboPctText = GAILS.NBOShared.pctText;
-  var nboScorable = GAILS.NBOShared.scorable;
+  function nboPctText() { return GAILS.NBOShared.pctText.apply(null, arguments); }
+  function nboScorable() { return GAILS.NBOShared.scorable.apply(null, arguments); }
 
   function buildNboHeaderStatsHtml(record) {
     var counts = record.counts || {};
@@ -2075,7 +2075,7 @@ window.GAILS = window.GAILS || {};
       : { color: 'var(--teal)', bg: 'var(--teal-d)' };
   }
 
-  var nboVisitLabel = GAILS.NBOShared.visitLabel;
+  function nboVisitLabel() { return GAILS.NBOShared.visitLabel.apply(null, arguments); }
 
   function visitTypeLabel(v) {
     if (v.type === 'siteVisit') return siteVisitKindLabel(v);

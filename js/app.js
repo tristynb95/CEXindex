@@ -1,6 +1,6 @@
 // ========== MAIN APPLICATION ENTRY POINT ==========
 (function () {
-  var G = GAILS;
+  var G = (window.GAILS = window.GAILS || {});
   var state = G.state;
   var dashboardWorkspaceShell = document.getElementById('dashboardWorkspaceShell');
   var dashboardSidebarToggleBtn = document.getElementById('dashboardSidebarToggle');
@@ -209,7 +209,7 @@
     dashboardFooterStamp.hidden = !state.dataLastUpdated;
   }
 
-  var escapeHtml = G.escapeHtml;
+  function escapeHtml(value) { return G.escapeHtml(value); }
 
   // Chip markup and the funnel live in js/utils.js — Bakery Reports renders
   // into the same #headerSub and must produce identical chips.

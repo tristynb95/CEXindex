@@ -1466,7 +1466,7 @@ document.addEventListener('keydown', function (event) {
     }
   };
 
-  var escapeHtml = GAILS.escapeHtml;
+  function escapeHtml(value) { return GAILS.escapeHtml(value); }
 
   // Colour for an ops-area boundary from its average score. Peer mode ranks each
   // area against the *other ops areas* (percentile of the area averages) so the four

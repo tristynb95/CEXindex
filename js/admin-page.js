@@ -215,8 +215,12 @@ const unsavedChangesMessage = document.getElementById('unsavedChangesMessage');
 // so the form structure can't drift between the editable admin view and the
 // read-only dashboard report. Keep that file in sync with
 // apps-script/RoutineVisitSync.gs's QUESTION_MAP when questions change.
-const VISIT_GENERAL_FIELDS = window.GAILS_VISIT_SCHEMA.general;
-const VISIT_SECTIONS = window.GAILS_VISIT_SCHEMA.sections;
+const VISIT_SCHEMA = window.GAILS_VISIT_SCHEMA;
+if (!VISIT_SCHEMA) {
+  throw new Error('Routine visit schema is unavailable: js/visit-schema.js must load before js/admin-page.js.');
+}
+const VISIT_GENERAL_FIELDS = VISIT_SCHEMA.general;
+const VISIT_SECTIONS = VISIT_SCHEMA.sections;
 const DEPARTMENTS = [
   { id: 'operations', name: 'Operations' },
   { id: 'coffee-team', name: 'Coffee Team' }

@@ -5,7 +5,7 @@ window.GAILS = window.GAILS || {};
   var lockedScrollY = 0;
   var drillReturnFocus = null;
 
-  var escapeHtml = GAILS.escapeHtml;
+  function escapeHtml(value) { return GAILS.escapeHtml(value); }
 
   function metricText(value, suffix) {
     if (value === null || value === undefined || isNaN(value)) return escapeHtml('—');
