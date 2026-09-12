@@ -338,7 +338,7 @@ test('Visits shows a six-card scroll viewport aligned with a taller map', () => 
 test('the performance slideshow owns the larger overview card and Today’s focus stays compact', () => {
   ['Top performer', 'Bottom performer', 'Most improved', 'Biggest decline', 'One to watch', 'Rising star']
     .forEach((label) => assert.ok(script.includes(label), label + ' insight is missing'));
-  assert.match(script, /get\(ref\(db, 'dashboardData'\)\)/);
+  assert.match(script, /loadDashboardData\(\)/);
   assert.match(script, /G\.buildFocusDataset\(\{/);
   assert.match(script, /setInterval\(function \(\) \{[\s\S]*?renderPerformanceSlide\(\)/);
   assert.match(html, /class="my-activity-insight"[\s\S]{0,900}class="my-activity-overview__compact"/);

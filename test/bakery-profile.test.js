@@ -439,7 +439,9 @@ test('profile resolves a safe named return destination from its link parameters'
 });
 
 test('profile uses the shared data nodes and author-attributed server-timestamped notes', () => {
-  assert.match(script, /ref\(db, 'dashboardData'\)/);
+  // The dataset now arrives via the shared cached read in js/dashboard-data.js;
+  // the node itself is pinned in test/dashboard-data.test.js.
+  assert.match(script, /loadDashboardData\(\)/);
   assert.match(script, /ref\(db, 'routineVisits'\)/);
   assert.match(script, /ref\(db, 'followUpActions'\)/);
   assert.match(script, /ref\(db, 'bakeryNotes\/' \+ bakeryPathKey\(bakeryName\)\)/);

@@ -23,7 +23,8 @@ const ESM_FILES = [
   'js/sign-out-notice.js',
   'js/standalone-profile-menu.js',
   'js/visit-feed.js',
-  'js/dataset-cache.js'
+  'js/dataset-cache.js',
+  'js/dashboard-data.js'
 ];
 
 // Third-party globals loaded from CDN <script> tags rather than npm.

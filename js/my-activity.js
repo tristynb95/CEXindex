@@ -20,6 +20,7 @@ import { ref, get, onValue, update, remove, push, set } from "https://www.gstati
 import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
 import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
 import { subscribeVisits, defaultWindowStart } from './visit-feed.js';
+import { loadDashboardData } from './dashboard-data.js';
 
 const G = window.GAILS || {};
 
@@ -3243,7 +3244,7 @@ async function loadActivityHub(user) {
     get(ref(db, 'admins/' + user.uid)),
     get(ref(db, 'users/' + user.uid)),
     get(ref(db, 'portalData/siteMeta')),
-    get(ref(db, 'dashboardData')).catch(function (error) {
+    loadDashboardData().catch(function (error) {
       console.warn('Bakery performance data unavailable:', error);
       return null;
     }),
@@ -3274,7 +3275,7 @@ async function loadActivityHub(user) {
     G.setOpsAreaAssignments((sitePayload && sitePayload.opsAreaAssignments) || []);
   }
 
-  var dashboardData = initial[3] && initial[3].exists() ? initial[3].val() : {};
+  var dashboardData = initial[3] || {};
   performanceRecords = Array.isArray(dashboardData.records)
     ? dashboardData.records
     : Object.values(dashboardData.records || {});

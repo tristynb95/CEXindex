@@ -15,6 +15,7 @@ import {
 import { BUILTIN_ROLES, resolveRolePermissions, canSeeTeam } from './permissions.js';
 import { mountStandaloneProfileMenu } from './standalone-profile-menu.js';
 import { recordNotification, followUpTargets } from './notification-write.js';
+import { loadDashboardData } from './dashboard-data.js';
 
 const G = window.GAILS || {};
 const guard = document.getElementById('bakeryProfileGuard');
@@ -1596,7 +1597,7 @@ async function loadBakeryProfile(user) {
     get(adminRef),
     get(userRef),
     get(ref(db, 'portalData/siteMeta')),
-    get(ref(db, 'dashboardData')),
+    loadDashboardData(),
     get(ref(db, 'appSettings/reportVisibility'))
   ]);
 
@@ -1615,7 +1616,7 @@ async function loadBakeryProfile(user) {
   bakeryName = canonicalName(requestedName);
   bakeryMeta = G.getBakeryMeta ? G.getBakeryMeta(bakeryName) : siteEntries && siteEntries[bakeryName];
 
-  var dashboardData = initial[3].exists() ? initial[3].val() : {};
+  var dashboardData = initial[3] || {};
   dashboardRecords = Array.isArray(dashboardData.records)
     ? dashboardData.records
     : Object.values(dashboardData.records || {});
