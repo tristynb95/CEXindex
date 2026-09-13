@@ -14,6 +14,7 @@ const teamScript = read('js/my-team.js');
 const teamStyles = read('css/my-team.css');
 const profileHtml = read('profile.html');
 const sharedStyles = read('css/styles.css');
+const adminStyles = read('css/admin.css');
 const standaloneMenu = read('js/standalone-profile-menu.js');
 
 test('the expanded dashboard menu stays compact without changing its collapsed rail', () => {
@@ -269,7 +270,9 @@ test('standalone pages share the dashboard profile dropdown and button style', (
   assert.match(sharedStyles, /min-height: 34px/);
   assert.match(sharedStyles, /border-radius: var\(--r-pill\)/);
   assert.match(read('bakery-profile.html'), /bakery-profile-switcher__toggle standalone-header-button/);
-  assert.match(sharedStyles, /\.admin-workspace__actions \.admin-secondary-btn/);
+  // Admin-only rules now live in css/admin.css, which admin.html loads after
+  // css/styles.css; the shared trigger styling above stays in the shared sheet.
+  assert.match(adminStyles, /\.admin-workspace__actions \.admin-secondary-btn/);
 });
 
 test('opening the profile menu lets sibling header dropdowns close', () => {

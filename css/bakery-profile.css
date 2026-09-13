@@ -1802,16 +1802,16 @@ body.bakery-profile-modal-open {
   font: inherit;
   font-size: 0.7rem;
   font-weight: 800;
-  background: rgba(178, 42, 36, 0.12);
-  border: 1px solid rgba(178, 42, 36, 0.28);
+  background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
   border-radius: var(--r-pill);
   cursor: pointer;
   transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .bakery-profile-danger-btn:hover:not(:disabled) {
-  background: rgba(178, 42, 36, 0.18);
-  box-shadow: 0 8px 20px rgba(178, 42, 36, 0.16);
+  background: rgba(var(--accent-rgb), 0.18);
+  box-shadow: 0 8px 20px rgba(var(--accent-rgb), 0.16);
 }
 
 .bakery-profile-danger-btn:disabled {

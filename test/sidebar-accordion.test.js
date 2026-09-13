@@ -140,6 +140,6 @@ test('desktop density keeps expanded branches from burying later destinations', 
   assert.match(styles, /\.dashboard-nav__btn \{[^}]*min-height:\s*var\(--control-h\);[^}]*padding:\s*7px 10px;/s);
   assert.match(styles, /\.dashboard-nav__submenu \.target-subtab \{[^}]*min-height:\s*28px;/s);
   assert.match(styles, /\.dashboard-nav__group-title \{[^}]*margin:\s*6px 0 1px;[^}]*font-size:\s*0\.6rem;/s);
-  assert.match(styles, /\.dashboard-nav__btn\.active \{[^}]*background:\s*rgba\(178, 42, 36, 0\.085\);[^}]*box-shadow:\s*none;/s);
+  assert.match(styles, /\.dashboard-nav__btn\.active \{[^}]*background:\s*rgba\(var\(--accent-rgb\), 0\.085\);[^}]*box-shadow:\s*none;/s);
   assert.doesNotMatch(styles, /\.dashboard-nav__btn\.active \{[^}]*linear-gradient/s);
 });

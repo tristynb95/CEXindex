@@ -82,9 +82,45 @@ const VIEWS = [
     await page.route('**www.gstatic.com/firebasejs/**', (route) =>
       route.fulfill({ status: 200, contentType: 'text/javascript', body: stub }));
 
+    // Screenshots must be deterministic: an in-flight transition or a blinking
+    // caret makes two runs of identical code differ, which would make every
+    // comparison meaningless. Freeze all motion before anything renders.
+    const FREEZE_CSS = '*,*::before,*::after{animation:none!important;animation-duration:0s!important;animation-delay:0s!important;transition:none!important;transition-duration:0s!important;transition-delay:0s!important;caret-color:transparent!important;scroll-behavior:auto!important}';
+    await page.addInitScript((css) => {
+      const apply = () => {
+        const el = document.createElement('style');
+        el.id = '__harness_freeze';
+        el.textContent = css;
+        (document.head || document.documentElement).appendChild(el);
+      };
+      if (document.head) apply();
+      else document.addEventListener('DOMContentLoaded', apply, { once: true });
+    }, FREEZE_CSS);
     await page.goto(`${base}/${PAGE}.html${QUERY}`, { waitUntil: 'domcontentloaded' });
+    await page.addStyleTag({ content: FREEZE_CSS }).catch(() => {});
     await page.waitForTimeout(2500);
+    // Webfonts arrive over the network, so without this a screenshot can catch
+    // the fallback face on one run and the real one on the next - which makes
+    // two runs of identical code differ and the whole comparison worthless.
+    await page.evaluate(() => (document.fonts && document.fonts.ready) || null).catch(() => {});
+    await page.waitForTimeout(400);
     await page.screenshot({ path: path.join(SHOTS, `${TAG}-${PAGE}-${view.name}.png`), fullPage: true });
+
+    // Panels are switched by JS, so a single shot only covers the default one.
+    // Walk the nav and capture each, or a moved rule can pass unverified.
+    const panels = await page.evaluate(() => Array.from(
+      document.querySelectorAll('[data-admin-panel]'))
+      .map((b, i) => b.getAttribute('data-admin-panel') || b.textContent.trim() || String(i)));
+    for (let i = 0; i < panels.length; i++) {
+      const label = String(panels[i]).toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24);
+      const clicked = await page.evaluate((idx) => {
+        const bs = Array.from(document.querySelectorAll('[data-admin-panel]'));
+        if (!bs[idx]) return false; bs[idx].click(); return true;
+      }, i);
+      if (!clicked) continue;
+      await page.waitForTimeout(700);
+      await page.screenshot({ path: path.join(SHOTS, TAG + "-" + PAGE + "-" + view.name + "-" + label + ".png"), fullPage: true });
+    }
     const height = await page.evaluate(() => document.body.scrollHeight);
     console.log(`${view.name}: height=${height}`);
     await page.close();

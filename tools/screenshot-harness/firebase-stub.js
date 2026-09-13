@@ -84,3 +84,7 @@ export function limitToLast() { return {}; }
 export function equalTo() { return {}; }
 export function getDownloadURL() { return Promise.resolve(''); }
 export function uploadBytes() { return Promise.resolve({}); }
+export function createUserWithEmailAndPassword() { return Promise.resolve({ user: { uid: 'u2' } }); }
+export function updateEmail() { return Promise.resolve(); }
+export function updateProfile() { return Promise.resolve(); }
+export function orderByKey() { return {}; }

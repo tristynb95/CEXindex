@@ -97,13 +97,13 @@
 }
 
 .my-team-insight-callout--alert {
-  border-color: rgba(178, 42, 36, 0.22);
-  background: rgba(178, 42, 36, 0.07);
+  border-color: rgba(var(--accent-rgb), 0.22);
+  background: rgba(var(--accent-rgb), 0.07);
 }
 
 .my-team-insight-callout--alert::before {
   background: var(--red);
-  box-shadow: 0 0 0 4px rgba(178, 42, 36, 0.1);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.1);
 }
 
 .my-team-insight-callout--positive {

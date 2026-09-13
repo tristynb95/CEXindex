@@ -184,13 +184,13 @@
 }
 
 .my-activity-focus--alert {
-  border-color: rgba(178, 42, 36, 0.22);
-  background: rgba(178, 42, 36, 0.07);
+  border-color: rgba(var(--accent-rgb), 0.22);
+  background: rgba(var(--accent-rgb), 0.07);
 }
 
 .my-activity-focus--alert::before {
   background: var(--red);
-  box-shadow: 0 0 0 4px rgba(178, 42, 36, 0.1);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.1);
 }
 
 .my-activity-focus--warning {
@@ -263,8 +263,8 @@ a.my-activity-stat:focus-visible {
 }
 
 .my-activity-stat--alert {
-  border-color: rgba(178, 42, 36, 0.3);
-  background: linear-gradient(180deg, rgba(178, 42, 36, 0.08), rgba(255, 255, 255, 0.94));
+  border-color: rgba(var(--accent-rgb), 0.3);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.08), rgba(255, 255, 255, 0.94));
 }
 
 .my-activity-stat__label {
@@ -428,7 +428,7 @@ a.my-activity-stat:focus-visible {
 }
 
 .my-activity-pill--alert {
-  border-color: rgba(178, 42, 36, 0.28);
+  border-color: rgba(var(--accent-rgb), 0.28);
   background: var(--red-d);
   color: var(--red);
 }
@@ -1274,7 +1274,7 @@ body.my-activity-modal-open {
   border-color: rgba(90, 65, 45, 0.1);
   border-radius: 22px;
   background:
-    radial-gradient(circle at 94% -10%, rgba(178, 42, 36, 0.13), transparent 31%),
+    radial-gradient(circle at 94% -10%, rgba(var(--accent-rgb), 0.13), transparent 31%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.99), rgba(255, 250, 247, 0.97));
   box-shadow: 0 16px 42px rgba(72, 48, 29, 0.09);
   overflow: hidden;
@@ -1312,7 +1312,7 @@ body.my-activity-modal-open {
   gap: 3px;
   justify-items: end;
   padding: 9px 12px;
-  border: 1px solid rgba(178, 42, 36, 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.12);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.66);
   color: var(--text-2);
@@ -1362,7 +1362,7 @@ body.my-activity-modal-open {
 
 .my-activity-focus--alert {
   border-left-color: var(--red);
-  background: rgba(178, 42, 36, 0.065);
+  background: rgba(var(--accent-rgb), 0.065);
 }
 
 .my-activity-focus--alert > span strong {
@@ -1527,7 +1527,7 @@ body.my-activity-modal-open {
 }
 
 .my-activity-jump__link.is-active {
-  border-color: rgba(178, 42, 36, 0.12);
+  border-color: rgba(var(--accent-rgb), 0.12);
   background: #fff;
   color: var(--accent);
   box-shadow: 0 3px 10px rgba(72, 47, 29, 0.09);
@@ -1699,7 +1699,7 @@ body.my-activity-modal-open {
 }
 
 .my-activity-priority--urgent {
-  border-color: rgba(178, 42, 36, 0.14);
+  border-color: rgba(var(--accent-rgb), 0.14);
 }
 
 .my-activity-priority--watch {
@@ -1707,7 +1707,7 @@ body.my-activity-modal-open {
 }
 
 .my-activity-priority:hover {
-  border-color: rgba(178, 42, 36, 0.17);
+  border-color: rgba(var(--accent-rgb), 0.17);
   box-shadow: 0 5px 14px rgba(72, 48, 30, 0.06);
 }
 
@@ -2081,7 +2081,7 @@ body.my-activity-modal-open {
   padding: 8px 14px;
   border-radius: 11px;
   font-size: 0.75rem;
-  box-shadow: 0 7px 16px rgba(178, 42, 36, 0.18);
+  box-shadow: 0 7px 16px rgba(var(--accent-rgb), 0.18);
 }
 
 .my-activity-pill {
@@ -2166,7 +2166,7 @@ body.my-activity-modal-open {
 }
 
 .my-activity-action:hover {
-  border-color: rgba(178, 42, 36, 0.16);
+  border-color: rgba(var(--accent-rgb), 0.16);
   box-shadow: 0 6px 17px rgba(72, 48, 30, 0.06);
   transform: translateY(-1px);
 }
@@ -2390,7 +2390,7 @@ body.my-activity-modal-open {
 
 .my-activity-insight__controls button:hover,
 .my-activity-insight__controls button:focus-visible {
-  border-color: rgba(178, 42, 36, 0.3);
+  border-color: rgba(var(--accent-rgb), 0.3);
   color: var(--accent);
 }
 
@@ -2479,7 +2479,7 @@ body.my-activity-modal-open {
 }
 
 .my-activity-brief-followup:hover {
-  border-color: rgba(178, 42, 36, 0.18);
+  border-color: rgba(var(--accent-rgb), 0.18);
   background: #fff;
 }
 
@@ -2573,13 +2573,13 @@ body.my-activity-modal-open {
 
 .my-activity-icon-btn:hover,
 .my-activity-icon-btn:focus-visible {
-  border-color: rgba(178, 42, 36, 0.28);
+  border-color: rgba(var(--accent-rgb), 0.28);
   color: var(--accent);
 }
 
 .my-activity-icon-btn--danger:hover,
 .my-activity-icon-btn--danger:focus-visible {
-  border-color: rgba(178, 42, 36, 0.32);
+  border-color: rgba(var(--accent-rgb), 0.32);
   background: var(--red-d);
   color: var(--red);
 }
@@ -2696,9 +2696,9 @@ body.my-activity-modal-open {
   grid-column: 1 / -1;
   margin: 0;
   padding: 9px 11px;
-  border: 1px solid rgba(178, 42, 36, 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.1);
   border-radius: 10px;
-  background: rgba(178, 42, 36, 0.055);
+  background: rgba(var(--accent-rgb), 0.055);
   color: #6f5c55;
   font-size: 0.7rem;
   line-height: 1.35;
@@ -2760,7 +2760,7 @@ body.my-activity-modal-open {
 
 .my-activity-danger-btn {
   padding: 10px 14px;
-  border: 1px solid rgba(178, 42, 36, 0.2);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   border-radius: 10px;
   background: var(--red-d);
   color: var(--red);
@@ -2776,7 +2776,7 @@ body.my-activity-modal-open {
 
 .my-activity-confirm-btn--danger {
   background: var(--red);
-  box-shadow: 0 7px 16px rgba(178, 42, 36, 0.2);
+  box-shadow: 0 7px 16px rgba(var(--accent-rgb), 0.2);
 }
 
 /* Responsive field use */
@@ -3247,9 +3247,9 @@ body.my-activity-modal-open {
   align-content: stretch;
   gap: 10px;
   padding: 15px 16px 13px;
-  border-color: rgba(178, 42, 36, 0.13);
+  border-color: rgba(var(--accent-rgb), 0.13);
   background:
-    radial-gradient(circle at 100% 0%, rgba(178, 42, 36, 0.12), transparent 40%),
+    radial-gradient(circle at 100% 0%, rgba(var(--accent-rgb), 0.12), transparent 40%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(249, 241, 236, 0.9));
   box-shadow: 0 8px 22px rgba(72, 48, 29, 0.07);
 }
@@ -3306,7 +3306,7 @@ body.my-activity-modal-open {
 }
 
 .my-activity-overview__compact .my-activity-focus--alert {
-  border-color: rgba(178, 42, 36, 0.16);
+  border-color: rgba(var(--accent-rgb), 0.16);
   border-top-color: var(--red);
   background: rgba(253, 244, 243, 0.92);
 }
@@ -3463,7 +3463,7 @@ body.my-activity-modal-open {
   }
 
   .my-activity-visits-scroll:focus-visible {
-    outline: 2px solid rgba(178, 42, 36, 0.35);
+    outline: 2px solid rgba(var(--accent-rgb), 0.35);
     outline-offset: 3px;
     border-radius: 14px;
   }
@@ -3621,7 +3621,7 @@ body.my-activity-modal-open {
 
 .my-activity-overview > .my-activity-insight .my-activity-insight__controls button:hover,
 .my-activity-overview > .my-activity-insight .my-activity-insight__controls button:focus-visible {
-  border-color: rgba(178, 42, 36, 0.24);
+  border-color: rgba(var(--accent-rgb), 0.24);
   background: rgba(255, 255, 255, 0.92);
   color: var(--accent);
 }
@@ -3753,20 +3753,20 @@ body.my-activity-modal-open {
 }
 
 .my-activity-overview__compact .my-activity-focus--alert {
-  border-color: rgba(178, 42, 36, 0.19);
+  border-color: rgba(var(--accent-rgb), 0.19);
   background:
     linear-gradient(135deg, rgba(255, 253, 252, 0.98), rgba(250, 234, 232, 0.94));
 }
 
 .my-activity-overview__compact .my-activity-focus--warning {
-  border-color: rgba(178, 42, 36, 0.14);
+  border-color: rgba(var(--accent-rgb), 0.14);
   background:
     linear-gradient(135deg, rgba(255, 254, 253, 0.98), rgba(251, 240, 238, 0.92));
 }
 
 .my-activity-overview__compact .my-activity-focus--alert::after,
 .my-activity-overview__compact .my-activity-focus--warning::after {
-  background: rgba(178, 42, 36, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .my-activity-focus__top {
@@ -3820,7 +3820,7 @@ body.my-activity-modal-open {
   border-color: var(--red);
   background: var(--red);
   color: #fff;
-  box-shadow: 0 3px 8px rgba(178, 42, 36, 0.16);
+  box-shadow: 0 3px 8px rgba(var(--accent-rgb), 0.16);
 }
 
 .my-activity-focus__body b {
@@ -3852,8 +3852,8 @@ body.my-activity-modal-open {
   margin: 0;
   padding: 3px 6px;
   border-radius: 7px;
-  border: 1px solid rgba(178, 42, 36, 0.08);
-  background: rgba(178, 42, 36, 0.075);
+  border: 1px solid rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), 0.075);
   color: #963a34;
   font-size: 0.57rem;
   line-height: 1.1;
