@@ -27,20 +27,22 @@ test('success notifications are subtle, accessible, bounded, and dismissible', (
 });
 
 test('every page that can surface the shared workflow loads the notification assets', () => {
-  // Both assets are cache-busted by version string. A page left on an older
-  // one serves stale CSS or a stale utils.js to that page alone, so the check
-  // is that every page asks for the same version rather than for a literal
-  // that has to be re-pinned here on each bump.
+  // js/utils.js still carries a version string, so the agreement check stays for
+  // it. css/styles.css no longer does — see README.md — so what is asserted there
+  // is that every page links it, plainly and without a query string.
   const files = ['index.html', 'my-activity.html', 'bakery-profile.html', 'admin.html', 'my-team.html'];
-  ['css/styles.css', 'js/utils.js'].forEach((asset) => {
-    const pattern = new RegExp(asset.replace(/[/.]/g, '\\$&') + '\\?v=([^"\']+)');
-    const versions = files.map((file) => {
-      const match = pattern.exec(read(file));
-      assert.ok(match, file + ' must cache-bust ' + asset);
-      return match[1];
-    });
-    assert.equal(new Set(versions).size, 1, 'pages disagree on ' + asset + ': ' + versions.join(', '));
+  files.forEach((file) => {
+    const html = read(file);
+    assert.match(html, /href="css\/styles\.css"/, file + ' must link css/styles.css');
+    assert.doesNotMatch(html, /css\/styles\.css\?v=/, file + ' reintroduced a ?v= string');
   });
+  const pattern = /js\/utils\.js\?v=([^"']+)/;
+  const versions = files.map((file) => {
+    const match = pattern.exec(read(file));
+    assert.ok(match, file + ' must cache-bust js/utils.js');
+    return match[1];
+  });
+  assert.equal(new Set(versions).size, 1, 'pages disagree on js/utils.js: ' + versions.join(', '));
 });
 
 // The gaps allow for the notification event each write also records

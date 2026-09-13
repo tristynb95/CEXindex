@@ -15822,8 +15822,12 @@ html {
    own flex-basis — meant as a row-context width — would otherwise size this
    element's height instead. Reset the flex shorthand and size by width —
    280px matches .search-pill's own max-width, so this reads as the same
-   size as the map's search box rather than a narrower cousin of it. */
-.focus-queue__search {
+   size as the map's search box rather than a narrower cousin of it.
+   Qualified with .search-pill so it outranks that rule by specificity
+   rather than by source order: .search-pill now lives in dashboard.css,
+   which loads after this file, so an order-only override lost and the
+   200px flex-basis came back as the pill's height. */
+.search-pill.focus-queue__search {
   flex: 0 0 auto;
   width: 280px;
 }
@@ -21026,10 +21030,7 @@ body.visit-log-filter-open .header-pill__tooltip {
 }
 
 .table-wrap--floating,
-.focus-qlist,
-.wc-canvas-wrap,
-.wc-sig-panel,
-.wc-drift-panel {
+.focus-qlist {
   border-color: var(--stroke-subtle);
   background: var(--surface-panel);
   box-shadow: var(--elev-rest);
@@ -21037,9 +21038,6 @@ body.visit-log-filter-open .header-pill__tooltip {
 
 .table-wrap--floating,
 .focus-qlist,
-.wc-canvas-wrap,
-.wc-sig-panel,
-.wc-drift-panel,
 .map-canvas-wrap {
   border-radius: 14px;
 }
@@ -21047,7 +21045,6 @@ body.visit-log-filter-open .header-pill__tooltip {
 .target-stat-card,
 .focus-secondary,
 .visit-log-summary,
-.search-pill,
 .map-toggle-group {
   border-color: var(--stroke-subtle);
   background: var(--surface-subtle);

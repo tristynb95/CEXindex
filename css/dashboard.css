@@ -4444,3 +4444,29 @@ body[data-dash-tab="cei"] .method-chapter {
   }
 
 }
+
+/* Moved here from the VISUAL ELEVATION PASS layer at the end of css/styles.css.
+   That layer is the intended last word on surfaces, but it can only be the last
+   word while it is the last thing loaded — and this file now loads after it, so
+   the .search-pill base rule above was winning and the pill kept the older
+   translucent fill and inset highlight. The declarations were moved rather than
+   copied, so there is still exactly one place that sets them. */
+.search-pill {
+  border-color: var(--stroke-subtle);
+  background: var(--surface-subtle);
+  box-shadow: none;
+}
+
+/* Same move, same reason as .search-pill above: these three panels are styled
+   by the elevation layer at the end of css/styles.css, which stopped being the
+   last word once this file started loading after it. Left there they rendered
+   at 12px radius on the wrong ground. The radius from the layer's second group is
+   folded in here because it applied to exactly these three elements too. */
+.wc-canvas-wrap,
+.wc-sig-panel,
+.wc-drift-panel {
+  border-color: var(--stroke-subtle);
+  background: var(--surface-panel);
+  box-shadow: var(--elev-rest);
+  border-radius: 14px;
+}

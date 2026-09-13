@@ -1,0 +1,62 @@
+<!doctype html>
+<!-- Not a page of the site. A fixture: real markup, real stylesheets, in the real
+     load order, holding the components whose rules were split between
+     css/styles.css and css/dashboard.css.
+
+     It exists because the dashboard itself cannot be probed — index.html pegs its
+     main thread indefinitely under the Firebase stub, so getComputedStyle never
+     returns there (see README). Every element below is copied from the markup the
+     app really emits; the file path of each source is noted above it. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>dashboard surface fixture</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+  <div id="dashboard" class="view">
+
+    <!-- js/targets.js — the Priority Overview filter tray. .focus-tool-label is a
+         COLUMN flex box, so .search-pill's row-oriented flex-basis sizes the
+         search field's HEIGHT unless the reset outranks it. -->
+    <div class="focus-queue__bar">
+      <div class="focus-queue__chips"></div>
+      <label class="focus-tool-label"><span>Search</span><div class="search-pill focus-queue__search" data-probe="queue-search">
+        <svg class="search-pill__icon" viewBox="0 0 16 16"></svg>
+        <input type="text" class="search-pill__input" placeholder="Bakery or ops area">
+        <button type="button" class="search-pill__clear"><svg viewBox="0 0 12 12"></svg></button>
+      </div></label>
+      <label class="focus-tool-label focus-tool-label--priority"><span>Support priority</span>
+        <select class="spark-sort-select" data-probe="tier-select"><option>All (142)</option></select></label>
+      <label class="focus-tool-label focus-tool-label--sort"><span>Sort by</span>
+        <select class="spark-sort-select" data-probe="sort-select"><option>Highest support priority</option></select></label>
+    </div>
+
+    <!-- index.html:2184 — the same pill in a ROW context, which is the shape the
+         rule was written for. Both are probed so a fix to one cannot break the other. -->
+    <div class="visit-log-toolbar">
+      <div class="search-pill visit-log-search-bar" data-probe="visit-log-search">
+        <svg class="search-pill__icon" viewBox="0 0 16 16"></svg>
+        <input type="text" class="search-pill__input" placeholder="Search">
+      </div>
+    </div>
+
+    <!-- index.html:917-941 — Overview cards. .section and .overview-card are both
+         styled either side of the split. -->
+    <section class="section overview-card at-a-glance" data-probe="at-a-glance"><h2>At a glance</h2></section>
+    <div class="section overview-card overview-card--scatter" data-probe="overview-scatter"></div>
+    <div class="section overview-card overview-card--bands" data-probe="overview-bands"></div>
+
+    <!-- js/app.js:1252 — KPI tile. -->
+    <div class="kpi-row"><article class="kpi good" data-probe="kpi"><h3>Score</h3><div class="bval">72.4</div></article></div>
+
+    <!-- index.html:2014-2120 — word-cloud panels. The elevation layer owned their
+         radius and ground; dashboard.css owns their base rule. -->
+    <div class="wc-canvas-wrap" data-probe="wc-canvas"><canvas></canvas></div>
+    <div class="wc-sig-panel" data-probe="wc-sig"></div>
+    <div class="wc-drift-panel" data-probe="wc-drift"></div>
+
+  </div>
+</body>
+</html>

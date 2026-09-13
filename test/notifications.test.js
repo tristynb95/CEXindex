@@ -395,19 +395,19 @@ test('the bell outranks the header\'s blanket button rule', () => {
   assert.match(styles, /\.profile-menu__bell svg \{[\s\S]*?flex: 0 0 18px/);
 });
 
-test('the pages ask for the stylesheet version that carries the bell', () => {
-  // The stylesheet is cache-busted by an explicit version string, so shipping
-  // new CSS without bumping it ships nothing — and a page left behind on an
-  // older string ships stale CSS to that page alone. Pinning the literal here
-  // only meant editing this test on every bump, so what is asserted is the
-  // property that actually matters: one shared, present version.
-  const pages = ['index.html', 'admin.html', 'bakery-profile.html', 'my-activity.html', 'my-team.html', 'profile.html'];
-  const versions = pages.map((page) => {
-    const match = /css\/styles\.css\?v=([^"']+)/.exec(read(page));
-    assert.ok(match, page + ' must cache-bust the stylesheet');
-    return match[1];
-  });
-  assert.equal(new Set(versions).size, 1, 'pages disagree on the stylesheet version: ' + versions.join(', '));
+test('no page reintroduces a ?v= string on the shared stylesheet', () => {
+  // README.md: the hand-maintained ?v= scheme was removed because it was applied
+  // inconsistently and had already drifted. It drifted again before this test
+  // existed — admin-setup.html sat on 20260725-ux-04 while six other pages shared
+  // a different string. css/*.css is served with max-age=300, so a stale sheet
+  // corrects itself within five minutes without anyone editing seven files.
+  const pages = ['index.html', 'admin.html', 'admin-setup.html', 'bakery-profile.html',
+    'my-activity.html', 'my-team.html', 'profile.html'];
+  for (const page of pages) {
+    const html = read(page);
+    assert.match(html, /href="css\/styles\.css"/, page + ' must link the shared stylesheet');
+    assert.doesNotMatch(html, /css\/styles\.css\?v=/, page + ' reintroduced a ?v= string');
+  }
   assert.match(read('css/styles.css'), /\.profile-menu__bell \{/);
 });
 
