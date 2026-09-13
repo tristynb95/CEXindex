@@ -9,7 +9,9 @@ const read = (...parts) => fs.readFileSync(path.join(root, ...parts), 'utf8');
 
 const indexHtml = read('index.html');
 const appSource = read('js', 'app.js');
-const cssSource = read('css', 'styles.css');
+// index.html loads css/styles.css and css/dashboard.css together; dashboard-only
+// rules live in the latter, so the dashboard stylesheet is the pair of them.
+const cssSource = read('css', 'styles.css') + read('css', 'dashboard.css');
 const targetsSource = read('js', 'targets.js');
 const visitReportSource = read('js', 'visit-report.js');
 const glanceSource = read('js', 'at-a-glance.js');

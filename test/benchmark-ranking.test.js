@@ -10,7 +10,10 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 const charts = fs.readFileSync(path.join(root, 'js', 'charts.js'), 'utf8');
 const tables = fs.readFileSync(path.join(root, 'js', 'tables.js'), 'utf8');
-const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+// index.html loads css/styles.css and css/dashboard.css together; dashboard-only
+// rules live in the latter, so the dashboard stylesheet is the pair of them.
+const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8') +
+  fs.readFileSync(path.join(root, 'css', 'dashboard.css'), 'utf8');
 
 function createRankingContext() {
   const GAILS = {

@@ -73,7 +73,14 @@ export function off() {}
 export function set() { return Promise.resolve(); }
 export function update() { return Promise.resolve(); }
 export function remove() { return Promise.resolve(); }
-export function push(r) { return { key: 'new-id', _path: (r && r._path) + '/new-id' }; }
+// Real push() returns a ThenableReference: it carries .key AND resolves like a
+// promise. Returning a plain object makes auth.js fail on push(...).then().
+export function push(r) {
+  const ref = { key: 'new-id', _path: (r && r._path ? r._path : '') + '/new-id' };
+  ref.then = (fn) => Promise.resolve(ref).then(fn);
+  ref.catch = (fn) => Promise.resolve(ref).catch(fn);
+  return ref;
+}
 export function serverTimestamp() { return Date.now(); }
 export function runTransaction() { return Promise.resolve({ committed: true }); }
 export function query(r) { return r; }

@@ -6,7 +6,10 @@ const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+// index.html loads css/styles.css and css/dashboard.css together; dashboard-only
+// rules live in the latter, so the dashboard stylesheet is the pair of them.
+const css = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8') +
+  fs.readFileSync(path.join(root, 'css', 'dashboard.css'), 'utf8');
 const chartsSource = fs.readFileSync(path.join(root, 'js', 'charts.js'), 'utf8');
 
 function speedTab() {

@@ -66,6 +66,7 @@ const VIEWS = [
   const errors = [];
 
   for (const view of VIEWS) {
+    const abortedUrls = new Set();
     const page = await browser.newPage({ viewport: { width: view.width, height: view.height } });
     page.on('pageerror', (e) => errors.push(`[${view.name}] ${e}`));
     page.on('console', (m) => { if (m.type() === 'error') errors.push(`[${view.name}] ${m.text()}`); });
@@ -77,6 +78,7 @@ const VIEWS = [
       if (url.startsWith(base)) return route.continue();
       // Fonts and chart/map libraries change layout metrics, so they must load.
       if (/fonts\.googleapis\.com|fonts\.gstatic\.com|cdnjs\.cloudflare\.com|unpkg\.com/.test(url)) return route.continue();
+      abortedUrls.add(url.split('?')[0]);
       return route.abort();
     });
     await page.route('**www.gstatic.com/firebasejs/**', (route) =>
@@ -96,7 +98,7 @@ const VIEWS = [
       if (document.head) apply();
       else document.addEventListener('DOMContentLoaded', apply, { once: true });
     }, FREEZE_CSS);
-    await page.goto(`${base}/${PAGE}.html${QUERY}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${base}/${PAGE}.html${QUERY}`, { waitUntil: 'commit', timeout: 60000 });
     await page.addStyleTag({ content: FREEZE_CSS }).catch(() => {});
     await page.waitForTimeout(2500);
     // Webfonts arrive over the network, so without this a screenshot can catch
@@ -120,6 +122,9 @@ const VIEWS = [
       if (!clicked) continue;
       await page.waitForTimeout(700);
       await page.screenshot({ path: path.join(SHOTS, TAG + "-" + PAGE + "-" + view.name + "-" + label + ".png"), fullPage: true });
+    }
+    if (process.env.HARNESS_DEBUG && abortedUrls.size) {
+      console.log('  ABORTED: ' + [...abortedUrls].slice(0, 10).join(', '));
     }
     const height = await page.evaluate(() => document.body.scrollHeight);
     console.log(`${view.name}: height=${height}`);

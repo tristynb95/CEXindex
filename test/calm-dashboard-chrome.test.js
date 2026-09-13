@@ -4,7 +4,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+// index.html loads css/styles.css and css/dashboard.css together; dashboard-only
+// rules live in the latter, so the dashboard stylesheet is the pair of them.
+const styles = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8') +
+  fs.readFileSync(path.join(root, 'css', 'dashboard.css'), 'utf8');
 const visualPass = styles.slice(styles.indexOf('VISUAL ELEVATION PASS'));
 
 test('dashboard canvas and passive cards use calm, flat surfaces', () => {
