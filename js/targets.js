@@ -2065,9 +2065,15 @@ document.addEventListener('keydown', function (event) {
     });
   }
 
-  // Clears a map's search box — both the state and the visible input — whenever
-  // something else changes what the map is filtered to, so the box never
-  // appears to apply while actually describing a stale selection.
+  // Clears a map's search box — both the state and the visible input — when the
+  // set of bakeries behind the map is replaced wholesale (a dashboard filter
+  // change, or re-opening the tab), so the box never appears to apply while
+  // actually describing a selection that no longer exists.
+  //
+  // The map's own Area boundaries and Bakery visits toggles deliberately do NOT
+  // call this: they re-shape the same set the search is already narrowing, and
+  // wiping the name someone just typed to flip one of them is the opposite of
+  // what they were doing — search and those toggles compose.
   function resetMapSearch(mapKey) {
     if (mapKey === 'network') _networkMapSearchQuery = '';
     else _targetMapSearchQuery = '';
@@ -2140,7 +2146,11 @@ document.addEventListener('keydown', function (event) {
         if (!visitFilteredItems.length) {
           emptyMsg = 'No bakeries match the current visit filter.';
         } else if (getMapSearchQuery(cfg)) {
-          emptyMsg = 'No bakeries or ops areas match “' + getMapSearchQuery(cfg) + '”.';
+          // The search and the visit toggle now stack, so say which pair came up
+          // empty rather than blaming the name on its own.
+          var visitScoped = visitFilteredItems.length !== sourceItems.length;
+          emptyMsg = 'No bakeries or ops areas match “' + getMapSearchQuery(cfg) + '”' +
+            (visitScoped ? ' in the current visit filter.' : '.');
         } else {
           emptyMsg = 'No bakeries match the current filters.';
         }
@@ -2514,7 +2524,6 @@ document.addEventListener('keydown', function (event) {
 
   window.GAILS.setNetworkMapVisitFilter = function (state) {
     _networkMapVisitState = state;
-    resetMapSearch('network');
     var cfg = MAPS.network;
     if (cfg.instance) {
       placeMarkers(cfg);
@@ -2531,7 +2540,6 @@ document.addEventListener('keydown', function (event) {
 
   window.GAILS.setTargetMapVisitFilter = function (state) {
     _targetMapVisitState = state;
-    resetMapSearch('target');
     var cfg = MAPS.target;
     if (cfg.instance) {
       placeMarkers(cfg);
