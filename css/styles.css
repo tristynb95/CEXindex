@@ -8796,7 +8796,15 @@ body.visit-log-filter-open .mobile-bottom-nav {
    pulled out so it's always on screen. The look itself is the shared
    .search-pill (see the network map); this class only sets the fixed width
    that lets it share a row with the summary bar instead of spanning it alone. */
-.visit-log-search-bar {
+/* Qualified with .search-pill so it outranks that rule by specificity rather
+   than by source order: .search-pill lives in css/dashboard.css, which loads
+   after this file, so its `flex: 1 1 200px` was winning here. In a row that
+   only cost the pill its intended fixed width; in the column the toolbar
+   becomes below, a row-context flex-basis sizes HEIGHT instead — which left
+   the mobile search box 200px tall with a 17px input floating in the middle
+   of it, so most of the box was dead to the touch. Same trap and same fix as
+   .search-pill.focus-queue__search further down. */
+.search-pill.visit-log-search-bar {
   flex: 0 0 280px;
   max-width: none;
 }
@@ -8807,8 +8815,12 @@ body.visit-log-filter-open .mobile-bottom-nav {
     align-items: stretch;
   }
 
-  .visit-log-search-bar {
-    flex-basis: auto;
+  /* Qualified for the same reason as the rule above — and it has to be, or
+     that rule's own 280px basis would set the height here instead. With the
+     basis out of the way the pill takes its height from min-height again. */
+  .search-pill.visit-log-search-bar {
+    flex: 0 0 auto;
+    width: 100%;
   }
 }
 

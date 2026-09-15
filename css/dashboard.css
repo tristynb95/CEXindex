@@ -2298,6 +2298,10 @@
 
 .search-pill__input {
   flex: 1 1 auto;
+  /* Fills the pill rather than sitting centred inside it, so the whole pill
+     is the tap target. A text input is only as tall as its line box, which
+     on touch left a thin live strip with dead space above and below it. */
+  align-self: stretch;
   /* width:0, not just min-width:0 — text inputs carry their own intrinsic
      preferred width in flexbox that min-width:0 alone doesn't fully
      suppress in every browser, which let the box widen as typed text grew
