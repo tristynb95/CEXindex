@@ -2564,7 +2564,10 @@ function getVisibleSiteMeta() {
     return name.toLowerCase().includes(search)
       || String(e.r || '').toLowerCase().includes(search)
       || String(e.o || '').toLowerCase().includes(search);
-  }).map(function(name) { return { name: name, entry: merged[name] || { r: '', o: '' } }; });
+  }).map(function(name) {
+    var entry = merged[name] || { r: '', o: '' };
+    return { name: name, entry: entry, coords: siteCoordinateText(entry) };
+  });
 }
 
 function updateSiteTableMeta(count) {
@@ -2592,8 +2595,8 @@ function renderSites() {
       + '<td><input type="text" value="' + escapeHtml(row.entry.r || '') + '" list="adminRegionList"  data-site="' + escapeHtml(row.name) + '" data-field="r" placeholder="Region"' + siteInputDis + '></td>'
       + '<td><input type="text" value="' + escapeHtml(row.entry.o || '') + '" list="adminManagerList" data-site="' + escapeHtml(row.name) + '" data-field="o" placeholder="Ops area"' + siteInputDis + '></td>'
       + '<td><div class="admin-table__coords">'
-      + '<input type="text" inputmode="decimal" value="' + escapeHtml(Array.isArray(row.entry.ll) ? row.entry.ll[0] : '') + '" data-site="' + escapeHtml(row.name) + '" data-coord="lat" placeholder="Latitude"' + siteInputDis + '>'
-      + '<input type="text" inputmode="decimal" value="' + escapeHtml(Array.isArray(row.entry.ll) ? row.entry.ll[1] : '') + '" data-site="' + escapeHtml(row.name) + '" data-coord="lon" placeholder="Longitude"' + siteInputDis + '>'
+      + '<input type="text" inputmode="decimal" value="' + escapeHtml(row.coords[0]) + '" data-site="' + escapeHtml(row.name) + '" data-coord="lat" placeholder="Latitude"' + siteInputDis + '>'
+      + '<input type="text" inputmode="decimal" value="' + escapeHtml(row.coords[1]) + '" data-site="' + escapeHtml(row.name) + '" data-coord="lon" placeholder="Longitude"' + siteInputDis + '>'
       + '</div></td>'
       + '<td>' + (sitesEditable
           ? '<div class="admin-table__actions"><button type="button" class="admin-inline-danger" data-action="remove-site" data-site="' + escapeHtml(row.name) + '">Remove</button></div>'
@@ -4040,17 +4043,43 @@ function updateSiteDraft(name, field, value) {
   renderDataControls();
 }
 
+// What is currently in the two coordinate boxes for one site: the half-typed
+// text if there is any, otherwise the saved pin. entry.llText is the draft-only
+// scratch pad described on updateSiteCoordinateDraft below; it never reaches
+// Firebase (cloneBakeryMeta keeps r/o/ll/dn only).
+function siteCoordinateText(entry) {
+  var source = Array.isArray(entry && entry.llText)
+    ? entry.llText
+    : (Array.isArray(entry && entry.ll) ? entry.ll : []);
+  return [
+    source[0] == null ? '' : String(source[0]),
+    source[1] == null ? '' : String(source[1])
+  ];
+}
+
+// Drops the scratch pad, leaving only the coordinates that actually parsed.
+// Used on the way out to Firebase and to state.siteMetaSource.
+function stripSiteCoordinateText(meta) {
+  Object.keys(meta || {}).forEach(function(name) {
+    if (meta[name]) delete meta[name].llText;
+  });
+  return meta;
+}
+
 // Both boxes write into the same [lat, lon] pair, so a coordinate is only
 // saved once both halves parse - typing just one half leaves ll untouched
-// rather than saving a broken single-number pin.
+// rather than saving a broken single-number pin. The half-typed text still has
+// to be remembered somewhere, though: entry.llText is that scratch pad. Without
+// it a site with no pin yet could never gain one, because typing the second box
+// would read the first one back off entry.ll and find nothing there.
 function updateSiteCoordinateDraft(name, part, value) {
   if (!state.siteMetaDraft[name]) state.siteMetaDraft[name] = { r: '', o: '' };
   var entry = state.siteMetaDraft[name];
-  var current = Array.isArray(entry.ll) ? entry.ll : [null, null];
-  var lat = part === 'lat' ? value : (current[0] != null ? current[0] : '');
-  var lon = part === 'lon' ? value : (current[1] != null ? current[1] : '');
-  var latText = String(lat == null ? '' : lat).trim();
-  var lonText = String(lon == null ? '' : lon).trim();
+  var typed = siteCoordinateText(entry);
+  typed[part === 'lat' ? 0 : 1] = String(value == null ? '' : value).trim();
+  entry.llText = typed;
+  var latText = typed[0];
+  var lonText = typed[1];
 
   if (!latText && !lonText) {
     entry.ll = null;
@@ -4061,8 +4090,9 @@ function updateSiteCoordinateDraft(name, part, value) {
         latNum >= -90 && latNum <= 90 && lonNum >= -180 && lonNum <= 180) {
       entry.ll = [latNum, lonNum];
     }
-    // An incomplete or out-of-range pair is left as-is in the draft (not
-    // written to entry.ll) so a half-typed value can't be saved as a pin.
+    // An incomplete or out-of-range pair is left as-is in entry.ll so a
+    // half-typed value can't be saved as a pin - it stays visible in the box
+    // through llText until the other half makes the pair valid.
   }
   setDirty(true);
   updateSiteTableMeta(getVisibleSiteMeta().length);
@@ -5460,16 +5490,19 @@ async function saveSiteData() {
   setMessage(siteMsg, 'info', 'Saving site data to Firebase…');
   try {
     var payload;
+    // The published copy carries coordinates, never the half-typed text behind
+    // them - see siteCoordinateText.
+    var meta = stripSiteCoordinateText(cloneMeta(state.siteMetaDraft));
     if (window.GAILS_Firebase && typeof window.GAILS_Firebase.saveSiteMeta === 'function') {
       payload = await window.GAILS_Firebase.saveSiteMeta(
-        state.siteMetaDraft,
+        meta,
         state.siteImportInfo,
         state.regionAssignmentsDraft,
         state.opsAreaAssignmentsDraft
       );
     } else {
       payload = buildSiteMetaPayload(
-        state.siteMetaDraft,
+        meta,
         state.siteImportInfo,
         state.regionAssignmentsDraft,
         state.opsAreaAssignmentsDraft
@@ -5477,7 +5510,7 @@ async function saveSiteData() {
       await set(ref(db, 'portalData/siteMeta'), payload);
     }
     announceDataUpdate('the site directory', (payload && payload.siteCount ? payload.siteCount + ' sites' : ''));
-    state.siteMetaSource = cloneMeta(state.siteMetaDraft);
+    state.siteMetaSource = cloneMeta(meta);
     state.regionAssignmentsSource = cloneMeta((payload && payload.regionAssignments) || []);
     state.regionAssignmentsDraft = cloneMeta(state.regionAssignmentsSource);
     state.opsAreaAssignmentsSource = cloneMeta((payload && payload.opsAreaAssignments) || []);
@@ -5736,6 +5769,8 @@ syncCoordinatesBtn.addEventListener('click', function() {
     var current = Array.isArray(entry.ll) ? entry.ll : null;
     if (current && Number(current[0]) === Number(fallback.ll[0]) && Number(current[1]) === Number(fallback.ll[1])) return;
     entry.ll = fallback.ll.slice();
+    // Otherwise the box would keep showing whatever was typed before the sync.
+    delete entry.llText;
     updated += 1;
   });
 
