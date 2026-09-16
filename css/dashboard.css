@@ -1729,10 +1729,6 @@
   background: #1D9E5C;
 }
 
-.wc-sentiment-bar__seg--neu {
-  background: #A79E8E;
-}
-
 .wc-sentiment-bar__seg--neg {
   background: var(--accent);
 }

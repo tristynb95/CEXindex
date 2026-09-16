@@ -533,27 +533,38 @@ window.GAILS = window.GAILS || {};
       return;
     }
 
-    var posW = 0, neutW = 0, negW = 0;
+    // Share of sentiment-bearing words only.  Neutral terms are topic mentions
+    // (coffee, staff, table) carrying no opinion: counting them in the
+    // denominator shrinks both real figures and reads as "40% felt lukewarm",
+    // which is not what it measures.  Excluding them also makes this bar agree
+    // with the score behind the tag, which has always divided by pos + neg.
+    var posW = 0, negW = 0;
     words.forEach(function (w) {
       var s = (w.sentiment || '').toLowerCase();
       if (s === 'positive') posW += w.value;
       else if (s === 'negative') negW += w.value;
-      else neutW += w.value;
     });
-    var total  = posW + neutW + negW || 1;
+
+    var total = posW + negW;
+    if (!total) {          // nothing but topic mentions — no sentiment to show
+      barEl.hidden = true;
+      if (tagEl) tagEl.hidden = true;
+      return;
+    }
+
     var posPct = (posW / total) * 100;
-    var neutPct = (neutW / total) * 100;
-    var negPct  = (negW / total) * 100;
+    var negPct = 100 - posPct;  // derived, so the pair always sums to exactly 100
 
     barEl.hidden = false;
     var trackEl = barEl.querySelector('.wc-sentiment-bar__track');
     if (trackEl) {
+      trackEl.setAttribute('role', 'img');
+      trackEl.setAttribute('aria-label',
+        'Positive ' + Math.round(posPct) + '%, negative ' + Math.round(negPct) +
+        '% of sentiment-bearing words');
       trackEl.innerHTML =
         '<div class="wc-sentiment-bar__seg wc-sentiment-bar__seg--pos" style="flex-basis:' + posPct.toFixed(2) + '%" title="Positive ' + Math.round(posPct) + '%">' +
           (posPct >= 10 ? '<span>' + Math.round(posPct) + '%</span>' : '') +
-        '</div>' +
-        '<div class="wc-sentiment-bar__seg wc-sentiment-bar__seg--neu" style="flex-basis:' + neutPct.toFixed(2) + '%" title="Neutral ' + Math.round(neutPct) + '%">' +
-          (neutPct >= 10 ? '<span>' + Math.round(neutPct) + '%</span>' : '') +
         '</div>' +
         '<div class="wc-sentiment-bar__seg wc-sentiment-bar__seg--neg" style="flex-basis:' + negPct.toFixed(2) + '%" title="Negative ' + Math.round(negPct) + '%">' +
           (negPct >= 10 ? '<span>' + Math.round(negPct) + '%</span>' : '') +
