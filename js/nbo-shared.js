@@ -18,11 +18,24 @@
 window.GAILS = window.GAILS || {};
 
 (function() {
+  // Firebase stores a list as an object map whenever its keys are not a dense
+  // 0..n-1 run, so a record whose questions were edited can come back as
+  // {0:{...},2:{...}} rather than an array. Every reader below treats it as an
+  // array, and the resulting `questions.forEach is not a function` takes down
+  // whichever render asked for the score — so normalise once, here.
+  function questionList(questions) {
+    if (Array.isArray(questions)) return questions;
+    if (questions && typeof questions === 'object') {
+      return Object.keys(questions).map(function(key) { return questions[key]; });
+    }
+    return [];
+  }
+
   // N/A answers are excluded from the denominator — a question that didn't
   // apply on the day shouldn't count against the bakery. A visit that is
   // entirely N/A has no meaningful percentage, hence the null.
   function scorable(record) {
-    var questions = (record && record.questions) || [];
+    var questions = questionList(record && record.questions);
     var yes = 0;
     var total = 0;
     questions.forEach(function(q) {
@@ -58,6 +71,7 @@ window.GAILS = window.GAILS || {};
   }
 
   window.GAILS.NBOShared = {
+    questionList: questionList,
     scorable: scorable,
     pctFromCounts: pctFromCounts,
     overallPct: overallPct,

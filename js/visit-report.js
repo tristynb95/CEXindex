@@ -1298,8 +1298,16 @@ window.GAILS = window.GAILS || {};
     });
   }
 
+  // Same normalisation js/nbo-shared.js applies before scoring: a stored
+  // questions list can come back from Firebase as an object map.
+  function nboQuestionList(questions) {
+    var shared = window.GAILS.NBOShared;
+    if (shared && typeof shared.questionList === 'function') return shared.questionList(questions);
+    return Array.isArray(questions) ? questions : [];
+  }
+
   function buildNboReportHtml(record) {
-    var questions = record.questions || [];
+    var questions = nboQuestionList(record.questions);
 
     var pdfHtml = record.pdfUrl
       ? '<div class="visit-report-section-wrapper"><a class="visit-report-pdf-btn" href="' + escapeHtml(record.pdfUrl) + '" target="_blank" rel="noopener">&#128196; View Original NBO PDF &#8599;</a></div>'
@@ -2118,7 +2126,7 @@ window.GAILS = window.GAILS || {};
     // had one (imports predating js/nbo-parser.js reading it don't), then the
     // per-question coaching notes that carry the rest of the report.
     if (v.type === 'nbo') {
-      var coaching = (v.questions || []).filter(function (q) { return q.note; });
+      var coaching = nboQuestionList(v.questions).filter(function (q) { return q && q.note; });
       var nboSummary = v.summary || '';
       return {
         text: (nboSummary ? [nboSummary] : []).concat(coaching.map(function (q) {
@@ -2207,6 +2215,18 @@ window.GAILS = window.GAILS || {};
 
   function visitLogFilterMatches(values, candidate) {
     return !values.length || values.indexOf(candidate) !== -1;
+  }
+
+  // Visit records come straight out of Firebase, so a field that is normally a
+  // name can arrive as a number, a null, or an object. Calling .toLowerCase()
+  // on one of those throws, and a throw inside the Visit History search filter
+  // takes the whole render down after the header has already been rewritten —
+  // which leaves the previous, unfiltered list on screen and reads as "the
+  // search does nothing". Coerce first, compare second. The directory and
+  // follow-up searches build their haystack by concatenation, which coerces
+  // for free; these two are the paths that touch raw fields directly.
+  function searchHaystack(value) {
+    return String(value == null ? '' : value).toLowerCase();
   }
 
   // Filter selects use an empty value for "no filter", so the readable
@@ -5438,10 +5458,11 @@ window.GAILS = window.GAILS || {};
         if (!v.bakery || !v.date) return false;
 
         if (searchVal) {
-          var bakeryMatch = v.bakery.toLowerCase().indexOf(searchVal) !== -1;
-          var opsMatch = (G.getBakeryOps ? G.getBakeryOps(v.bakery) : '').toLowerCase().indexOf(searchVal) !== -1;
-          var partnerMatch = partnerText(v.coffeePartner).toLowerCase().indexOf(searchVal) !== -1 && !!v.coffeePartner;
-          var auditorMatch = v.auditorName && v.auditorName.toLowerCase().indexOf(searchVal) !== -1;
+          var bakeryMatch = searchHaystack(v.bakery).indexOf(searchVal) !== -1;
+          var opsMatch = searchHaystack(G.getBakeryOps ? G.getBakeryOps(v.bakery) : '').indexOf(searchVal) !== -1;
+          var partnerMatch = !!v.coffeePartner &&
+            searchHaystack(partnerText(v.coffeePartner)).indexOf(searchVal) !== -1;
+          var auditorMatch = searchHaystack(v.auditorName).indexOf(searchVal) !== -1;
           if (!bakeryMatch && !opsMatch && !partnerMatch && !auditorMatch) return false;
         }
         if (regionVal.length) {
@@ -5562,7 +5583,13 @@ window.GAILS = window.GAILS || {};
         var visibleVisits = groupVisits.length > remaining ? groupVisits.slice(0, remaining) : groupVisits;
         remaining -= visibleVisits.length;
 
-        var visitsHtml = visibleVisits.map(function (v) {
+        // Named rather than inlined into the map below so a record this cannot
+        // read degrades to the placeholder row instead of throwing out of the
+        // whole render — an abort here leaves the previous list on screen while
+        // the header and the counts bar have already moved on, so a search that
+        // happens to pull one bad check-in into view looks like a search that
+        // does nothing at all.
+        function historyRowHtml(v) {
           var scoreText = '—';
           var tagsHtml = '';
           var scoreColor = '#ffffff';
@@ -5638,6 +5665,30 @@ window.GAILS = window.GAILS || {};
             '<tr class="visit-history-table__details-row" id="visit-history-details-' + escapeHtml(v.id) + '"' + groupAttr + ' data-visit-details-for="' + escapeHtml(v.id) + '" hidden>' +
             '<td colspan="6"><div class="visit-log-row__notes-full">' + notesFullHtml + '</div></td>' +
             '</tr>';
+        }
+
+        // Deliberately calls nothing that reads the record beyond coercing two
+        // fields: it has to survive whatever made the real row fail.
+        function historyFallbackRowHtml(v) {
+          return '<tr class="visit-history-table__row"' +
+            (groupVal === 'none' ? '' : ' data-group="' + escapeHtml(groupName) + '"') +
+            (isCollapsed ? ' hidden' : '') + '>' +
+            '<td data-label="Date">' + escapeHtml(String(v.date || '—')) + '</td>' +
+            '<td data-label="Bakery">' + escapeHtml(String(v.bakery || 'Unknown bakery')) + '</td>' +
+            '<td data-label="Partner / auditor">—</td>' +
+            '<td data-label="Score">—</td>' +
+            '<td data-label="Visit type and notes">This check-in could not be displayed.</td>' +
+            '<td data-label="Report"></td>' +
+            '</tr>';
+        }
+
+        var visitsHtml = visibleVisits.map(function (v) {
+          try {
+            return historyRowHtml(v);
+          } catch (error) {
+            console.error('Could not render check-in ' + (v && v.id), error);
+            return historyFallbackRowHtml(v || {});
+          }
         }).join('');
 
         if (groupVal === 'none') {
@@ -5687,8 +5738,8 @@ window.GAILS = window.GAILS || {};
 
       allBakeries.forEach(function (bName) {
         if (searchVal) {
-          var opsMatch = (G.getBakeryOps ? G.getBakeryOps(bName) : '').toLowerCase().indexOf(searchVal) !== -1;
-          if (bName.toLowerCase().indexOf(searchVal) === -1 && !opsMatch) return;
+          var opsMatch = searchHaystack(G.getBakeryOps ? G.getBakeryOps(bName) : '').indexOf(searchVal) !== -1;
+          if (searchHaystack(bName).indexOf(searchVal) === -1 && !opsMatch) return;
         }
         if (regionVal.length) {
           var reg = G.getBakeryRegion ? G.getBakeryRegion(bName) : 'Unknown';
