@@ -611,11 +611,16 @@ function monthKey(date) {
 
 function monthlyTrend(visits, count, endDate) {
   var series = [];
+  // Past 12 months the short month name repeats, so a span that long carries
+  // the year as well — "Sep" twice in one chart names nothing.
+  var spansAYear = count > 12;
   for (var offset = count - 1; offset >= 0; offset -= 1) {
     var date = new Date(endDate.getFullYear(), endDate.getMonth() - offset, 1);
     series.push({
       key: monthKey(date),
-      label: date.toLocaleDateString('en-GB', { month: 'short' }),
+      label: date.toLocaleDateString('en-GB', spansAYear
+        ? { month: 'short', year: '2-digit' }
+        : { month: 'short' }),
       value: 0
     });
   }
@@ -678,6 +683,9 @@ function renderTrend(visits) {
   var series = visitTrend(visits);
   var max = series.reduce(function (largest, point) { return Math.max(largest, point.value); }, 0);
   trendChart.style.setProperty('--trend-count', series.length);
+  // 18 and 24-month windows put far more columns in the same card than the
+  // shorter periods do; the dense layout narrows them instead of overflowing.
+  trendChart.classList.toggle('my-team-trend-chart--dense', series.length > 12);
   trendChart.innerHTML = series.map(function (point) {
     var height = max ? Math.max(4, Math.round((point.value / max) * 100)) : 0;
     return '<div class="my-team-trend-column" title="' + escapeHtml(point.label + ': ' + plural(point.value, 'visit')) + '">' +
@@ -1565,14 +1573,15 @@ function setToggleActive(group, attribute, value) {
 
 // ---------- events ----------
 
-// "All time" (value "0") is the only period that reaches behind the window the
-// feed subscribes to; every other option is a bounded number of recent months.
-// Called on load as well as on change, so a period restored from localStorage
-// widens the feed too.
+// "All time" (value "0") and the windows longer than 12 months reach behind the
+// window the feed subscribes to — it starts at Jan 1 of the previous calendar
+// year, so "Last 18/24 months" can begin before it. Every shorter option is
+// bounded inside it. Called on load as well as on change, so a period restored
+// from localStorage widens the feed too.
 function ensureVisitHistory() {
   if (allTimeVisitsRequested || !visitFeed) return;
   var num = parseInt(period, 10);
-  if (!(isNaN(num) || num === 0)) return;
+  if (!(isNaN(num) || num === 0 || num > 12)) return;
   allTimeVisitsRequested = true;
   visitFeed.expandToAllTime().catch(function (error) {
     allTimeVisitsRequested = false;

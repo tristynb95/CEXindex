@@ -844,8 +844,9 @@ function patchPerformance(focusContext) {
 // ---------- filter persistence ----------
 
 // Whether the chosen period can see further back than the window the feed
-// subscribes to. "Last 12 Months" and every named preset stop inside it; only
-// All Time and a custom range starting before the window can reach past it.
+// subscribes to. Every named preset and every window up to "Last 12 Months"
+// stops inside it; All Time, the longer windows ("Last 18/24 Months") and a
+// custom range starting before the window can reach past it.
 function periodNeedsFullHistory(filters) {
   if (!filters) return false;
   if (filters.period === 'custom') {
@@ -859,7 +860,7 @@ function periodNeedsFullHistory(filters) {
     return false;
   }
   var num = parseInt(filters.period, 10);
-  return isNaN(num) || num === 0;
+  return isNaN(num) || num === 0 || num > 12;
 }
 
 // Pulls in the history behind the window, once, when a filter asks to see it.

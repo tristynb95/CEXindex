@@ -344,6 +344,18 @@
   font-weight: 800;
 }
 
+/* 18 and 24-month windows: more columns in the same card, so they narrow and
+   the labels (which carry a year at that span) shrink with them. */
+.my-team-trend-chart--dense {
+  grid-template-columns: repeat(var(--trend-count, 12), minmax(18px, 1fr));
+  gap: 4px;
+}
+
+.my-team-trend-chart--dense .my-team-trend-column__label {
+  font-size: 0.58rem;
+  letter-spacing: -0.01em;
+}
+
 .my-team-trend-column__label {
   overflow: hidden;
   color: var(--muted-l);

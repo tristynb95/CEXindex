@@ -2387,17 +2387,19 @@ window.GAILS = window.GAILS || {};
     return new Date(reportingYear, 2 + (quarterIndex * 3), 1);
   }
 
-  // True for the one period option that can reach behind the rolling window the
-  // live feed subscribes to. Every other preset — including "Last Year" and
-  // "Last 12 Months" — stops inside it by construction, so only All Time has to
-  // pay for the rest of the history.
+  // True for the period options that can reach behind the rolling window the
+  // live feed subscribes to — All Time, and any window longer than 12 months.
+  // The feed starts at Jan 1 of the previous calendar year, so every named
+  // preset and every window up to "Last 12 Months" stops inside it by
+  // construction; "Last 18/24 Months" can start before it (always, once the
+  // year turns), so they pay for the rest of the history too.
   function periodNeedsFullHistory(n) {
     if (n === 'currentMonth' || n === 'thisQuarter' || n === 'lastQuarter' ||
         n === 'thisYear' || n === 'lastYear') {
       return false;
     }
     var num = parseInt(n, 10);
-    return isNaN(num) || num === 0;
+    return isNaN(num) || num === 0 || num > 12;
   }
 
   var allTimeVisitsRequested = false;
@@ -3777,6 +3779,8 @@ window.GAILS = window.GAILS || {};
       '3': 'Last 3 Months',
       '6': 'Last 6 Months',
       '12': 'Last 12 Months',
+      '18': 'Last 18 Months',
+      '24': 'Last 24 Months',
       'thisYear': 'This Year',
       'lastYear': 'Last Year'
     };
