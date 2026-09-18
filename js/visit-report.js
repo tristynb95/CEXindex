@@ -4310,6 +4310,34 @@ window.GAILS = window.GAILS || {};
   // chunk. Keeps the innerHTML rebuild cheap when "All Time" is selected.
   var VISIT_LOG_RENDER_CHUNK = 150;
 
+  // Shares a render budget across grouped lists. Spending it in list order
+  // dropped whole groups off the bottom of the table — with three regions and
+  // one chunk of budget, South Region had no header at all until "Show more"
+  // was clicked. Every non-empty group gets a turn, and a group smaller than
+  // its share hands the remainder back rather than wasting it.
+  function allocateVisitRowBudget(sizes, total) {
+    var alloc = sizes.map(function () { return 0; });
+    var pending = [];
+    sizes.forEach(function (size, i) { if (size > 0) pending.push(i); });
+    var remaining = Math.max(0, total);
+    while (remaining > 0 && pending.length) {
+      // At least one row per pending group per pass, so this always terminates.
+      var share = Math.max(1, Math.floor(remaining / pending.length));
+      var next = [];
+      for (var k = 0; k < pending.length; k++) {
+        var i = pending[k];
+        if (remaining > 0) {
+          var give = Math.min(share, sizes[i] - alloc[i], remaining);
+          alloc[i] += give;
+          remaining -= give;
+        }
+        if (alloc[i] < sizes[i]) next.push(i);
+      }
+      pending = next;
+    }
+    return alloc;
+  }
+
   function saveVisitLogFilters(state) {
     try { localStorage.setItem(VISIT_LOG_FILTER_STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
   }
@@ -5572,20 +5600,23 @@ window.GAILS = window.GAILS || {};
         });
       });
 
-      var remaining = renderLimit;
+      // Pagination: the budget is shared out across the groups so every group
+      // keeps its header and a slice of its rows on screen; "Show more" widens
+      // every group's slice at once rather than unhiding a group wholesale.
+      var groupRowBudget = allocateVisitRowBudget(groupsSorted.map(function (groupName) {
+        return grouped[groupName].length;
+      }), renderLimit);
+      var renderedCount = groupRowBudget.reduce(function (sum, n) { return sum + n; }, 0);
 
-      var html = groupsSorted.map(function (groupName) {
+      var html = groupsSorted.map(function (groupName, groupIndex) {
         var groupVisits = grouped[groupName];
         var isCollapsed = groupVal !== 'none' && !!collapsedGroups[groupName];
 
         // Sort based on selected option within the group
         groupVisits.sort(visitLogSorter(sortVal));
 
-        // Pagination: spend the remaining row budget on this group; anything
-        // beyond it stays reachable via the Show more button after the list.
-        if (remaining <= 0) return '';
-        var visibleVisits = groupVisits.length > remaining ? groupVisits.slice(0, remaining) : groupVisits;
-        remaining -= visibleVisits.length;
+        var groupBudget = groupRowBudget[groupIndex];
+        var visibleVisits = groupVisits.length > groupBudget ? groupVisits.slice(0, groupBudget) : groupVisits;
 
         // Named rather than inlined into the map below so a record this cannot
         // read degrades to the placeholder row instead of throwing out of the
@@ -5718,8 +5749,8 @@ window.GAILS = window.GAILS || {};
         '<tbody>' + html + '</tbody>' +
         '</table></div>';
 
-      if (filtered.length > renderLimit) {
-        html += '<button type="button" class="visit-log-show-more">Show more (' + (filtered.length - renderLimit) + ' remaining)</button>';
+      if (renderedCount < filtered.length) {
+        html += '<button type="button" class="visit-log-show-more">Show more (' + (filtered.length - renderedCount) + ' remaining)</button>';
       }
 
       container.innerHTML = html;
