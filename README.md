@@ -581,6 +581,65 @@ firebase deploy --only functions,hosting
 CI currently deploys Hosting only, so a new function version must be deployed
 manually unless the workflow is extended.
 
+## Object storage, and the check-in photos that aren't there
+
+Two prefixes in the Storage bucket are live: `cqvPdfs/` and `nboPdfs/`, both
+written by the visit PDF import. A third, `visitPhotos/`, is **dormant** — see
+below before adding anything that writes to it.
+
+`storage.lifecycle.json` holds an object retention policy for the bucket. It is
+**not applied by `firebase deploy`**; Firebase has no lifecycle command, and
+nothing in CI touches it. It is deliberately unapplied — it exists so the
+decision does not have to be rediscovered:
+
+```bash
+# apply it (from the repo root)
+gcloud storage buckets update gs://cexindex.firebasestorage.app --lifecycle-file=storage.lifecycle.json
+
+# read back what is actually live — empty output means no rule at all
+gcloud storage buckets describe gs://cexindex.firebasestorage.app --format='value(lifecycle_config)'
+```
+
+If `--lifecycle-file` rejects the file, the shape is the thing to check: gcloud
+wants the bare `{"rule": [...]}` in the repo, the older `gsutil lifecycle set`
+wants it wrapped as `{"lifecycle": {"rule": [...]}}`.
+
+Note it is retroactive — existing objects are evaluated too, so anything already
+past the age is deleted on the next daily sweep. Check the age of the oldest
+CQV/NBO PDFs against the 1825-day rule before applying it.
+
+### Why visitPhotos/ is dormant
+
+Attaching up to three photos to a check-in was built in September 2026 and
+rolled back the same day. It worked — picker, client-side downscale, upload,
+rendering — and the rollback was not a failure of the code.
+
+The feature was justified partly on storage cost being manageable *because* of
+the downscale. At ~200 photos a month and ~270 KB each after re-encoding at
+1600px / JPEG 0.8 (measured in a browser, not estimated), that is 0.63 GB a
+year: **about eight years to reach the bucket's 5 GB free allowance**, and
+pennies a year after that. The cost the engineering was defending against did
+not exist at this volume, so the feature was not worth its surface area.
+
+What that means for anyone reconsidering it:
+
+- **Don't re-derive the cost model.** At this volume storage is free for the
+  best part of a decade. The reason to build it is whether people want photos on
+  a check-in, not the bill.
+- **The PDFs are the bucket's real occupant.** They share the same 5 GB
+  allowance and are megabytes each, not kilobytes. If storage ever costs
+  anything it will be them, not photos.
+- **Keep the downscale if it comes back.** Not for cost — for upload time on
+  bakery wifi with someone stood at the counter, and because re-encoding through
+  a canvas strips EXIF, so phone GPS coordinates never reach the bucket.
+- Photos of a bakery floor catch staff. If it returns, retention is a policy
+  question worth asking rather than a storage one.
+
+The client-side half is in the repo history. `storage.rules` keeps the
+`visitPhotos/` block with writes denied and the intended condition preserved as
+a comment; leaving it live would have opened an image-upload path to every
+signed-in user the next time those rules were deployed for the PDF paths.
+
 ## Security rules
 
 Rules are deployed **from this repo**, not pasted into the console:

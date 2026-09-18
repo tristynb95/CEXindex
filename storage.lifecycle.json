@@ -1,0 +1,18 @@
+{
+  "rule": [
+    {
+      "action": { "type": "Delete" },
+      "condition": {
+        "age": 730,
+        "matchesPrefix": ["visitPhotos/"]
+      }
+    },
+    {
+      "action": { "type": "Delete" },
+      "condition": {
+        "age": 1825,
+        "matchesPrefix": ["cqvPdfs/", "nboPdfs/"]
+      }
+    }
+  ]
+}

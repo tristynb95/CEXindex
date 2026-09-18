@@ -3,7 +3,8 @@
 //
 // Used by the visit PDF import (js/cqv-parser.js and js/nbo-parser.js + the
 // import zone in admin.html / js/admin-page.js), which uploads CQV reports to
-// cqvPdfs/ and NBO Coffee Visit reports to nboPdfs/.
+// cqvPdfs/ and NBO Coffee Visit reports to nboPdfs/. Those two prefixes are the
+// only ones anything writes to — see the dormant visitPhotos/ block below.
 //
 // NOTE on admin-only writes: database.rules.json restricts writes
 // (dashboardData, routineVisits, etc.) to admins via a lookup against the
@@ -32,6 +33,34 @@ service firebase.storage {
         && request.resource.size < 25 * 1024 * 1024
         && request.resource.contentType == 'application/pdf';
     }
+    // DORMANT — check-in photos. Attaching a photo to a check-in was built in
+    // September 2026 and rolled back the same day: at the volume the dashboard
+    // actually sees (~200 photos a month, ~270KB each after the client-side
+    // downscale) it would take about eight years to reach the bucket's 5GB
+    // free allowance, so the storage cost that justified the work was not real.
+    // The client-side half is gone; see the repo history for it, and
+    // storage.lifecycle.json for the retention rule that was written alongside.
+    //
+    // Writes are denied because nothing writes here any more. Leaving the
+    // condition live would mean that deploying these rules — which happens for
+    // the PDF paths above — opened an 8MB image-upload path to every signed-in
+    // user, for a feature that does not exist. Restore the commented condition
+    // to bring it back; the intent it encodes is worth keeping:
+    //
+    //   allow write: if request.auth != null
+    //     && request.resource.size < 8 * 1024 * 1024
+    //     && request.resource.contentType.matches('image/.*');
+    //
+    // The 8MB ceiling was headroom over the ~270KB the picker produced, there
+    // to stop a bypassed client pushing raw multi-megabyte phone photos into
+    // the bucket. A "max 3 per check-in" cap is not expressible here at all —
+    // Storage rules cannot count sibling objects — so that limit lived in the
+    // picker and in the visit record, never in this file.
+    match /visitPhotos/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
     match /{allOtherPaths=**} {
       allow read, write: if false;
     }

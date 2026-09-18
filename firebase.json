@@ -53,6 +53,7 @@
       "admin-setup.html",
       "database.rules.json",
       "storage.rules",
+      "storage.lifecycle.json",
       "eslint.config.mjs",
       "package.json",
       "package-lock.json",
