@@ -107,6 +107,7 @@ window.GAILS = window.GAILS || {};
     if ((state.regionFilter || []).length && state.regionFilter.indexOf(G.getBakeryRegion(name)) < 0) return false;
     if ((state.opsFilter || []).length && state.opsFilter.indexOf(G.getBakeryOps(name)) < 0) return false;
     if ((state.searchBakery || []).length && !isSelectedBakery(name, state.searchBakery)) return false;
+    if (G.passesHeadBaristaFilter && !G.passesHeadBaristaFilter(name, state)) return false;
     return true;
   }
 
@@ -339,15 +340,16 @@ window.GAILS = window.GAILS || {};
   var BAKERY_FILTER_ITEM_SEPARATOR = String.fromCharCode(1);
   var BAKERY_FILTER_GROUP_SEPARATOR = String.fromCharCode(2);
 
-  // The three bakery filters are everything the core reads off `state`, so
-  // signing them stands in for the whole object — and it has to be by value,
-  // because they are rebuilt as new arrays whenever they change and My Activity
-  // passes a freshly built state object on every call.
+  // The bakery filters are everything the core reads off `state`, so signing
+  // them stands in for the whole object — and it has to be by value, because
+  // they are rebuilt as new arrays whenever they change and My Activity passes
+  // a freshly built state object on every call.
   function bakeryFilterSignature(state) {
     return [
       (state.regionFilter || []).join(BAKERY_FILTER_ITEM_SEPARATOR),
       (state.opsFilter || []).join(BAKERY_FILTER_ITEM_SEPARATOR),
-      (state.searchBakery || []).join(BAKERY_FILTER_ITEM_SEPARATOR)
+      (state.searchBakery || []).join(BAKERY_FILTER_ITEM_SEPARATOR),
+      state.headBaristaFilter == null ? '' : String(state.headBaristaFilter)
     ].join(BAKERY_FILTER_GROUP_SEPARATOR);
   }
 

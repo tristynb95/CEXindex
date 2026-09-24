@@ -111,18 +111,35 @@ window.GAILS = window.GAILS || {};
     // Something an admin changed for everybody: a new customer experience
     // workbook, or a re-drawn site directory. `subject` says which. Admin
     // housekeeping rather than floor news, so it stays out of everyone else's
-    // bell by default.
+    // bell by default. The row says only what changed — never the uploaded
+    // file's name or row counts, which older events still carry in `detail`.
     'data.updated': {
       icon: 'data',
       personal: false,
       estateWide: true,
       adminOnly: true,
-      title: function (event) { return event.actorName + ' updated ' + (event.subject || 'the shared data'); },
-      body: function (event) { return event.detail || ''; }
+      title: function (event) { return dataUpdateLabel(event.subject) + ' Updated'; },
+      body: function () { return ''; }
     }
   };
 
   var TYPE_KEYS = Object.keys(TYPES);
+
+  // The headline for each thing an admin can republish, keyed by the subject
+  // the writers record.
+  var DATA_UPDATE_LABELS = {
+    'the shared dataset': 'Bakery Stats',
+    'the site directory': 'Site Directory',
+    'the head barista directory': 'Head Barista Directory'
+  };
+
+  function dataUpdateLabel(subject) {
+    var key = String(subject || '').trim().toLowerCase();
+    if (DATA_UPDATE_LABELS[key]) return DATA_UPDATE_LABELS[key];
+    var words = key.replace(/^the\s+/, '').split(/\s+/).filter(Boolean);
+    if (!words.length) return 'Shared Data';
+    return words.map(function (word) { return word.charAt(0).toUpperCase() + word.slice(1); }).join(' ');
+  }
 
   function cleanText(value) {
     return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');

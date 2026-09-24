@@ -3318,8 +3318,23 @@ body.admin-modal-open {
 }
 
 .admin-body .admin-table--sites,
-.admin-body .admin-table--visits {
+.admin-body .admin-table--visits,
+.admin-body .admin-table--baristas {
   min-width: 720px;
+}
+
+/* A directory bakery the site directory does not know: a quiet flag, not an
+   error — the name may just be spelt differently in the two workbooks. */
+.admin-body .admin-barista-unmatched {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-amber) 14%, transparent);
+  color: var(--admin-amber);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .admin-body .admin-table--people th:nth-child(1),

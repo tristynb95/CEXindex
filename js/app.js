@@ -275,6 +275,11 @@
       pills.push(headerPill('header-pill-filter', 'bakery', bText, true, bTooltip));
     }
 
+    // Optional bubble: Head Baristas
+    if (state.headBaristaFilter !== '') {
+      pills.push(headerPill('header-pill-filter', 'baristas', G.headBaristaFilterLabel(state.headBaristaFilter), true));
+    }
+
     // Optional bubble: Band
     var bandVal = state.bandFilter;
     if (bandVal) {
@@ -396,7 +401,8 @@
     if (key === 'bakery') return document.getElementById('bakeryMsTrigger');
     var selectId = key === 'period'
       ? null
-      : key === 'band' ? 'bandFilter' : key === 'view' ? 'dashboardView' : null;
+      : key === 'band' ? 'bandFilter' : key === 'view' ? 'dashboardView'
+        : key === 'baristas' ? 'headBaristaFilter' : null;
     var target = key === 'period'
       ? (function () {
         var monthEl = document.getElementById('monthSelect');
@@ -1678,6 +1684,7 @@
       var all = (state.BAKERIES || []).filter(function (b) {
         if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(b))) return false;
         if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(b))) return false;
+        if (!G.passesHeadBaristaFilter(b)) return false;
         return true;
       });
       var q = (query || '').toLowerCase().trim();
@@ -1842,6 +1849,44 @@
   }
 
   document.getElementById('bandFilter').addEventListener('change', function (e) { state.bandFilter = e.target.value; refresh(); });
+
+  // Head Baristas: All, None, then 1 up to the most primary Head Baristas any
+  // one bakery has. Only primary locations count (see js/filters.js). The
+  // control stays hidden until the directory has loaded.
+  function updateHeadBaristaFilterOptions() {
+    var control = document.getElementById('headBaristaFilterControl');
+    var select = document.getElementById('headBaristaFilter');
+    if (!control || !select) return;
+    var hasDirectory = G.hasHeadBaristaDirectory && G.hasHeadBaristaDirectory();
+    control.style.display = hasDirectory ? '' : 'none';
+    var max = hasDirectory ? G.getMaxHeadBaristaCount() : 0;
+    var html = '<option value="">All</option><option value="0">None</option>';
+    for (var count = 1; count <= max; count++) {
+      html += '<option value="' + count + '">' + count + '</option>';
+    }
+    select.innerHTML = html;
+    var current = state.headBaristaFilter;
+    if (!hasDirectory || (current !== '' && Number(current) > max)) current = '';
+    state.headBaristaFilter = current;
+    select.value = current;
+    G.syncCustomSelect(select);
+  }
+
+  document.getElementById('headBaristaFilter').addEventListener('change', function (e) {
+    state.headBaristaFilter = e.target.value;
+    refresh();
+  });
+
+  window.addEventListener('gails:head-baristas-sync', function () {
+    updateHeadBaristaFilterOptions();
+    refresh();
+  });
+  // A site-directory change can re-key which bakery a Head Barista counts
+  // against, so the top option can move.
+  window.addEventListener('gails:site-meta-sync', function () {
+    if (G.invalidateHeadBaristaCounts) G.invalidateHeadBaristaCounts();
+    if (G.hasHeadBaristaDirectory && G.hasHeadBaristaDirectory()) updateHeadBaristaFilterOptions();
+  });
 
   // ========== REGION MULTI-SELECT ==========
   (function () {
@@ -2408,6 +2453,12 @@
     state.opsFilter.splice(0, state.opsFilter.length);
     state.searchBakery.splice(0, state.searchBakery.length);
     state.bandFilter = '';
+    state.headBaristaFilter = '';
+    var headBaristaSelect = document.getElementById('headBaristaFilter');
+    if (headBaristaSelect) {
+      headBaristaSelect.value = '';
+      G.syncCustomSelect(headBaristaSelect);
+    }
     state.dashboardView = 'bakeries';
     var dashboardViewSelect = document.getElementById('dashboardView');
     if (dashboardViewSelect) {
@@ -2483,6 +2534,7 @@
     if (state.opsFilter && state.opsFilter.length) count++;
     if (state.searchBakery && state.searchBakery.length) count++;
     if (state.bandFilter) count++;
+    if (state.headBaristaFilter !== '') count++;
     if (isNonDefaultDashboardView()) count++;
     if (isNonDefaultPeriod()) count++;
     return count;
@@ -2661,6 +2713,10 @@
       state.bandFilter = '';
       var bandSelect = document.getElementById('bandFilter');
       if (bandSelect) { bandSelect.value = ''; G.syncCustomSelect(bandSelect); }
+    } else if (key === 'baristas') {
+      state.headBaristaFilter = '';
+      var baristaSelect = document.getElementById('headBaristaFilter');
+      if (baristaSelect) { baristaSelect.value = ''; G.syncCustomSelect(baristaSelect); }
     } else {
       return;
     }

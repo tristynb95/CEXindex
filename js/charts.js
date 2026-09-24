@@ -451,6 +451,7 @@ window.GAILS.renderTrendCharts = function (data) {
   var trendScopedAll = state.ALL.filter(function (r) {
     if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(r.b))) return false;
     if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(r.b))) return false;
+    if (G.passesHeadBaristaFilter && !G.passesHeadBaristaFilter(r.b)) return false;
     if (state.bandFilter) { var _bf = state.bandFilter; if (_bf.indexOf('abs:') === 0) { if (r.acb !== _bf.slice(4)) return false; } else { if (r.cb !== _bf) return false; } }
     if (trendSelectedBakeries.length && trendSelectedBakeries.indexOf(r.b) === -1) return false;
     return true;
@@ -464,6 +465,7 @@ window.GAILS.renderTrendCharts = function (data) {
     var scopeParts = [];
     if (state.regionFilter.length) scopeParts.push(state.regionFilter.join(', '));
     if (state.opsFilter.length) scopeParts.push(state.opsFilter.join(', '));
+    if (state.headBaristaFilter && G.headBaristaFilterLabel) scopeParts.push(G.headBaristaFilterLabel(state.headBaristaFilter));
     if (state.bandFilter) {
       var bf = state.bandFilter;
       scopeParts.push(bf.indexOf('abs:') === 0 ? bf.slice(4) : bf);
@@ -710,6 +712,7 @@ window.GAILS.renderTrendCharts = function (data) {
     var scopedRows = state.ALL.filter(function (r) {
       if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(r.b))) return false;
       if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(r.b))) return false;
+      if (G.passesHeadBaristaFilter && !G.passesHeadBaristaFilter(r.b)) return false;
       if (state.bandFilter) { var _bf = state.bandFilter; if (_bf.indexOf('abs:') === 0) { if (r.acb !== _bf.slice(4)) return false; } else { if (r.cb !== _bf) return false; } }
       if (selectedBakeries.length && selectedBakeries.indexOf(r.b) === -1) return false;
       return true;
@@ -717,6 +720,7 @@ window.GAILS.renderTrendCharts = function (data) {
     var benchmarkRows = state.ALL.filter(function (r) {
       if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(r.b))) return false;
       if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(r.b))) return false;
+      if (G.passesHeadBaristaFilter && !G.passesHeadBaristaFilter(r.b)) return false;
       if (state.bandFilter) { var _bf = state.bandFilter; if (_bf.indexOf('abs:') === 0) { if (r.acb !== _bf.slice(4)) return false; } else { if (r.cb !== _bf) return false; } }
       return true;
     });

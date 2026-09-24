@@ -182,6 +182,18 @@
                     <strong>Site Data</strong>
                   </span>
                 </button>
+                <button type="button" class="admin-pg-nav__btn" data-admin-panel="baristas">
+                  <span class="admin-pg-nav__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M5 9h11v5a4.5 4.5 0 0 1-4.5 4.5h-2A4.5 4.5 0 0 1 5 14V9Z"></path>
+                      <path d="M16 10.5h1.2a2.3 2.3 0 0 1 0 4.6H16"></path>
+                      <path d="M8.5 4.5v2M12 4.5v2"></path>
+                    </svg>
+                  </span>
+                  <span class="admin-pg-nav__content">
+                    <strong>Head Baristas</strong>
+                  </span>
+                </button>
                 <button type="button" class="admin-pg-nav__btn" data-admin-panel="data">
                   <span class="admin-pg-nav__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
@@ -607,6 +619,64 @@
                   <div class="admin-section__header-actions">
                     <button type="button" id="restoreMetadataBtn" class="admin-danger-btn">Restore default site map</button>
                   </div>
+                </div>
+              </div>
+                </section>
+
+                <section class="admin-portal__panel" data-admin-panel-content="baristas">
+              <div class="admin-section">
+                <div class="admin-section__header">
+                  <div>
+                    <h2>Head Barista Directory</h2>
+                    <p>Every Head Barista, their role, and the bakeries they work across. Upload the directory workbook to replace the list for everyone.</p>
+                  </div>
+                </div>
+                <div class="admin-dataset-upload admin-barista-upload">
+                  <div id="baristaImportZone" class="upload-zone upload-zone--compact admin-dataset-upload__zone" tabindex="0" role="button" aria-describedby="baristaImportHelp">
+                    <div id="baristaImportEmptyState" class="admin-import-card__content">
+                      <div class="icon">&#9749;</div>
+                      <h3>Upload the Head Barista Directory</h3>
+                      <p>Drag in the directory workbook to replace the Head Barista list.</p>
+                      <p id="baristaImportHelp" class="admin-dataset-upload__hint">Reads the <strong>People</strong> sheet. Row 1 holds the headers <strong>Name</strong>, <strong>Role(s)</strong> and <strong>Primary Bakery</strong> (or Primary Location), with any <strong>Other Location</strong> columns after them.</p>
+                    </div>
+                    <div id="baristaImportLoadedState" class="admin-import-card__content admin-import-card__content--loaded" hidden>
+                      <div class="admin-import-card__eyebrow">Current directory</div>
+                      <h3 id="baristaImportLoadedTitle">Head Barista directory</h3>
+                      <div id="baristaImportLoadedStats" class="admin-import-card__stats"></div>
+                      <p id="baristaImportLoadedHint" class="admin-dataset-upload__hint admin-import-card__hint"></p>
+                    </div>
+                    <div class="admin-import-card__actions">
+                      <button type="button" id="baristaImportBrowseBtn" class="btn">Choose Excel File</button>
+                    </div>
+                    <input type="file" id="baristaImportInput" accept=".xlsx,.xls" hidden>
+                  </div>
+                </div>
+                <div id="baristaMsg" class="admin-message" role="status" style="display:none;"></div>
+                <div class="admin-toolbar admin-toolbar--filters">
+                  <label class="admin-form-field admin-form-field--search" for="baristaSearchInput">
+                    <span>Search directory</span>
+                    <input type="search" id="baristaSearchInput" placeholder="Search name or bakery">
+                  </label>
+                  <label class="admin-form-field" for="baristaRoleFilter">
+                    <span>Role</span>
+                    <select id="baristaRoleFilter">
+                      <option value="">All roles</option>
+                    </select>
+                  </label>
+                  <div class="admin-toolbar__meta" id="baristaTableMeta">Loading Head Barista directory&hellip;</div>
+                </div>
+                <div class="admin-table-wrap admin-table-wrap--tall">
+                  <table class="admin-table admin-table--baristas">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Primary Bakery</th>
+                        <th>Other Locations</th>
+                      </tr>
+                    </thead>
+                    <tbody id="baristaList"></tbody>
+                  </table>
                 </div>
               </div>
                 </section>

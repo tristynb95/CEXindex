@@ -5839,6 +5839,16 @@ body.table-fullscreen-lock {
   margin-bottom: 3px;
 }
 
+/* Sits under the band chip: today's Head Barista directory lists nobody with
+   this bakery as their primary location. Ink, not a status colour — amber sat
+   between the band chip and the red visit link and read as a third alert. */
+.map-popup__flag {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+
 .map-popup__mgr {
   font-size: 0.74rem;
   color: var(--muted);

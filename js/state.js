@@ -9,6 +9,7 @@ window.GAILS.state = {
   selectedMonths: [],
   searchBakery: [],
   bandFilter: '',
+  headBaristaFilter: '', // '' = all; otherwise the exact number of primary Head Baristas, as a string
   regionFilter: [],
   opsFilter: [],
   dashboardView: 'bakeries', // 'bakeries' | 'ops' | 'region' — League Table/Map/Trends/Overview grouping

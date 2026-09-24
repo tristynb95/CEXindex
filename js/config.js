@@ -286,7 +286,12 @@ var _BAKERY_EXTRA_ALIASES = {
   "marylebone high st": "Marylebone Village",
   "marylebone high street": "Marylebone Village",
   "pentonville road": "Pentonville Road Kings Cross",
-  "pentonville rd": "Pentonville Road Kings Cross"
+  "pentonville rd": "Pentonville Road Kings Cross",
+  // Short names used by the Head Barista directory workbook.
+  "marylebone": "Marylebone Village",
+  "cheapside one new side": "Cheapside",
+  "union street": "Union Street, Bath",
+  "welwyn garden": "Welwyn Garden City"
 };
 
 window.GAILS.normalizeBakeryLookupName = _normalizeBakeryLookupName;

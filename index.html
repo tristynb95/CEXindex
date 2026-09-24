@@ -407,6 +407,14 @@
                 </div>
               </div>
             </div>
+            <!-- Hidden until the Head Barista directory (Admin > Head Baristas)
+                 has loaded: without it every bakery would count as "None".
+                 Options are built by updateHeadBaristaFilterOptions in js/app.js. -->
+            <div class="filter-control filter-control--scope" id="headBaristaFilterControl" style="display:none;">
+              <label id="headBaristaFilterLabel" for="headBaristaFilter" title="Today's Head Barista directory, whatever period is selected">Current Head Baristas</label><br><select id="headBaristaFilter"
+                aria-labelledby="headBaristaFilterLabel">
+                <option value="">All</option>
+              </select></div>
             <div class="filter-control filter-control--performance"><label id="bandFilterLabel">Benchmark Band</label><br><select id="bandFilter"
                 aria-labelledby="bandFilterLabel">
                 <option value="">All</option>

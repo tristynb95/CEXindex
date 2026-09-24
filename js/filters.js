@@ -245,12 +245,81 @@ window.GAILS.getRollingMonths = function() {
 
   G.invalidateCompanyPeriodData = invalidateCompanyPeriodData;
 
+  // ── Head Barista filter ──
+  // How many Head Baristas have each bakery as their PRIMARY location, from the
+  // directory uploaded on the Admin page. Other locations are deliberately not
+  // counted. Keyed by site-directory name, so the counts are rebuilt whenever
+  // the directory or the bakery aliases change.
+  var _headBaristaEntries = null;
+  var _headBaristaCounts = null;
+
+  function headBaristaKey(name) {
+    return G.resolveBakeryMetaKey ? G.resolveBakeryMetaKey(name) : String(name || '').trim();
+  }
+
+  function headBaristaCounts() {
+    if (_headBaristaCounts) return _headBaristaCounts;
+    var counts = Object.create(null);
+    (_headBaristaEntries || []).forEach(function(entry) {
+      var key = entry && entry.primary ? headBaristaKey(entry.primary) : '';
+      if (key) counts[key] = (counts[key] || 0) + 1;
+    });
+    _headBaristaCounts = counts;
+    return counts;
+  }
+
+  G.hasHeadBaristaDirectory = function() {
+    return !!(_headBaristaEntries && _headBaristaEntries.length);
+  };
+
+  G.getHeadBaristaCount = function(bakery) {
+    return headBaristaCounts()[headBaristaKey(bakery)] || 0;
+  };
+
+  // The largest number of primary Head Baristas any one bakery has — the top
+  // option in the filter.
+  G.getMaxHeadBaristaCount = function() {
+    var counts = headBaristaCounts();
+    return Object.keys(counts).reduce(function(max, key) { return Math.max(max, counts[key]); }, 0);
+  };
+
+  // `state` is optional so My Activity, which filters with its own state
+  // object, passes straight through when it has no Head Barista filter.
+  G.passesHeadBaristaFilter = function(bakery, state) {
+    var value = (state || G.state || {}).headBaristaFilter;
+    if (value === '' || value == null || !G.hasHeadBaristaDirectory()) return true;
+    return G.getHeadBaristaCount(bakery) === Number(value);
+  };
+
+  // "No current Head Barista" / "1 current Head Barista" / "3 current Head
+  // Baristas" — used by the header chip and chart scope titles. "Current"
+  // because the directory is today's, not the selected period's.
+  G.headBaristaFilterLabel = function(value) {
+    var count = Number(value);
+    if (!count) return 'No current Head Barista';
+    return count + (count === 1 ? ' current Head Barista' : ' current Head Baristas');
+  };
+
+  G.setHeadBaristaDirectory = function(entries) {
+    _headBaristaEntries = Array.isArray(entries) ? entries : [];
+    _headBaristaCounts = null;
+    window.dispatchEvent(new CustomEvent('gails:head-baristas-sync'));
+  };
+
+  // A site-directory change can re-point an alias, so js/app.js calls this to
+  // re-key the counts. (Not a listener here: this file must stay free of
+  // load-time window dependencies — the test sandboxes do not provide them.)
+  G.invalidateHeadBaristaCounts = function() {
+    _headBaristaCounts = null;
+  };
+
   function passesNonBandFilters(record) {
     var state = G.state;
     if (state.regionFilter.length && !state.regionFilter.includes(G.getBakeryRegion(record.b))) return false;
     if (state.opsFilter.length && !state.opsFilter.includes(G.getBakeryOps(record.b))) return false;
     if (state.searchBakery && state.searchBakery.length &&
         !G.isSelectedBakery(record.b, state.searchBakery)) return false;
+    if (!G.passesHeadBaristaFilter(record.b)) return false;
     return true;
   }
 

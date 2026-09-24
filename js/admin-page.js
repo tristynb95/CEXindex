@@ -138,6 +138,19 @@ const opsAreaAssignmentBakeries = document.getElementById('opsAreaAssignmentBake
 const dataGrid        = document.getElementById('adminDataGrid');
 const dataMsg         = document.getElementById('dataMsg');
 const datasetImportZone = document.getElementById('datasetImportZone');
+const baristaImportZone = document.getElementById('baristaImportZone');
+const baristaImportInput = document.getElementById('baristaImportInput');
+const baristaImportBrowseBtn = document.getElementById('baristaImportBrowseBtn');
+const baristaImportEmptyState = document.getElementById('baristaImportEmptyState');
+const baristaImportLoadedState = document.getElementById('baristaImportLoadedState');
+const baristaImportLoadedTitle = document.getElementById('baristaImportLoadedTitle');
+const baristaImportLoadedStats = document.getElementById('baristaImportLoadedStats');
+const baristaImportLoadedHint = document.getElementById('baristaImportLoadedHint');
+const baristaMsg      = document.getElementById('baristaMsg');
+const baristaSearchInput = document.getElementById('baristaSearchInput');
+const baristaRoleFilter = document.getElementById('baristaRoleFilter');
+const baristaTableMeta = document.getElementById('baristaTableMeta');
+const baristaList     = document.getElementById('baristaList');
 const datasetImportInput = document.getElementById('datasetImportInput');
 const datasetImportBrowseBtn = document.getElementById('datasetImportBrowseBtn');
 const datasetImportEmptyState = document.getElementById('datasetImportEmptyState');
@@ -253,6 +266,9 @@ const state = {
   userSort: 'name',
   datasetInfo: null,
   siteImportInfo: null,
+  headBaristas: null, // portalData/headBaristas: { entries, count, sourceName, ... }
+  baristaSearch: '',
+  baristaRole: '',
   visits: [],
   visitSearch: '',
   visitType: '',
@@ -269,6 +285,7 @@ const state = {
 let usersUnsubscribe = null;
 let visitsUnsubscribe = null;
 let rolesUnsubscribe = null;
+let baristasUnsubscribe = null;
 let appSettingsUnsubscribe = null;
 const dirtyDrafts = new Set();
 let unsavedChangesResolve = null;
@@ -570,8 +587,8 @@ function nowIso() {
 // every bakery at once, so it reaches everybody's bell rather than one area's —
 // see the estateWide flag in js/notifications.js. Best-effort: the save has
 // already succeeded by the time this runs.
-function announceDataUpdate(subject, detail) {
-  recordNotification('data.updated', { subject: subject, detail: detail || '' });
+function announceDataUpdate(subject) {
+  recordNotification('data.updated', { subject: subject });
 }
 
 // Firebase Auth needs an initial password when the account is created. It is
@@ -1265,7 +1282,7 @@ async function importSiteWorkbook(file) {
       preservedOpsAreaAssignments
     );
     await set(ref(db, 'portalData/siteMeta'), payload);
-    announceDataUpdate('the site directory', imported.siteCount + ' sites from ' + file.name);
+    announceDataUpdate('the site directory');
 
     state.siteMetaDraft = cloneMeta(imported.meta);
     state.siteMetaSource = cloneMeta(imported.meta);
@@ -1364,7 +1381,7 @@ async function importDatasetWorkbook(file) {
       updatedBy: payload.updatedBy
     };
     await set(ref(db, 'dashboardMeta'), meta);
-    announceDataUpdate('the shared dataset', payload.recordCount + ' rows from ' + file.name);
+    announceDataUpdate('the shared dataset');
     state.datasetInfo = meta;
     renderSummary();
     renderOverview();
@@ -1387,6 +1404,196 @@ async function importDatasetWorkbook(file) {
     if (datasetImportInput) datasetImportInput.value = '';
     if (datasetImportZone) datasetImportZone.classList.remove('drag-over');
   }
+}
+
+// ── Head Barista directory ──
+// The workbook's People sheet: row 1 is headers, one person per row after it.
+// Columns are found by header rather than position so an extra column, or
+// "Primary Location" in place of "Primary Bakery", does not break the import.
+function parseHeadBaristaWorkbook(data) {
+  var workbook = XLSX.read(data, { type: 'array' });
+  var sheetName = workbook.SheetNames.find(function(name) {
+    return String(name).trim().toLowerCase() === 'people';
+  });
+  if (!sheetName) {
+    throw new Error('No sheet called "People" was found in this workbook.');
+  }
+  var rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: false });
+  var headers = (rows[0] || []).map(function(cell) { return String(cell || '').trim().toLowerCase(); });
+  var nameCol = headers.indexOf('name');
+  var roleCol = headers.findIndex(function(h) { return /^role/.test(h); });
+  var primaryCol = headers.findIndex(function(h) { return /^primary/.test(h); });
+  var otherCols = [];
+  headers.forEach(function(h, index) {
+    if (/^other location/.test(h)) otherCols.push(index);
+  });
+  if (nameCol < 0 || roleCol < 0 || primaryCol < 0) {
+    throw new Error('The People sheet needs the headers "Name", "Role(s)" and "Primary Bakery" in row 1.');
+  }
+
+  function cell(row, index) {
+    return String(row[index] == null ? '' : row[index]).replace(/\s+/g, ' ').trim();
+  }
+
+  var entries = [];
+  rows.slice(1).forEach(function(row) {
+    var name = cell(row, nameCol);
+    if (!name) return;
+    var entry = { name: name, role: cell(row, roleCol), primary: cell(row, primaryCol) };
+    var others = otherCols.map(function(index) { return cell(row, index); }).filter(Boolean);
+    if (others.length) entry.others = others;
+    entries.push(entry);
+  });
+  return { entries: entries, sheetName: sheetName };
+}
+
+async function importHeadBaristaWorkbook(file) {
+  if (!file) return;
+  if (!file.name.match(/\.xlsx?$/i)) {
+    setMessage(baristaMsg, 'error', 'Please choose an Excel workbook ending in .xlsx or .xls.');
+    return;
+  }
+  var existing = state.headBaristas && state.headBaristas.count;
+  if (existing && !confirm('Uploading will replace the ' + existing + ' Head Baristas in the current directory. Continue?')) {
+    if (baristaImportInput) baristaImportInput.value = '';
+    return;
+  }
+
+  setMessage(baristaMsg, 'info', 'Reading ' + file.name + '...');
+  if (baristaImportBrowseBtn) baristaImportBrowseBtn.disabled = true;
+
+  try {
+    await window.GAILS.ensureXLSX();
+    var data = await readFileAsBytes(file);
+    var parsed = parseHeadBaristaWorkbook(data);
+    if (!parsed.entries.length) {
+      throw new Error('The People sheet has no names below the header row.');
+    }
+    var payload = {
+      entries: parsed.entries,
+      count: parsed.entries.length,
+      sourceName: file.name,
+      sheetName: parsed.sheetName,
+      updatedAt: nowIso(),
+      updatedBy: currentUserEmail()
+    };
+    await set(ref(db, 'portalData/headBaristas'), payload);
+    announceDataUpdate('the Head Barista directory');
+    state.headBaristas = payload;
+    renderHeadBaristas();
+    setMessage(baristaMsg, 'success', 'Uploaded ' + formatCount(payload.count, 'person', 'people') + ' from ' + file.name + '.');
+  } catch (err) {
+    console.error('Failed to import Head Barista directory:', err);
+    setMessage(baristaMsg, 'error', 'Could not import that workbook: ' + err.message);
+  } finally {
+    if (baristaImportBrowseBtn) baristaImportBrowseBtn.disabled = false;
+    if (baristaImportInput) baristaImportInput.value = '';
+    if (baristaImportZone) baristaImportZone.classList.remove('drag-over');
+  }
+}
+
+// True when the site directory knows this bakery. Before the directory has
+// loaded there is nothing to check against, so nothing is flagged.
+function isKnownBakery(name) {
+  var meta = state.siteMetaSource || {};
+  if (!name || !Object.keys(meta).length) return true;
+  var key = window.GAILS && typeof window.GAILS.resolveBakeryMetaKey === 'function'
+    ? window.GAILS.resolveBakeryMetaKey(name)
+    : name;
+  return !!meta[key];
+}
+
+// Known bakeries show under their site-directory name, so a workbook's short
+// form ("Marylebone") reads the same as everywhere else ("Marylebone Village").
+function bakeryCellHtml(name) {
+  if (!name) return '<span class="admin-muted">&mdash;</span>';
+  if (isKnownBakery(name)) {
+    var key = window.GAILS && typeof window.GAILS.resolveBakeryMetaKey === 'function'
+      ? window.GAILS.resolveBakeryMetaKey(name)
+      : name;
+    return escapeHtml((state.siteMetaSource || {})[key] ? key : name);
+  }
+  return escapeHtml(name)
+    + ' <span class="admin-barista-unmatched" title="This bakery is not in the site directory">Not in site directory</span>';
+}
+
+function renderHeadBaristas() {
+  var info = state.headBaristas;
+  var entries = info && Array.isArray(info.entries) ? info.entries : [];
+  var hasInfo = entries.length > 0;
+
+  setZoneLoadedState(baristaImportZone, baristaImportEmptyState, baristaImportLoadedState, hasInfo);
+  if (baristaImportBrowseBtn) baristaImportBrowseBtn.textContent = hasInfo ? 'Upload New Directory' : 'Choose Excel File';
+  if (hasInfo) {
+    var bakeries = new Set();
+    entries.forEach(function(e) {
+      if (e.primary) bakeries.add(e.primary);
+      (e.others || []).forEach(function(o) { bakeries.add(o); });
+    });
+    if (baristaImportLoadedTitle) baristaImportLoadedTitle.textContent = info.sourceName || 'Head Barista directory';
+    if (baristaImportLoadedStats) {
+      baristaImportLoadedStats.innerHTML = [
+        formatCount(entries.length, 'person', 'people'),
+        formatCount(bakeries.size, 'bakery', 'bakeries')
+      ].map(function(item) {
+        return '<span class="admin-import-card__stat">' + escapeHtml(item) + '</span>';
+      }).join('');
+    }
+    if (baristaImportLoadedHint) {
+      baristaImportLoadedHint.textContent = 'Last synced ' + formatDate(info.updatedAt) + ' by ' + (info.updatedBy || 'Unknown') + '.';
+    }
+  }
+
+  // Rebuild the role filter from what is in the directory, keeping the choice.
+  if (baristaRoleFilter) {
+    var roles = Array.from(new Set(entries.map(function(e) { return e.role; }).filter(Boolean))).sort();
+    if (state.baristaRole && roles.indexOf(state.baristaRole) < 0) state.baristaRole = '';
+    baristaRoleFilter.innerHTML = '<option value="">All roles</option>' + roles.map(function(role) {
+      return '<option value="' + escapeHtml(role) + '">' + escapeHtml(role) + '</option>';
+    }).join('');
+    baristaRoleFilter.value = state.baristaRole;
+  }
+
+  if (!baristaList) return;
+  if (!info) {
+    baristaList.innerHTML = '<tr><td colspan="4" class="admin-empty">No Head Barista directory has been uploaded yet.</td></tr>';
+    if (baristaTableMeta) baristaTableMeta.textContent = 'No directory uploaded';
+    return;
+  }
+
+  var search = state.baristaSearch.trim().toLowerCase();
+  var filtered = entries.filter(function(e) {
+    if (state.baristaRole && e.role !== state.baristaRole) return false;
+    if (!search) return true;
+    return [e.name, e.primary].concat(e.others || []).join(' ').toLowerCase().indexOf(search) >= 0;
+  }).sort(function(a, b) {
+    return a.name.localeCompare(b.name, 'en-GB');
+  });
+
+  var unmatched = entries.filter(function(e) {
+    return [e.primary].concat(e.others || []).some(function(name) { return name && !isKnownBakery(name); });
+  }).length;
+  if (baristaTableMeta) {
+    var metaText = filtered.length === entries.length
+      ? formatCount(entries.length, 'person', 'people')
+      : filtered.length + ' of ' + formatCount(entries.length, 'person', 'people');
+    if (unmatched) metaText += ' · ' + unmatched + ' with a bakery not in the site directory';
+    baristaTableMeta.textContent = metaText;
+  }
+
+  if (!filtered.length) {
+    baristaList.innerHTML = '<tr><td colspan="4" class="admin-empty">Nobody matches that search.</td></tr>';
+    return;
+  }
+  baristaList.innerHTML = filtered.map(function(e) {
+    var others = e.others || [];
+    return '<tr>'
+      + '<td><strong>' + escapeHtml(e.name) + '</strong></td>'
+      + '<td>' + (e.role ? '<span class="admin-pill">' + escapeHtml(e.role) + '</span>' : '<span class="admin-muted">&mdash;</span>') + '</td>'
+      + '<td>' + bakeryCellHtml(e.primary) + '</td>'
+      + '<td>' + (others.length ? others.map(bakeryCellHtml).join('<br>') : '<span class="admin-muted">&mdash;</span>') + '</td>'
+      + '</tr>';
+  }).join('');
 }
 
 function buildSummaryStats() {
@@ -3726,6 +3933,7 @@ var PANEL_TITLES = {
   overview: 'Overview',
   access: 'People & Access',
   sites: 'Site Data',
+  baristas: 'Head Baristas',
   data: 'Dataset',
   visits: 'Visits'
 };
@@ -3868,6 +4076,7 @@ function syncSiteMetaFromSource(payload) {
   renderRegionAssignments();
   renderOpsAreaAssignments();
   renderDataControls();
+  renderHeadBaristas();
   renderImportZones();
 }
 
@@ -4382,6 +4591,15 @@ function ensurePortalSync() {
     console.error('Failed to load site metadata snapshot:', err);
   });
 
+  if (baristasUnsubscribe) baristasUnsubscribe();
+  baristasUnsubscribe = onValue(ref(db, 'portalData/headBaristas'), function(snapshot) {
+    state.headBaristas = snapshot.exists() ? snapshot.val() : null;
+    renderHeadBaristas();
+  }, function(err) {
+    console.error('Failed to sync Head Barista directory:', err);
+    setMessage(baristaMsg, 'error', 'Could not load the Head Barista directory from Firebase.');
+  });
+
   visitsUnsubscribe = onValue(ref(db, 'routineVisits'), function(snapshot) {
     state.visits = [];
     if (snapshot.exists()) {
@@ -4405,7 +4623,9 @@ function ensurePortalSync() {
 // (view = read-only, edit = full controls). Roles with no admin access at
 // all are bounced back to the dashboard. Client-side gating is backed up
 // by the database rules (see database.rules.reference.json).
-var PANEL_AREAS = { access: 'users', sites: 'sites', data: 'dataset', visits: 'visits' };
+// Head Baristas shares the Site Directory permission: it is who works at each
+// bakery, and database.rules.json gates portalData/headBaristas the same way.
+var PANEL_AREAS = { access: 'users', sites: 'sites', baristas: 'sites', data: 'dataset', visits: 'visits' };
 
 function applyAdminAccessUI() {
   Object.keys(PANEL_AREAS).forEach(function(panelName) {
@@ -4432,7 +4652,8 @@ function applyAdminAccessUI() {
       saveSitesBtn,
       resetSitesBtn,
       restoreMetaBtn,
-      syncCoordinatesBtn
+      syncCoordinatesBtn,
+      document.querySelector('.admin-barista-upload')
     ],
     // Restore Default Site Map and Sync Coordinates Only both write the SITE
     // DIRECTORY, not the dataset — portalData/siteMeta, which database.rules.json
@@ -4671,6 +4892,7 @@ signOutBtn.addEventListener('click', async function() {
   if (usersUnsubscribe) { usersUnsubscribe(); usersUnsubscribe = null; }
   if (visitsUnsubscribe) { visitsUnsubscribe(); visitsUnsubscribe = null; }
   if (rolesUnsubscribe) { rolesUnsubscribe(); rolesUnsubscribe = null; }
+  if (baristasUnsubscribe) { baristasUnsubscribe(); baristasUnsubscribe = null; }
   await signOut(primaryAuth);
   window.location.href = 'index.html';
 });
@@ -5509,7 +5731,7 @@ async function saveSiteData() {
       );
       await set(ref(db, 'portalData/siteMeta'), payload);
     }
-    announceDataUpdate('the site directory', (payload && payload.siteCount ? payload.siteCount + ' sites' : ''));
+    announceDataUpdate('the site directory');
     state.siteMetaSource = cloneMeta(meta);
     state.regionAssignmentsSource = cloneMeta((payload && payload.regionAssignments) || []);
     state.regionAssignmentsDraft = cloneMeta(state.regionAssignmentsSource);
@@ -5659,6 +5881,68 @@ if (datasetImportZone) {
   });
 }
 
+if (baristaImportBrowseBtn) {
+  baristaImportBrowseBtn.addEventListener('click', function(event) {
+    event.stopPropagation();
+    if (baristaImportInput) baristaImportInput.click();
+  });
+}
+
+if (baristaImportInput) {
+  baristaImportInput.addEventListener('change', function(event) {
+    if (event.target.files && event.target.files[0]) {
+      importHeadBaristaWorkbook(event.target.files[0]);
+    }
+  });
+}
+
+if (baristaImportZone) {
+  baristaImportZone.addEventListener('click', function() {
+    if (baristaImportInput) baristaImportInput.click();
+  });
+
+  baristaImportZone.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (baristaImportInput) baristaImportInput.click();
+    }
+  });
+
+  baristaImportZone.addEventListener('dragover', function(event) {
+    event.preventDefault();
+    baristaImportZone.classList.add('drag-over');
+  });
+
+  baristaImportZone.addEventListener('dragleave', function(event) {
+    if (event.target === baristaImportZone) {
+      baristaImportZone.classList.remove('drag-over');
+    }
+  });
+
+  baristaImportZone.addEventListener('drop', function(event) {
+    event.preventDefault();
+    baristaImportZone.classList.remove('drag-over');
+    if (event.dataTransfer.files && event.dataTransfer.files[0]) {
+      importHeadBaristaWorkbook(event.dataTransfer.files[0]);
+    }
+  });
+}
+
+if (baristaSearchInput) {
+  var renderHeadBaristasDebounced = debounce(renderHeadBaristas, 150);
+  baristaSearchInput.addEventListener('input', function(e) {
+    state.baristaSearch = e.target.value;
+    renderHeadBaristasDebounced();
+  });
+}
+
+if (baristaRoleFilter) {
+  baristaRoleFilter.addEventListener('change', function(e) {
+    state.baristaRole = e.target.value;
+    renderHeadBaristas();
+  });
+}
+
 // The "← Go to Dashboard" button that used to sit here duplicated the link in the
 // top bar, and shared its button chrome with "Clear Shared Dataset" one slot away.
 // The remaining top-bar link is an <a href>, and the click interceptor already
@@ -5726,7 +6010,7 @@ restoreMetaBtn.addEventListener('click', async function() {
       state.opsAreaAssignmentsDraft
     );
     await set(ref(db, 'portalData/siteMeta'), payload);
-    announceDataUpdate('the site directory', 'restored to the default site map');
+    announceDataUpdate('the site directory');
     state.siteMetaSource = cloneMeta(defaults);
     state.siteMetaDraft  = cloneMeta(defaults);
     state.regionAssignmentsSource = cloneMeta(payload.regionAssignments);

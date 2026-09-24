@@ -1772,8 +1772,40 @@ document.addEventListener('keydown', function (event) {
     return 'Last visited ' + d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
+  // ---- Head Barista coverage ---------------------------------------------
+  // Both read today's Head Barista directory (primary locations only, see
+  // js/filters.js), not the selected period, and say nothing until the
+  // directory has loaded — before then every bakery would read as uncovered.
+  function hasHeadBaristaDirectory() {
+    return !!(GAILS.hasHeadBaristaDirectory && GAILS.hasHeadBaristaDirectory());
+  }
+
+  function noHeadBaristaFlagHtml(bakery) {
+    if (!hasHeadBaristaDirectory() || GAILS.getHeadBaristaCount(bakery) > 0) return '';
+    return '<div class="map-popup__flag">No Head Barista</div>';
+  }
+
+  // Counted across every bakery the site directory puts in the area, not just
+  // the pins on screen, so a Head Baristas or Band filter cannot shrink it.
+  function areaHeadBaristaLine(mgr) {
+    if (!hasHeadBaristaDirectory()) return '';
+    var total = 0, without = 0;
+    Object.keys(GAILS.BAKERY_META || {}).forEach(function (name) {
+      if ((GAILS.getBakeryOps ? GAILS.getBakeryOps(name) : '') !== mgr) return;
+      total++;
+      if (GAILS.getHeadBaristaCount(name) === 0) without++;
+    });
+    if (!total) return '';
+    var text;
+    if (without === 0) text = total === 1 ? 'Has a Head Barista' : 'All bakeries have a Head Barista';
+    else if (without === total) text = total === 1 ? 'No Head Barista yet' : 'None of these bakeries have a Head Barista';
+    else text = without + ' of ' + total + ' bakeries ' + (without === 1 ? 'has' : 'have') + ' no Head Barista';
+    return '<br><span style="font-size:0.82em;opacity:0.85">' + escapeHtml(text) + '</span>';
+  }
+
   function getPopupHtml(item, color, bandField, colorMode) {
     var siteLabel = GAILS.getBakeryMapLabel ? GAILS.getBakeryMapLabel(item.b) : item.b;
+    var headBaristaFlag = noHeadBaristaFlagHtml(item.b);
     var ops = GAILS.getBakeryOps ? GAILS.getBakeryOps(item.b) : 'Unknown';
     var region = GAILS.getBakeryRegion ? GAILS.getBakeryRegion(item.b) : 'Unknown';
     var lastVisit = GAILS.getLastVisitDate ? GAILS.getLastVisitDate(item.b) : null;
@@ -1789,6 +1821,7 @@ document.addEventListener('keydown', function (event) {
       return '<div class="map-popup">' +
         '<div class="map-popup__name">' + escapeHtml(siteLabel) + '</div>' +
         '<span class="map-popup__band" style="background:' + color + '">' + escapeHtml(statusLabel) + '</span>' +
+        headBaristaFlag +
         '<div class="map-popup__stats">' + escapeHtml(statusCopy) + '</div>' +
         '<div class="map-popup__mgr">' + escapeHtml(ops) + '</div>' +
         '<div class="map-popup__meta">' + escapeHtml(region) + '</div>' +
@@ -1821,6 +1854,7 @@ document.addEventListener('keydown', function (event) {
     return '<div class="map-popup">' +
       '<div class="map-popup__name">' + escapeHtml(siteLabel) + '</div>' +
       '<span class="map-popup__band" style="' + chipStyle + '">' + escapeHtml(chipLabel) + '</span>' +
+      headBaristaFlag +
       '<div class="map-popup__stats">' + statsPrefix + 'Index <strong>' + escapeHtml(cei) + '</strong> &nbsp;&middot;&nbsp; NPS ' + escapeHtml(nps) + ' &nbsp;&middot;&nbsp; Vol ' + escapeHtml(volume) + '</div>' +
       '<div class="map-popup__mgr">' + escapeHtml(ops) + '</div>' +
       '<div class="map-popup__meta">' + escapeHtml(region) + '</div>' +
@@ -2098,6 +2132,7 @@ document.addEventListener('keydown', function (event) {
       if (regionFilter.length && regionFilter.indexOf(G.getBakeryRegion(name)) < 0) return false;
       if (opsFilter.length && opsFilter.indexOf(G.getBakeryOps(name)) < 0) return false;
       if (searchBakery.length && !G.isSelectedBakery(name, searchBakery)) return false;
+      if (G.passesHeadBaristaFilter && !G.passesHeadBaristaFilter(name)) return false;
       return true;
     }).sort();
   }
@@ -2245,6 +2280,7 @@ document.addEventListener('keydown', function (event) {
           strokeColor = fillColor = getAreaBandColor(_areaAvgByMgr[mgr], cfg.bandField, _areaAvgVals);
           tooltip = buildAreaTooltip(mgr, group.items, cfg.bandField, networkAvg, total, visited, visitLabel);
         }
+        tooltip += areaHeadBaristaLine(mgr);
         var dashArray = AREA_DASH_PATTERNS[mgrIndex % AREA_DASH_PATTERNS.length] || null;
         mgrIndex++;
 

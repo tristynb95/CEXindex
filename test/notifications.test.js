@@ -269,10 +269,16 @@ test('each type says who did what, and links somewhere useful', () => {
   assert.equal(done.personal, true);
 
   const dataUpdate = Notifications.describeEvent(Notifications.buildEvent('data.updated', {
-    actorUid: 'admin', actorName: 'Ada Admin', subject: 'the site directory', detail: '212 sites'
+    actorUid: 'admin', actorName: 'Ada Admin', subject: 'the site directory', detail: '212 sites from Sites.xlsx'
   }), 'bobby');
-  assert.equal(dataUpdate.title, 'Ada Admin updated the site directory');
-  assert.equal(dataUpdate.body, '212 sites');
+  // Only what changed — never the uploaded file or its counts.
+  assert.equal(dataUpdate.title, 'Site Directory Updated');
+  assert.equal(dataUpdate.body, '');
+  const statsUpdate = Notifications.describeEvent(Notifications.buildEvent('data.updated', {
+    actorUid: 'admin', actorName: 'Ada Admin', subject: 'the shared dataset', detail: '4,000 rows from Coffee Data.xlsx'
+  }), 'bobby');
+  assert.equal(statsUpdate.title, 'Bakery Stats Updated');
+  assert.equal(statsUpdate.body, '');
   assert.equal(dataUpdate.href, 'index.html#overview');
 });
 
@@ -308,7 +314,8 @@ test('every event in the brief is recorded where it actually happens', () => {
   assert.match(bakeryProfile, /recordNotification\('task\.assigned'/);
   assert.match(bakeryProfile, /recordNotification\('task\.completed'/);
   // And the admin side republishing the dataset or the site directory.
-  assert.match(adminScript, /function announceDataUpdate\(subject, detail\)/);
+  assert.match(adminScript, /function announceDataUpdate\(subject\)/);
+  assert.doesNotMatch(adminScript, /announceDataUpdate\([^)]*file\.name/);
   assert.match(adminScript, /announceDataUpdate\('the shared dataset'/);
   assert.match(adminScript, /announceDataUpdate\('the site directory'/);
   assert.match(authScript, /recordNotification\('data\.updated'/);

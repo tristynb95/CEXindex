@@ -182,10 +182,7 @@ window.GAILS_Firebase = {
       });
       // A new workbook moves every bakery's numbers, so everybody hears about
       // it — see the estateWide flag in js/notifications.js.
-      recordNotification('data.updated', {
-        subject: 'the shared dataset',
-        detail: records.length + ' rows' + (sourceName ? ' from ' + sourceName : '')
-      });
+      recordNotification('data.updated', { subject: 'the shared dataset' });
       console.log('Firebase DB: Saved successfully.');
     } catch (e) {
       console.error('Firebase DB: Save failed.', e);
@@ -218,10 +215,7 @@ window.GAILS_Firebase = {
     }
     var payload = buildSiteMetaPayload(meta, sourceInfo, assignments, opsAssignments);
     await set(ref(db, 'portalData/siteMeta'), payload);
-    recordNotification('data.updated', {
-      subject: 'the site directory',
-      detail: payload.siteCount ? payload.siteCount + ' sites' : ''
-    });
+    recordNotification('data.updated', { subject: 'the site directory' });
     return payload;
   },
   saveSiteVisit: async function(visitRecord, options) {
@@ -583,6 +577,16 @@ function startSiteMetaSync() {
   }).catch(function(error) {
     console.error('Failed to load site metadata:', error);
     applySiteMeta(null);
+  });
+
+  // The Head Barista directory feeds the dashboard's Head Baristas filter.
+  get(ref(db, 'portalData/headBaristas')).then(function(snapshot) {
+    var payload = snapshot.exists() ? snapshot.val() : null;
+    if (window.GAILS && typeof window.GAILS.setHeadBaristaDirectory === 'function') {
+      window.GAILS.setHeadBaristaDirectory(payload && payload.entries);
+    }
+  }).catch(function(error) {
+    console.error('Failed to load Head Barista directory:', error);
   });
 }
 
