@@ -10440,21 +10440,10 @@ body.visit-log-filter-open .mobile-bottom-nav {
     padding-inline: clamp(28px, 3.5vw, 64px);
   }
 
-  /* The notes field takes whatever height the visit column has left, so the
-     box is as big as the screen allows, never shorter than 160px, and stops
-     28px short of the footer edge. A taller form scrolls the column instead. */
-  .form-modal__body--split > .form-modal__col:has(.form-field--grow) {
-    padding-bottom: 28px;
-  }
-
-  .form-modal__body--split .form-field--grow {
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-
+  /* Kept short enough that the visit column fits without scrolling at common
+     laptop heights; it can still be dragged taller. */
   .form-modal__body--split .form-field--grow .form-modal__notes {
-    flex: 1 1 auto;
-    min-height: 160px;
+    min-height: 120px;
   }
 }
 
