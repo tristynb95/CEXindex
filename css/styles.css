@@ -10336,12 +10336,9 @@ body.visit-log-filter-open .mobile-bottom-nav {
   max-height: none;
 }
 
-/* Keep the full-screen shell without stretching its form controls across the
-   entire frame. The denser rhythm also keeps the notes field above the fixed
-   footer at common laptop heights. */
-.form-modal--wide .form-modal__body--split {
-  padding-inline: max(0px, calc((100% - 1240px) / 2));
-}
+/* The two halves span the full frame, each scrolling on its own (see the
+   min-width: 861px block below). The denser rhythm keeps the notes field above
+   the fixed footer at common laptop heights. */
 
 .form-modal--wide .form-modal__col {
   gap: 10px;
@@ -10424,6 +10421,26 @@ body.visit-log-filter-open .mobile-bottom-nav {
   align-self: stretch;
 }
 
+/* Side by side, each half is its own scroll container, so a long follow-ups
+   list never pushes the visit notes out of reach (and vice versa). The body
+   stops scrolling and hands a full-height row to the two columns. Stacked
+   (860px and below) it goes back to one scroll for the whole form. */
+@media (min-width: 861px) {
+  .form-modal__body--split {
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .form-modal__body--split > .form-modal__col {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* Breathing room so the fields do not run the full width of each half. */
+    padding-inline: clamp(28px, 3.5vw, 64px);
+  }
+}
+
 .form-modal__col-title {
   font-size: 0.72rem;
   font-weight: 800;
@@ -10486,6 +10503,43 @@ body.visit-log-filter-open .mobile-bottom-nav {
   padding: 11px 30px;
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+/* Log Visit keeps its primary action in the header beside the close button,
+   so it is reachable without scrolling either half of the form. Sized to the
+   36px close button next to it. */
+.form-modal__header-actions {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.form-modal__header-actions .form-modal__submit {
+  min-height: 36px;
+  padding: 7px 20px;
+  font-size: 0.84rem;
+}
+
+.form-modal__header > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* On a phone the header row is title + Save + close; the subtitle would be
+   squeezed into a sliver beside the button, so it goes. */
+@media (max-width: 540px) {
+  #addSiteVisitModal .form-modal__subtitle {
+    display: none;
+  }
+}
+
+.form-modal__header-actions .form-modal__error {
+  margin: 0;
+  max-width: 420px;
+  text-align: right;
 }
 
 /* Sizing only — the base styles leave the select trigger shorter than the
@@ -16177,6 +16231,108 @@ html {
   font-weight: 700;
 }
 
+/* A multi-name field (js/name-token-field.js): chosen names sit as chips in
+   front of the typing input, all inside one box with .visit-log-input metrics.
+   Its suggestion menu reuses the mention field's menu and option styles. */
+.name-token-field {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-height: var(--control-h);
+  padding: 4px 8px;
+  border: 1px solid var(--card-border-h);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(34, 31, 26, 0.04) 0%, rgba(34, 31, 26, 0.01) 100%),
+    rgba(255, 255, 255, 0.96);
+  cursor: text;
+}
+
+.name-token-field:hover {
+  border-color: var(--accent);
+}
+
+.name-token-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-d);
+}
+
+.name-token-field__chips {
+  display: contents;
+}
+
+.name-token-field .name-token-field__input {
+  flex: 1 1 60px;
+  min-width: 60px;
+  min-height: 0;
+  height: 26px;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--text);
+  outline: none;
+}
+
+.name-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 2px 3px 2px 9px;
+  border-radius: 999px;
+  background: rgba(30, 112, 196, 0.1);
+  color: var(--blue);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.name-token--none {
+  background: var(--card-hover);
+  color: var(--muted);
+}
+
+.name-token__label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.name-token__remove {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.name-token__remove:hover,
+.name-token__remove:focus-visible {
+  background: rgba(34, 31, 26, 0.08);
+  opacity: 1;
+}
+
+.name-token-field__option--none .mention-field__option-name {
+  color: var(--muted);
+}
+
 /* ========== Shared compact data-table sizing ==========
    Bakery Directory is the density reference. Apply only its typography,
    padding, line-height, and wrapping to the other data-heavy tables; each
@@ -17547,7 +17703,8 @@ html {
   /* ── Shell ── */
   .drill-modal--overview,
   .drill-modal--focus,
-  .drill-modal--visit-report {
+  .drill-modal--visit-report,
+  .drill-modal--log-visit {
     top: var(--app-banner-h, 0px);
     padding: 0;
     align-items: stretch;
@@ -17560,7 +17717,8 @@ html {
 
   .drill-modal--overview>.drillInner,
   .drill-modal--focus>.drillInner,
-  .drill-modal--visit-report>.drillInner {
+  .drill-modal--visit-report>.drillInner,
+  .drill-modal--log-visit>.drillInner {
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
@@ -17580,7 +17738,8 @@ html {
 
     .drill-modal--overview>.drillInner::before,
     .drill-modal--focus>.drillInner::before,
-    .drill-modal--visit-report>.drillInner::before {
+    .drill-modal--visit-report>.drillInner::before,
+    .drill-modal--log-visit>.drillInner::before {
       content: none;
     }
   }
@@ -18333,6 +18492,76 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
 
     #visitReportModal .drill-modal-subtitle,
     #focusDetailModal .drill-modal-subtitle {
+      font-size: 0.72rem;
+    }
+  }
+}
+
+/* The same compact banner for the other workspace modals: the overview
+   drill-down, Log Visit and the follow-up task form. Selectors carry two ids
+   where the originals did, so these win over the older, larger sizes. */
+@media screen {
+
+  #drillModal #drillHeader,
+  #addSiteVisitModal .form-modal__header,
+  #addFollowUpModal .form-modal__header {
+    gap: 18px;
+    padding: 13px 20px 11px;
+  }
+
+  #drillModal .drill-modal-eyebrow {
+    margin-bottom: 3px;
+    font-size: 0.59rem;
+  }
+
+  #drillModal #drillTitle,
+  #addSiteVisitModal .form-modal__title,
+  #addFollowUpModal .form-modal__title {
+    font-size: clamp(1.1rem, 1.55vw, 1.28rem);
+    line-height: 1.15;
+  }
+
+  #drillModal #drillSubtitle,
+  #addSiteVisitModal .form-modal__subtitle,
+  #addFollowUpModal .form-modal__subtitle {
+    margin-top: 3px;
+    font-size: 0.76rem;
+    line-height: 1.3;
+  }
+
+  #drillModal .drill-modal-badge {
+    min-height: 22px;
+    padding: 3px 8px;
+    font-size: 0.62rem;
+  }
+
+  #drillModal .modal-close-btn,
+  #addSiteVisitModal .modal-close-btn,
+  #addFollowUpModal .modal-close-btn {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+  }
+
+  @media (max-width: 760px) {
+
+    #drillModal #drillHeader,
+    #addSiteVisitModal .form-modal__header,
+    #addFollowUpModal .form-modal__header {
+      gap: 10px;
+      padding: 12px 13px 10px;
+    }
+
+    #drillModal #drillTitle,
+    #addSiteVisitModal .form-modal__title,
+    #addFollowUpModal .form-modal__title {
+      font-size: 1.08rem;
+    }
+
+    #drillModal #drillSubtitle,
+    #addSiteVisitModal .form-modal__subtitle,
+    #addFollowUpModal .form-modal__subtitle {
       font-size: 0.72rem;
     }
   }

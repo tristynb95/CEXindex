@@ -3622,7 +3622,7 @@ function buildVisitDetailHtml(visit) {
       { key: 'date', label: 'Visit date', type: 'date' },
       { key: 'time', label: 'Visit time', type: 'time' },
       { key: 'coffeePartner', label: 'Coffee Partner', type: 'text' },
-      { key: 'mod', label: 'Barista', type: 'text' },
+      { key: 'mod', label: 'On the Bar', type: 'text' },
       { key: 'comments', label: 'Comments', type: 'textarea' }
     ];
 

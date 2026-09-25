@@ -404,7 +404,7 @@ window.GAILS.formatSecs = function(secs) {
   if (typeof document === 'undefined' || !document.documentElement) return;
 
   var BANNER_SELECTOR = '.header, .bakery-profile-header, .my-activity-header';
-  var FULLBLEED_MODALS = ['drillModal', 'focusDetailModal', 'visitReportModal'];
+  var FULLBLEED_MODALS = ['drillModal', 'focusDetailModal', 'visitReportModal', 'addSiteVisitModal'];
   var OPEN_CLASS = 'fullbleed-modal-open';
 
   function measureBanner() {

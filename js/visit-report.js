@@ -1551,6 +1551,14 @@ window.GAILS = window.GAILS || {};
       '</section>';
   }
 
+  // A name-list fact on a check-in: the names, "None" when that was chosen,
+  // or a dash when the field was left blank or predates it.
+  function checkinNamesText(names, none) {
+    if (none) return 'None';
+    var list = Array.isArray(names) ? names.filter(Boolean) : [];
+    return list.length ? list.join(', ') : '—';
+  }
+
   function buildCheckinContextHtml(record) {
     var G = window.GAILS;
     var meta = G.getBakeryMeta ? G.getBakeryMeta(record.bakery) : null;
@@ -1563,7 +1571,9 @@ window.GAILS = window.GAILS || {};
         '<h4 id="visitDetailsTitle">Visit details</h4>' +
         '<dl class="visit-report-checkin-details-list">' +
           '<div><dt>Visited by</dt><dd>' + siteVisitCoffeePartnerHtml(record) + '</dd></div>' +
-          '<div><dt>Barista</dt><dd>' + escapeHtml(record.mod || '—') + '</dd></div>' +
+          '<div><dt>On the Bar</dt><dd>' + escapeHtml(record.mod || '—') + '</dd></div>' +
+          '<div><dt>Barista on Pathway</dt><dd>' + escapeHtml(checkinNamesText(record.pathwayBaristas, record.noPathwayBarista)) + '</dd></div>' +
+          '<div><dt>Head Barista(s)</dt><dd>' + escapeHtml(checkinNamesText(record.headBaristas, record.noHeadBarista)) + '</dd></div>' +
           '<div><dt>Region · Ops</dt><dd>' + escapeHtml(area.join(' · ') || '—') + '</dd></div>' +
           '<div><dt>Completed</dt><dd>' + escapeHtml(visitDaysAgoLabel(record)) + '</dd></div>' +
         '</dl>' +
@@ -2057,7 +2067,7 @@ window.GAILS = window.GAILS || {};
       // have already closed, so only the target still says the key was theirs.
       // Escape from anywhere else in the form is a request to leave it.
       var ownedByField = event.target && event.target.closest
-        ? event.target.closest('.filter-select, .mention-field')
+        ? event.target.closest('.filter-select, .mention-field, .name-token-field')
         : null;
       if (!ownedByField) window.GAILS.requestCloseAddSiteVisitModal();
       return;
@@ -3045,6 +3055,12 @@ window.GAILS = window.GAILS || {};
       time: val('addVisitTime'),
       partner: val('addVisitPartner'),
       mod: val('addVisitMod'),
+      headBaristas: window.GAILS.NameTokenField
+        ? window.GAILS.NameTokenField.valuesFor(document.getElementById('addVisitHeadBaristas'))
+        : [],
+      pathwayBaristas: window.GAILS.NameTokenField
+        ? window.GAILS.NameTokenField.valuesFor(document.getElementById('addVisitPathwayBaristas'))
+        : [],
       comments: val('addVisitComments'),
       ticked: ticked,
       newTasks: newTasks
@@ -3078,6 +3094,27 @@ window.GAILS = window.GAILS || {};
       onConfirm: function () { window.GAILS.closeAddSiteVisitModal(); }
     });
   };
+
+  // Suggestions for the check-in's Head Barista(s) field. People whose primary
+  // or other location is the selected bakery are marked preferred, so they lead
+  // the list and are offered before anything is typed.
+  function headBaristaSuggestions(bakery) {
+    var G = window.GAILS;
+    var entries = typeof G.getHeadBaristaEntries === 'function' ? G.getHeadBaristaEntries() : [];
+    function key(name) {
+      return G.resolveBakeryMetaKey ? G.resolveBakeryMetaKey(name) : String(name || '').trim();
+    }
+    var bakeryKey = bakery ? key(bakery) : '';
+    return entries.map(function (entry) {
+      var others = Array.isArray(entry.others) ? entry.others : [];
+      var here = !!bakeryKey && [entry.primary].concat(others).some(function (site) {
+        return site && key(site) === bakeryKey;
+      });
+      var detail = entry.primary || '';
+      if (others.length) detail += (detail ? ' · ' : '') + '+' + others.length + (others.length === 1 ? ' other site' : ' other sites');
+      return { name: entry.name, detail: detail, preferred: here };
+    });
+  }
 
   window.GAILS.openAddSiteVisitModal = function (presetBakery) {
     if (!canLogVisits()) return;
@@ -3115,6 +3152,32 @@ window.GAILS = window.GAILS || {};
         window.GAILS.MentionField.enhance(partnerInput);
         window.GAILS.MentionField.refresh(partnerInput);
       }
+    }
+
+    // Head Barista(s): chips suggested from the Admin page's Head Barista
+    // directory (this bakery's own people first), free text for anyone not on
+    // it, or "None". Its chips live outside the input, so form.reset() above
+    // doesn't clear them — setValues does.
+    var headBaristaInput = document.getElementById('addVisitHeadBaristas');
+    if (headBaristaInput && window.GAILS.NameTokenField) {
+      window.GAILS.NameTokenField.enhance(headBaristaInput, {
+        noneLabel: 'None',
+        noneDetail: 'This bakery has no Head Barista right now',
+        suggestions: function () { return headBaristaSuggestions(select.value); },
+        customDetail: 'Not in the Head Barista list'
+      });
+      window.GAILS.NameTokenField.setValues(headBaristaInput, []);
+    }
+
+    // Barista on Pathway: the same chip field, with no directory behind it —
+    // any names, or "None".
+    var pathwayInput = document.getElementById('addVisitPathwayBaristas');
+    if (pathwayInput && window.GAILS.NameTokenField) {
+      window.GAILS.NameTokenField.enhance(pathwayInput, {
+        noneLabel: 'None',
+        noneDetail: 'No barista on Pathway'
+      });
+      window.GAILS.NameTokenField.setValues(pathwayInput, []);
     }
 
     // Pre-select the bakery when launched from an unvisited-site card
@@ -5062,6 +5125,14 @@ window.GAILS = window.GAILS || {};
           var assignees = window.GAILS.MentionField
             ? window.GAILS.MentionField.assigneesFor(partnerField)
             : [];
+          var headBaristaNames = window.GAILS.NameTokenField
+            ? window.GAILS.NameTokenField.valuesFor(document.getElementById('addVisitHeadBaristas'))
+            : [];
+          var noHeadBarista = headBaristaNames.length === 1 && headBaristaNames[0] === 'None';
+          var pathwayNames = window.GAILS.NameTokenField
+            ? window.GAILS.NameTokenField.valuesFor(document.getElementById('addVisitPathwayBaristas'))
+            : [];
+          var noPathwayBarista = pathwayNames.length === 1 && pathwayNames[0] === 'None';
           var record = {
             bakery: document.getElementById('addVisitBakery').value,
             visitKind: document.getElementById('addVisitType').value || 'checkin',
@@ -5071,6 +5142,14 @@ window.GAILS = window.GAILS || {};
               ? window.GAILS.Mentions.formatPeople(assignees)
               : (partnerField.value || '').trim(),
             mod: document.getElementById('addVisitMod').value || '',
+            // Names as entered (directory picks and free text alike), or the
+            // explicit "None" flag. Both absent means the field was left blank,
+            // which is also how every check-in before this field reads.
+            headBaristas: !noHeadBarista && headBaristaNames.length ? headBaristaNames : null,
+            noHeadBarista: noHeadBarista || null,
+            // Same shape for Barista on Pathway.
+            pathwayBaristas: !noPathwayBarista && pathwayNames.length ? pathwayNames : null,
+            noPathwayBarista: noPathwayBarista || null,
             comments: document.getElementById('addVisitComments').value || '',
             // Absent rather than empty when nobody was mentioned, which is what
             // keeps every visit logged before assignment existed unassigned.

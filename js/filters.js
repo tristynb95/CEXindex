@@ -272,6 +272,12 @@ window.GAILS.getRollingMonths = function() {
     return !!(_headBaristaEntries && _headBaristaEntries.length);
   };
 
+  // The raw directory rows ({name, role, primary, others?}) — the check-in
+  // form's Head Barista(s) suggestions read these.
+  G.getHeadBaristaEntries = function() {
+    return (_headBaristaEntries || []).slice();
+  };
+
   G.getHeadBaristaCount = function(bakery) {
     return headBaristaCounts()[headBaristaKey(bakery)] || 0;
   };

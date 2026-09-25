@@ -73,25 +73,29 @@ test('Escape backs out of the Log Visit modal through the same guard', () => {
   assert.match(escape, /if \(!ownedByField\) window\.GAILS\.requestCloseAddSiteVisitModal\(\);\s*return;\s*\}\s*$/);
 });
 
-test('Escape is left to the dropdown and mention menu that own it', () => {
+test('Escape is left to the dropdown and name menus that own it', () => {
   const start = source.indexOf("var logVisit = document.getElementById('addSiteVisitModal');");
   const escape = source.slice(start, source.indexOf('window.GAILS.closeVisitReport();', start));
 
   // Both widgets handle Escape on the element itself, which runs before this
   // document listener, so the target is the only reliable signal left.
-  assert.match(escape, /event\.target\.closest\('\.filter-select, \.mention-field'\)/);
+  assert.match(escape, /event\.target\.closest\('\.filter-select, \.mention-field, \.name-token-field'\)/);
 
   // The reason the target is all we have: neither widget stops the event, and
   // both have already closed themselves by the time it reaches the document.
   // If either ever starts calling stopPropagation, this check can go.
   const customSelects = fs.readFileSync(path.join(root, 'js', 'custom-selects.js'), 'utf8');
   const mentionField = fs.readFileSync(path.join(root, 'js', 'mention-field.js'), 'utf8');
+  const nameTokenField = fs.readFileSync(path.join(root, 'js', 'name-token-field.js'), 'utf8');
   assert.match(customSelects, /event\.key === 'Escape'\) \{\s*closeMenu\(\);/);
   assert.match(mentionField, /else if \(event\.key === 'Escape'\) \{\s*event\.preventDefault\(\);\s*closeMenu\(\);/);
   assert.doesNotMatch(customSelects, /'Escape'[\s\S]{0,120}?stopPropagation/);
   assert.doesNotMatch(mentionField, /'Escape'[\s\S]{0,120}?stopPropagation/);
+  assert.match(nameTokenField, /else if \(event\.key === 'Escape'\) \{\s*event\.preventDefault\(\);\s*closeMenu\(\);/);
+  assert.doesNotMatch(nameTokenField, /'Escape'[\s\S]{0,120}?stopPropagation/);
 
   // The wrapper class names the guard keys off are the ones the widgets build.
   assert.match(customSelects, /closest\('\.filter-select'\)/);
   assert.match(mentionField, /wrapper\.className = 'mention-field';/);
+  assert.match(nameTokenField, /wrapper\.className = 'name-token-field';/);
 });

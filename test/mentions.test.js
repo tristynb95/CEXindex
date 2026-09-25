@@ -471,8 +471,7 @@ test('the Coffee Partner field is the assignment control on both editors', () =>
   const partnerField = indexHtml.slice(indexHtml.indexOf('id="addVisitPartner"'));
   assert.match(partnerField.slice(0, 300), /data-mention-field/);
   assert.match(partnerField.slice(0, 300), /placeholder="Start typing a name"/);
-  assert.match(partnerField.slice(0, 400), /press <strong>Space<\/strong> to add another/);
-  assert.match(partnerField.slice(0, 400), /<strong>Backspace<\/strong> removes the last person/);
+  assert.match(partnerField.slice(0, 400), /<strong>Space<\/strong> adds another, <strong>Backspace<\/strong> removes one\./);
 
   // Admin visit detail form.
   assert.match(adminScript, /field\.key === 'coffeePartner'/);

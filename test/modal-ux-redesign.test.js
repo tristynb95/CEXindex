@@ -77,7 +77,7 @@ test('drill-down and report panels fill the workspace below the page banner', ()
   // different element and they all reflow at mobile widths.
   assert.match(utils, /\.header, \.bakery-profile-header, \.my-activity-header/);
   assert.match(utils, /setProperty\('--app-banner-h'/);
-  assert.match(utils, /\['drillModal', 'focusDetailModal', 'visitReportModal'\]/);
+  assert.match(utils, /\['drillModal', 'focusDetailModal', 'visitReportModal', 'addSiteVisitModal'\]/);
   assert.match(utils, /classList\.toggle\(OPEN_CLASS, open\)/);
 
   assert.match(styles, /:root \{\s*--app-banner-h: 0px;/);
