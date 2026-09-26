@@ -27,7 +27,7 @@
        than the rest of this page combined. js/lazy-lib.js now fetches them when
        an upload actually needs them (and sets pdf.js's worker URL on arrival). -->
   <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/admin.css?v=20260817-admin-overhaul-01">
+  <link rel="stylesheet" href="css/admin.css?v=20260926-search-inputs-01">
 </head>
 
 <body class="admin-body">
@@ -1191,6 +1191,8 @@
   <script defer src="js/notifications.js"></script>
   <script defer src="js/mentions.js"></script>
   <script defer src="js/mention-field.js"></script>
+  <script defer src="js/name-token-field.js?v=20260926-04"></script>
+  <script defer src="js/maintenance-flags.js?v=20260926-02"></script>
   <script defer src="js/attribution.js"></script>
   <script defer src="js/region-assignments.js"></script>
   <script defer src="js/ops-area-assignments.js"></script>
@@ -1200,7 +1202,7 @@
   <!-- Reuses the CQV parser's pdf.js text extraction and the NBO score helpers,
        so it must load after both. -->
   <script defer src="js/nbo-parser.js"></script>
-  <script type="module" src="js/admin-page.js?v=20260925-on-the-bar-01"></script>
+  <script type="module" src="js/admin-page.js?v=20260926-checkin-tokens-01"></script>
 </body>
 
 </html>

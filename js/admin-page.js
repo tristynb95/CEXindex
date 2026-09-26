@@ -3352,6 +3352,12 @@ function fieldInputHtml(sectionKey, field, value) {
     // editor by openVisitDetail once the markup is in the DOM.
     input = '<input type="text" value="' + escapeHtml(value || '') + '" autocomplete="off" data-mention-field ' + dataAttrs + '>'
       + '<small class="mention-field-hint">Choose a name, then press <strong>Space</strong> to add another. <strong>Backspace</strong> removes the last person.</small>';
+  } else if (field.type === 'nameTokens') {
+    // A chip field (js/name-token-field.js). Its chips are set, and its
+    // suggestions wired, by enhanceVisitTokenFields once it is in the DOM.
+    input = '<input type="text" placeholder="' + escapeHtml(field.placeholder || '') + '" aria-label="' + escapeHtml(field.label) + '" ' + dataAttrs + '>';
+    // Not a <label>: clicking one would activate its first chip's remove button.
+    return '<div class="admin-form-field"><span>' + escapeHtml(field.label) + '</span>' + input + '</div>';
   } else {
     input = '<input type="text" value="' + escapeHtml(value || '') + '" ' + dataAttrs + '>';
   }
@@ -3623,6 +3629,9 @@ function buildVisitDetailHtml(visit) {
       { key: 'time', label: 'Visit time', type: 'time' },
       { key: 'coffeePartner', label: 'Coffee Partner', type: 'text' },
       { key: 'mod', label: 'On the Bar', type: 'text' },
+      { key: 'headBaristas', label: 'Current Head Barista(s)', type: 'nameTokens', placeholder: 'Type a name, or None' },
+      { key: 'pathwayBaristas', label: 'Barista on Pathway', type: 'nameTokens', placeholder: 'Type a name, or None' },
+      { key: 'maintenanceFlags', label: 'Maintenance To Flag', type: 'nameTokens', placeholder: 'Optional: pick an issue or type your own' },
       { key: 'comments', label: 'Comments', type: 'textarea' }
     ];
 
@@ -3693,6 +3702,74 @@ function visitForAttributionEdit(visit) {
   return editable;
 }
 
+// Suggestions for a check-in's Head Barista(s) field, as the Log Visit form
+// offers them: people whose primary or other site is the visit's bakery lead
+// the list and are offered before anything is typed.
+function visitHeadBaristaSuggestions(bakery) {
+  var entries = state.headBaristas && Array.isArray(state.headBaristas.entries) ? state.headBaristas.entries : [];
+  function key(name) {
+    return typeof window.GAILS.resolveBakeryMetaKey === 'function'
+      ? window.GAILS.resolveBakeryMetaKey(name)
+      : String(name || '').trim();
+  }
+  var bakeryKey = bakery ? key(bakery) : '';
+  return entries.map(function(entry) {
+    var others = Array.isArray(entry.others) ? entry.others : [];
+    var here = !!bakeryKey && [entry.primary].concat(others).some(function(site) {
+      return site && key(site) === bakeryKey;
+    });
+    var detail = entry.primary || '';
+    if (others.length) detail += (detail ? ' · ' : '') + '+' + others.length + (others.length === 1 ? ' other site' : ' other sites');
+    return { name: entry.name, detail: detail, preferred: here };
+  });
+}
+
+function visitMaintenanceFlagOptions() {
+  var api = window.GAILS.MaintenanceFlags;
+  return api ? api.options().map(function(option) {
+    return { name: option.name, detail: option.group, preferred: true };
+  }) : [];
+}
+
+// Turns a check-in's Head Barista(s), Barista on Pathway and Maintenance To
+// Flag inputs into the Log Visit form's chip fields, filled from the record.
+// "None" is stored as a flag (noHeadBarista / noPathwayBarista), not a name.
+function enhanceVisitTokenFields(visit) {
+  var NTF = window.GAILS.NameTokenField;
+  var bakeryInput = visitDetailBody.querySelector('[data-field="bakery"]');
+  var configs = {
+    headBaristas: {
+      values: visit.noHeadBarista ? ['None'] : visit.headBaristas,
+      options: {
+        noneLabel: 'None',
+        noneDetail: 'This bakery has no Head Barista right now',
+        suggestions: function() { return visitHeadBaristaSuggestions(bakeryInput ? bakeryInput.value : visit.bakery); },
+        customDetail: 'Not in the Head Barista list'
+      }
+    },
+    pathwayBaristas: {
+      values: visit.noPathwayBarista ? ['None'] : visit.pathwayBaristas,
+      options: { noneLabel: 'None', noneDetail: 'No barista on Pathway' }
+    },
+    maintenanceFlags: {
+      values: visit.maintenanceFlags,
+      options: { suggestions: visitMaintenanceFlagOptions, customDetail: 'Not in the quick options', menuLimit: 100 }
+    }
+  };
+  Object.keys(configs).forEach(function(key) {
+    var input = visitDetailBody.querySelector('[data-type="nameTokens"][data-field="' + key + '"]');
+    if (!input) return;
+    var values = Array.isArray(configs[key].values) ? configs[key].values : [];
+    if (!NTF || input.disabled) {
+      // Read-only (or the chip module is missing): show the names as text.
+      input.value = values.join(', ');
+      return;
+    }
+    NTF.enhance(input, configs[key].options);
+    NTF.setValues(input, values);
+  });
+}
+
 function openVisitDetail(id) {
   var visit = state.visits.find(function(v) { return v.id === id; });
   if (!visit) return;
@@ -3700,6 +3777,7 @@ function openVisitDetail(id) {
   state.visitDetailId = id;
   visitDetailBody.innerHTML = buildVisitDetailHtml(visitForAttributionEdit(visit));
   if (window.GAILS.MentionField) window.GAILS.MentionField.enhanceAll(visitDetailBody);
+  enhanceVisitTokenFields(visit);
   visitDetailModal.style.display = 'flex';
   window.requestAnimationFrame(function() {
     if (visitDetailClose) visitDetailClose.focus();
@@ -3744,6 +3822,10 @@ function collectVisitFormValues() {
       value = raw === '' ? null : Number(raw);
     } else if (type === 'photos') {
       value = raw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    } else if (type === 'nameTokens') {
+      value = input._nameTokenField
+        ? input._nameTokenField.values()
+        : raw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
     } else {
       value = raw;
     }
@@ -3778,6 +3860,20 @@ async function saveVisitDetail(id) {
 
   var payload = Object.assign({}, existing, collected.general);
   delete payload.coffeePartnerAttribution;
+  if (existing.type === 'siteVisit') {
+    // Stored exactly as the Log Visit form stores them: names, or the explicit
+    // "None" flag, and each absent when left blank.
+    var heads = collected.general.headBaristas || [];
+    var noHead = heads.length === 1 && heads[0] === 'None';
+    payload.headBaristas = !noHead && heads.length ? heads : null;
+    payload.noHeadBarista = noHead || null;
+    var pathway = collected.general.pathwayBaristas || [];
+    var noPathway = pathway.length === 1 && pathway[0] === 'None';
+    payload.pathwayBaristas = !noPathway && pathway.length ? pathway : null;
+    payload.noPathwayBarista = noPathway || null;
+    var flags = collected.general.maintenanceFlags || [];
+    payload.maintenanceFlags = flags.length ? flags : null;
+  }
   if (!existing.type || existing.type === 'routine') {
     VISIT_SECTIONS.forEach(function(section) {
       payload[section.key] = collected[section.key];
@@ -4990,7 +5086,8 @@ visitDetailBody.addEventListener('click', async function(e) {
   }
 });
 
-['input', 'change'].forEach(function(eventName) {
+// name-token-change: a chip added or removed in a check-in's chip fields.
+['input', 'change', 'name-token-change'].forEach(function(eventName) {
   visitDetailBody.addEventListener(eventName, function(event) {
     if (state.visitDetailId && event.target.matches('[data-field]')) {
       markDraftDirty('visit', true);
