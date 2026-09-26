@@ -136,8 +136,8 @@ There are several kinds of visit, told apart by `type` / `visitKind` / `meta.sou
   - `actionPlan[]`, the agreed actions from the visit, each with `findings`, `actionRequired`, `priority`, `dueDate` and `sectionPath`.
   - `auditorName`, `title`, `ref` and `pdfFileName`.
 - **NBO, New Bakery Opening coffee visit** (`type: "nbo"`): **has no score**. Don't treat it as a scored audit. It has `questions[]` with yes/no/na responses, `counts` and `visitNumber` (1 or 2).
-- **Routine Bakery Visit form** (`meta.source: "form"`): a structured visit form. It has `sectionScores` and `score` / `scoreMax`, plus one object per section: `coffeeEfficiency`, `complianceTraining`, `drinkQuality` / `coffeeQuality`, `healthSafety`, `leadership`, `maintenance` and `service`. Each holds Yes/No/N/A checks and a free-text `comments` field. There are also `headBaristaPresent` and `numberOfStaff`.
-- **Check-in** (`visitKind: "checkin"`) and **NBO opening** (`visitKind: "nboOpening"`): lightweight logged visits with `time`, `mod` (who was on the bar) and free-text `comments`. Since Sep 2026 they can also carry `headBaristas[]` (or `noHeadBarista: true`), `pathwayBaristas[]` (or `noPathwayBarista: true`) and `maintenanceFlags[]`, the equipment and bar issues flagged on the visit. Those are also in `maintenance-flags.csv`, one row per item. A missing field means it was left blank or the visit predates it, not that nothing was wrong.
+- **Routine Bakery Visit form** (`meta.source: "form"`): a structured visit form. It has `sectionScores` and `score` / `scoreMax`, plus one object per section: `coffeeEfficiency`, `complianceTraining`, `drinkQuality` / `coffeeQuality`, `healthSafety`, `leadership`, `maintenance` and `service`. Each holds Yes/No/N/A checks and a free-text `comments` field. There are also `numberOfStaff` and `headBaristaPresent`, which only says whether a Head Barista was on shift (Yes/No/N/A) and never names anyone.
+- **Check-in** (`visitKind: "checkin"`) and **NBO opening** (`visitKind: "nboOpening"`): lightweight logged visits with `time`, `mod` (who was on the bar) and free-text `comments`. Since Sep 2026 they can also carry `headBaristas[]` (or `noHeadBarista: true`): who the Head Barista was on that visit's date, recorded at the time and never updated afterwards (see "Current vs past Head Baristas" below). They can also carry `pathwayBaristas[]` (or `noPathwayBarista: true`) and `maintenanceFlags[]`, the equipment and bar issues flagged on the visit. Those are also in `maintenance-flags.csv`, one row per item. A missing field means it was left blank or the visit predates it, not that nothing was wrong.
 
 ### `maintenance-flags.csv`: maintenance issues flagged on visits
 One row per item flagged in a check-in's or NBO opening's "Maintenance To Flag" field, oldest visit first. Visits logged before the field existed (Sep 2026) have no rows, so a bakery missing from this file hasn't necessarily been checked.
@@ -185,8 +185,14 @@ Free-text notes about a bakery (`bakery`, `body`, `createdAt` as epoch milliseco
 
 Use this to join any other file on `bakery`.
 
-### `head-baristas.json`
-The Head Barista list (`entries[]`: name, primary bakery, role).
+### `head-baristas.json`: the current Head Barista directory
+Who the Head Baristas are **now** (`entries[]`: name, primary bakery, role), as last uploaded on the portal's Admin page. `updatedAt` says when that was. Each upload replaces the whole list, and no earlier version is kept. Use it for "who is the Head Barista at X?".
+
+#### Current vs past Head Baristas
+- **Now:** `head-baristas.json`, as of its `updatedAt`.
+- **On a past visit:** that check-in's `headBaristas[]` in `routine-visits.json`. It's who the Coffee Partner recorded on the day, so it's history and shouldn't be read as the current holder. `noHeadBarista: true` means the bakery had none at the time.
+- **When they disagree:** don't treat either as an error. Most likely the Head Barista has changed since that visit, or the directory hasn't been re-uploaded since a change. Compare the visit `date` with `updatedAt` to judge which. A visit logged after `updatedAt` that names someone else is the newer information. Say which source and date an answer rests on.
+- A blank field on a check-in means it wasn't filled in, or the visit predates the field (Sep 2026). It doesn't mean there was no Head Barista.
 
 ### `team.json`
 Portal users on the coffee and ops teams: name, email, role, department, ops area and manager (`managerUid` matches another person's `uid`). Visit and action `assignedTo` entries carry the same `uid`.

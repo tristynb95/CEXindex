@@ -1572,7 +1572,7 @@ window.GAILS = window.GAILS || {};
         '<dl class="visit-report-checkin-details-list">' +
           '<div><dt>Visited by</dt><dd>' + siteVisitCoffeePartnerHtml(record) + '</dd></div>' +
           '<div><dt>On the Bar</dt><dd>' + escapeHtml(record.mod || '—') + '</dd></div>' +
-          '<div><dt>Current Head Barista(s)</dt><dd>' + escapeHtml(checkinNamesText(record.headBaristas, record.noHeadBarista)) + '</dd></div>' +
+          '<div><dt>Head Barista(s)</dt><dd>' + escapeHtml(checkinNamesText(record.headBaristas, record.noHeadBarista)) + '</dd></div>' +
           '<div><dt>Barista on Pathway</dt><dd>' + escapeHtml(checkinNamesText(record.pathwayBaristas, record.noPathwayBarista)) + '</dd></div>' +
           '<div><dt>Region · Ops</dt><dd>' + escapeHtml(area.join(' · ') || '—') + '</dd></div>' +
           '<div><dt>Completed</dt><dd>' + escapeHtml(visitDaysAgoLabel(record)) + '</dd></div>' +
