@@ -21478,7 +21478,36 @@ body.visit-log-filter-open .header-pill__tooltip {
 }
 
 .visit-log-section-header {
-  margin-bottom: 28px;
+  margin-bottom: 22px;
+}
+
+/* The same air under every other page's title. The shared title sits in the
+   workspace grid, whose 12px gap adds to this. The Map titles' row carries it
+   inline in index.html. */
+#dashboardContent .section-page-title {
+  margin-bottom: 10px;
+}
+
+.league-table-toolbar {
+  margin-bottom: 22px;
+}
+
+[data-target-subtab-panel="priority"] .tracker-table-header,
+[data-target-subtab-panel="table"] .tracker-table-header {
+  margin-bottom: 22px;
+}
+
+/* Priority Overview: the queue bar below brings its own 14px. */
+[data-target-subtab-panel="summary"] .focus-page-intro {
+  margin-bottom: 8px;
+}
+
+/* Charts and Comment Cloud: the title and its hint read as one heading, so
+   the space goes under the hint. */
+[data-target-subtab-panel="graphs"] > .target-hint,
+[data-target-subtab-panel="feedback"] > .target-hint,
+#tab-feedback > .target-hint {
+  margin-bottom: 22px;
 }
 
 .visit-log-toolbar {
@@ -21519,10 +21548,6 @@ body.visit-log-filter-open .header-pill__tooltip {
   }
 }
 
-.league-table-toolbar {
-  margin-bottom: 12px;
-}
-
 .target-hint,
 .chart-caption {
   max-width: 78ch;
@@ -21535,7 +21560,7 @@ body.visit-log-filter-open .header-pill__tooltip {
 @media (min-width: 981px) {
   #tab-map .map-section-header,
   #tab-target [data-target-subtab-panel="map"] .map-section-header {
-    margin-bottom: 12px !important;
+    margin-bottom: 22px !important;
   }
 
   #tab-map .map-canvas-wrap,
