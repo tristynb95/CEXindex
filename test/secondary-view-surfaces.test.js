@@ -55,7 +55,7 @@ test('secondary page headings and analytical cards use a compact hierarchy', () 
 });
 
 test('Bakery Reports keeps its controls separate from the result surface', () => {
-  assert.match(styles, /\.visit-log-section-header \{\s*margin-bottom:\s*12px;/);
+  assert.match(styles, /\.visit-log-section-header \{\s*margin-bottom:\s*28px;/);
   assert.match(styles, /\.visit-log-list \{\s*margin-top:\s*0;/);
   assert.match(styles, /\.visit-log-list > \.table-wrap--floating,[\s\S]*?background:\s*var\(--surface-panel\);[\s\S]*?box-shadow:\s*var\(--elev-rest\);/);
 });
