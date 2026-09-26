@@ -2447,7 +2447,6 @@
                   <label class="form-field__label" for="addVisitPartner">Coffee Partner</label>
                   <input type="text" id="addVisitPartner" placeholder="Start typing a name" class="visit-log-input"
                     autocomplete="off" data-mention-field>
-                  <small class="mention-field-hint"><strong>Space</strong> adds another, <strong>Backspace</strong> removes one.</small>
                 </div>
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitMod">On the Bar</label>
@@ -2457,16 +2456,21 @@
 
               <div class="form-field-row">
                 <div class="filter-control form-field">
-                  <label class="form-field__label" for="addVisitHeadBaristas">Head Barista(s)</label>
+                  <label class="form-field__label" for="addVisitHeadBaristas">Current Head Barista(s)</label>
                   <input type="text" id="addVisitHeadBaristas" placeholder="Type a name, or None"
                     class="visit-log-input">
-                  <small class="mention-field-hint">Current at the time of visit.</small>
                 </div>
                 <div class="filter-control form-field">
                   <label class="form-field__label" for="addVisitPathwayBaristas">Barista on Pathway</label>
                   <input type="text" id="addVisitPathwayBaristas" placeholder="Type a name, or None"
                     class="visit-log-input">
                 </div>
+              </div>
+
+              <div class="filter-control form-field">
+                <label class="form-field__label" for="addVisitMaintenance">Maintenance To Flag</label>
+                <input type="text" id="addVisitMaintenance" placeholder="Optional: pick an issue or type your own"
+                  class="visit-log-input">
               </div>
 
               <div class="filter-control form-field form-field--grow">
@@ -2684,7 +2688,7 @@
   <script defer src="js/notifications.js"></script>
   <script defer src="js/mentions.js"></script>
   <script defer src="js/mention-field.js"></script>
-  <script defer src="js/name-token-field.js?v=20260925-02"></script>
+  <script defer src="js/name-token-field.js?v=20260926-04"></script>
   <script defer src="js/attribution.js"></script>
   <script defer src="js/visit-schema.js"></script>
   <script defer src="js/utils.js?v=20260925-log-visit-fullbleed-01"></script>
@@ -2704,7 +2708,8 @@
   <script defer src="js/cqv-shared.js"></script>
   <script defer src="js/nbo-shared.js"></script>
   <script defer src="js/export-workbook.js"></script>
-  <script defer src="js/visit-report.js?v=20260811-checkin-context-15-visit-history-table-02-unvisited-sites-table-01-audit-report-modals-03-head-baristas-01-pathway-03"></script>
+  <script defer src="js/maintenance-flags.js?v=20260926-02"></script>
+  <script defer src="js/visit-report.js?v=20260811-checkin-context-15-visit-history-table-02-unvisited-sites-table-01-audit-report-modals-03-head-baristas-01-pathway-03-maintenance-01"></script>
   <script defer src="js/upload.js"></script>
   <script defer src="js/custom-selects.js"></script>
   <script defer src="js/wordcloud.js"></script>

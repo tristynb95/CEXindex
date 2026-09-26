@@ -1572,7 +1572,7 @@ window.GAILS = window.GAILS || {};
         '<dl class="visit-report-checkin-details-list">' +
           '<div><dt>Visited by</dt><dd>' + siteVisitCoffeePartnerHtml(record) + '</dd></div>' +
           '<div><dt>On the Bar</dt><dd>' + escapeHtml(record.mod || '—') + '</dd></div>' +
-          '<div><dt>Head Barista(s)</dt><dd>' + escapeHtml(checkinNamesText(record.headBaristas, record.noHeadBarista)) + '</dd></div>' +
+          '<div><dt>Current Head Barista(s)</dt><dd>' + escapeHtml(checkinNamesText(record.headBaristas, record.noHeadBarista)) + '</dd></div>' +
           '<div><dt>Barista on Pathway</dt><dd>' + escapeHtml(checkinNamesText(record.pathwayBaristas, record.noPathwayBarista)) + '</dd></div>' +
           '<div><dt>Region · Ops</dt><dd>' + escapeHtml(area.join(' · ') || '—') + '</dd></div>' +
           '<div><dt>Completed</dt><dd>' + escapeHtml(visitDaysAgoLabel(record)) + '</dd></div>' +
@@ -3061,6 +3061,9 @@ window.GAILS = window.GAILS || {};
       pathwayBaristas: window.GAILS.NameTokenField
         ? window.GAILS.NameTokenField.valuesFor(document.getElementById('addVisitPathwayBaristas'))
         : [],
+      maintenanceFlags: window.GAILS.NameTokenField
+        ? window.GAILS.NameTokenField.valuesFor(document.getElementById('addVisitMaintenance'))
+        : [],
       comments: val('addVisitComments'),
       ticked: ticked,
       newTasks: newTasks
@@ -3094,6 +3097,59 @@ window.GAILS = window.GAILS || {};
       onConfirm: function () { window.GAILS.closeAddSiteVisitModal(); }
     });
   };
+
+  // Quick options for the check-in's Maintenance To Flag field, as
+  // { name, detail: kit group, preferred } — see js/maintenance-flags.js.
+  function maintenanceFlagOptions() {
+    var api = window.GAILS.MaintenanceFlags;
+    return api ? api.options().map(function (option) {
+      return { name: option.name, detail: option.group, preferred: true };
+    }) : [];
+  }
+
+  // The report's "Maintenance flagged" block under the visit notes. Items are
+  // grouped by kit in the quick-options order, so a long list still scans
+  // easily; anything typed in by hand collects under "Other" at the end.
+  function buildMaintenanceFlagsHtml(record) {
+    var flags = Array.isArray(record.maintenanceFlags) ? record.maintenanceFlags : [];
+    if (!flags.length) {
+      return '<section class="visit-report-maintenance" aria-label="Maintenance flagged">' +
+        '<h5 class="visit-report-maintenance__title">Maintenance flagged</h5>' +
+        '<p class="visit-report-maintenance__empty">Nothing flagged on this visit.</p>' +
+      '</section>';
+    }
+    var groups = [];
+    var byName = Object.create(null);
+    function groupFor(label) {
+      if (!byName[label]) {
+        byName[label] = { label: label, items: [] };
+        groups.push(byName[label]);
+      }
+      return byName[label];
+    }
+    var api = window.GAILS.MaintenanceFlags;
+    if (api) api.groups().forEach(function (label) { groupFor(label); });
+    flags.forEach(function (flag) {
+      var match = api ? api.classify(flag) : { name: flag, group: 'Other' };
+      groupFor(match.group).items.push(match.name);
+    });
+    return '<section class="visit-report-maintenance" aria-label="Maintenance flagged">' +
+      '<h5 class="visit-report-maintenance__title">Maintenance flagged' +
+        ' <span class="visit-report-maintenance__count">' + flags.length + '</span></h5>' +
+      '<dl class="visit-report-maintenance__groups">' +
+        groups.filter(function (group) { return group.items.length; }).map(function (group) {
+          return '<div class="visit-report-maintenance__group">' +
+            '<dt>' + escapeHtml(group.label) + '</dt>' +
+            '<dd><ul class="visit-report-maintenance__items">' +
+              group.items.map(function (item) {
+                return '<li>' + escapeHtml(item) + '</li>';
+              }).join('') +
+            '</ul></dd>' +
+          '</div>';
+        }).join('') +
+      '</dl>' +
+    '</section>';
+  }
 
   // Suggestions for the check-in's Head Barista(s) field. People whose primary
   // or other location is the selected bakery are marked preferred, so they lead
@@ -3178,6 +3234,18 @@ window.GAILS = window.GAILS || {};
         noneDetail: 'No barista on Pathway'
       });
       window.GAILS.NameTokenField.setValues(pathwayInput, []);
+    }
+
+    // Maintenance To Flag: the same chip field, listing the quick options as
+    // soon as it's focused and narrowing them as you type. Optional.
+    var maintenanceInput = document.getElementById('addVisitMaintenance');
+    if (maintenanceInput && window.GAILS.NameTokenField) {
+      window.GAILS.NameTokenField.enhance(maintenanceInput, {
+        suggestions: maintenanceFlagOptions,
+        customDetail: 'Not in the quick options',
+        menuLimit: 100
+      });
+      window.GAILS.NameTokenField.setValues(maintenanceInput, []);
     }
 
     // Pre-select the bakery when launched from an unvisited-site card
@@ -3385,6 +3453,7 @@ window.GAILS = window.GAILS || {};
             '</div>' +
             '<div class="visit-report-notes" role="region" aria-label="Visit notes" tabindex="0">' +
               '<p class="visit-report-comment visit-report-comment--primary">' + escapeHtml(record.comments || 'No comments recorded.') + '</p>' +
+              buildMaintenanceFlagsHtml(record) +
             '</div>' +
           '</section>' +
           buildCheckinSupportHtml(record) +
@@ -5133,6 +5202,9 @@ window.GAILS = window.GAILS || {};
             ? window.GAILS.NameTokenField.valuesFor(document.getElementById('addVisitPathwayBaristas'))
             : [];
           var noPathwayBarista = pathwayNames.length === 1 && pathwayNames[0] === 'None';
+          var maintenanceFlags = window.GAILS.NameTokenField
+            ? window.GAILS.NameTokenField.valuesFor(document.getElementById('addVisitMaintenance'))
+            : [];
           var record = {
             bakery: document.getElementById('addVisitBakery').value,
             visitKind: document.getElementById('addVisitType').value || 'checkin',
@@ -5150,6 +5222,8 @@ window.GAILS = window.GAILS || {};
             // Same shape for Barista on Pathway.
             pathwayBaristas: !noPathwayBarista && pathwayNames.length ? pathwayNames : null,
             noPathwayBarista: noPathwayBarista || null,
+            // Optional; absent when left blank.
+            maintenanceFlags: maintenanceFlags.length ? maintenanceFlags : null,
             comments: document.getElementById('addVisitComments').value || '',
             // Absent rather than empty when nobody was mentioned, which is what
             // keeps every visit logged before assignment existed unassigned.

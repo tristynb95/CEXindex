@@ -16197,8 +16197,9 @@ html {
 .mention-field__option {
   width: 100%;
   display: grid;
-  gap: 1px;
-  padding: 7px 9px;
+  gap: 0;
+  padding: 4px 9px;
+  line-height: 1.25;
   border: 0;
   border-radius: 7px;
   background: transparent;
@@ -18803,6 +18804,94 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
     box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--drill-accent, var(--accent)) 14%, transparent);
   }
 
+  /* Maintenance flagged: sits under the visit notes, grouped by kit. */
+  #visitReportModal .visit-report-maintenance {
+    width: 100%;
+    max-width: 92ch;
+    margin: 22px 0 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+
+  #visitReportModal .visit-report-maintenance__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    color: var(--text);
+    font-size: 0.82rem;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+  }
+
+  #visitReportModal .visit-report-maintenance__count {
+    min-width: 22px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--drill-accent, var(--accent)) 12%, transparent);
+    color: var(--drill-accent, var(--accent));
+    font-size: 0.72rem;
+    font-weight: 750;
+    text-align: center;
+  }
+
+  #visitReportModal .visit-report-maintenance__empty {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.85rem;
+  }
+
+  #visitReportModal .visit-report-maintenance__groups {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+  }
+
+  #visitReportModal .visit-report-maintenance__group {
+    display: grid;
+    grid-template-columns: minmax(110px, 140px) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 6px 14px;
+  }
+
+  #visitReportModal .visit-report-maintenance__group dt {
+    color: var(--text-2);
+    font-size: 0.62rem;
+    font-weight: 780;
+    letter-spacing: 0.075em;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-report-maintenance__group dd {
+    margin: 0;
+  }
+
+  #visitReportModal .visit-report-maintenance__items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  #visitReportModal .visit-report-maintenance__items li {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-subtle, rgba(34, 31, 26, 0.04));
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  @media (max-width: 560px) {
+    #visitReportModal .visit-report-maintenance__group {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
   #visitReportModal[data-report-type='checkin'] .visit-report-comment--primary,
   #visitReportModal[data-report-type='opening'] .visit-report-comment--primary {
     width: 100%;
@@ -19567,6 +19656,86 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
     font-size: 0.85rem;
     font-style: normal;
     white-space: pre-wrap;
+  }
+
+  /* The screen styles for this block are screen-only, so print gets its own:
+     a clear break from the notes above, then kit labels beside their items. */
+  #visitReportModal .visit-report-maintenance {
+    margin: 22px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid #999;
+    break-inside: avoid;
+  }
+
+  #visitReportModal .visit-report-maintenance__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 10px;
+    color: #111 !important;
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-report-maintenance__count {
+    padding: 0 6px;
+    border: 1px solid #999;
+    border-radius: 999px;
+    color: #111 !important;
+    font-size: 0.66rem;
+    letter-spacing: 0;
+  }
+
+  #visitReportModal .visit-report-maintenance__empty {
+    margin: 0;
+    color: #444 !important;
+    font-size: 0.8rem;
+  }
+
+  #visitReportModal .visit-report-maintenance__groups {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+  }
+
+  #visitReportModal .visit-report-maintenance__group {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 4px 12px;
+    break-inside: avoid;
+  }
+
+  #visitReportModal .visit-report-maintenance__group dt {
+    color: #444 !important;
+    font-size: 0.6rem;
+    font-weight: 780;
+    letter-spacing: 0.075em;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-report-maintenance__group dd {
+    margin: 0;
+  }
+
+  #visitReportModal .visit-report-maintenance__items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  #visitReportModal .visit-report-maintenance__items li {
+    padding: 2px 8px;
+    border: 1px solid #bbb;
+    border-radius: 999px;
+    background: #fff !important;
+    color: #111 !important;
+    font-size: 0.75rem;
   }
 }
 

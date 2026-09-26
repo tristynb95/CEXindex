@@ -137,7 +137,22 @@ There are several kinds of visit, told apart by `type` / `visitKind` / `meta.sou
   - `auditorName`, `title`, `ref` and `pdfFileName`.
 - **NBO, New Bakery Opening coffee visit** (`type: "nbo"`): **has no score**. Don't treat it as a scored audit. It has `questions[]` with yes/no/na responses, `counts` and `visitNumber` (1 or 2).
 - **Routine Bakery Visit form** (`meta.source: "form"`): a structured visit form. It has `sectionScores` and `score` / `scoreMax`, plus one object per section: `coffeeEfficiency`, `complianceTraining`, `drinkQuality` / `coffeeQuality`, `healthSafety`, `leadership`, `maintenance` and `service`. Each holds Yes/No/N/A checks and a free-text `comments` field. There are also `headBaristaPresent` and `numberOfStaff`.
-- **Check-in** (`visitKind: "checkin"`) and **NBO opening** (`visitKind: "nboOpening"`): lightweight logged visits with `time`, `mod` (who was on the bar) and free-text `comments`.
+- **Check-in** (`visitKind: "checkin"`) and **NBO opening** (`visitKind: "nboOpening"`): lightweight logged visits with `time`, `mod` (who was on the bar) and free-text `comments`. Since Sep 2026 they can also carry `headBaristas[]` (or `noHeadBarista: true`), `pathwayBaristas[]` (or `noPathwayBarista: true`) and `maintenanceFlags[]`, the equipment and bar issues flagged on the visit. Those are also in `maintenance-flags.csv`, one row per item. A missing field means it was left blank or the visit predates it, not that nothing was wrong.
+
+### `maintenance-flags.csv`: maintenance issues flagged on visits
+One row per item flagged in a check-in's or NBO opening's "Maintenance To Flag" field, oldest visit first. Visits logged before the field existed (Sep 2026) have no rows, so a bakery missing from this file hasn't necessarily been checked.
+
+| column | meaning |
+|---|---|
+| `date`, `month`, `time` | When the visit happened (`month` joins to `dashboard-monthly.csv`) |
+| `bakery` | App bakery name |
+| `visit_kind` | `checkin` or `nboOpening` |
+| `item` | The issue, e.g. "Grinder Burrs (Decaf)" or "Ice Machine (Out of Ice)". Most come from a fixed list of quick options; anything else was typed in by hand. |
+| `kit_group` | Grinder, Espresso machine, Hot water, Filter coffee, Bar equipment, Ice machine or General. Hand-typed items are `Other`. |
+| `logged_by` | The Coffee Partner(s) who logged the visit |
+| `visit_id` | The visit's `id` in `routine-visits.json`, for its notes and follow-up actions |
+
+Use it for questions like "which bakeries keep flagging grinder issues?" or "what's open on the espresso machines in an ops area?". Join to `bakery-directory.json` on `bakery` for ops area and region. There's no "fixed" status: a flag records what was seen on that visit. To tell whether an issue has since been sorted, check the bakery's later visits and its `follow-up-actions.json`.
 
 ### `customer-comments.csv`: what customers wrote
 Every free-text comment from the customer survey since March 2025. The file has about 75,000 rows, so work on it with code rather than reading it whole. It comes from the same comment pipeline behind the portal's Comment Cloud tab.

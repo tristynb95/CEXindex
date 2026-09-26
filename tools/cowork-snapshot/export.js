@@ -20,6 +20,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const {spawnSync} = require("child_process");
+const vm = require("vm");
 const {loadApp, buildSupportList, visitView, canonicalBakery, kpiRows} = require("./app-logic");
 const {fetchComments} = require("./comments");
 const {updateHistory} = require("./support-history");
@@ -293,6 +294,58 @@ function commentFiles(commentData, G) {
   });
 }
 
+// The Log Visit form's Maintenance To Flag groups, read from the app's own
+// js/maintenance-flags.js. Loaded on its own rather than through loadApp, so
+// the flags still export on a morning the rest of the app logic fails.
+function loadMaintenanceFlags() {
+  const sandbox = {};
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  const file = path.resolve(__dirname, "..", "..", "js", "maintenance-flags.js");
+  vm.runInContext(fs.readFileSync(file, "utf8"), sandbox, {filename: "maintenance-flags.js"});
+  return sandbox.GAILS.MaintenanceFlags;
+}
+
+const MAINTENANCE_COLUMNS = [
+  ["date", "date"],
+  [(r) => monthLabel(r.date), "month"],
+  ["time", "time"],
+  ["bakery", "bakery"],
+  ["visitKind", "visit_kind"],
+  ["item", "item"],
+  ["group", "kit_group"],
+  ["loggedBy", "logged_by"],
+  ["visitId", "visit_id"],
+];
+
+// One row per item flagged on a check-in or NBO opening, oldest visit first.
+function maintenanceRows(visits) {
+  const M = loadMaintenanceFlags();
+  const rows = [];
+  visits.forEach((v) => {
+    (Array.isArray(v.maintenanceFlags) ? v.maintenanceFlags : []).forEach((flag) => {
+      const match = M.classify(flag);
+      rows.push({
+        date: v.date || "",
+        time: v.time || "",
+        bakery: (v.app && v.app.bakery) || v.bakery || "",
+        visitKind: v.visitKind || "checkin",
+        item: match.name,
+        group: match.group,
+        loggedBy: v.coffeePartner || "",
+        visitId: v.id,
+      });
+    });
+  });
+  return rows;
+}
+
+function maintenanceFiles(visits) {
+  return optional("maintenance flags not built", () => ({
+    "maintenance-flags.csv": toCsv(maintenanceRows(visits), MAINTENANCE_COLUMNS),
+  }));
+}
+
 function build(db, G, commentData) {
   const visits = values(db.routineVisits)
       .map(stripPdfUrls)
@@ -303,7 +356,9 @@ function build(db, G, commentData) {
   const site = (db.portalData && db.portalData.siteMeta) || {};
   const dash = db.dashboardData || {};
 
-  const derived = {...supportFiles(db, G), ...areaFiles(G), ...commentFiles(commentData, G)};
+  const derived = {
+    ...supportFiles(db, G), ...areaFiles(G), ...commentFiles(commentData, G), ...maintenanceFiles(visits),
+  };
 
   return {
     ...derived,
@@ -345,6 +400,9 @@ function build(db, G, commentData) {
         followUpActions: Object.keys(db.followUpActions || {}).length,
         bakeryNotes: notes.length,
         bakeries: Object.keys(site.entries || {}).length,
+        maintenanceFlags: derived["maintenance-flags.csv"]
+          ? visits.reduce((n, v) => n + (Array.isArray(v.maintenanceFlags) ? v.maintenanceFlags.length : 0), 0)
+          : null,
         customerComments: commentData && derived["customer-comments.csv"] ? commentData.comments.length : null,
       },
       builtWithAppLogic: !!G,
@@ -352,6 +410,7 @@ function build(db, G, commentData) {
         !derived["support-list.json"] && "support list",
         !derived["customer-comments.csv"] && "customer comments",
         !derived["area-monthly.csv"] && "area summary",
+        !derived["maintenance-flags.csv"] && "maintenance flags",
       ].filter(Boolean),
     },
   };

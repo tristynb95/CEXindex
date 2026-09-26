@@ -42,11 +42,13 @@ window.GAILS = window.GAILS || {};
   //   noneLabel      -> the exclusive "nobody" choice, offered as the user types it
   //   noneDetail     -> sub-line under that choice
   //   customDetail   -> sub-line under an "Add “typed name”" choice
+  //   menuLimit      -> most choices listed at once (default MENU_LIMIT)
   //   onChange(values)
   function enhance(input, options) {
     if (!input || input._nameTokenField) return input ? input._nameTokenField : null;
     var config = options || {};
     var noneLabel = config.noneLabel || '';
+    var menuLimit = config.menuLimit || MENU_LIMIT;
     var values = [];
     var state = { open: false, activeIndex: -1, matches: [] };
     var menuId = 'name-token-menu-' + (++optionSeq);
@@ -131,6 +133,27 @@ window.GAILS = window.GAILS || {};
       input.removeAttribute('aria-activedescendant');
     }
 
+    // The nearest ancestor that scrolls (the modal body), or null.
+    function scrollParent() {
+      for (var el = wrapper.parentElement; el && el !== document.body; el = el.parentElement) {
+        var overflow = window.getComputedStyle(el).overflowY;
+        if (overflow === 'auto' || overflow === 'scroll') return el;
+      }
+      return null;
+    }
+
+    // Shortens the list to the room left below the field, so opening it
+    // never makes the form it sits in grow a scrollbar. Too little room and it
+    // keeps a usable minimum, scrolling within itself.
+    function fitMenu() {
+      menu.style.maxHeight = '';
+      var box = scrollParent();
+      if (!box) return;
+      var room = box.getBoundingClientRect().bottom - wrapper.getBoundingClientRect().bottom - 26;
+      var natural = parseFloat(window.getComputedStyle(menu).maxHeight) || Infinity;
+      if (room < natural) menu.style.maxHeight = Math.max(room, 120) + 'px';
+    }
+
     function renderMenu() {
       if (!state.matches.length) {
         closeMenu();
@@ -152,6 +175,7 @@ window.GAILS = window.GAILS || {};
           '</button>';
       }).join('');
       menu.hidden = false;
+      fitMenu();
       state.open = true;
       input.setAttribute('aria-expanded', 'true');
       if (state.activeIndex >= 0) {
@@ -187,7 +211,7 @@ window.GAILS = window.GAILS || {};
         if (a.rank !== b.rank) return a.rank - b.rank;
         return a.name.localeCompare(b.name);
       });
-      return scored.slice(0, MENU_LIMIT).map(function (match) {
+      return scored.slice(0, menuLimit).map(function (match) {
         return { kind: 'person', name: match.name, detail: match.detail };
       });
     }
