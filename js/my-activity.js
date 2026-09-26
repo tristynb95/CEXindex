@@ -2880,6 +2880,8 @@ if (actionsList) {
         completedBy: done ? who : null,
         completedByUid: done && currentUser ? currentUser.uid : null,
         completedByName: done && currentUser ? (currentUser.displayName || identityDisplayName()) : null,
+        archivedAt: null,
+        unarchivedAt: null,
         'meta/updatedAt': now,
         'meta/updatedBy': who
       });

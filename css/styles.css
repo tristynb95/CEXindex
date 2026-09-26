@@ -11009,7 +11009,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
 }
 
 .follow-up-table thead th:nth-child(2) {
-  width: 26%;
+  width: 23%;
 }
 
 .follow-up-table thead th:nth-child(3) {
@@ -11025,7 +11025,7 @@ body.visit-log-filter-open .mobile-bottom-nav {
 }
 
 .follow-up-table thead th:nth-child(6) {
-  width: 19%;
+  width: 22%;
 }
 
 /* Matches Visit History's row-header sizing rather than the larger default

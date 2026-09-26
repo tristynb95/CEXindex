@@ -127,6 +127,25 @@ function values(obj) {
   return obj && typeof obj === "object" ? Object.entries(obj).map(([id, v]) => ({id, ...v})) : [];
 }
 
+// Mirrors followUpIsArchived in js/visit-report.js: a done task is archived
+// when someone archived it by hand, or 30 days after sign-off (or after it was
+// last unarchived). Auto-archiving is never written to the database, so the
+// export has to derive it the same way the dashboard does.
+const FOLLOW_UP_ARCHIVE_DAYS = 30;
+
+function followUpIsArchived(task, nowMs) {
+  if ((task.status || "open") !== "done") return false;
+  if (task.archivedAt) return true;
+  const since = [task.completedAt, task.unarchivedAt].filter(Boolean).sort().pop();
+  const sinceMs = since ? new Date(since).getTime() : NaN;
+  return !isNaN(sinceMs) && nowMs - sinceMs >= FOLLOW_UP_ARCHIVE_DAYS * 86400000;
+}
+
+function followUpActions(db) {
+  const nowMs = Date.now();
+  return values(db.followUpActions).map((t) => ({...t, archived: followUpIsArchived(t, nowMs)}));
+}
+
 function stripPdfUrls(visit) {
   const copy = {...visit};
   delete copy.pdfUrl;
@@ -355,6 +374,7 @@ function build(db, G, commentData) {
   Object.values(db.bakeryNotes || {}).forEach((byId) => notes.push(...values(byId)));
   const site = (db.portalData && db.portalData.siteMeta) || {};
   const dash = db.dashboardData || {};
+  const tasks = followUpActions(db);
 
   const derived = {
     ...supportFiles(db, G), ...areaFiles(G), ...commentFiles(commentData, G), ...maintenanceFiles(visits),
@@ -364,7 +384,7 @@ function build(db, G, commentData) {
     ...derived,
     "dashboard-monthly.csv": toCsv(dash.records || [], optional("RAG columns skipped", () => dashboardColumns(G), DASHBOARD_COLUMNS)),
     "routine-visits.json": visits,
-    "follow-up-actions.json": values(db.followUpActions),
+    "follow-up-actions.json": tasks,
     "bakery-notes.json": notes,
     "bakery-directory.json": {
       bakeries: Object.entries(site.entries || {}).map(([bakery, e]) => ({
@@ -397,7 +417,8 @@ function build(db, G, commentData) {
       counts: {
         dashboardRecords: (dash.records || []).length,
         routineVisits: visits.length,
-        followUpActions: Object.keys(db.followUpActions || {}).length,
+        followUpActions: tasks.length,
+        followUpActionsArchived: tasks.filter((t) => t.archived).length,
         bakeryNotes: notes.length,
         bakeries: Object.keys(site.entries || {}).length,
         maintenanceFlags: derived["maintenance-flags.csv"]

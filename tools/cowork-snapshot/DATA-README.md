@@ -175,6 +175,8 @@ One row per bakery, month, theme and sentiment. `customers_mentioning` is how ma
 ### `follow-up-actions.json`: follow-up tasks per bakery
 It has `title`, `detail`, `priority`, `status` (open/done), `dueDate`, `createdAt` / `completedAt` and `assignedTo`. `sourceVisitId` links to the `id` of the visit in `routine-visits.json` that raised the action.
 
+`archived` is `true` when a done task has been filed away, which matches the dashboard's Archived tab. That happens automatically 30 days after `completedAt`, or earlier if someone archives it by hand (`archivedAt`). If someone unarchives a task (`unarchivedAt`), its 30 days start again. Archived tasks are still done work, so keep them in history questions such as "how many tasks were closed last quarter?". Leave them out when asked what's currently on someone's list.
+
 ### `bakery-notes.json`
 Free-text notes about a bakery (`bakery`, `body`, `createdAt` as epoch milliseconds).
 

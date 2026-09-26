@@ -1881,6 +1881,8 @@ document.getElementById('bakeryTaskList').addEventListener('click', async functi
       completedBy: done ? (currentUser.email || currentUser.uid) : null,
       completedByUid: done ? currentUser.uid : null,
       completedByName: done ? (currentUser.displayName || '') : null,
+      archivedAt: null,
+      unarchivedAt: null,
       'meta/updatedAt': now,
       'meta/updatedBy': currentUser.email || currentUser.uid
     });

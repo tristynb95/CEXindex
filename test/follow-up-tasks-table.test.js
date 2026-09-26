@@ -34,12 +34,12 @@ test('keeps grouping, due/priority tags, and the tick-edit-delete actions in tab
 test('Group By "None" renders a flat table with no group header, like Bakery Directory', () => {
   assert.match(source, /var flatten = followUpGroupVal === 'none'/);
   assert.match(source, /window\.GAILS\._visitLogCurrentGroupNames = flatten \? \[\] : taskGroupsSorted\.slice\(\)/);
-  assert.match(source, /renderFollowUpSummary\(filteredTasks\.length, openCount, overdueCount, !flatten\)/);
+  assert.match(source, /renderFollowUpSummary\(filteredTasks\.length, openCount, overdueCount, !flatten, archivedCount\)/);
 });
 
 test('uses a compact fixed layout with responsive horizontal scrolling', () => {
   assert.match(styles, /\.table-wrap--follow-ups \.follow-up-table\s*\{\s*min-width:\s*980px;/);
-  assert.match(styles, /\.follow-up-table thead th:nth-child\(6\)\s*\{\s*width:\s*19%;/);
+  assert.match(styles, /\.follow-up-table thead th:nth-child\(6\)\s*\{\s*width:\s*22%;/);
   assert.match(styles, /@media \(max-width:\s*640px\)\s*\{\s*\.table-wrap--follow-ups \.follow-up-table\s*\{\s*min-width:\s*920px;/);
 });
 
@@ -57,4 +57,19 @@ test('the shared circular done-checkbox still styles the My Activity next-action
   assert.match(myActivity, /class="follow-up-item__check/);
   assert.match(styles, /\.follow-up-item__check\s*\{/);
   assert.match(myActivityStyles, /\.my-activity-action \.follow-up-item__check\s*\{/);
+});
+
+test('completed tasks auto-archive after 30 days and can be archived/unarchived manually', () => {
+  const auth = fs.readFileSync(path.join(root, 'js', 'auth.js'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert.match(source, /var FOLLOW_UP_ARCHIVE_DAYS = 30;/);
+  assert.match(source, /function followUpIsArchived\(task\)/);
+  assert.match(source, /if \(followUpIsArchived\(task\)\) return 'Archived';/);
+  assert.match(source, /if \(followStatus === 'archived'\) return archived;\s*if \(archived\) return false;/);
+  assert.match(source, /data-followup-archive="' \+ escapeHtml\(t\.id\)/);
+  assert.match(source, /window\.GAILS_Firebase\.archiveFollowUpAction\(archiveId, archive\)/);
+  assert.match(html, /data-status="archived">Archived<\/button>/);
+  assert.match(auth, /archiveFollowUpAction: async function\(taskId, archive, options\)/);
+  // Re-ticking or reopening a task restarts its archive clock.
+  assert.match(auth, /completedByName: done \? whoName : null,[\s\S]{0,120}archivedAt: null,\s*unarchivedAt: null,/);
 });

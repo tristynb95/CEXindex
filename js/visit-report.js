@@ -2757,7 +2757,7 @@ window.GAILS = window.GAILS || {};
   var PRIORITY_ORDER = { high: 0, medium: 1, low: 2, none: 3 };
   var PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low', none: 'None' };
 
-  var FOLLOW_UP_STATUS_LABELS = { open: 'Open', overdue: 'Overdue', done: 'Done', all: 'All' };
+  var FOLLOW_UP_STATUS_LABELS = { open: 'Open', overdue: 'Overdue', done: 'Done', all: 'All', archived: 'Archived' };
 
   function normalizePriority(value) {
     var v = String(value || '').toLowerCase();
@@ -2791,6 +2791,23 @@ window.GAILS = window.GAILS || {};
 
   function followUpIsOverdue(task) {
     return !followUpIsDone(task) && dueMeta(task.dueDate).state === 'overdue';
+  }
+
+  // Completed tasks drop into the archive on their own once they have been
+  // done for FOLLOW_UP_ARCHIVE_DAYS. Nothing is written for that — it is
+  // derived at read time, so no scheduled job is needed. A manual archive sets
+  // archivedAt; a manual unarchive sets unarchivedAt, which restarts the clock
+  // so the task gets another full window before it is filed away again.
+  var FOLLOW_UP_ARCHIVE_DAYS = 30;
+
+  function followUpIsArchived(task) {
+    if (!followUpIsDone(task)) return false;
+    if (task.archivedAt) return true;
+    var since = [task.completedAt, task.unarchivedAt].filter(Boolean).sort().pop();
+    if (!since) return false;
+    var sinceMs = new Date(since).getTime();
+    if (isNaN(sinceMs)) return false;
+    return Date.now() - sinceMs >= FOLLOW_UP_ARCHIVE_DAYS * 86400000;
   }
 
   function followUpBakeryLabel(task) {
@@ -2844,6 +2861,7 @@ window.GAILS = window.GAILS || {};
       return priority === 'none' ? 'No priority' : PRIORITY_LABELS[priority] + ' priority';
     }
     if (groupVal === 'status') {
+      if (followUpIsArchived(task)) return 'Archived';
       if (followUpIsDone(task)) return 'Done';
       return followUpIsOverdue(task) ? 'Overdue' : 'Open';
     }
@@ -2921,7 +2939,7 @@ window.GAILS = window.GAILS || {};
 
   function followUpGroupSorter(groupVal) {
     var priorityOrder = { 'High priority': 0, 'Medium priority': 1, 'Low priority': 2, 'No priority': 3 };
-    var statusOrder = { Overdue: 0, Open: 1, Done: 2 };
+    var statusOrder = { Overdue: 0, Open: 1, Done: 2, Archived: 3 };
     return function (a, b) {
       if (groupVal === 'priority') return priorityOrder[a] - priorityOrder[b];
       if (groupVal === 'status') return statusOrder[a] - statusOrder[b];
@@ -4869,7 +4887,7 @@ window.GAILS = window.GAILS || {};
     summaryEl.hidden = false;
   }
 
-  function renderFollowUpSummary(shownCount, openCount, overdueCount, showGroupToggle) {
+  function renderFollowUpSummary(shownCount, openCount, overdueCount, showGroupToggle, archivedCount) {
     var summaryEl = document.getElementById('visitLogSummary');
     if (!summaryEl) return;
     // "+ Add task" lives in the card header now (syncVisitLogActions), beside
@@ -4877,7 +4895,8 @@ window.GAILS = window.GAILS || {};
     // the header's own buttons and read as a lesser one.
     summaryEl.innerHTML =
       '<span class="visit-log-summary__total"><strong>' + shownCount + '</strong> follow-up' + (shownCount === 1 ? '' : 's') + '</span>' +
-      '<span class="visit-log-summary__coverage">' + openCount + ' open · ' + overdueCount + ' overdue</span>' +
+      '<span class="visit-log-summary__coverage">' + openCount + ' open · ' + overdueCount + ' overdue' +
+      (archivedCount ? ' · ' + archivedCount + ' archived' : '') + '</span>' +
       '<span class="visit-log-summary__actions">' +
       visitLogGroupToggleHtml(showGroupToggle) +
       '<button type="button" class="visit-log-summary__export" title="Download the follow-up list as a formatted Excel workbook">Export Excel</button>' +
@@ -5110,6 +5129,16 @@ window.GAILS = window.GAILS || {};
             Promise.resolve(window.GAILS_Firebase.completeFollowUpAction(toggleId, !isChecked))
               .catch(function (err) { console.error(err); alert(err.message || 'Failed to update follow-up.'); toggleBtn.disabled = false; });
             // The live followUpActions listener re-renders on success.
+            return;
+          }
+
+          var archiveBtn = closest('[data-followup-archive]');
+          if (archiveBtn) {
+            var archiveId = archiveBtn.getAttribute('data-followup-archive');
+            var archive = archiveBtn.getAttribute('data-archived') !== 'true';
+            archiveBtn.disabled = true;
+            Promise.resolve(window.GAILS_Firebase.archiveFollowUpAction(archiveId, archive))
+              .catch(function (err) { console.error(err); alert(err.message || 'Failed to update follow-up.'); archiveBtn.disabled = false; });
             return;
           }
 
@@ -6104,9 +6133,15 @@ window.GAILS = window.GAILS || {};
       var scopeTasks = allTasks.filter(taskInScope);
       var openCount = scopeTasks.filter(function (t) { return !followUpIsDone(t); }).length;
       var overdueCount = scopeTasks.filter(followUpIsOverdue).length;
+      var archivedCount = scopeTasks.filter(followUpIsArchived).length;
 
+      // Archived tasks only appear under Archived — Done and All cover the
+      // active list, so the archive keeps them from filling up over time.
       var filteredTasks = scopeTasks.filter(function (t) {
         var done = followUpIsDone(t);
+        var archived = followUpIsArchived(t);
+        if (followStatus === 'archived') return archived;
+        if (archived) return false;
         if (followStatus === 'open') return !done;
         if (followStatus === 'done') return done;
         if (followStatus === 'overdue') return followUpIsOverdue(t);
@@ -6136,7 +6171,8 @@ window.GAILS = window.GAILS || {};
           ['Sorted by', exportFilterLabel('followUpSort', 'Due Date (Soonest)')],
           ['Tasks exported', filteredTasks.length],
           ['Open (all statuses)', openCount],
-          ['Overdue (all statuses)', overdueCount]
+          ['Overdue (all statuses)', overdueCount],
+          ['Archived (all statuses)', archivedCount]
         ]),
         columns: [
           { label: 'Bakery', type: 'text', width: 26 },
@@ -6169,7 +6205,7 @@ window.GAILS = window.GAILS || {};
             PRIORITY_LABELS[normalizePriority(t.priority)],
             t.dueDate || '',
             followUpIsOverdue(t) ? Math.abs(due.days) : '',
-            followUpIsDone(t) ? 'Done' : (followUpIsOverdue(t) ? 'Overdue' : 'Open'),
+            followUpIsArchived(t) ? 'Archived' : (followUpIsDone(t) ? 'Done' : (followUpIsOverdue(t) ? 'Overdue' : 'Open')),
             t.createdAt ? t.createdAt.slice(0, 10) : '',
             t.completedAt ? t.completedAt.slice(0, 10) : '',
             followUpAttributionLabel(t)
@@ -6179,9 +6215,11 @@ window.GAILS = window.GAILS || {};
 
       if (filteredTasks.length === 0) {
         window.GAILS._visitLogCurrentGroupNames = [];
-        renderFollowUpSummary(0, openCount, overdueCount, false);
+        renderFollowUpSummary(0, openCount, overdueCount, false, archivedCount);
         var emptyMsg = followStatus === 'done'
           ? 'No completed follow-ups match your filters.'
+          : followStatus === 'archived'
+          ? 'No archived follow-ups. Completed tasks move here after ' + FOLLOW_UP_ARCHIVE_DAYS + ' days.'
           : (followStatus === 'overdue'
             ? 'No overdue follow-ups — nicely on top of it!'
             : 'No open follow-ups. Raise one from a check-in or with “+ Add task”.');
@@ -6191,7 +6229,7 @@ window.GAILS = window.GAILS || {};
 
       var flatten = followUpGroupVal === 'none';
       window.GAILS._visitLogCurrentGroupNames = flatten ? [] : taskGroupsSorted.slice();
-      renderFollowUpSummary(filteredTasks.length, openCount, overdueCount, !flatten);
+      renderFollowUpSummary(filteredTasks.length, openCount, overdueCount, !flatten, archivedCount);
 
       var collapsedTasks = window.GAILS._visitLogCollapsedGroups = window.GAILS._visitLogCollapsedGroups || {};
 
@@ -6200,6 +6238,7 @@ window.GAILS = window.GAILS || {};
       // when read out of context — same convention as the Visit History table.
       function followUpRowHtml(t, groupName, hidden) {
         var done = followUpIsDone(t);
+        var archived = followUpIsArchived(t);
         var m = dueMeta(t.dueDate);
         var bakeryLabel = followUpBakeryLabel(t) || 'Unknown bakery';
         var opsLabel = (G.getBakeryOps ? G.getBakeryOps(t.bakery) : '') || 'Unknown ops area';
@@ -6209,7 +6248,7 @@ window.GAILS = window.GAILS || {};
         var groupAttr = groupName ? ' data-group="' + escapeHtml(groupName) + '"' : '';
 
         var dueHtml = done
-          ? '<span class="follow-up-pill follow-up-pill--done">Done</span>' +
+          ? '<span class="follow-up-pill follow-up-pill--done">' + (archived ? 'Archived' : 'Done') + '</span>' +
             (t.completedAt ? '<span class="follow-up-table__meta">Completed ' + escapeHtml(formatFollowUpDate(t.completedAt)) + '</span>' : '')
           : (t.dueDate
             ? '<span class="follow-up-pill follow-up-pill--' + m.state + '">' + escapeHtml(m.label) + '</span>' +
@@ -6232,6 +6271,10 @@ window.GAILS = window.GAILS || {};
           '<button type="button" class="follow-up-item__check' + (done ? ' checked' : '') + '" role="checkbox" aria-checked="' + done + '"' +
           ' data-followup-toggle="' + escapeHtml(t.id) + '" title="' + (done ? 'Mark as open' : 'Mark as done') + '" aria-label="' + (done ? 'Mark as open' : 'Mark as done') + '">' +
           (done ? '&#10003;' : '') + '</button>' +
+          (done
+            ? '<button type="button" class="follow-up-table__btn" data-followup-archive="' + escapeHtml(t.id) + '"' +
+              ' data-archived="' + archived + '">' + (archived ? 'Unarchive' : 'Archive') + '</button>'
+            : '') +
           '<button type="button" class="follow-up-table__btn" data-followup-edit="' + escapeHtml(t.id) + '">Edit</button>' +
           '<button type="button" class="follow-up-table__btn follow-up-table__btn--danger" data-followup-delete="' + escapeHtml(t.id) + '">Delete</button>' +
           '</div></td>' +

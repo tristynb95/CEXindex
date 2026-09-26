@@ -354,6 +354,9 @@ window.GAILS_Firebase = {
       completedBy: done ? who : null,
       completedByUid: done ? whoUid : null,
       completedByName: done ? whoName : null,
+      // A fresh sign-off or a reopen starts the archive clock over.
+      archivedAt: null,
+      unarchivedAt: null,
       'meta/updatedAt': nowIsoStr,
       'meta/updatedBy': who
     });
@@ -382,6 +385,25 @@ window.GAILS_Firebase = {
       'meta/updatedBy': who
     }));
     notifyMutation('Task updated', options);
+  },
+  // Completed tasks archive themselves 30 days after sign-off (derived in
+  // js/visit-report.js). These fields let someone file one away early, or
+  // pull one back — unarchivedAt restarts that 30-day window.
+  archiveFollowUpAction: async function(taskId, archive, options) {
+    if (!auth.currentUser) throw new Error('You must be signed in to update a follow-up.');
+    var perms = window.GAILS && window.GAILS.permissions;
+    if (perms && perms.actions && perms.actions.logVisits === false) {
+      throw new Error('Your role does not allow updating follow-ups.');
+    }
+    var who = auth.currentUser.email || auth.currentUser.uid;
+    var nowIsoStr = nowIso();
+    await update(ref(db, 'followUpActions/' + taskId), {
+      archivedAt: archive ? nowIsoStr : null,
+      unarchivedAt: archive ? null : nowIsoStr,
+      'meta/updatedAt': nowIsoStr,
+      'meta/updatedBy': who
+    });
+    notifyMutation(archive ? 'Task archived' : 'Task unarchived', options);
   },
   deleteFollowUpAction: async function(taskId) {
     if (!auth.currentUser) throw new Error('You must be signed in to delete a follow-up.');
