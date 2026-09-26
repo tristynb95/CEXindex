@@ -6269,9 +6269,25 @@ body.table-fullscreen-lock {
 }
 
 /* ── Visit Report print ──────────────────────────────────────────────── */
+/* A page margin box switches off the browser's own header or footer along the
+   edge it sits on (print date and page title at the top, URL and page number
+   at the bottom). The empty top box clears the header; the bottom box clears
+   the footer and draws the page number back in its place. With nothing to
+   print along the top, that margin only needs to be breathing room; the
+   bottom one keeps just enough height for the page number. */
 @page {
-  margin-top: 20mm;
-  margin-bottom: 20mm;
+  margin: 10mm 12mm 12mm;
+
+  @top-center {
+    content: "";
+  }
+
+  @bottom-right {
+    content: counter(page) "/" counter(pages);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #111;
+  }
 }
 
 @media print {
@@ -6356,7 +6372,7 @@ body.table-fullscreen-lock {
     height: auto !important;
     flex: none !important;
     display: block !important;
-    padding: 30px 40px 12px !important;
+    padding: 0 0 12px !important;
   }
 
   #visitReportModal .drill-modal-body {
@@ -6367,7 +6383,7 @@ body.table-fullscreen-lock {
     height: auto !important;
     flex: none !important;
     display: block !important;
-    padding: 12px 40px 30px !important;
+    padding: 14px 0 0 !important;
   }
 
   /* The lane-per-section height set inline at draw time is what makes the
@@ -19253,71 +19269,76 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
     background: rgba(235, 240, 243, 0.82);
   }
 
-  #visitReportModal .visit-weather-icon {
-    width: 48px;
-    height: 48px;
-    overflow: visible;
-  }
+}
 
-  #visitReportModal .visit-weather-icon__sun {
-    fill: #ffd45c;
-    stroke: #d99b1c;
-    stroke-width: 2;
-  }
+/* Weather icon colours apply on screen and in print: the printed check-in
+   report carries the weather card too (see the check-in print block). */
+#visitReportModal .visit-weather-icon {
+  width: 48px;
+  height: 48px;
+  overflow: visible;
+}
 
-  #visitReportModal .visit-weather-icon__sunray,
-  #visitReportModal .visit-weather-icon__rain,
-  #visitReportModal .visit-weather-icon__snow,
-  #visitReportModal .visit-weather-icon__fog {
-    fill: none;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
+#visitReportModal .visit-weather-icon__sun {
+  fill: #ffd45c;
+  stroke: #d99b1c;
+  stroke-width: 2;
+}
 
-  #visitReportModal .visit-weather-icon__sunray {
-    stroke: #d99b1c;
-    stroke-width: 2.4;
-  }
+#visitReportModal .visit-weather-icon__sunray,
+#visitReportModal .visit-weather-icon__rain,
+#visitReportModal .visit-weather-icon__snow,
+#visitReportModal .visit-weather-icon__fog {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
-  #visitReportModal .visit-weather-icon__moon {
-    fill: #f2df9d;
-    stroke: #8b7a53;
-    stroke-width: 2;
-  }
+#visitReportModal .visit-weather-icon__sunray {
+  stroke: #d99b1c;
+  stroke-width: 2.4;
+}
 
-  #visitReportModal .visit-weather-icon__star {
-    fill: #d6ab38;
-  }
+#visitReportModal .visit-weather-icon__moon {
+  fill: #f2df9d;
+  stroke: #8b7a53;
+  stroke-width: 2;
+}
 
-  #visitReportModal .visit-weather-icon__cloud {
-    fill: #eef2f4;
-    stroke: #7d8b94;
-    stroke-linejoin: round;
-    stroke-width: 2;
-  }
+#visitReportModal .visit-weather-icon__star {
+  fill: #d6ab38;
+}
 
-  #visitReportModal .visit-weather-icon__rain {
-    stroke: #2f88b8;
-    stroke-width: 2.6;
-  }
+#visitReportModal .visit-weather-icon__cloud {
+  fill: #eef2f4;
+  stroke: #7d8b94;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
 
-  #visitReportModal .visit-weather-icon__snow {
-    stroke: #5d9fc1;
-    stroke-width: 1.8;
-  }
+#visitReportModal .visit-weather-icon__rain {
+  stroke: #2f88b8;
+  stroke-width: 2.6;
+}
 
-  #visitReportModal .visit-weather-icon__fog {
-    stroke: #8b989f;
-    stroke-width: 2.3;
-  }
+#visitReportModal .visit-weather-icon__snow {
+  stroke: #5d9fc1;
+  stroke-width: 1.8;
+}
 
-  #visitReportModal .visit-weather-icon__lightning {
-    fill: #f2bd2e;
-    stroke: #b87908;
-    stroke-linejoin: round;
-    stroke-width: 1.5;
-  }
+#visitReportModal .visit-weather-icon__fog {
+  stroke: #8b989f;
+  stroke-width: 2.3;
+}
 
+#visitReportModal .visit-weather-icon__lightning {
+  fill: #f2bd2e;
+  stroke: #b87908;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+@media screen {
   #visitReportModal .visit-context-weather-copy {
     min-width: 0;
   }
@@ -19535,23 +19556,184 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
     display: none !important;
   }
 
+  /* Two balanced columns above the notes: visit details on the left, the
+     monthly snapshot and the weather during the visit on the right. The rail
+     and the support aside step out of the way (display: contents) so their
+     cards sit directly on this grid; the map card is left off the page. */
   #visitReportModal .visit-report-checkin-workspace {
-    display: block !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: stretch;
   }
 
-  #visitReportModal .visit-report-checkin-rail {
-    display: block !important;
-    margin: 0 0 14px;
+  #visitReportModal .visit-report-checkin-rail,
+  #visitReportModal .visit-report-checkin-context.visit-report-checkin-support {
+    display: contents !important;
+  }
+
+  #visitReportModal .visit-report-checkin-details {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  #visitReportModal .visit-context-monthly {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  #visitReportModal .visit-context-weather-card {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  #visitReportModal .visit-report-checkin-comments {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  #visitReportModal .visit-context-map-card,
+  #visitReportModal .visit-context-source {
+    display: none !important;
   }
 
   #visitReportModal .visit-report-checkin-details,
-  #visitReportModal .visit-context-monthly {
-    display: block !important;
+  #visitReportModal .visit-context-monthly,
+  #visitReportModal .visit-context-weather-card {
+    display: flex !important;
+    flex-direction: column;
     border: 1px solid #ccc !important;
     border-radius: 6px;
     background: #fff !important;
-    margin: 0 0 10px;
+    box-shadow: none !important;
+    overflow: hidden;
+    margin: 0;
+    padding: 0 !important;
     page-break-inside: avoid;
+  }
+
+  /* The details card spans both right-hand cards, so its rows share out the
+     extra height instead of leaving a gap under the last one. */
+  #visitReportModal .visit-report-checkin-details-list {
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  #visitReportModal .visit-report-checkin-details .visit-report-checkin-details-list {
+    display: flex !important;
+  }
+
+  #visitReportModal .visit-report-checkin-details-list>div {
+    flex: 1 1 auto;
+    align-items: center !important;
+  }
+
+  #visitReportModal .visit-context-weather-card .visit-context-card-heading {
+    display: flex !important;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+    padding: 6px 12px;
+    border-bottom: 1px solid #ccc;
+    background: #f2f2f2 !important;
+  }
+
+  #visitReportModal .visit-context-weather-card .visit-context-card-heading strong {
+    color: #111 !important;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-context-weather-card .visit-context-card-heading small {
+    color: #111 !important;
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  #visitReportModal .visit-context-weather-body {
+    display: block !important;
+    padding: 0;
+  }
+
+  #visitReportModal .visit-context-weather-overview {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    border-bottom: 1px solid #e4e4e4;
+  }
+
+  #visitReportModal .visit-context-weather-symbol {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    background: none !important;
+  }
+
+  #visitReportModal .visit-weather-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  #visitReportModal .visit-context-weather-summary {
+    margin: 0;
+    color: #111 !important;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  #visitReportModal .visit-context-weather-time {
+    margin: 1px 0 0;
+    color: #555 !important;
+    font-size: 0.66rem;
+  }
+
+  #visitReportModal .visit-context-weather-list {
+    display: block !important;
+  }
+
+  #visitReportModal .visit-context-weather-metric {
+    display: flex !important;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 12px;
+    border-bottom: 1px solid #e4e4e4;
+  }
+
+  #visitReportModal .visit-context-weather-metric:last-child {
+    border-bottom: 0;
+  }
+
+  #visitReportModal .visit-context-weather-metric>span {
+    color: #555 !important;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  #visitReportModal .visit-context-weather-metric>strong {
+    color: #111 !important;
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+
+  #visitReportModal .visit-context-weather-body .visit-context-loading,
+  #visitReportModal .visit-context-weather-body .visit-context-empty {
+    display: block;
+    padding: 8px 12px;
+    color: #555 !important;
+    font-size: 0.72rem;
+  }
+
+  #visitReportModal .visit-context-weather-body .visit-context-empty strong {
+    display: block;
+    color: #111 !important;
   }
 
   #visitReportModal .visit-report-checkin-details>h4,
@@ -19620,51 +19802,70 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
   #visitReportModal .visit-context-monthly-stat dd {
     margin: 0;
     color: #111 !important;
-    font-size: 0.8rem;
+    font-size: 0.76rem;
     font-weight: 700;
     text-align: right;
   }
 
+  /* Long notes run on to the next page rather than pushing the whole card
+     there and leaving the first page mostly blank. Card chrome matches the
+     two cards above: same border, heading band and type scale. */
   #visitReportModal .visit-report-section--comments {
     display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
     border: 1px solid #ccc !important;
-    border-radius: 6px;
+    border-radius: 6px !important;
     background: #fff !important;
-    page-break-inside: avoid;
+    box-shadow: none !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 
   #visitReportModal .visit-report-comments-heading {
     display: block !important;
-    margin: 0;
-    padding: 8px 14px;
-    border-bottom: 1px solid #ccc;
+    margin: 0 !important;
+    padding: 6px 12px !important;
+    border-bottom: 1px solid #ccc !important;
+    border-radius: 6px 6px 0 0;
     background: #f2f2f2 !important;
+    break-after: avoid;
   }
 
   #visitReportModal .visit-report-comments-heading h4 {
     margin: 0;
     color: #111 !important;
-    font-size: 0.82rem;
+    font-size: 0.66rem !important;
+    font-weight: 800;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase;
   }
 
   #visitReportModal .visit-report-notes {
     display: block !important;
-    padding: 14px 16px 16px;
+    padding: 12px 14px 14px !important;
+    overflow: visible !important;
+    max-height: none !important;
   }
 
   #visitReportModal .visit-report-comment--primary {
-    font-size: 0.85rem;
+    margin: 0;
+    color: #222 !important;
+    font-size: 0.78rem;
     font-style: normal;
+    line-height: 1.5;
+    max-width: none !important;
     white-space: pre-wrap;
+    orphans: 3;
+    widows: 3;
   }
 
   /* The screen styles for this block are screen-only, so print gets its own:
      a clear break from the notes above, then kit labels beside their items. */
   #visitReportModal .visit-report-maintenance {
-    margin: 22px 0 0;
-    padding-top: 14px;
-    border-top: 1px solid #999;
-    break-inside: avoid;
+    margin: 16px 0 0;
+    padding-top: 12px;
+    border-top: 1px solid #ccc;
   }
 
   #visitReportModal .visit-report-maintenance__title {
@@ -19677,6 +19878,7 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
     font-weight: 750;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    break-after: avoid;
   }
 
   #visitReportModal .visit-report-maintenance__count {
@@ -19730,12 +19932,12 @@ body[data-dash-tab="target"][data-target-subtab="feedback"] #dashboardContent .d
   }
 
   #visitReportModal .visit-report-maintenance__items li {
-    padding: 2px 8px;
-    border: 1px solid #bbb;
+    padding: 1px 8px;
+    border: 1px solid #ccc;
     border-radius: 999px;
-    background: #fff !important;
+    background: #f7f7f7 !important;
     color: #111 !important;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 }
 

@@ -13,9 +13,12 @@ window.GAILS = window.GAILS || {};
     ['Grinder', [
       'Clump Crusher (House Blend)',
       'Clump Crusher (Decaf)',
-      'Clump Crusher (Multiple)',
+      'Clump Crushers (Multiple)',
       'Grinder Externals',
       'Grinder Chute',
+      'Grinder Chute (Screw Thread Worn)',
+      'Grinder (Missing Screws)',
+      'Grinder (Worn Screws)',
       'Grinder Burrs (House Blend)',
       'Grinder Burrs (Decaf)',
       'Grinder Burrs (Multiple)',
@@ -26,7 +29,8 @@ window.GAILS = window.GAILS || {};
     ['Espresso machine', [
       'Basket Springs',
       'Group Gaskets',
-      'Diffusion Screens & Plates',
+      'Diffusion Screens',
+      'Diffusion Plate',
       'Portafilters',
       'Baskets',
       'Boiler Pressure (Too High)',
@@ -63,7 +67,8 @@ window.GAILS = window.GAILS || {};
       'Jugs (Labelling)',
       'Knock Box (Broken or Worn)',
       'KVlink (Not Working)',
-      'Pitcher Rinser (Broken)'
+      'Pitcher Rinser (Broken)',
+      'Crockery (Chipped or Worn)'
     ]],
     ['Ice machine', [
       'Ice Machine (Out of Service)',
@@ -77,6 +82,13 @@ window.GAILS = window.GAILS || {};
   ];
 
   var OTHER = 'Other';
+
+  // Quick options that have since been renamed or split, so visits saved with
+  // the old spelling still land under their kit rather than "Other".
+  var RETIRED = {
+    'clump crusher (multiple)': { name: 'Clump Crushers (Multiple)', group: 'Grinder' },
+    'diffusion screens & plates': { name: 'Diffusion Screens & Plates', group: 'Espresso machine' }
+  };
 
   // [{ name, group }] in list order.
   function options() {
@@ -100,7 +112,7 @@ window.GAILS = window.GAILS || {};
     var match = options().filter(function (option) {
       return option.name.toLowerCase() === key;
     })[0];
-    return match || { name: text, group: OTHER };
+    return match || RETIRED[key] || { name: text, group: OTHER };
   }
 
   window.GAILS.MaintenanceFlags = {
